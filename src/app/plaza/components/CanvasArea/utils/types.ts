@@ -6,6 +6,7 @@
 export interface RenderBox {
   key: string;
   tag: string;
+  class?: string;
   text?: string;
   x: number;
   y: number;

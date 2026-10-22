@@ -42,6 +42,7 @@ function computeNodeLayout(
       box: {
         key,
         tag: node.tag || "div",
+        class: node.class || "",
         text: node.text,
         x,
         y,
@@ -82,6 +83,7 @@ function computeNodeLayout(
     box: {
       key,
       tag: node.tag || "div",
+      class: node.class || "",
       text: node.text,
       x,
       y,
@@ -324,13 +326,38 @@ export default function handleRender(
     ctx.fillStyle = box.tag.toLowerCase() === "div" ? "#c7d2fe" : box.tag.toLowerCase() === "p" ? "#a7f3d0" : "#e4e4e7";
     ctx.fillText(tagText, textStartX + 6, box.y + 19);
 
-    // 6. Текст содержимого (например "Lorem" из p.json)
-    if (box.text) {
-      const labelX = textStartX + tagWidth + 18;
-      const maxTextWidth = Math.max(40, box.w - (labelX - box.x) - 16);
+    let nextX = textStartX + tagWidth + 16;
 
-      ctx.font = "13px system-ui, -apple-system, sans-serif";
-      ctx.fillStyle = "#e4e4e7";
+    // 6. Классы узла (в одну строку, мелким шрифтом)
+    const hasClass = Boolean(box.class && box.class.trim());
+    const hasText = Boolean(box.text && box.text.trim());
+
+    if (hasClass) {
+      const classStr = "." + box.class!.trim().replace(/\s+/g, " .");
+      const availableSpace = Math.max(30, box.w - (nextX - box.x) - 16);
+      const maxClassWidth = hasText ? Math.min(availableSpace * 0.55, availableSpace - 50) : availableSpace;
+
+      ctx.font = "10.5px ui-monospace, SFMono-Regular, Menlo, monospace";
+      ctx.fillStyle = "#a1a1aa"; // мягкий цвет для мелких классов
+
+      let displayClass = classStr;
+      if (ctx.measureText(displayClass).width > maxClassWidth) {
+        while (displayClass.length > 3 && ctx.measureText(displayClass + "…").width > maxClassWidth) {
+          displayClass = displayClass.slice(0, -1);
+        }
+        displayClass += "…";
+      }
+
+      ctx.fillText(displayClass, nextX, box.y + 19);
+      nextX += ctx.measureText(displayClass).width + 12;
+    }
+
+    // 7. Текст содержимого (например "Lorem" из p.json)
+    if (hasText) {
+      const maxTextWidth = Math.max(30, box.w - (nextX - box.x) - 16);
+
+      ctx.font = "12px system-ui, -apple-system, sans-serif";
+      ctx.fillStyle = "#f4f4f5";
 
       let display = `"${box.text}"`;
       if (ctx.measureText(display).width > maxTextWidth) {
@@ -340,7 +367,7 @@ export default function handleRender(
         display += "…";
       }
 
-      ctx.fillText(display, labelX, box.y + 19);
+      ctx.fillText(display, nextX, box.y + 19);
     }
   }
 
