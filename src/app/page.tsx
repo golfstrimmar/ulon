@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { Header } from "@/components/Header";
 import { WelcomeToast } from "@/components/WelcomeToast";
+import { HtmlJsonEditor } from "@/components/HtmlJsonEditor";
 
 async function MainContent() {
   const session = await auth();
@@ -72,14 +73,27 @@ export default function HomePage() {
         <Header />
       </Suspense>
 
-      <main className="flex-1 flex flex-col items-center justify-center p-6 text-center max-w-2xl mx-auto">
-        <Suspense
-          fallback={
-            <div className="h-40 w-full bg-zinc-900/50 rounded-2xl animate-pulse" />
-          }
-        >
-          <MainContent />
-        </Suspense>
+      <main className="flex-1 flex flex-col items-center p-6 max-w-6xl w-full mx-auto space-y-10">
+        <div className="text-center max-w-2xl mx-auto pt-4">
+          <Suspense
+            fallback={
+              <div className="h-40 w-full bg-zinc-900/50 rounded-2xl animate-pulse" />
+            }
+          >
+            <MainContent />
+          </Suspense>
+        </div>
+
+        {/* Интерактивный редактор htmlJson (IndexedDB) */}
+        <section className="w-full">
+          <Suspense
+            fallback={
+              <div className="h-96 w-full bg-zinc-900/50 rounded-2xl animate-pulse border border-zinc-800" />
+            }
+          >
+            <HtmlJsonEditor />
+          </Suspense>
+        </section>
       </main>
     </div>
   );
