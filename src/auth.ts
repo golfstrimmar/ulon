@@ -61,6 +61,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
+    async signIn({ user, account, profile }) {
+      if (account?.provider === "google" && profile && user?.email) {
+        const avatar = (profile as any)?.picture || (profile as any)?.image;
+        if (avatar) {
+          try {
+            await prisma.user.update({
+              where: { email: user.email },
+              data: { image: avatar },
+            });
+            user.image = avatar;
+          } catch (e) {
+            console.error("Failed to update user avatar in DB:", e);
+          }
+        }
+      }
+      return true;
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
@@ -77,6 +94,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
         if (token?.picture) {
           session.user.image = token.picture as string;
+        } else if (session.user.id) {
+          // Если старый токен куки еще не хранит аватарку, берем свежую из базы
+          try {
+            const dbUser = await prisma.user.findUnique({
+              where: { id: session.user.id },
+              select: { image: true },
+            });
+            if (dbUser?.image) {
+              session.user.image = dbUser.image;
+            }
+          } catch {}
         }
       }
       return session;
