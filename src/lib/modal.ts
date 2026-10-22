@@ -6,7 +6,7 @@ export interface ModalOptions {
   message?: string;
   confirmText?: string;
   cancelText?: string;
-  duration?: number; // Авто-закрытие через N миллисекунд (по умолчанию 2000 мс)
+  duration?: number;
   onConfirm?: () => void | Promise<void>;
   onCancel?: () => void;
 }
@@ -62,7 +62,6 @@ class ModalBus {
     };
     this.notify();
 
-    // Автоматическое закрытие через duration мс (если duration > 0 и это не confirm)
     if (options.type !== "confirm" && duration > 0) {
       this.timer = setTimeout(() => {
         this.close();
@@ -114,8 +113,6 @@ class ModalBus {
     this.notify();
   }
 
-  // --- Методы с автоматическим ожиданием 2 секунды (возвращают Promise) ---
-
   public async info(title: string, message?: string, duration = 2000): Promise<void> {
     this.open({ type: "info", title, message, duration });
     await new Promise((r) => setTimeout(r, duration));
@@ -146,8 +143,8 @@ class ModalBus {
         title,
         message,
         type: "confirm",
-        confirmText: options?.confirmText || "Подтвердить",
-        cancelText: options?.cancelText || "Отмена",
+        confirmText: options?.confirmText || "Confirm",
+        cancelText: options?.cancelText || "Cancel",
         isOpen: true,
         resolve,
       };

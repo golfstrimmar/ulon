@@ -11,7 +11,7 @@ export function WelcomeToast() {
 
   useEffect(() => {
     if (welcome) {
-      modal.success("Вы успешно авторизованы!", "Рады видеть вас в системе.", 2000);
+      modal.success("Signed in successfully!", "Welcome back.", 2000);
       router.replace("/");
     }
   }, [welcome, router]);

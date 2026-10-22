@@ -6,12 +6,12 @@ import { modal } from "@/lib/modal";
 export function LogoutButton() {
   const handleLogout = async () => {
     const ok = await modal.confirm(
-      "Выход из системы",
-      "Вы уверены, что хотите завершить текущую сессию?"
+      "Sign out",
+      "Are you sure you want to end your current session?"
     );
 
     if (ok) {
-      modal.info("Выход", "Завершаем сессию...", 1500);
+      modal.info("Signing out", "Ending your session...", 1500);
       signOut({ callbackUrl: "/" });
     }
   };
@@ -22,7 +22,7 @@ export function LogoutButton() {
       onClick={handleLogout}
       className="text-sm bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-1.5 rounded-lg text-zinc-300 hover:text-white transition cursor-pointer"
     >
-      Выйти
+      Sign out
     </button>
   );
 }

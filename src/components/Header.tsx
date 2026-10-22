@@ -20,12 +20,12 @@ export async function Header() {
             <Link
               href="/account"
               className="group flex items-center gap-2.5 py-1 px-2.5 rounded-full bg-zinc-800/60 hover:bg-zinc-800 border border-zinc-700/60 hover:border-indigo-500/50 transition"
-              title="Открыть личный кабинет"
+              title="Open profile"
             >
               {session.user.image ? (
                 <img
                   src={session.user.image}
-                  alt={session.user.name || "Аватар"}
+                  alt={session.user.name || "Avatar"}
                   referrerPolicy="no-referrer"
                   className="w-7 h-7 rounded-full object-cover border border-zinc-600 group-hover:border-indigo-400 transition"
                 />
@@ -47,13 +47,13 @@ export async function Header() {
               href="/login"
               className="text-sm text-zinc-300 hover:text-white px-3 py-1.5 transition"
             >
-              Войти
+              Sign in
             </Link>
             <Link
               href="/register"
               className="text-sm bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-1.5 rounded-lg font-medium transition shadow"
             >
-              Регистрация
+              Register
             </Link>
           </div>
         )}

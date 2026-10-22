@@ -4,9 +4,9 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 
 const registerSchema = z.object({
-  name: z.string().min(2, "Имя должно содержать не менее 2 символов"),
-  email: z.string().email("Некорректный email"),
-  password: z.string().min(6, "Пароль должен быть не менее 6 символов"),
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 export async function POST(req: Request) {
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
 
     if (existingUser) {
       return NextResponse.json(
-        { error: "Пользователь с таким email уже существует" },
+        { error: "An account with this email already exists" },
         { status: 409 }
       );
     }
@@ -52,13 +52,13 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json(
-      { message: "Пользователь успешно зарегистрирован", user },
+      { message: "Account created successfully", user },
       { status: 201 }
     );
   } catch (error) {
     console.error("Register error:", error);
     return NextResponse.json(
-      { error: "Произошла внутренняя ошибка сервера" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

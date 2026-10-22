@@ -16,9 +16,9 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(
     urlError === "OAuthAccountNotLinked"
-      ? "Этот email уже был зарегистрирован через пароль. Попробуйте войти через Google ещё раз (аккаунты будут связаны)."
+      ? "This email is already registered with a password. Try signing in with Google again to link your accounts."
       : urlError
-        ? "Ошибка авторизации: " + urlError
+        ? "Authorization error: " + urlError
         : null
   );
   const [loading, setLoading] = useState(false);
@@ -26,13 +26,13 @@ export function LoginForm() {
   useEffect(() => {
     if (urlError === "OAuthAccountNotLinked") {
       modal.warning(
-        "Аккаунт уже существует",
-        "Этот email уже был зарегистрирован через пароль. Войдите через Google ещё раз, и аккаунты будут автоматически объединены."
+        "Account already exists",
+        "This email is already registered with a password. Sign in with Google again and your accounts will be linked automatically."
       );
     } else if (urlError) {
-      modal.error("Ошибка авторизации", `Код ошибки: ${urlError}`);
+      modal.error("Authorization error", `Error code: ${urlError}`);
     } else if (registered) {
-      modal.success("Успешная регистрация!", "Ваш аккаунт создан. Войдите, используя email и пароль.");
+      modal.success("Registration successful!", "Your account has been created. Sign in with your email and password.");
     }
   }, [urlError, registered]);
 
@@ -49,39 +49,39 @@ export function LoginForm() {
       });
 
       if (res?.error) {
-        const msg = "Неверный email или пароль";
+        const msg = "Invalid email or password";
         setError(msg);
-        await modal.error("Ошибка входа", msg, 2000);
+        await modal.error("Sign in error", msg, 2000);
       } else {
         router.push("/?welcome=1");
         router.refresh();
       }
     } catch (err: any) {
-      const msg = "Не удалось выполнить вход. Попробуйте снова.";
+      const msg = "Sign in failed. Please try again.";
       setError(msg);
-      await modal.error("Сбой сервера", msg, 2000);
+      await modal.error("Server error", msg, 2000);
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleSignIn = () => {
-    modal.info("Google Авторизация", "Перенаправляем на страницу входа Google...", 1500);
+    modal.info("Google sign in", "Redirecting to Google...", 1500);
     signIn("google", { callbackUrl: "/?welcome=1" });
   };
 
   return (
     <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-2xl p-8 shadow-xl">
       <div className="text-center mb-8">
-        <h1 className="text-2xl font-bold tracking-tight">Вход в систему</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Sign in</h1>
         <p className="text-sm text-zinc-400 mt-2">
-          Введите учетные данные для продолжения
+          Enter your credentials to continue
         </p>
       </div>
 
       {registered && (
         <div className="mb-6 p-3 rounded-lg bg-emerald-950/60 border border-emerald-800/80 text-emerald-200 text-sm">
-          Аккаунт успешно создан! Войдите, используя свой email и пароль.
+          Account created! Sign in with your email and password.
         </div>
       )}
 
@@ -108,7 +108,7 @@ export function LoginForm() {
 
         <div>
           <label className="block text-sm font-medium text-zinc-300 mb-1.5">
-            Пароль
+            Password
           </label>
           <input
             type="password"
@@ -125,7 +125,7 @@ export function LoginForm() {
           disabled={loading}
           className="w-full mt-2 py-2.5 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-medium shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
         >
-          {loading ? "Вход..." : "Войти"}
+          {loading ? "Signing in..." : "Sign in"}
         </button>
       </form>
 
@@ -134,7 +134,7 @@ export function LoginForm() {
           <div className="w-full border-t border-zinc-800" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-zinc-900 px-3 text-zinc-500">или</span>
+          <span className="bg-zinc-900 px-3 text-zinc-500">or</span>
         </div>
       </div>
 
@@ -161,16 +161,16 @@ export function LoginForm() {
             d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.3-6.4-5.2L1.9 16c1.8 3.7 5.6 7 10.1 7z"
           />
         </svg>
-        Войти через Google
+        Continue with Google
       </button>
 
       <p className="text-center text-sm text-zinc-400 mt-6">
-        Нет аккаунта?{" "}
+        Don&apos;t have an account?{" "}
         <Link
           href="/register"
           className="text-indigo-400 hover:text-indigo-300 font-medium underline underline-offset-4"
         >
-          Зарегистрироваться
+          Register
         </Link>
       </p>
 
@@ -179,7 +179,7 @@ export function LoginForm() {
           href="/"
           className="text-xs text-zinc-500 hover:text-zinc-300 transition inline-flex items-center gap-1.5"
         >
-          ← На главную
+          ← Back to home
         </Link>
       </div>
     </div>

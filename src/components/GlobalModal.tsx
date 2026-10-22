@@ -81,13 +81,11 @@ export function GlobalModal() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Затемнение фона */}
       <div
         className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
         onClick={() => modal.close()}
       />
 
-      {/* Окно модалки */}
       <div className="relative w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-2xl text-zinc-100 overflow-hidden transform transition-all animate-in fade-in zoom-in-95 duration-150">
         <div className="flex items-start gap-4">
           {icons[state.type || "info"]}
@@ -104,7 +102,6 @@ export function GlobalModal() {
           </div>
         </div>
 
-        {/* Кнопки */}
         <div className="mt-6 flex justify-end gap-3">
           {isConfirm ? (
             <>
@@ -113,14 +110,14 @@ export function GlobalModal() {
                 onClick={() => modal.close()}
                 className="px-4 py-2 text-sm font-medium rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition cursor-pointer"
               >
-                {state.cancelText || "Отмена"}
+                {state.cancelText || "Cancel"}
               </button>
               <button
                 type="button"
                 onClick={() => modal.confirmAction()}
                 className="px-4 py-2 text-sm font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-sm cursor-pointer"
               >
-                {state.confirmText || "Подтвердить"}
+                {state.confirmText || "Confirm"}
               </button>
             </>
           ) : (
@@ -129,12 +126,11 @@ export function GlobalModal() {
               onClick={() => modal.close()}
               className="px-4 py-1.5 text-xs font-medium rounded-lg bg-zinc-800/80 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 transition cursor-pointer"
             >
-              Закрыть
+              Close
             </button>
           )}
         </div>
 
-        {/* Полоска обратного отсчета 2 сек */}
         {!isConfirm && duration > 0 && (
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-zinc-800">
             <div
@@ -149,12 +145,8 @@ export function GlobalModal() {
 
       <style jsx global>{`
         @keyframes shrinkWidth {
-          from {
-            width: 100%;
-          }
-          to {
-            width: 0%;
-          }
+          from { width: 100%; }
+          to { width: 0%; }
         }
       `}</style>
     </div>

@@ -21,7 +21,7 @@ async function AccountDetails() {
         {session.user.image ? (
           <img
             src={session.user.image}
-            alt={session.user.name || "Аватар"}
+            alt={session.user.name || "Avatar"}
             referrerPolicy="no-referrer"
             className="w-16 h-16 rounded-full border border-zinc-700 object-cover ring-2 ring-indigo-500/20"
           />
@@ -32,10 +32,10 @@ async function AccountDetails() {
         )}
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight">
-            Личный кабинет
+            My Profile
           </h1>
           <p className="text-sm text-zinc-400">
-            Данные вашей учетной записи
+            Your account details
           </p>
         </div>
       </div>
@@ -52,10 +52,10 @@ async function AccountDetails() {
 
         <div className="bg-zinc-950/70 p-4 rounded-xl border border-zinc-800/80 flex flex-col gap-1">
           <span className="text-xs uppercase font-medium text-zinc-500">
-            Имя:
+            Name:
           </span>
           <span className="text-zinc-100 font-medium">
-            {session.user.name || "Не указано"}
+            {session.user.name || "Not set"}
           </span>
         </div>
 
@@ -71,10 +71,10 @@ async function AccountDetails() {
         {dbUser?.createdAt && (
           <div className="bg-zinc-950/70 p-4 rounded-xl border border-zinc-800/80 flex flex-col gap-1">
             <span className="text-xs uppercase font-medium text-zinc-500">
-              Дата регистрации:
+              Member since:
             </span>
             <span className="text-zinc-300">
-              {new Date(dbUser.createdAt).toLocaleDateString("ru-RU", {
+              {new Date(dbUser.createdAt).toLocaleDateString("en-US", {
                 day: "numeric",
                 month: "long",
                 year: "numeric",
@@ -91,7 +91,7 @@ async function AccountDetails() {
           href="/"
           className="text-sm text-zinc-400 hover:text-white transition flex items-center gap-1.5"
         >
-          ← На главную
+          ← Back to home
         </Link>
       </div>
     </div>

@@ -11,17 +11,17 @@ async function MainContent() {
     return (
       <div className="space-y-6">
         <h1 className="text-4xl font-extrabold tracking-tight text-white">
-          Добро пожаловать, {session.user.name || "пользователь"}!
+          Welcome back, {session.user.name || "user"}!
         </h1>
         <p className="text-zinc-400 text-lg">
-          Вы успешно авторизованы в системе Ulon.
+          You are signed in to Ulon.
         </p>
         <div className="flex justify-center gap-4 pt-2">
           <Link
             href="/account"
             className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-6 py-2.5 rounded-xl shadow-lg transition"
           >
-            Перейти в личный кабинет →
+            Go to profile →
           </Link>
         </div>
       </div>
@@ -31,23 +31,23 @@ async function MainContent() {
   return (
     <div className="space-y-6">
       <h1 className="text-4xl font-extrabold tracking-tight text-white">
-        Добро пожаловать в Ulon
+        Welcome to Ulon
       </h1>
       <p className="text-zinc-400 text-lg">
-        Авторизация и регистрация настроены: NextAuth v5, PostgreSQL на Neon и Prisma ORM.
+        Authentication is ready: NextAuth v5, PostgreSQL on Neon and Prisma ORM.
       </p>
       <div className="flex justify-center gap-4 pt-2">
         <Link
           href="/register"
           className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-6 py-2.5 rounded-xl shadow-lg transition"
         >
-          Создать аккаунт
+          Create account
         </Link>
         <Link
           href="/login"
           className="bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 font-medium px-6 py-2.5 rounded-xl transition"
         >
-          Войти в систему
+          Sign in
         </Link>
       </div>
     </div>

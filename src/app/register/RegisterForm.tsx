@@ -29,11 +29,11 @@ export function RegisterForm() {
       const data = await res.json();
 
       if (!res.ok) {
-        await modal.error("Ошибка регистрации", data.error || "Не удалось создать аккаунт", 2000);
-        throw new Error(data.error || "Ошибка регистрации");
+        await modal.error("Registration error", data.error || "Failed to create account", 2000);
+        throw new Error(data.error || "Registration error");
       }
 
-      await modal.success("Успешная регистрация!", "Аккаунт создан! Выполняем вход...", 2000);
+      await modal.success("Registration successful!", "Account created! Signing you in...", 2000);
 
       const signInRes = await signIn("credentials", {
         email,
@@ -48,7 +48,7 @@ export function RegisterForm() {
         router.refresh();
       }
     } catch (err: any) {
-      setError(err.message || "Что-то пошло не так");
+      setError(err.message || "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -57,9 +57,9 @@ export function RegisterForm() {
   return (
     <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-2xl p-8 shadow-xl">
       <div className="text-center mb-8">
-        <h1 className="text-2xl font-bold tracking-tight">Создать аккаунт</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Create account</h1>
         <p className="text-sm text-zinc-400 mt-2">
-          Заполните данные для быстрой регистрации
+          Fill in your details to create an account
         </p>
       </div>
 
@@ -72,14 +72,14 @@ export function RegisterForm() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-zinc-300 mb-1.5">
-            Имя
+            Name
           </label>
           <input
             type="text"
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Иван Иванов"
+            placeholder="John Doe"
             className="w-full px-3.5 py-2.5 rounded-lg bg-zinc-800/80 border border-zinc-700 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
           />
         </div>
@@ -100,7 +100,7 @@ export function RegisterForm() {
 
         <div>
           <label className="block text-sm font-medium text-zinc-300 mb-1.5">
-            Пароль
+            Password
           </label>
           <input
             type="password"
@@ -111,7 +111,7 @@ export function RegisterForm() {
             placeholder="••••••••"
             className="w-full px-3.5 py-2.5 rounded-lg bg-zinc-800/80 border border-zinc-700 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
           />
-          <p className="text-xs text-zinc-500 mt-1">Минимум 6 символов</p>
+          <p className="text-xs text-zinc-500 mt-1">Minimum 6 characters</p>
         </div>
 
         <button
@@ -119,17 +119,17 @@ export function RegisterForm() {
           disabled={loading}
           className="w-full mt-2 py-2.5 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-medium shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
         >
-          {loading ? "Регистрация..." : "Зарегистрироваться"}
+          {loading ? "Creating account..." : "Create account"}
         </button>
       </form>
 
       <p className="text-center text-sm text-zinc-400 mt-6">
-        Уже есть аккаунт?{" "}
+        Already have an account?{" "}
         <Link
           href="/login"
           className="text-indigo-400 hover:text-indigo-300 font-medium underline underline-offset-4"
         >
-          Войти
+          Sign in
         </Link>
       </p>
 
@@ -138,7 +138,7 @@ export function RegisterForm() {
           href="/"
           className="text-xs text-zinc-500 hover:text-zinc-300 transition inline-flex items-center gap-1.5"
         >
-          ← На главную
+          ← Back to home
         </Link>
       </div>
     </div>
