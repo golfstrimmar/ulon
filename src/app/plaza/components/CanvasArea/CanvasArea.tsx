@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { HtmlNode } from "@/types/HtmlNode";
 import { getHtmlJson, saveHtmlJson, deleteHtmlJson } from "@/lib/htmlStorage";
-import { generateNodeKey, moveNodeIntoNode, findNodeByKey, isDescendant, duplicateNodeInTree, deleteNodeFromArray } from "@/lib/htmlTree";
+import { generateNodeKey, moveNodeIntoNode, moveNodePosition, findNodeByKey, isDescendant, duplicateNodeInTree, deleteNodeFromArray } from "@/lib/htmlTree";
 import handleRender from "./utils/handleRender";
 import type { RenderBox } from "./utils/types";
 
@@ -183,7 +183,7 @@ export function CanvasArea() {
       dragMousePosRef.current = { x, y };
 
       const draggedSourceKey = draggedKeyRef.current;
-      let targetUnderCursor: { key: string; position: "inside" | "self" } | null = null;
+      let targetUnderCursor: { key: string; position: "inside" | "self" | "before" | "after" } | null = null;
 
       // Ищем узел под курсором (с глубоких к верхним)
       for (let i = boxesRef.current.length - 1; i >= 0; i--) {
@@ -206,7 +206,16 @@ export function CanvasArea() {
           }
 
           if (sourceNode && !isDescendant(sourceNode, box.key)) {
-            targetUnderCursor = { key: box.key, position: "inside" };
+            const relY = (y - box.y) / box.h;
+            let position: "before" | "inside" | "after" = "inside";
+            if (relY < 0.25) {
+              position = "before";
+            } else if (relY > 0.75) {
+              position = "after";
+            } else {
+              position = "inside";
+            }
+            targetUnderCursor = { key: box.key, position };
             break;
           }
         }
@@ -247,11 +256,12 @@ export function CanvasArea() {
           );
           await persist(updatedTree);
         } else {
-          // Сброс в другую ноду -> ПЕРЕМЕЩАЕМ внутрь
-          const updatedTree = moveNodeIntoNode(
+          // Сброс before / after / inside
+          const updatedTree = moveNodePosition(
             currentJsonRef.current,
             sourceKey,
-            target.key
+            target.key,
+            target.position as "before" | "after" | "inside"
           );
           await persist(updatedTree);
         }

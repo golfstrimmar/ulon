@@ -324,6 +324,75 @@ export function insertNodeIntoTarget(
 }
 
 /**
+ * Вставляет узел смежно с целевым узлом (перед или после)
+ */
+export function insertAdjacentToTarget(
+  nodes: HtmlNode[],
+  targetKey: string,
+  nodeToInsert: HtmlNode,
+  position: "before" | "after"
+): HtmlNode[] {
+  const result: HtmlNode[] = [];
+  for (const node of nodes) {
+    if (node._key === targetKey) {
+      if (position === "before") {
+        result.push(nodeToInsert);
+        result.push(node);
+      } else {
+        result.push(node);
+        result.push(nodeToInsert);
+      }
+    } else {
+      if (Array.isArray(node.children)) {
+        result.push({
+          ...node,
+          children: insertAdjacentToTarget(node.children, targetKey, nodeToInsert, position),
+        });
+      } else {
+        result.push(node);
+      }
+    }
+  }
+  return result;
+}
+
+/**
+ * Перемещает узел sourceKey в позицию before / after / inside относительно targetKey
+ */
+export function moveNodePosition(
+  nodes: HtmlNode[],
+  sourceKey: string,
+  targetKey: string,
+  position: "before" | "after" | "inside"
+): HtmlNode[] {
+  if (sourceKey === targetKey) return nodes;
+
+  // 1. Проверяем, что targetKey не потомок sourceKey
+  let sourceNode: HtmlNode | null = null;
+  for (const root of nodes) {
+    const found = findNodeByKey(root, sourceKey);
+    if (found) {
+      sourceNode = found;
+      break;
+    }
+  }
+  if (!sourceNode || isDescendant(sourceNode, targetKey)) {
+    return nodes;
+  }
+
+  // 2. Извлекаем sourceKey из дерева
+  const { updatedNodes, removedNode } = removeNodeFromTree(nodes, sourceKey);
+  if (!removedNode) return nodes;
+
+  // 3. Вставляем в зависимости от позиции
+  if (position === "inside") {
+    return insertNodeIntoTarget(updatedNodes, targetKey, removedNode);
+  } else {
+    return insertAdjacentToTarget(updatedNodes, targetKey, removedNode, position);
+  }
+}
+
+/**
  * Перемещает узел sourceKey вместе со всеми его потомками внутрь targetKey
  */
 export function moveNodeIntoNode(
@@ -331,30 +400,7 @@ export function moveNodeIntoNode(
   sourceKey: string,
   targetKey: string
 ): HtmlNode[] {
-  if (sourceKey === targetKey) return nodes;
-
-  // Находим перемещаемый узел
-  let sourceNode: HtmlNode | null = null;
-  for (const rootNode of nodes) {
-    const found = findNodeByKey(rootNode, sourceKey);
-    if (found) {
-      sourceNode = found;
-      break;
-    }
-  }
-  if (!sourceNode) return nodes;
-
-  // Нельзя перемещать узел в самого себя или в своих потомков
-  if (isDescendant(sourceNode, targetKey)) {
-    return nodes;
-  }
-
-  // 1. Удаляем узел из текущего положения
-  const { updatedNodes, removedNode } = removeNodeFromTree(nodes, sourceKey);
-  if (!removedNode) return nodes;
-
-  // 2. Вставляем удаленный узел в детей targetKey
-  return insertNodeIntoTarget(updatedNodes, targetKey, removedNode);
+  return moveNodePosition(nodes, sourceKey, targetKey, "inside");
 }
 
 

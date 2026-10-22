@@ -240,8 +240,8 @@ export default function handleRender(
     // 2. Фон блока
     if (isDrop && dropTarget?.position === "self") {
       ctx.fillStyle = "rgba(168, 85, 247, 0.24)"; // фиолетовый для дублирования на самого себя
-    } else if (isDrop) {
-      ctx.fillStyle = "rgba(56, 189, 248, 0.18)"; // sky blue для drop target
+    } else if (isDrop && dropTarget?.position === "inside") {
+      ctx.fillStyle = "rgba(56, 189, 248, 0.18)"; // sky blue для вставки внутрь
     } else if (isDragged) {
       ctx.fillStyle = "rgba(63, 63, 70, 0.3)"; // полупрозрачный для перетаскиваемого
     } else if (isClicked) {
@@ -260,7 +260,7 @@ export default function handleRender(
     if (isDrop && dropTarget?.position === "self") {
       ctx.strokeStyle = "#c084fc"; // purple-400
       ctx.lineWidth = 2.5;
-    } else if (isDrop) {
+    } else if (isDrop && dropTarget?.position === "inside") {
       ctx.strokeStyle = "#38bdf8"; // sky blue
       ctx.lineWidth = 2.5;
     } else if (isDragged) {
@@ -341,6 +341,36 @@ export default function handleRender(
       }
 
       ctx.fillText(display, labelX, box.y + 19);
+    }
+  }
+
+  // Отрисовка линии-индикатора для вставки между нодами (before / after)
+  if (dropTarget && (dropTarget.position === "before" || dropTarget.position === "after")) {
+    const targetBox = allBoxes.find((b) => b.key === dropTarget.key);
+    if (targetBox) {
+      const lineY = dropTarget.position === "before" ? targetBox.y - 2 : targetBox.y + targetBox.h + 2;
+      const startX = targetBox.x;
+      const endX = targetBox.x + targetBox.w;
+
+      ctx.save();
+      ctx.shadowColor = "rgba(56, 189, 248, 0.9)";
+      ctx.shadowBlur = 8;
+      ctx.strokeStyle = "#38bdf8"; // sky-400
+      ctx.fillStyle = "#38bdf8";
+      ctx.lineWidth = 3;
+
+      // Горизонтальная линия места вставки
+      ctx.beginPath();
+      ctx.moveTo(startX + 8, lineY);
+      ctx.lineTo(endX, lineY);
+      ctx.stroke();
+
+      // Точка-маркер в начале линии
+      ctx.beginPath();
+      ctx.arc(startX + 4, lineY, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
     }
   }
 
