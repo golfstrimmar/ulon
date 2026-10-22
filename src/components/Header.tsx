@@ -7,12 +7,20 @@ export async function Header() {
 
   return (
     <header className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur px-6 py-4 flex items-center justify-between">
-      <Link
-        href="/"
-        className="flex items-center gap-2 hover:opacity-80 transition"
-      >
-        <span className="font-bold text-xl tracking-tight text-white">Ulon</span>
-      </Link>
+      <div className="flex items-center gap-6">
+        <Link
+          href="/"
+          className="flex items-center gap-2 hover:opacity-80 transition"
+        >
+          <span className="font-bold text-xl tracking-tight text-white">Ulon</span>
+        </Link>
+        <Link
+          href="/plaza"
+          className="text-xs uppercase font-mono font-bold tracking-wider px-2.5 py-1 rounded-md bg-zinc-800/80 hover:bg-zinc-800 border border-zinc-700/60 hover:border-indigo-500/50 text-indigo-300 hover:text-white transition"
+        >
+          Plaza
+        </Link>
+      </div>
 
       <div>
         {session?.user ? (
