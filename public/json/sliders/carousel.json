@@ -1,0 +1,320 @@
+[
+  {
+    "tag": "script",
+    "class": "script-carousel",
+    "style": "",
+    "attributes": {},
+    "text": "/* @component: .carousel-section */ (function() { function initCarousel() { const container = document.querySelector('.carouselSwiper'); if (!container) return; new Swiper('.carouselSwiper', { slidesPerView: 1.2, spaceBetween: 16, loop: true, grabCursor: true, navigation: { nextEl: '.carousel__btn--next', prevEl: '.carousel__btn--prev' }, breakpoints: { 480: { slidesPerView: 1.5, spaceBetween: 20 }, 768: { slidesPerView: 2.2, spaceBetween: 25 }, 1024: { slidesPerView: 3.5, spaceBetween: 30 } }, observer: true, observeParents: true }); } if (!document.getElementById('swiper-css')) { const link = document.createElement('link'); link.id = 'swiper-css'; link.rel = 'stylesheet'; link.href = 'https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css'; document.head.appendChild(link); } if (typeof Swiper !== 'undefined') { initCarousel(); } else { let script = document.getElementById('swiper-js'); if (!script) { script = document.createElement('script'); script.id = 'swiper-js'; script.src = 'https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js'; document.head.appendChild(script); } script.addEventListener('load', initCarousel); } })();",
+    "children": []
+  },
+  {
+    "tag": "section",
+    "text": "",
+    "class": "carousel-section",
+    "style": "padding: 60px 0; font-family: var(--font-montserrat); overflow: hidden;",
+    "attributes": {},
+    "children": [
+      {
+        "tag": "div",
+        "text": "",
+        "class": "container",
+        "style": "max-width: 1200px; margin: 0 auto; padding: 0 15px;",
+        "attributes": {},
+        "children": [
+          {
+            "tag": "div",
+            "text": "",
+            "class": "carousel__wrapper",
+            "style": "display: flex; gap: 40px; @media (max-width: 768px) { flex-direction: column; }",
+            "attributes": {},
+            "children": [
+              {
+                "tag": "div",
+                "text": "",
+                "class": "carousel__info",
+                "style": "max-width: 300px; flex-shrink: 0;",
+                "attributes": {},
+                "children": [
+                  {
+                    "tag": "h2",
+                    "text": "Our Latest Projects",
+                    "class": "carousel__title",
+                    "style": "font-size: 28px; font-weight: 700; margin-bottom: 12px; color: var(--color-white);",
+                    "attributes": {}
+                  },
+                  {
+                    "tag": "p",
+                    "text": "Check out how we help our clients grow their business with modern web solutions.",
+                    "class": "carousel__text",
+                    "style": "font-size: 14px; color: var(--slate-400); line-height: 1.5;",
+                    "attributes": {}
+                  },
+                  {
+                    "tag": "div",
+                    "text": "",
+                    "class": "carousel__nav",
+                    "style": "display: flex; gap: 12px; margin-top: 20px;",
+                    "attributes": {},
+                    "children": [
+                      {
+                        "tag": "button",
+                        "text": "",
+                        "class": "carousel__btn carousel__btn--prev",
+                        "style": "backdrop-filter: blur(8px); width: 40px; height: 40px; cursor: pointer; border-radius: 50%; border: none; background: color-mix(in srgb, var(--accent) 13%, transparent); color: var(--slate-400); outline: 2px solid transparent; outline-offset: 2px; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; &:hover { background: var(--accent); outline-color: var(--accent); color: var(--teal-400); } &:active { background: var(--teal-300); outline-color: var(--accent); color: var(--teal-200); }",
+                        "attributes": { "type": "button" },
+                        "children": [
+                          {
+                            "tag": "svg",
+                            "text": "",
+                            "class": "",
+                            "style": "height: 20px; width: 20px;",
+                            "attributes": {
+                              "fill": "currentColor",
+                              "xmlns": "http://www.w3.org/2000/svg",
+                              "viewBox": "0 0 24 24"
+                            },
+                            "children": [
+                              {
+                                "tag": "path",
+                                "text": "",
+                                "class": "",
+                                "style": "",
+                                "attributes": {
+                                  "d": "M7.72 12.53a.75.75 0 0 1 0-1.06l7.5-7.5a.75.75 0 1 1 1.06 1.06L9.31 12l6.97 6.97a.75.75 0 1 1-1.06 1.06l-7.5-7.5Z",
+                                  "clip-rule": "evenodd",
+                                  "fill-rule": "evenodd"
+                                },
+                                "children": []
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "tag": "button",
+                        "text": "",
+                        "class": "carousel__btn carousel__btn--next",
+                        "style": "backdrop-filter: blur(8px); width: 40px; height: 40px; cursor: pointer; border-radius: 50%; border: none; background: color-mix(in srgb, var(--accent) 13%, transparent); color: var(--slate-400); outline: 2px solid transparent; outline-offset: 2px; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; &:hover { background: var(--accent); outline-color: var(--accent); color: var(--teal-400); } &:active { background: var(--teal-300); outline-color: var(--accent); color: var(--teal-200); }",
+                        "attributes": { "type": "button" },
+                        "children": [
+                          {
+                            "tag": "svg",
+                            "text": "",
+                            "class": "",
+                            "style": "height: 20px; width: 20px;",
+                            "attributes": {
+                              "fill": "currentColor",
+                              "xmlns": "http://www.w3.org/2000/svg",
+                              "viewBox": "0 0 24 24"
+                            },
+                            "children": [
+                              {
+                                "tag": "path",
+                                "text": "",
+                                "class": "",
+                                "style": "",
+                                "attributes": {
+                                  "d": "M16.28 11.47a.75.75 0 0 1 0 1.06l-7.5 7.5a.75.75 0 0 1-1.06-1.06L14.69 12 7.72 5.03a.75.75 0 0 1 1.06-1.06l7.5 7.5Z",
+                                  "clip-rule": "evenodd",
+                                  "fill-rule": "evenodd"
+                                },
+                                "children": []
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "div",
+                "text": "",
+                "class": "carousel__slider-container",
+                "style": "min-width: 0; flex: 1;",
+                "attributes": {},
+                "children": [
+                  {
+                    "tag": "div",
+                    "text": "",
+                    "class": "swiper carouselSwiper",
+                    "style": "width: 100%;",
+                    "attributes": {},
+                    "children": [
+                      {
+                        "tag": "div",
+                        "text": "",
+                        "class": "swiper-wrapper",
+                        "style": "",
+                        "attributes": {},
+                        "children": [
+                          {
+                            "tag": "div",
+                            "text": "",
+                            "class": "swiper-slide swiper-slide--carousel",
+                            "style": "",
+                            "attributes": {},
+                            "children": [
+                              {
+                                "tag": "div",
+                                "text": "",
+                                "class": "slide-content",
+                                "style": "height: 100%; border: 1px solid color-mix(in srgb, var(--slate-500) 78%, transparent); margin: 0 auto;",
+                                "attributes": {},
+                                "children": [
+                                  {
+                                    "tag": "h3",
+                                    "text": "Project A",
+                                    "class": "",
+                                    "style": "",
+                                    "attributes": {},
+                                    "children": []
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "tag": "div",
+                            "text": "",
+                            "class": "swiper-slide swiper-slide--carousel",
+                            "style": "",
+                            "attributes": {},
+                            "children": [
+                              {
+                                "tag": "div",
+                                "text": "",
+                                "class": "slide-content",
+                                "style": "height: 100%; border: 1px solid color-mix(in srgb, var(--slate-500) 78%, transparent); margin: 0 auto;",
+                                "attributes": {},
+                                "children": [
+                                  {
+                                    "tag": "h3",
+                                    "text": "Project B",
+                                    "class": "",
+                                    "style": "",
+                                    "attributes": {},
+                                    "children": []
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "tag": "div",
+                            "text": "",
+                            "class": "swiper-slide swiper-slide--carousel",
+                            "style": "",
+                            "attributes": {},
+                            "children": [
+                              {
+                                "tag": "div",
+                                "text": "",
+                                "class": "slide-content",
+                                "style": "height: 100%; border: 1px solid color-mix(in srgb, var(--slate-500) 78%, transparent); margin: 0 auto;",
+                                "attributes": {},
+                                "children": [
+                                  {
+                                    "tag": "h3",
+                                    "text": "Project C",
+                                    "class": "",
+                                    "style": "",
+                                    "attributes": {},
+                                    "children": []
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "tag": "div",
+                            "text": "",
+                            "class": "swiper-slide swiper-slide--carousel",
+                            "style": "",
+                            "attributes": {},
+                            "children": [
+                              {
+                                "tag": "div",
+                                "text": "",
+                                "class": "slide-content",
+                                "style": "height: 100%; border: 1px solid color-mix(in srgb, var(--slate-500) 78%, transparent); margin: 0 auto;",
+                                "attributes": {},
+                                "children": [
+                                  {
+                                    "tag": "h3",
+                                    "text": "Project D",
+                                    "class": "",
+                                    "style": "",
+                                    "attributes": {},
+                                    "children": []
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "tag": "div",
+                            "text": "",
+                            "class": "swiper-slide swiper-slide--carousel",
+                            "style": "",
+                            "attributes": {},
+                            "children": [
+                              {
+                                "tag": "div",
+                                "text": "",
+                                "class": "slide-content",
+                                "style": "height: 100%; border: 1px solid color-mix(in srgb, var(--slate-500) 78%, transparent); margin: 0 auto;",
+                                "attributes": {},
+                                "children": [
+                                  {
+                                    "tag": "h3",
+                                    "text": "Project E",
+                                    "class": "",
+                                    "style": "",
+                                    "attributes": {},
+                                    "children": []
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "tag": "div",
+                            "text": "",
+                            "class": "swiper-slide swiper-slide--carousel",
+                            "style": "",
+                            "attributes": {},
+                            "children": [
+                              {
+                                "tag": "div",
+                                "text": "",
+                                "class": "slide-content",
+                                "style": "height: 100%; border: 1px solid color-mix(in srgb, var(--slate-500) 78%, transparent); margin: 0 auto;",
+                                "attributes": {},
+                                "children": [
+                                  {
+                                    "tag": "h3",
+                                    "text": "Project F",
+                                    "class": "",
+                                    "style": "",
+                                    "attributes": {},
+                                    "children": []
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

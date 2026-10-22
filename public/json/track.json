@@ -1,0 +1,15 @@
+[
+  {
+    "tag": "track",
+    "text": "",
+    "class": "",
+    "style": "",
+    "children": [],
+    "attributes": {
+      "src": "https://res.cloudinary.com/dke0nudcz/raw/upload/v1753721011/subtitles.vtt",
+      "kind": "subtitles",
+      "label": "English",
+      "srclang": "en"
+    }
+  }
+]

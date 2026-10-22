@@ -1,0 +1,93 @@
+[
+  {
+    "tag": "script",
+    "text": "/* @component: .accordion-container */document.addEventListener('click', function(e) { const header = e.target.closest('.accordion-header'); if (!header) return;  const t = header.parentElement; if (!t || !t.classList.contains('accordion')) return;  const active = t.classList.contains('_is-active'); const parent = t.parentElement;   function cl(el) { if (!el) return; el.querySelectorAll('.accordion._is-active').forEach(nt => {   nt.classList.remove('_is-active');   cl(nt.querySelector('.accordion-content')); }); }  document.querySelectorAll('.accordion-container').forEach(container => {  if (!container.contains(t) && !t.contains(container)) {   container.querySelectorAll('.accordion._is-active').forEach(nt => {     nt.classList.remove('_is-active');   }); } }); [...parent.children].forEach(s => { if (s !== t && s.classList.contains('accordion')) {   s.classList.remove('_is-active');   cl(s.querySelector('.accordion-content')); } });   if (active) { t.classList.remove('_is-active'); cl(t.querySelector('.accordion-content')); } else { t.classList.add('_is-active'); }});",
+    "class": "",
+    "style": "",
+    "children": [],
+    "attributes": {}
+  },
+  {
+    "tag": "div",
+    "text": "",
+    "class": "accordion-container",
+    "style": "display: flex;flex-direction: column;width: 100%;",
+    "children": [
+      {
+        "tag": "div",
+        "text": "",
+        "class": "accordion",
+        "style": "position: relative;&._is-active { &>.accordion-header {.svg-wrapper{   transform: rotate(180deg);   } }  &>.accordion-content {   grid-template-rows: 1fr !important; }}",
+        "children": [
+          {
+            "tag": "div",
+            "text": "Item 1",
+            "class": "accordion-header",
+            "style": "cursor: pointer;display: flex;justify-content: space-between;align-items: center;transition: all 0.2s;&:hover { color: var(--accent-hover);}",
+            "children": [
+              {
+                "tag": "i",
+                "text": "",
+                "class": "svg-wrapper",
+                "style": "transition: all 0.2s ease-in-out; display: inline-block; line-height: 0; vertical-align: middle; width: 20px; height: 20px; svg { width: 100%; height: 100%; display: inline-block; }",
+                "attributes": {},
+                "children": [
+                  {
+                    "tag": "svg",
+                    "text": "",
+                    "class": "",
+                    "style": "",
+                    "attributes": {
+                      "xmlns": "http://www.w3.org/2000/svg",
+                      "fill": "none",
+                      "viewBox": "0 0 24 24",
+                      "stroke-width": "1.5",
+                      "stroke": "currentColor"
+                    },
+                    "children": [
+                      {
+                        "tag": "path",
+                        "text": "",
+                        "class": "",
+                        "style": "",
+                        "attributes": {
+                          "stroke-linecap": "round",
+                          "stroke-linejoin": "round",
+                          "d": "m19.5 8.25-7.5 7.5-7.5-7.5"
+                        },
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "tag": "div",
+            "text": "",
+            "class": "accordion-content",
+            "style": " overflow: hidden; display: grid; grid-template-rows: 0fr; transition: all 0.2s ease;",
+            "children": [
+              {
+                "tag": "div",
+                "text": "",
+                "class": "accordion-wrap",
+                "style": "min-height: 0;",
+                "children": [
+                  {
+                    "tag": "p",
+                    "text": "Content for Item 1",
+                    "class": "",
+                    "style": ""
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "attributes": {}
+  }
+]

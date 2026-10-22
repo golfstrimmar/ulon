@@ -1,0 +1,32 @@
+[
+  {
+    "tag": "div",
+    "text": "",
+    "class": "input-check",
+    "style": "position: relative; display: flex; align-items: center; gap: 20px; height: 20px;",
+    "children": [
+      {
+        "tag": "input",
+        "text": "",
+        "class": "",
+        "style": "position: fixed !important; left: -9999px !important; height: 0; width: 0; &:checked+label::after { opacity: 1; }",
+        "attributes": {
+          "id": "input-check",
+          "name": "",
+          "type": "checkbox"
+        }
+      },
+      {
+        "tag": "label",
+        "text": "Checkbox",
+        "class": "",
+        "style": "display: inline-block; margin: 0 0 0 20px; cursor: pointer; transition: all 0.2s; font-size: 14px; &::before { content: ''; position: absolute; left: 0; top: 50%; border-radius: 4px; width: 14px; height: 14px; transform: translateY(-50%); background-color: transparent; transition: all 0.3s; border: 2px solid var(--bg-base); } &::after { content: ''; position: absolute; width: 12px; height: 12px; top: 50%; left: 3px; border-radius: 2px; transform: translateY(-50%);  background-color: var(--bg-base); transition: all 0.3s; opacity: 0; }",
+        "children": [],
+        "attributes": {
+          "for": "input-check"
+        }
+      }
+    ],
+    "attributes": {}
+  }
+]

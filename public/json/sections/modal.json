@@ -1,0 +1,58 @@
+[
+  {
+    "tag": "button",
+    "text": "Open modal",
+    "class": "btn-open",
+    "style": "font-size: 14px; color: var(--slate-100); font-weight: 400; line-height: 1; font-family: 'Montserrat', sans-serif; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; gap: 0.5rem; padding: 0.25rem 0.5rem; border-radius: 0.25rem; transition: all 200ms ease-in-out; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08); background-color: var(--navy-300); border: 1px solid var(--navy-300); &:hover { border: 1px solid var(--navy-900); background-color: var(--navy-900); } &:active { transform: translateY(1px); }",
+    "children": [],
+    "attributes": {
+      "data-target": "cssDialog"
+    }
+  },
+  {
+    "tag": "section",
+    "text": "",
+    "class": "mod-popup",
+    "style": "border: none; padding: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; z-index: -1; opacity: 0; background: transparent; position: fixed; inset: 0; pointer-events: none; transition: all 0.3s ease; &._open { opacity: 1 !important; z-index: 10000 !important; pointer-events: auto !important; background-color: rgba(0, 0, 0, 0.95) !important; backdrop-filter: blur(4px) !important; &> div.mod__inner { transform: scale(1) !important; opacity: 1 !important; } &> button.mod__close { opacity: 1 !important; transform: scale(1) !important; } }",
+    "children": [
+      {
+        "tag": "div",
+        "text": "Lorem, ipsum dolor sit amet consectetur adipisicing elit. Nostrum doloribus dignissimos, consectetur pariatur non itaque ullam atque cupiditate in at illum, cum nobis ea, exercitationem odit dolores rem nam. Esse.",
+        "class": "mod__inner",
+        "style": "max-height: 90vh; max-width: 400px; width: 40vw; padding: 20px; background: var(--color-white); color: var(--color-black); border-radius: 8px; z-index: 10010; overflow-y: auto; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); transform: scale(0.7); opacity: 0;",
+        "children": [],
+        "attributes": {}
+      },
+      {
+        "tag": "button",
+        "text": "",
+        "class": "mod__close",
+        "style": "position: fixed; display: flex; align-items: center; justify-content: center; top: 10px; right: 10px; width: 30px; height: 30px; margin: 0; padding: 0; cursor: pointer; background: transparent; border: none; color: var(--color-white); z-index: 10000; transition: all 0.3s ease; opacity: 0; transform: scale(0.5); &:hover { color: var(--accent); } svg { width: 100%; height: 100%; }",
+        "children": [
+          {
+            "tag": "img",
+            "text": "",
+            "class": "svg-wrapper",
+            "style": "",
+            "children": [],
+            "attributes": {
+              "alt": "close",
+              "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZT0iY3VycmVudENvbG9yIiBhcmlhLWhpZGRlbj0idHJ1ZSIgZGF0YS1zbG90PSJpY29uIj4KICA8cGF0aCBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGQ9Ik02IDE4IDE4IDZNNiA2bDEyIDEyIi8+Cjwvc3ZnPgo="
+            }
+          }
+        ],
+        "attributes": {}
+      }
+    ],
+    "attributes": {
+      "id": "cssDialog"
+    }
+  },
+  {
+    "tag": "script",
+    "text": "/* @component: .mod-popup */\ndocument.addEventListener('click', function(e) {\n  // 1. Open Button Click\n  const btn = e.target.closest('.btn-open');\n  if (btn) {\n    let modal = null;\n    const targetId = btn.getAttribute('data-target');\n    if (targetId) {\n      modal = document.getElementById(targetId);\n    } \n    \n    // Ищем модалку рядом по DOM\n    if (!modal) {\n      let sibling = btn.nextElementSibling;\n      while(sibling) {\n        if (sibling.classList.contains('mod-popup')) {\n          modal = sibling;\n          break;\n        }\n        sibling = sibling.nextElementSibling;\n      }\n    }\n    \n    // Глобальный Fallback\n    if (!modal) {\n      modal = document.querySelector('.mod-popup');\n    }\n\n    if (modal) {\n      const isOpening = !modal.classList.contains('_open');\n      \n      // ЗАКРЫВАЕМ ВСЕ ОСТАЛЬНЫЕ МОДАЛКИ\n      document.querySelectorAll('.mod-popup._open').forEach(m => {\n        if (m !== modal) {\n          m.classList.remove('_open');\n        }\n      });\n\n      if (isOpening) {\n        modal.classList.add('_open');\n        document.body.style.maxHeight = '100vh';\n        document.body.style.overflow = 'hidden';\n      } else {\n        modal.classList.remove('_open');\n        document.body.style.maxHeight = 'none';\n        document.body.style.overflow = 'auto';\n      }\n    }\n    return;\n  }\n\n  // 2. Клик по крестику\n  const closeBtn = e.target.closest('.mod__close');\n  if (closeBtn) {\n    const modal = closeBtn.closest('.mod-popup');\n    if (modal) {\n      modal.classList.remove('_open');\n      document.body.style.maxHeight = 'none';\n      document.body.style.overflow = 'auto';\n    }\n    return;\n  }\n\n  // 3. Клик по оверлею (но НЕ внутри .mod__inner)\n  const popup = e.target.closest('.mod-popup');\n  if (popup) {\n    const inner = e.target.closest('.mod__inner');\n    if (!inner) {\n      popup.classList.remove('_open');\n      document.body.style.maxHeight = 'none';\n      document.body.style.overflow = 'auto';\n    }\n  }\n});",
+    "class": "",
+    "style": "",
+    "children": []
+  }
+]

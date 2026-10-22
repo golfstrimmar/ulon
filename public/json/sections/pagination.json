@@ -1,0 +1,76 @@
+[
+  {
+    "tag": "div",
+    "text": "",
+    "class": "pagination",
+    "style": "display: flex; flex-direction: row; align-items: center; gap: 6px; font-family: sans-serif; font-size: 14px; color: inherit;",
+    "children": [
+      {
+        "tag": "a",
+        "text": "Home",
+        "class": "pagination__link",
+        "style": "text-decoration: none;\npadding: 4px 6px;\nborder-radius: 4px;\ntransition: color 0.2s ease;\n\n&:hover {\n  color: var(--accent);\n}",
+        "children": [],
+        "attributes": { "href": "#!" }
+      },
+      {
+        "tag": "img",
+        "text": "",
+        "class": "pagination__separator",
+        "style": "width: 14px; height: 14px; display: inline-block; opacity: 0.8;",
+        "children": [],
+        "attributes": {
+          "alt": "separator",
+          "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZT0iY3VycmVudENvbG9yIiBhcmlhLWhpZGRlbj0idHJ1ZSIgZGF0YS1zbG90PSJpY29uIj4KICA8cGF0aCBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGQ9Im04LjI1IDQuNSA3LjUgNy41LTcuNSA3LjUiLz4KPC9zdmc+Cg=="
+        }
+      },
+      {
+        "tag": "a",
+        "text": "Lorem",
+        "class": "pagination__link",
+        "style": " text-decoration: none;\r\n padding: 4px 6px;\r\n border-radius: 4px;\r\n transition: color 0.2s ease;\r\n color: inherit;\r\n\r\n",
+        "children": [],
+        "attributes": { "href": "#!" }
+      },
+      {
+        "tag": "img",
+        "text": "",
+        "class": "pagination__separator",
+        "style": "width: 14px; height: 14px; display: inline-block; opacity: 0.8;",
+        "children": [],
+        "attributes": {
+          "alt": "separator",
+          "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZT0iY3VycmVudENvbG9yIiBhcmlhLWhpZGRlbj0idHJ1ZSIgZGF0YS1zbG90PSJpY29uIj4KICA8cGF0aCBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGQ9Im04LjI1IDQuNSA3LjUgNy41LTcuNSA3LjUiLz4KPC9zdmc+Cg=="
+        }
+      },
+      {
+        "tag": "a",
+        "text": "Lorem",
+        "class": "pagination__link",
+        "style": " text-decoration: none;\r\n padding: 4px 6px;\r\n border-radius: 4px;\r\n transition: color 0.2s ease;\r\n color: inherit;\r\n\r\n",
+        "children": [],
+        "attributes": { "href": "#!" }
+      },
+      {
+        "tag": "img",
+        "text": "",
+        "class": "pagination__separator",
+        "style": "width: 14px; height: 14px; display: inline-block; opacity: 0.8;",
+        "children": [],
+        "attributes": {
+          "alt": "separator",
+          "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZT0iY3VycmVudENvbG9yIiBhcmlhLWhpZGRlbj0idHJ1ZSIgZGF0YS1zbG90PSJpY29uIj4KICA8cGF0aCBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGQ9Im04LjI1IDQuNSA3LjUgNy41LTcuNSA3LjUiLz4KPC9zdmc+Cg=="
+        }
+      },
+      {
+        "tag": "a",
+        "text": "Lorem",
+        "class": "pagination__link pagination__link--current",
+        "style": "text-decoration: none;\r\npadding: 4px 6px;\r\nborder-radius: 4px;\r\nfont-weight: 600;\r\ntransition: color 0.2s ease;\r\ncolor: inherit;\r\n\r\n",
+        "children": [],
+        "attributes": { "href": "#!" }
+      }
+    ],
+    "attributes": {}
+  }
+]

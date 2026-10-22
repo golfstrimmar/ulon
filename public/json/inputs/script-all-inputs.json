@@ -1,0 +1,10 @@
+[
+  {
+    "tag": "script",
+    "text": "/* @component: .js-container-input */\n(function (){document.addEventListener('DOMContentLoaded',function(){document.querySelectorAll('fieldset').forEach(function(fs){const label=fs.querySelector('label');const legendSpan=fs.querySelector('legend span');if(label&&legendSpan){legendSpan.textContent=label.textContent;}});});})();",
+    "class": "",
+    "style": "",
+    "children": [],
+    "attributes": {}
+  }
+]

@@ -1,0 +1,8 @@
+[
+  {
+    "tag": "div",
+    "text": "The effect of blocks appearing on page scrolling. Add the rev--on-scroll class and one more of the classes rev--up rev--down rev--left rev--right rev--zoom (rev--on-scroll rev--up rev--down rev--left rev--right rev--zoom) ",
+    "class": "rev--on-scroll rev--left",
+    "children": []
+  }
+]

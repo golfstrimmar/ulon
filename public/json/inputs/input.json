@@ -1,0 +1,13 @@
+[
+  {
+    "tag": "input",
+    "text": "",
+    "class": "",
+    "style": "",
+    "children": [],
+    "attributes": {
+      "type": "text",
+      "placeholder": "Text"
+    }
+  }
+]

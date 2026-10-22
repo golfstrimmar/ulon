@@ -1,0 +1,142 @@
+[
+  {
+    "tag": "section",
+    "text": "section",
+    "class": "fade-slider-section",
+    "style": "padding: 0 !important; margin: 0 !important;",
+    "children": [
+      {
+        "tag": "div",
+        "text": "container",
+        "class": "container",
+        "style": "",
+        "children": [
+          {
+            "tag": "div",
+            "text": "",
+            "class": "swiper fadeSwiper",
+            "style": "width: 100%; height: 500px; position: relative;",
+            "children": [
+              {
+                "tag": "div",
+                "text": "",
+                "class": "swiper-wrapper",
+                "style": "",
+                "children": [
+                  {
+                    "tag": "div",
+                    "text": "",
+                    "class": "swiper-slide",
+                    "style": "position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;",
+                    "children": [
+                      {
+                        "tag": "div",
+                        "text": "",
+                        "class": "is",
+                        "style": "position: absolute !important; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; overflow: hidden; & img { width: 100%; height: 100%; object-fit: cover; filter: blur(5px); transform: scale(1.1); } &::after { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 2; }",
+                        "children": [
+                          {
+                            "tag": "img",
+                            "text": "",
+                            "class": "fade-slider__bg",
+                            "style": "",
+                            "children": [],
+                            "attributes": {
+                              "alt": "Slide 1",
+                              "src": ""
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "tag": "div",
+                        "text": "Elegant Appearance",
+                        "class": "fade-slider__content",
+                        "style": "position: relative; z-index: 10; font-family: var(--font-montserrat); font-size: var(--font-size-2xl); font-weight: var(--font-weight-light); letter-spacing: 3px; text-transform: uppercase; color: var(--color-white); text-align: center; padding: 20px;",
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "div",
+                    "text": "",
+                    "class": "swiper-slide",
+                    "style": "position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;",
+                    "children": [
+                      {
+                        "tag": "div",
+                        "text": "",
+                        "class": "is",
+                        "style": "position: absolute !important; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; overflow: hidden; & img { width: 100%; height: 100%; object-fit: cover; filter: blur(5px); transform: scale(1.1); } &::after { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 2; }",
+                        "children": [
+                          {
+                            "tag": "img",
+                            "text": "",
+                            "class": "fade-slider__bg",
+                            "style": "",
+                            "children": [],
+                            "attributes": {
+                              "alt": "Slide 2",
+                              "src": ""
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "tag": "div",
+                        "text": "Smooth Transitions",
+                        "class": "fade-slider__content",
+                        "style": "position: relative; z-index: 10; font-family: var(--font-montserrat); font-size: var(--font-size-2xl); font-weight: var(--font-weight-light); letter-spacing: 3px; text-transform: uppercase; color: var(--color-white); text-align: center; padding: 20px;",
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "div",
+                    "text": "",
+                    "class": "swiper-slide",
+                    "style": "position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;",
+                    "children": [
+                      {
+                        "tag": "div",
+                        "text": "",
+                        "class": "is",
+                        "style": "position: absolute !important; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; overflow: hidden; & img { width: 100%; height: 100%; object-fit: cover; filter: blur(5px); transform: scale(1.1); } &::after { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 2; }",
+                        "children": [
+                          {
+                            "tag": "img",
+                            "text": "",
+                            "class": "fade-slider__bg",
+                            "style": "",
+                            "children": [],
+                            "attributes": {
+                              "alt": "Slide 3",
+                              "src": ""
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "tag": "div",
+                        "text": "Minimalist Design",
+                        "class": "fade-slider__content",
+                        "style": "position: relative; z-index: 10; font-family: var(--font-montserrat); font-size: var(--font-size-2xl); font-weight: var(--font-weight-light); letter-spacing: 3px; text-transform: uppercase; color: var(--color-white); text-align: center; padding: 20px;",
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tag": "script",
+    "text": "/* @component: .fade-slider-section */\nfunction initFadeSwiper() {\n  if (typeof Swiper !== 'undefined') {\n    new Swiper('.fadeSwiper', {\n      loop: true,\n      effect: 'fade',\n      fadeEffect: { crossFade: true },\n      speed: 1000,\n      autoplay: { delay: 4000, disableOnInteraction: false },\n      allowTouchMove: false,\n      observer: true,\n      observeParents: true,\n    });\n  } else {\n    setTimeout(initFadeSwiper, 150);\n  }\n}\n\n// Умная загрузка ресурсов (только 1 раз)\nif (!document.getElementById('swiper-css')) {\n  const link = document.createElement('link');\n  link.id = 'swiper-css';\n  link.rel = 'stylesheet';\n  link.href = 'https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css';\n  document.head.appendChild(link);\n}\n\nif (!document.getElementById('swiper-js')) {\n  const script = document.createElement('script');\n  script.id = 'swiper-js';\n  script.src = 'https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js';\n  script.onload = initFadeSwiper;\n  document.head.appendChild(script);\n} else {\n  initFadeSwiper();\n}",
+    "class": "script-fade-swiper",
+    "children": []
+  }
+]

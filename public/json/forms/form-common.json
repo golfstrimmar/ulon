@@ -1,0 +1,1124 @@
+[
+  {
+    "tag": "form",
+    "text": "",
+    "class": "form-common",
+    "style": "width: 100%; background-color: #101828; background: var(--navy-950); color: var(--text-main);",
+    "children": [
+      {
+        "tag": "div",
+        "text": "",
+        "class": "form-wrap",
+        "style": "max-width: 700px;\r\nmargin: 0 auto;\r\ndisplay: flex;\r\nflex-direction: column;\r\ngap: 1.5rem;\r\npadding: 20px 0px 200px;",
+        "children": [
+          {
+            "tag": "div",
+            "text": "",
+            "class": "form-header",
+            "style": "display: flex; flex-direction: column; gap: 8px;",
+            "children": [
+              {
+                "tag": "h2",
+                "text": "Profile",
+                "class": "",
+                "style": "margin: 0;",
+                "children": []
+              },
+              {
+                "tag": "p",
+                "text": "This information will be displayed publicly.",
+                "class": "",
+                "style": "margin: 0;",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "div",
+            "text": "",
+            "class": "form-inputs",
+            "style": "display: flex; flex-direction: column; align-items: center; gap: 10px;",
+            "children": [
+              {
+                "tag": "fieldset",
+                "text": "",
+                "class": "field-i js-container-input",
+                "style": "position: relative; width: 100%; text-align: left; display: block; flex: 0 0 auto; padding: 0 0 0 10px; border-radius: 4px; border: 1px solid color-mix(in srgb, var(--navy-800) 37%, transparent); outline: none; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); height: 40px; background: color-mix(in srgb, var(--navy-800) 17%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); &:hover { border-color: var(--sky-500); } &:has(input:focus),\n        &:has(input:not(:placeholder-shown)) { border-color: var(--sky-500); } &:has(input:focus)>legend,\n        &:has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; } &:has(svg):has(input:focus)>legend,\n        &:has(svg):has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; padding: 0 5px 0 20px; } &:has(input:focus)>label,\n        &:has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 5px; font-size: 11px; color: var(--sky-500); i {\n            height: 15px;\n            width: 15px;\n            left: 8px;\n          } } &:has(svg):has(input:focus)>label,\n        &:has(svg):has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 0 0 30px; left: 8px; font-size: 11px; color: var(--sky-500); }",
+                "children": [
+                  {
+                    "tag": "legend",
+                    "text": "",
+                    "class": "",
+                    "style": "display: block; width: auto; float: none; padding: 0; font-size: 11px; visibility: hidden; max-width: 0%; height: 0; transition: max-width 200ms cubic-bezier(0.0, 0, 0.2, 1); white-space: nowrap;",
+                    "children": [
+                      {
+                        "tag": "span",
+                        "text": "",
+                        "class": "",
+                        "style": "padding: 0 5px 0 5px; display: inline-block; max-height: 11px; line-height: 1; opacity: 0; transition: all 200ms cubic-bezier(0.0, 0, 0.2, 1);",
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "input",
+                    "text": "",
+                    "class": "",
+                    "style": "display: block; width: 100%; height: 100%; padding: 0px 0px 0px 10px; font-size: 14px; border: 0; appearance: none; outline: none; background-color: transparent; cursor: pointer; position: absolute; top: 50%; transform: translateY(-50%); left: 0; z-index: 10; min-height: 40px; color: var(--sky-200); line-height: 1; &::placeholder { opacity: 0; }",
+                    "children": [],
+                    "attributes": {
+                      "name": "input4",
+                      "rows": "2",
+                      "type": "text",
+                      "placeholder": "Enter text"
+                    }
+                  },
+                  {
+                    "tag": "label",
+                    "text": "Username",
+                    "class": "",
+                    "style": "display: inline-block; position: absolute; top: 50%; transform: translateY(-50%); left: 10px; z-index: 20; color: var(--sky-200); font-size: 14px; padding: 0 5px; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none; &:has(svg) { padding: 0 0 0 30px; i {\n              position: absolute;\n              top: 50%;\n              transform: translateY(-50%);\n              left: 5px;\n            } }",
+                    "children": [
+                      {
+                        "tag": "i",
+                        "text": "",
+                        "class": "svg-wrapper",
+                        "style": "transition: all 0.2s ease-in-out; display: inline-block; line-height: 0; vertical-align: middle; width: 20px; height: 20px;",
+                        "children": [
+                          {
+                            "tag": "svg",
+                            "text": "",
+                            "class": "",
+                            "style": "width: 100%; height: 100%; display: inline-block;",
+                            "children": [
+                              {
+                                "tag": "path",
+                                "text": "",
+                                "class": "",
+                                "style": "",
+                                "children": [],
+                                "attributes": {
+                                  "d": "M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z",
+                                  "stroke-linecap": "round",
+                                  "stroke-linejoin": "round"
+                                }
+                              }
+                            ],
+                            "attributes": {
+                              "fill": "none",
+                              "xmlns": "http://www.w3.org/2000/svg",
+                              "stroke": "currentColor",
+                              "viewBox": "0 0 24 24",
+                              "stroke-width": "1.5"
+                            }
+                          }
+                        ]
+                      }
+                    ],
+                    "attributes": { "for": "input4" }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "tag": "fieldset",
+            "text": "",
+            "class": "js-container-input field-t",
+            "style": "position: relative; width: 100%; text-align: left; display: block; flex: 0 0 auto; padding: 0 0 0 10px; border-radius: 4px; outline: none; border: 1px solid color-mix(in srgb, var(--navy-800) 37%, transparent); transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); background: color-mix(in srgb, var(--navy-800) 17%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); min-height: 60px; &:hover { border-color: var(--sky-500); } &:has(textarea:focus),\n      &:has(textarea:not(:placeholder-shown)) { border-color: var(--sky-500); } &:has(textarea:focus)>legend,\n      &:has(textarea:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; height: 0; } &:has(textarea:focus)>label,\n      &:has(textarea:not(:placeholder-shown))>label { top: 0; padding: 0px 10px 0 10px; left: 5px; font-size: 11px; color: var(--sky-500); transform: translateY(-50%); } &:has(svg) { svg {\n          display: block;\n          width: 20px;\n          height: 20px;\n          position: absolute;\n          top: 50%;\n          transform: translateY(-50%);\n        } textarea {\n          height: 60px !important;\n          padding: 10px 0px 0px 40px !important;\n        } } &:has(textarea:not(:focus)):has(svg)>label { left: 40px !important; }",
+            "children": [
+              {
+                "tag": "legend",
+                "text": "",
+                "class": "",
+                "style": "display: block; width: auto; height: 0; float: none; padding: 0; font-size: 11px; visibility: hidden; max-width: 0%; transition: max-width 200ms cubic-bezier(0.0, 0, 0.2, 1); white-space: nowrap;",
+                "children": [
+                  {
+                    "tag": "span",
+                    "text": "",
+                    "class": "",
+                    "style": "padding: 0 5px 0 5px; display: inline-block; line-height: 1; opacity: 0; transition: all 200ms cubic-bezier(0.0, 0, 0.2, 1); font-family: 'Montserrat', sans-serif;",
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "tag": "textarea",
+                "text": "",
+                "class": "",
+                "style": "display: block; width: 100%; height: 100%; padding: 10px 0px 0px 10px; font-size: 14px; border: 0; appearance: none; outline: none; background-color: transparent; cursor: pointer; position: absolute; top: 0px; left: 0; z-index: 10; min-height: 100px; color: var(--sky-100); &::placeholder { opacity: 0; }",
+                "children": [],
+                "attributes": {
+                  "id": "textarea4",
+                  "name": "textarea4",
+                  "rows": "2",
+                  "placeholder": "Enter text"
+                }
+              },
+              {
+                "tag": "label",
+                "text": "About yourself",
+                "class": "",
+                "style": "display: inline-block; position: absolute; line-height: 1; top: 6px; left: 10px; z-index: 20; font-size: 14px; padding: 0; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none; color: var(--sky-200);",
+                "children": [],
+                "attributes": { "for": "textarea4" }
+              }
+            ],
+            "attributes": {}
+          },
+          {
+            "tag": "div",
+            "text": "",
+            "class": "form-avatar",
+            "style": "width: 100%; display: flex; flex-direction: column; gap: 20px;",
+            "children": [
+              {
+                "tag": "div",
+                "text": "",
+                "class": "form-section",
+                "style": "",
+                "children": [
+                  {
+                    "tag": "label",
+                    "text": "Photo",
+                    "class": "section-label",
+                    "style": "margin: 10px 0; color: var(--sky-200); display: inline-block;",
+                    "children": []
+                  },
+                  {
+                    "tag": "div",
+                    "text": "",
+                    "class": "photo-content",
+                    "style": "display: flex; align-items: center; gap: 1rem;",
+                    "children": [
+                      {
+                        "tag": "div",
+                        "text": "",
+                        "class": "avatar-display",
+                        "style": "",
+                        "children": [
+                          {
+                            "tag": "svg",
+                            "text": "",
+                            "class": "avatar-icon",
+                            "style": "display: block; width: 3rem; height: 3rem; color: var(--navy-200);",
+                            "children": [
+                              {
+                                "tag": "path",
+                                "text": "",
+                                "class": "",
+                                "style": "",
+                                "children": [],
+                                "attributes": {
+                                  "d": "M18.685 19.097A9.723 9.723 0 0 0 21.75 12c0-5.385-4.365-9.75-9.75-9.75S2.25 6.615 2.25 12a9.723 9.723 0 0 0 3.065 7.097A9.716 9.716 0 0 0 12 21.75a9.716 9.716 0 0 0 6.685-2.653Zm-12.54-1.285A7.486 7.486 0 0 1 12 15a7.486 7.486 0 0 1 5.855 2.812A8.224 8.224 0 0 1 12 20.25a8.224 8.224 0 0 1-5.855-2.438ZM15.75 9a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z",
+                                  "clip-rule": "evenodd",
+                                  "fill-rule": "evenodd"
+                                }
+                              }
+                            ],
+                            "attributes": {
+                              "id": "avatar-icon",
+                              "fill": "currentColor",
+                              "viewBox": "0 0 24 24",
+                              "aria-hidden": "true"
+                            }
+                          },
+                          {
+                            "tag": "img",
+                            "text": "",
+                            "class": "avatar-preview",
+                            "style": "display: none; width: 3rem; height: 3rem; border-radius: 50%; object-fit: cover;",
+                            "children": [],
+                            "attributes": {
+                              "id": "avatar-preview",
+                              "alt": "Avatar preview"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "tag": "button",
+                        "text": "Change",
+                        "class": "change-btn btn-primary",
+                        "style": "color: var(--blue-200); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0 10px; border-radius: 4px; transition: all 200ms ease-in-out; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08); background-color: var(--navy-600); border: 1px solid var(--navy-600); position: relative; height: 30px; &:hover { border: 1px solid var(--purple-200); background-color: var(--slate-500); } &:active { transform: translateY(1px); background-color: var(--accent); }",
+                        "children": [],
+                        "attributes": { "type": "button" }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "div",
+                "text": "",
+                "class": "form-section",
+                "style": "",
+                "children": [
+                  {
+                    "tag": "label",
+                    "text": "Cover photo",
+                    "class": "section-label",
+                    "style": "margin: 10px 0; color: var(--sky-200); display: inline-block;",
+                    "children": []
+                  },
+                  {
+                    "tag": "div",
+                    "text": "",
+                    "class": "upload-dropzone",
+                    "style": "position: relative;\r\ndisplay: flex;\r\njustify-content: center;\r\nborder-radius: 0.75rem;\r\nborder: 2px dashed rgba(30, 41, 59, 0.2);\r\npadding: 10px 1.5rem;\r\ntransition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);\r\ncursor: pointer;\r\nbackground-color: rgba(248, 250, 252, 0.6);",
+                    "children": [
+                      {
+                        "tag": "div",
+                        "text": "",
+                        "class": "upload-content",
+                        "style": "text-align: center;",
+                        "children": [
+                          {
+                            "tag": "svg",
+                            "text": "",
+                            "class": "upload-icon",
+                            "style": "width: 3.25rem; height: 3.25rem; margin: 0 auto; color: var(--navy-200); transition: color 0.3s ease;",
+                            "children": [
+                              {
+                                "tag": "path",
+                                "text": "",
+                                "class": "",
+                                "style": "",
+                                "children": [],
+                                "attributes": {
+                                  "d": "M1.5 6a2.25 2.25 0 0 1 2.25-2.25h16.5A2.25 2.25 0 0 1 22.5 6v12a2.25 2.25 0 0 1-2.25 2.25H3.75A2.25 2.25 0 0 1 1.5 18V6ZM3 16.06V18c0 .414.336.75.75.75h16.5A.75.75 0 0 0 21 18v-1.94l-2.69-2.689a1.5 1.5 0 0 0-2.12 0l-.88.879.97.97a.75.75 0 1 1-1.06 1.06l-5.16-5.159a1.5 1.5 0 0 0-2.12 0L3 16.061Zm10.125-7.81a1.125 1.125 0 1 1 2.25 0 1.125 1.125 0 0 1-2.25 0Z",
+                                  "clip-rule": "evenodd",
+                                  "fill-rule": "evenodd"
+                                }
+                              }
+                            ],
+                            "attributes": {
+                              "fill": "currentColor",
+                              "viewBox": "0 0 24 24",
+                              "aria-hidden": "true"
+                            }
+                          },
+                          {
+                            "tag": "div",
+                            "text": "",
+                            "class": "upload-text-wrapper",
+                            "style": "margin-top: 1.25rem; display: flex; flex-direction: column; align-items: center;",
+                            "children": [
+                              {
+                                "tag": "div",
+                                "text": "",
+                                "class": "upload-text",
+                                "style": "display: flex; align-items: center; font-size: 0.9rem; line-height: 1.5rem; color: var(--navy-400);",
+                                "children": [
+                                  {
+                                    "tag": "span",
+                                    "text": "Upload a file",
+                                    "class": "upload-trigger",
+                                    "style": "position: relative; font-weight: 600; color: var(--sky-500); border-radius: 0.375rem; cursor: pointer; background: transparent; transition: all 0.2s ease; padding: 0 2px; &:hover { color: var(--sky-300); }",
+                                    "children": []
+                                  },
+                                  {
+                                    "tag": "input",
+                                    "text": "",
+                                    "class": "sr-only",
+                                    "style": "position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0;",
+                                    "children": [],
+                                    "attributes": {
+                                      "id": "file-upload",
+                                      "name": "file-upload",
+                                      "type": "file",
+                                      "accept": "image/*"
+                                    }
+                                  },
+                                  {
+                                    "tag": "span",
+                                    "text": "or drag and drop",
+                                    "class": "upload-drag-text",
+                                    "style": "padding-left: 0.35rem;",
+                                    "children": []
+                                  }
+                                ]
+                              },
+                              {
+                                "tag": "p",
+                                "text": "PNG, JPG, GIF up to 10MB",
+                                "class": "upload-hint",
+                                "style": "\r\n\r\ncolor: var(--slate-300);\r\n",
+                                "children": []
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ],
+                    "attributes": { "id": "drop-zone" }
+                  },
+                  {
+                    "tag": "div",
+                    "text": "",
+                    "class": "file-info",
+                    "style": "display: none; margin-top: 20px; padding: 30px; background: var(--color-white); border: 1px solid rgba(226, 232, 240, 1); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); border-radius: 0.5rem; align-items: center; justify-content: space-between; width: 100%; transition: all 0.3s ease-out;",
+                    "children": [
+                      {
+                        "tag": "div",
+                        "text": "",
+                        "class": "file-info-left",
+                        "style": "display: flex; align-items: center; gap: 0.75rem; overflow: hidden;",
+                        "children": [
+                          {
+                            "tag": "img",
+                            "text": "",
+                            "class": "file-info-thumb",
+                            "style": "width: 32px; height: 32px; border-radius: 0.25rem; object-fit: cover; flex-shrink: 0; border: 1px solid rgba(226, 232, 240, 1);",
+                            "children": [],
+                            "attributes": {
+                              "id": "file-info-thumb",
+                              "alt": "Thumbnail"
+                            }
+                          },
+                          {
+                            "tag": "span",
+                            "text": "",
+                            "class": "file-name",
+                            "style": "font-size: 0.875rem; font-weight: 500; color: var(--slate-600); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px;",
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "tag": "button",
+                        "text": "×",
+                        "class": "remove-file",
+                        "style": "background: none; border: none; color: var(--color-red); width: 32px; height: 32px; cursor: pointer; line-height: 1; padding: 0.25rem; border-radius: 50%; transition: all 0.2s; &:hover { background: rgba(244, 63, 94, 0.1); color: var(--color-red); }",
+                        "children": [],
+                        "attributes": {
+                          "type": "button",
+                          "title": "Remove image"
+                        }
+                      }
+                    ],
+                    "attributes": { "id": "file-info" }
+                  }
+                ]
+              }
+            ],
+            "attributes": {}
+          },
+          {
+            "tag": "div",
+            "text": "",
+            "class": "form-inputs",
+            "style": "display: flex; flex-direction: column; align-items: center; gap: 10px;",
+            "children": [
+              {
+                "tag": "div",
+                "text": "",
+                "class": "form-unit",
+                "style": "display: grid; gap: 10px; width: 100%; align-items: center; grid-template-columns: repeat(2, 1fr);",
+                "children": [
+                  {
+                    "tag": "fieldset",
+                    "text": "",
+                    "class": "field-i js-container-input",
+                    "style": "position: relative; width: 100%; text-align: left; display: block; flex: 0 0 auto; padding: 0 0 0 10px; border-radius: 4px; border: 1px solid color-mix(in srgb, var(--navy-800) 37%, transparent); outline: none; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); height: 40px; background: color-mix(in srgb, var(--navy-800) 17%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); &:hover { border-color: var(--sky-500); } &:has(input:focus),\n        &:has(input:not(:placeholder-shown)) { border-color: var(--sky-500); } &:has(input:focus)>legend,\n        &:has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; } &:has(svg):has(input:focus)>legend,\n        &:has(svg):has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; padding: 0 5px 0 20px; } &:has(input:focus)>label,\n        &:has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 5px; font-size: 11px; color: var(--sky-500); i {\n            height: 15px;\n            width: 15px;\n            left: 8px;\n          } } &:has(svg):has(input:focus)>label,\n        &:has(svg):has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 0 0 30px; left: 8px; font-size: 11px; color: var(--sky-500); } &:has(input:focus),\n          &:has(input:not(:placeholder-shown)) { border-color: var(--sky-500); } &:has(input:focus)>legend,\n          &:has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; } &:has(svg):has(input:focus)>legend,\n          &:has(svg):has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; padding: 0 0px 0 20px; } &:has(input:focus)>label,\n          &:has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 5px; font-size: 11px; color: var(--sky-500); } &:has(svg):has(input:focus)>label,\n          &:has(svg):has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 0 0 30px; left: 8px; font-size: 11px; color: var(--sky-500); }",
+                    "children": [
+                      {
+                        "tag": "legend",
+                        "text": "",
+                        "class": "",
+                        "style": "display: block; width: auto; float: none; padding: 0; font-size: 11px; visibility: hidden; max-width: 0%; height: 0; transition: max-width 200ms cubic-bezier(0.0, 0, 0.2, 1); white-space: nowrap;",
+                        "children": [
+                          {
+                            "tag": "span",
+                            "text": "",
+                            "class": "",
+                            "style": "padding: 0 5px 0 5px; display: inline-block; max-height: 11px; line-height: 1; opacity: 0; transition: all 200ms cubic-bezier(0.0, 0, 0.2, 1);",
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "tag": "input",
+                        "text": "",
+                        "class": "",
+                        "style": "display: block; width: 100%; height: 100%; padding: 0px 0px 0px 10px; font-size: 14px; border: 0; appearance: none; outline: none; background-color: transparent; cursor: pointer; position: absolute; top: 50%; transform: translateY(-50%); left: 0; z-index: 10; min-height: 40px; color: var(--sky-200); line-height: 1; &::placeholder { opacity: 0; }",
+                        "children": [],
+                        "attributes": {
+                          "name": "input4",
+                          "rows": "2",
+                          "type": "text",
+                          "placeholder": "Enter text"
+                        }
+                      },
+                      {
+                        "tag": "label",
+                        "text": "First name",
+                        "class": "",
+                        "style": "display: inline-block; position: absolute; top: 50%; transform: translateY(-50%); left: 10px; z-index: 20; color: var(--sky-200); font-size: 14px; padding: 0 5px; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none; &:has(svg) { padding: 0 0 0 30px; i {\n              position: absolute;\n              top: 50%;\n              transform: translateY(-50%);\n              left: 5px;\n            } i {\n                position: absolute;\n                top: 50%;\n                transform: translateY(-50%);\n                left: 5px;\n              } }",
+                        "children": [],
+                        "attributes": { "for": "input4" }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "fieldset",
+                    "text": "",
+                    "class": "field-i js-container-input",
+                    "style": "position: relative; width: 100%; text-align: left; display: block; flex: 0 0 auto; padding: 0 0 0 10px; border-radius: 4px; border: 1px solid color-mix(in srgb, var(--navy-800) 37%, transparent); outline: none; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); height: 40px; background: color-mix(in srgb, var(--navy-800) 17%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); &:hover { border-color: var(--sky-500); } &:has(input:focus),\n        &:has(input:not(:placeholder-shown)) { border-color: var(--sky-500); } &:has(input:focus)>legend,\n        &:has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; } &:has(svg):has(input:focus)>legend,\n        &:has(svg):has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; padding: 0 5px 0 20px; } &:has(input:focus)>label,\n        &:has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 5px; font-size: 11px; color: var(--sky-500); i {\n            height: 15px;\n            width: 15px;\n            left: 8px;\n          } } &:has(svg):has(input:focus)>label,\n        &:has(svg):has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 0 0 30px; left: 8px; font-size: 11px; color: var(--sky-500); } &:has(input:focus),\n          &:has(input:not(:placeholder-shown)) { border-color: var(--sky-500); } &:has(input:focus)>legend,\n          &:has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; } &:has(svg):has(input:focus)>legend,\n          &:has(svg):has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; padding: 0 0px 0 20px; } &:has(input:focus)>label,\n          &:has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 5px; font-size: 11px; color: var(--sky-500); } &:has(svg):has(input:focus)>label,\n          &:has(svg):has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 0 0 30px; left: 8px; font-size: 11px; color: var(--sky-500); }",
+                    "children": [
+                      {
+                        "tag": "legend",
+                        "text": "",
+                        "class": "",
+                        "style": "display: block; width: auto; float: none; padding: 0; font-size: 11px; visibility: hidden; max-width: 0%; height: 0; transition: max-width 200ms cubic-bezier(0.0, 0, 0.2, 1); white-space: nowrap;",
+                        "children": [
+                          {
+                            "tag": "span",
+                            "text": "",
+                            "class": "",
+                            "style": "padding: 0 5px 0 5px; display: inline-block; max-height: 11px; line-height: 1; opacity: 0; transition: all 200ms cubic-bezier(0.0, 0, 0.2, 1);",
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "tag": "input",
+                        "text": "",
+                        "class": "",
+                        "style": "display: block; width: 100%; height: 100%; padding: 0px 0px 0px 10px; font-size: 14px; border: 0; appearance: none; outline: none; background-color: transparent; cursor: pointer; position: absolute; top: 50%; transform: translateY(-50%); left: 0; z-index: 10; min-height: 40px; color: var(--sky-200); line-height: 1; &::placeholder { opacity: 0; }",
+                        "children": [],
+                        "attributes": {
+                          "name": "input4",
+                          "rows": "2",
+                          "type": "text",
+                          "placeholder": "Enter text"
+                        }
+                      },
+                      {
+                        "tag": "label",
+                        "text": "Last name",
+                        "class": "",
+                        "style": "display: inline-block; position: absolute; top: 50%; transform: translateY(-50%); left: 10px; z-index: 20; color: var(--sky-200); font-size: 14px; padding: 0 5px; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none; &:has(svg) { padding: 0 0 0 30px; i {\n              position: absolute;\n              top: 50%;\n              transform: translateY(-50%);\n              left: 5px;\n            } i {\n                position: absolute;\n                top: 50%;\n                transform: translateY(-50%);\n                left: 5px;\n              } }",
+                        "children": [],
+                        "attributes": { "for": "input4" }
+                      }
+                    ]
+                  }
+                ],
+                "attributes": {}
+              },
+              {
+                "tag": "fieldset",
+                "text": "",
+                "class": "field-i js-container-input",
+                "style": "position: relative; width: 100%; text-align: left; display: block; flex: 0 0 auto; padding: 0 0 0 10px; border-radius: 4px; border: 1px solid color-mix(in srgb, var(--navy-800) 37%, transparent); outline: none; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); height: 40px; background: color-mix(in srgb, var(--navy-800) 17%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); &:hover { border-color: var(--sky-500); } &:has(input:focus),\n        &:has(input:not(:placeholder-shown)) { border-color: var(--sky-500); } &:has(input:focus)>legend,\n        &:has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; } &:has(svg):has(input:focus)>legend,\n        &:has(svg):has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; padding: 0 5px 0 20px; } &:has(input:focus)>label,\n        &:has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 5px; font-size: 11px; color: var(--sky-500); i {\n            height: 15px;\n            width: 15px;\n            left: 8px;\n          } } &:has(svg):has(input:focus)>label,\n        &:has(svg):has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 0 0 30px; left: 8px; font-size: 11px; color: var(--sky-500); }",
+                "children": [
+                  {
+                    "tag": "legend",
+                    "text": "",
+                    "class": "",
+                    "style": "display: block; width: auto; float: none; padding: 0; font-size: 11px; visibility: hidden; max-width: 0%; height: 0; transition: max-width 200ms cubic-bezier(0.0, 0, 0.2, 1); white-space: nowrap;",
+                    "children": [
+                      {
+                        "tag": "span",
+                        "text": "",
+                        "class": "",
+                        "style": "padding: 0 5px 0 5px; display: inline-block; max-height: 11px; line-height: 1; opacity: 0; transition: all 200ms cubic-bezier(0.0, 0, 0.2, 1);",
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "input",
+                    "text": "",
+                    "class": "",
+                    "style": "display: block; width: 100%; height: 100%; padding: 0px 0px 0px 10px; font-size: 14px; border: 0; appearance: none; outline: none; background-color: transparent; cursor: pointer; position: absolute; top: 50%; transform: translateY(-50%); left: 0; z-index: 10; min-height: 40px; color: var(--sky-200); line-height: 1; &::placeholder { opacity: 0; }",
+                    "children": [],
+                    "attributes": {
+                      "name": "input4",
+                      "rows": "2",
+                      "type": "email",
+                      "placeholder": "Enter text"
+                    }
+                  },
+                  {
+                    "tag": "label",
+                    "text": "Your Email",
+                    "class": "",
+                    "style": "display: inline-block; position: absolute; top: 50%; transform: translateY(-50%); left: 10px; z-index: 20; color: var(--sky-200); font-size: 14px; padding: 0 5px; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none; &:has(svg) { padding: 0 0 0 30px; i {\n              position: absolute;\n              top: 50%;\n              transform: translateY(-50%);\n              left: 5px;\n            } }",
+                    "children": [
+                      {
+                        "tag": "i",
+                        "text": "",
+                        "class": "svg-wrapper",
+                        "style": "transition: all 0.2s ease-in-out; display: inline-block; line-height: 0; vertical-align: middle; width: 20px; height: 20px;",
+                        "children": [
+                          {
+                            "tag": "svg",
+                            "text": "",
+                            "class": "",
+                            "style": "width: 100%; height: 100%; display: inline-block;",
+                            "children": [
+                              {
+                                "tag": "path",
+                                "text": "",
+                                "class": "",
+                                "style": "",
+                                "children": [],
+                                "attributes": {
+                                  "d": "M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75",
+                                  "stroke-linecap": "round",
+                                  "stroke-linejoin": "round"
+                                }
+                              }
+                            ],
+                            "attributes": {
+                              "fill": "none",
+                              "xmlns": "http://www.w3.org/2000/svg",
+                              "stroke": "currentColor",
+                              "viewBox": "0 0 24 24",
+                              "stroke-width": "1.5"
+                            }
+                          }
+                        ]
+                      }
+                    ],
+                    "attributes": { "for": "input4" }
+                  }
+                ]
+              },
+              {
+                "tag": "fieldset",
+                "text": "",
+                "class": "field-i js-container-input",
+                "style": "position: relative; width: 100%; text-align: left; display: block; flex: 0 0 auto; padding: 0 0 0 10px; border-radius: 4px; border: 1px solid color-mix(in srgb, var(--navy-800) 37%, transparent); outline: none; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); height: 40px; background: color-mix(in srgb, var(--navy-800) 17%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); &:hover { border-color: var(--sky-500); } &:has(input:focus),\n        &:has(input:not(:placeholder-shown)) { border-color: var(--sky-500); } &:has(input:focus)>legend,\n        &:has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; } &:has(svg):has(input:focus)>legend,\n        &:has(svg):has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; padding: 0 5px 0 20px; } &:has(input:focus)>label,\n        &:has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 5px; font-size: 11px; color: var(--sky-500); i {\n            height: 15px;\n            width: 15px;\n            left: 8px;\n          } } &:has(svg):has(input:focus)>label,\n        &:has(svg):has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 0 0 30px; left: 8px; font-size: 11px; color: var(--sky-500); }",
+                "children": [
+                  {
+                    "tag": "legend",
+                    "text": "",
+                    "class": "",
+                    "style": "display: block; width: auto; float: none; padding: 0; font-size: 11px; visibility: hidden; max-width: 0%; height: 0; transition: max-width 200ms cubic-bezier(0.0, 0, 0.2, 1); white-space: nowrap;",
+                    "children": [
+                      {
+                        "tag": "span",
+                        "text": "",
+                        "class": "",
+                        "style": "padding: 0 5px 0 5px; display: inline-block; max-height: 11px; line-height: 1; opacity: 0; transition: all 200ms cubic-bezier(0.0, 0, 0.2, 1);",
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "input",
+                    "text": "",
+                    "class": "",
+                    "style": "display: block; width: 100%; height: 100%; padding: 0px 0px 0px 10px; font-size: 14px; border: 0; appearance: none; outline: none; background-color: transparent; cursor: pointer; position: absolute; top: 50%; transform: translateY(-50%); left: 0; z-index: 10; min-height: 40px; color: var(--sky-200); line-height: 1; &::placeholder { opacity: 0; }",
+                    "children": [],
+                    "attributes": {
+                      "name": "input4",
+                      "rows": "2",
+                      "type": "phone",
+                      "placeholder": "Enter text"
+                    }
+                  },
+                  {
+                    "tag": "label",
+                    "text": "Your Phone",
+                    "class": "",
+                    "style": "display: inline-block; position: absolute; top: 50%; transform: translateY(-50%); left: 10px; z-index: 20; color: var(--sky-200); font-size: 14px; padding: 0 5px; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none; &:has(svg) { padding: 0 0 0 30px; i {\n              position: absolute;\n              top: 50%;\n              transform: translateY(-50%);\n              left: 5px;\n            } }",
+                    "children": [
+                      {
+                        "tag": "i",
+                        "text": "",
+                        "class": "svg-wrapper",
+                        "style": "transition: all 0.2s ease-in-out; display: inline-block; line-height: 0; vertical-align: middle; width: 20px; height: 20px;",
+                        "children": [
+                          {
+                            "tag": "svg",
+                            "text": "",
+                            "class": "",
+                            "style": "width: 100%; height: 100%; display: inline-block;",
+                            "children": [
+                              {
+                                "tag": "path",
+                                "text": "",
+                                "class": "",
+                                "style": "",
+                                "children": [],
+                                "attributes": {
+                                  "d": "M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z",
+                                  "stroke-linecap": "round",
+                                  "stroke-linejoin": "round"
+                                }
+                              }
+                            ],
+                            "attributes": {
+                              "fill": "none",
+                              "xmlns": "http://www.w3.org/2000/svg",
+                              "stroke": "currentColor",
+                              "viewBox": "0 0 24 24",
+                              "stroke-width": "1.5"
+                            }
+                          }
+                        ]
+                      }
+                    ],
+                    "attributes": { "for": "input4" }
+                  }
+                ]
+              },
+              {
+                "tag": "fieldset",
+                "text": "",
+                "class": "field-i js-container-input",
+                "style": "position: relative; width: 100%; text-align: left; display: block; flex: 0 0 auto; padding: 0 0 0 10px; border-radius: 4px; border: 1px solid color-mix(in srgb, var(--navy-800) 37%, transparent); outline: none; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); height: 40px; background: color-mix(in srgb, var(--navy-800) 17%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); &:hover { border-color: var(--sky-500); } &:has(input:focus),\n        &:has(input:not(:placeholder-shown)) { border-color: var(--sky-500); } &:has(input:focus)>legend,\n        &:has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; } &:has(svg):has(input:focus)>legend,\n        &:has(svg):has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; padding: 0 5px 0 20px; } &:has(input:focus)>label,\n        &:has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 5px; font-size: 11px; color: var(--sky-500); i {\n            height: 15px;\n            width: 15px;\n            left: 8px;\n          } } &:has(svg):has(input:focus)>label,\n        &:has(svg):has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 0 0 30px; left: 8px; font-size: 11px; color: var(--sky-500); }",
+                "children": [
+                  {
+                    "tag": "legend",
+                    "text": "",
+                    "class": "",
+                    "style": "display: block; width: auto; float: none; padding: 0; font-size: 11px; visibility: hidden; max-width: 0%; height: 0; transition: max-width 200ms cubic-bezier(0.0, 0, 0.2, 1); white-space: nowrap;",
+                    "children": [
+                      {
+                        "tag": "span",
+                        "text": "",
+                        "class": "",
+                        "style": "padding: 0 5px 0 5px; display: inline-block; max-height: 11px; line-height: 1; opacity: 0; transition: all 200ms cubic-bezier(0.0, 0, 0.2, 1);",
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "input",
+                    "text": "",
+                    "class": "",
+                    "style": "display: block; width: 100%; height: 100%; padding: 0px 0px 0px 10px; font-size: 14px; border: 0; appearance: none; outline: none; background-color: transparent; cursor: pointer; position: absolute; top: 50%; transform: translateY(-50%); left: 0; z-index: 10; min-height: 40px; color: var(--sky-200); line-height: 1; &::placeholder { opacity: 0; }",
+                    "children": [],
+                    "attributes": {
+                      "name": "input4",
+                      "rows": "2",
+                      "type": "text",
+                      "placeholder": "Enter text"
+                    }
+                  },
+                  {
+                    "tag": "label",
+                    "text": "Street address",
+                    "class": "",
+                    "style": "display: inline-block; position: absolute; top: 50%; transform: translateY(-50%); left: 10px; z-index: 20; color: var(--sky-200); font-size: 14px; padding: 0 5px; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none; &:has(svg) { padding: 0 0 0 30px; i {\n              position: absolute;\n              top: 50%;\n              transform: translateY(-50%);\n              left: 5px;\n            } }",
+                    "children": [
+                      {
+                        "tag": "i",
+                        "text": "",
+                        "class": "svg-wrapper",
+                        "style": "transition: all 0.2s ease-in-out; display: inline-block; line-height: 0; vertical-align: middle; width: 20px; height: 20px;",
+                        "children": [
+                          {
+                            "tag": "svg",
+                            "text": "",
+                            "class": "",
+                            "style": "width: 100%; height: 100%; display: inline-block;",
+                            "children": [
+                              {
+                                "tag": "path",
+                                "text": "",
+                                "class": "",
+                                "style": "",
+                                "children": [],
+                                "attributes": {
+                                  "d": "M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z",
+                                  "stroke-linecap": "round",
+                                  "stroke-linejoin": "round"
+                                }
+                              },
+                              {
+                                "tag": "path",
+                                "text": "",
+                                "class": "",
+                                "style": "",
+                                "children": [],
+                                "attributes": {
+                                  "d": "M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z",
+                                  "stroke-linecap": "round",
+                                  "stroke-linejoin": "round"
+                                }
+                              }
+                            ],
+                            "attributes": {
+                              "fill": "none",
+                              "xmlns": "http://www.w3.org/2000/svg",
+                              "stroke": "currentColor",
+                              "viewBox": "0 0 24 24",
+                              "stroke-width": "1.5"
+                            }
+                          }
+                        ],
+                        "attributes": {}
+                      }
+                    ],
+                    "attributes": { "for": "input4" }
+                  }
+                ]
+              },
+              {
+                "tag": "div",
+                "text": "",
+                "class": "form-unit form-unit--three",
+                "style": "display: grid; gap: 10px; width: 100%; align-items: center; grid-template-columns: repeat(3, 1fr);",
+                "children": [
+                  {
+                    "tag": "fieldset",
+                    "text": "",
+                    "class": "field-i js-container-input",
+                    "style": "position: relative; width: 100%; text-align: left; display: block; flex: 0 0 auto; padding: 0 0 0 10px; border-radius: 4px; border: 1px solid color-mix(in srgb, var(--navy-800) 37%, transparent); outline: none; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); height: 40px; background: color-mix(in srgb, var(--navy-800) 17%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); &:hover { border-color: var(--sky-500); } &:has(input:focus),\n        &:has(input:not(:placeholder-shown)) { border-color: var(--sky-500); } &:has(input:focus)>legend,\n        &:has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; } &:has(svg):has(input:focus)>legend,\n        &:has(svg):has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; padding: 0 5px 0 20px; } &:has(input:focus)>label,\n        &:has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 5px; font-size: 11px; color: var(--sky-500); i {\n            height: 15px;\n            width: 15px;\n            left: 8px;\n          } } &:has(svg):has(input:focus)>label,\n        &:has(svg):has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 0 0 30px; left: 8px; font-size: 11px; color: var(--sky-500); } &:has(input:focus),\n          &:has(input:not(:placeholder-shown)) { border-color: var(--sky-500); } &:has(input:focus)>legend,\n          &:has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; } &:has(svg):has(input:focus)>legend,\n          &:has(svg):has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; padding: 0 0px 0 20px; } &:has(input:focus)>label,\n          &:has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 5px; font-size: 11px; color: var(--sky-500); } &:has(svg):has(input:focus)>label,\n          &:has(svg):has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 0 0 30px; left: 8px; font-size: 11px; color: var(--sky-500); }",
+                    "children": [
+                      {
+                        "tag": "legend",
+                        "text": "",
+                        "class": "",
+                        "style": "display: block; width: auto; float: none; padding: 0; font-size: 11px; visibility: hidden; max-width: 0%; height: 0; transition: max-width 200ms cubic-bezier(0.0, 0, 0.2, 1); white-space: nowrap;",
+                        "children": [
+                          {
+                            "tag": "span",
+                            "text": "",
+                            "class": "",
+                            "style": "padding: 0 5px 0 5px; display: inline-block; max-height: 11px; line-height: 1; opacity: 0; transition: all 200ms cubic-bezier(0.0, 0, 0.2, 1);",
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "tag": "input",
+                        "text": "",
+                        "class": "",
+                        "style": "display: block; width: 100%; height: 100%; padding: 0px 0px 0px 10px; font-size: 14px; border: 0; appearance: none; outline: none; background-color: transparent; cursor: pointer; position: absolute; top: 50%; transform: translateY(-50%); left: 0; z-index: 10; min-height: 40px; color: var(--sky-200); line-height: 1; &::placeholder { opacity: 0; }",
+                        "children": [],
+                        "attributes": {
+                          "name": "input4",
+                          "rows": "2",
+                          "type": "text",
+                          "placeholder": "Enter text"
+                        }
+                      },
+                      {
+                        "tag": "label",
+                        "text": "City",
+                        "class": "",
+                        "style": "display: inline-block; position: absolute; top: 50%; transform: translateY(-50%); left: 10px; z-index: 20; color: var(--sky-200); font-size: 14px; padding: 0 5px; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none; &:has(svg) { padding: 0 0 0 30px; i {\n              position: absolute;\n              top: 50%;\n              transform: translateY(-50%);\n              left: 5px;\n            } i {\n                position: absolute;\n                top: 50%;\n                transform: translateY(-50%);\n                left: 5px;\n              } }",
+                        "children": [],
+                        "attributes": { "for": "input4" }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "fieldset",
+                    "text": "",
+                    "class": "field-i js-container-input",
+                    "style": "position: relative; width: 100%; text-align: left; display: block; flex: 0 0 auto; padding: 0 0 0 10px; border-radius: 4px; border: 1px solid color-mix(in srgb, var(--navy-800) 37%, transparent); outline: none; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); height: 40px; background: color-mix(in srgb, var(--navy-800) 17%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); &:hover { border-color: var(--sky-500); } &:has(input:focus),\n        &:has(input:not(:placeholder-shown)) { border-color: var(--sky-500); } &:has(input:focus)>legend,\n        &:has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; } &:has(svg):has(input:focus)>legend,\n        &:has(svg):has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; padding: 0 5px 0 20px; } &:has(input:focus)>label,\n        &:has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 5px; font-size: 11px; color: var(--sky-500); i {\n            height: 15px;\n            width: 15px;\n            left: 8px;\n          } } &:has(svg):has(input:focus)>label,\n        &:has(svg):has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 0 0 30px; left: 8px; font-size: 11px; color: var(--sky-500); } &:has(input:focus),\n          &:has(input:not(:placeholder-shown)) { border-color: var(--sky-500); } &:has(input:focus)>legend,\n          &:has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; } &:has(svg):has(input:focus)>legend,\n          &:has(svg):has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; padding: 0 0px 0 20px; } &:has(input:focus)>label,\n          &:has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 5px; font-size: 11px; color: var(--sky-500); } &:has(svg):has(input:focus)>label,\n          &:has(svg):has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 0 0 30px; left: 8px; font-size: 11px; color: var(--sky-500); }",
+                    "children": [
+                      {
+                        "tag": "legend",
+                        "text": "",
+                        "class": "",
+                        "style": "display: block; width: auto; float: none; padding: 0; font-size: 11px; visibility: hidden; max-width: 0%; height: 0; transition: max-width 200ms cubic-bezier(0.0, 0, 0.2, 1); white-space: nowrap;",
+                        "children": [
+                          {
+                            "tag": "span",
+                            "text": "",
+                            "class": "",
+                            "style": "padding: 0 5px 0 5px; display: inline-block; max-height: 11px; line-height: 1; opacity: 0; transition: all 200ms cubic-bezier(0.0, 0, 0.2, 1);",
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "tag": "input",
+                        "text": "",
+                        "class": "",
+                        "style": "display: block; width: 100%; height: 100%; padding: 0px 0px 0px 10px; font-size: 14px; border: 0; appearance: none; outline: none; background-color: transparent; cursor: pointer; position: absolute; top: 50%; transform: translateY(-50%); left: 0; z-index: 10; min-height: 40px; color: var(--sky-200); line-height: 1; &::placeholder { opacity: 0; }",
+                        "children": [],
+                        "attributes": {
+                          "name": "input4",
+                          "rows": "2",
+                          "type": "text",
+                          "placeholder": "Enter text"
+                        }
+                      },
+                      {
+                        "tag": "label",
+                        "text": "State / Province",
+                        "class": "",
+                        "style": "display: inline-block; position: absolute; top: 50%; transform: translateY(-50%); left: 10px; z-index: 20; color: var(--sky-200); font-size: 14px; padding: 0 5px; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none; &:has(svg) { padding: 0 0 0 30px; i {\n              position: absolute;\n              top: 50%;\n              transform: translateY(-50%);\n              left: 5px;\n            } i {\n                position: absolute;\n                top: 50%;\n                transform: translateY(-50%);\n                left: 5px;\n              } }",
+                        "children": [],
+                        "attributes": { "for": "input4" }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "fieldset",
+                    "text": "",
+                    "class": "field-i js-container-input",
+                    "style": "position: relative; width: 100%; text-align: left; display: block; flex: 0 0 auto; padding: 0 0 0 10px; border-radius: 4px; border: 1px solid color-mix(in srgb, var(--navy-800) 37%, transparent); outline: none; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); height: 40px; background: color-mix(in srgb, var(--navy-800) 17%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); &:hover { border-color: var(--sky-500); } &:has(input:focus),\n        &:has(input:not(:placeholder-shown)) { border-color: var(--sky-500); } &:has(input:focus)>legend,\n        &:has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; } &:has(svg):has(input:focus)>legend,\n        &:has(svg):has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; padding: 0 5px 0 20px; } &:has(input:focus)>label,\n        &:has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 5px; font-size: 11px; color: var(--sky-500); i {\n            height: 15px;\n            width: 15px;\n            left: 8px;\n          } } &:has(svg):has(input:focus)>label,\n        &:has(svg):has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 0 0 30px; left: 8px; font-size: 11px; color: var(--sky-500); } &:has(input:focus),\n          &:has(input:not(:placeholder-shown)) { border-color: var(--sky-500); } &:has(input:focus)>legend,\n          &:has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; } &:has(svg):has(input:focus)>legend,\n          &:has(svg):has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; padding: 0 0px 0 20px; } &:has(input:focus)>label,\n          &:has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 5px; font-size: 11px; color: var(--sky-500); } &:has(svg):has(input:focus)>label,\n          &:has(svg):has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 0 0 30px; left: 8px; font-size: 11px; color: var(--sky-500); }",
+                    "children": [
+                      {
+                        "tag": "legend",
+                        "text": "",
+                        "class": "",
+                        "style": "display: block; width: auto; float: none; padding: 0; font-size: 11px; visibility: hidden; max-width: 0%; height: 0; transition: max-width 200ms cubic-bezier(0.0, 0, 0.2, 1); white-space: nowrap;",
+                        "children": [
+                          {
+                            "tag": "span",
+                            "text": "",
+                            "class": "",
+                            "style": "padding: 0 5px 0 5px; display: inline-block; max-height: 11px; line-height: 1; opacity: 0; transition: all 200ms cubic-bezier(0.0, 0, 0.2, 1);",
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "tag": "input",
+                        "text": "",
+                        "class": "",
+                        "style": "display: block; width: 100%; height: 100%; padding: 0px 0px 0px 10px; font-size: 14px; border: 0; appearance: none; outline: none; background-color: transparent; cursor: pointer; position: absolute; top: 50%; transform: translateY(-50%); left: 0; z-index: 10; min-height: 40px; color: var(--sky-200); line-height: 1; &::placeholder { opacity: 0; }",
+                        "children": [],
+                        "attributes": {
+                          "name": "input4",
+                          "rows": "2",
+                          "type": "text",
+                          "placeholder": "Enter text"
+                        }
+                      },
+                      {
+                        "tag": "label",
+                        "text": "ZIP / Postal code",
+                        "class": "",
+                        "style": "display: inline-block; position: absolute; top: 50%; transform: translateY(-50%); left: 10px; z-index: 20; color: var(--sky-200); font-size: 14px; padding: 0 5px; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none; &:has(svg) { padding: 0 0 0 30px; i {\n              position: absolute;\n              top: 50%;\n              transform: translateY(-50%);\n              left: 5px;\n            } i {\n                position: absolute;\n                top: 50%;\n                transform: translateY(-50%);\n                left: 5px;\n              } }",
+                        "children": [],
+                        "attributes": { "for": "input4" }
+                      }
+                    ]
+                  }
+                ],
+                "attributes": {}
+              }
+            ]
+          },
+          {
+            "tag": "div",
+            "text": "",
+            "class": "custom-select",
+            "style": "position: relative;\n\n\n&._is-active {\n  &>.dropdown-button svg {\n    transform: rotate(180deg) !important;\n  }\n\n  &>.dropdown-list {\n    max-height: 1260px !important;\n    opacity: 1 !important;\n    transform: translateY(0) !important;\n    pointer-events: auto !important;\n  }\n}\n\n&._is-filled {\n  &>.dropdown-button {\n    border-color: var(--accent) !important;\n  }\n}\n\nmin-width: 100px;",
+            "children": [
+              {
+                "tag": "button",
+                "text": "",
+                "class": "dropdown-button",
+                "style": "width: 100%;\ndisplay: flex;\nalign-items: center;\njustify-content: space-between;\ngap: 8px;\npadding: 10px 12px;\nborder-radius: 4px;\nborder: 1px solid color-mix(in srgb, var(--navy-800) 37%, transparent);\noutline: none;\ntransition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);\nheight: 40px;\nbackground: color-mix(in srgb, var(--navy-800) 17%, transparent);\nbackdrop-filter: blur(14px);\n-webkit-backdrop-filter: blur(14px);\ncursor: pointer;\ntransition: all .2s ease;\ncolor: var(--sky-200);\n\n&:hover {\n  border: 1px solid var(--sky-500);\nsvg {\n  color: var(--sky-500);\n}\n}",
+                "children": [
+                  {
+                    "tag": "span",
+                    "text": "Country",
+                    "class": "",
+                    "style": "flex: 1; text-align: left; font-size: 14px;",
+                    "children": []
+                  },
+                  {
+                    "tag": "input",
+                    "text": "",
+                    "class": "",
+                    "style": "",
+                    "children": [],
+                    "attributes": { "name": "place", "type": "hidden" }
+                  },
+                  {
+                    "tag": "i",
+                    "text": "",
+                    "class": "svg-wrapper",
+                    "style": "transition: all 0.2s ease-in-out; display: inline-block; line-height: 0; vertical-align: middle; width: 16px; height: 16px; flex-shrink: 0; transform: rotate(0deg); transform-origin: center;",
+                    "children": [
+                      {
+                        "tag": "svg",
+                        "text": "",
+                        "class": "",
+                        "style": "width: 100%; height: 100%; display: block; transition: all 0.2s ease-in-out;",
+                        "children": [
+                          {
+                            "tag": "path",
+                            "text": "",
+                            "class": "",
+                            "style": "",
+                            "children": [],
+                            "attributes": {
+                              "d": "m19.5 8.25-7.5 7.5-7.5-7.5",
+                              "stroke-linecap": "round",
+                              "stroke-linejoin": "round"
+                            }
+                          }
+                        ],
+                        "attributes": {
+                          "fill": "none",
+                          "color": "currentColor",
+                          "xmlns": "http://www.w3.org/2000/svg",
+                          "stroke": "currentColor",
+                          "viewBox": "0 0 24 24",
+                          "data-slot": "icon",
+                          "aria-hidden": "true",
+                          "stroke-width": "1.5"
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "attributes": { "type": "button" }
+              },
+              {
+                "tag": "ul",
+                "text": "",
+                "class": "dropdown-list",
+                "style": "position: absolute;\r\nleft: 0;\r\nright: 0;\r\ntop: calc(100% + 8px);\r\nmargin: 0;\r\npadding: 6px 0;\r\nlist-style: none;\r\nborder-radius: 10px;\r\nborder: 1px solid var(--sky-500);\r\nbackground: color-mix(in srgb, var(--navy-800) 17%, transparent);\r\nbackdrop-filter: blur(14px);\r\n-webkit-backdrop-filter: blur(14px);\r\noverflow: hidden;\r\nmax-height: 0;\r\nopacity: 0;\r\ntransform: translateY(-8px);\r\npointer-events: none;\r\ntransition: all .2s ease;\r\nz-index: 100000;\r\n",
+                "children": [
+                  {
+                    "tag": "li",
+                    "text": "USA",
+                    "class": "dropdown-list__item",
+                    "style": "padding: 8px 12px; font-size: 14px; cursor: pointer; color: var(--navy-900); transition: all .2s ease; &:hover { background: var(--slate-300); color: var(--slate-200); }",
+                    "children": [],
+                    "attributes": { "data-value": "USA" }
+                  },
+                  {
+                    "tag": "li",
+                    "text": "UK",
+                    "class": "dropdown-list__item",
+                    "style": "padding: 8px 12px; font-size: 14px; cursor: pointer; color: var(--navy-900); transition: all .2s ease; &:hover { background: var(--slate-300); color: var(--slate-200); }",
+                    "children": [],
+                    "attributes": { "data-value": "UK" }
+                  },
+                  {
+                    "tag": "li",
+                    "text": "Mexico",
+                    "class": "dropdown-list__item",
+                    "style": "padding: 8px 12px;\r\nfont-size: 14px;\r\ncursor: pointer;\r\ncolor: var(--sky-500);\r\ntransition: all .2s ease;\r\n\r\n&:hover {\r\n  background: var(--slate-300);\r\n  color: var(--sky-800);\r\n}",
+                    "children": [],
+                    "attributes": { "data-value": "Mexico" }
+                  }
+                ]
+              }
+            ],
+            "attributes": { "id": "form-select" }
+          },
+          {
+            "tag": "div",
+            "text": "flex col",
+            "class": "flex-col",
+            "style": "display: flex;\nflex-direction: row;\nalign-items: center;\ngap: 5px;",
+            "children": [
+              {
+                "tag": "div",
+                "text": "",
+                "class": "input-check",
+                "style": "position: relative;\ndisplay: flex;\n\nwidth: max-content;\nflex-direction: row;\nalign-items: center;\n",
+                "children": [
+                  {
+                    "tag": "input",
+                    "text": "",
+                    "class": "",
+                    "style": "position: fixed !important; left: -9999px !important; height: 0; width: 0; &:checked+label::after { opacity: 1; }",
+                    "attributes": {
+                      "id": "input-check",
+                      "name": "",
+                      "type": "checkbox"
+                    }
+                  },
+                  {
+                    "tag": "label",
+                    "text": "By submitting this form, you agree to our",
+                    "class": "",
+                    "style": "display: inline-block;\nmargin: 0 0 0 40px;\ncursor: pointer;\ntransition: all 0.2s;\nfont-size: 14px;\ncolor: var(--sky-200);\n\n&::before {\n  content: '';\n  position: absolute;\n  left: 0;\n  top: 50%;\n  border-radius: 4px;\n  width: 20px;\n  height: 20px;\n  transform: translateY(-50%);\n  background-color: transparent;\n  transition: all 0.3s;\n  border: 1px solid var(--sky-500)\n}\n\n&::after {\n  content: '';\n  position: absolute;\n  width: 12px;\n  height: 12px;\n  top: 50%;\n  left: 4px;\n  border-radius: 2px;\n  transform: translateY(-50%);\n  background-color: var(--sky-500);\n  transition: all 0.2s;\n  opacity: 0;\n}\n&:hover {\n  color: var(--sky-500);\n}\nline-height: 1;",
+                    "children": [],
+                    "attributes": { "for": "input-check" }
+                  }
+                ],
+                "attributes": {}
+              },
+              {
+                "tag": "a",
+                "text": "Terms of Service",
+                "class": "",
+                "style": "color: var(--sky-500);\ndisplay: inline-block;\ntransition: all 0.2s ease-in-out;\n\n&:hover {\n  color: var(--sky-300);\n}",
+                "children": [],
+                "attributes": {
+                  "rel": "noopener noreferrer",
+                  "href": "#!",
+                  "target": "blank"
+                }
+              }
+            ],
+            "attributes": {}
+          },
+          {
+            "tag": "hr",
+            "text": "",
+            "class": "",
+            "style": "border: 1px solid color-mix(in srgb, var(--sky-300) 23%, transparent);\nheight: 1px;\nmargin: 20px 0;",
+            "children": [],
+            "attributes": {}
+          },
+          {
+            "tag": "div",
+            "text": "div",
+            "class": "form__buttons",
+            "style": "display: flex;\nflex-direction: row;\nalign-items: center;\ngap: 10px;\njustify-content: flex-end;",
+            "children": [
+              {
+                "tag": "button",
+                "text": "Reset",
+                "class": "form__button",
+                "style": "color: var(--sky-200);\r\ndisplay: inline-flex;\r\nalign-items: center;\r\njustify-content: center;\r\ncursor: pointer;\r\ngap: 0.5rem;\r\npadding: 0.25rem 0.5rem;\r\ntransition: all 200ms ease-in-out;\r\ncolor: var(--sky-200);\r\nbackground: transparent;\r\n\r\nborder: none; &:hover {\r\n  color: var(--sky-500);\r\n\r\n}\r\n\r\n&:active {\r\n  transform: translateY(1px);\r\n}",
+                "children": [],
+                "attributes": { "type": "button", "id": "form__reset" }
+              },
+              {
+                "tag": "button",
+                "text": "Submit",
+                "class": "btn-primary",
+                "style": "color: var(--blue-200);\r\ndisplay: inline-flex;\r\nalign-items: center;\r\njustify-content: center;\r\ncursor: pointer;\r\npadding: 0 10px;\r\nborder-radius: 4px;\r\ntransition: all 200ms ease-in-out;\r\nbox-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);\r\nbackground-color: var(--navy-600);\r\nborder: 1px solid var(--navy-600);\r\nposition: relative;\r\nheight: 30px;\r\n\r\n&:hover {\r\n  border: 1px solid var(--purple-200);\r\n  background-color: var(--slate-500);\r\n\r\n  .buttonBack-svg {\r\n    width: calc(100% - 4px);\r\n    z-index: 5;\r\n  }\r\n}\r\n\r\n&:active {\r\n  transform: translateY(1px);\r\n  background-color: var(--accent);\r\n}",
+                "children": [],
+                "attributes": { "type": "submit" }
+              }
+            ],
+            "attributes": {}
+          }
+        ]
+      }
+    ],
+    "attributes": {}
+  },
+  {
+    "tag": "script",
+    "text": "/* @component: .js-container-input */\n(function () { \n  document.addEventListener('DOMContentLoaded', function () { \n    document.querySelectorAll('fieldset').forEach(function (fs) { \n      const label = fs.querySelector('label'); \n      const legendSpan = fs.querySelector('legend span'); \n      if (label && legendSpan) { \n        legendSpan.innerHTML = label.innerHTML; \n      } \n    }); \n  }); \n})();\n\n",
+    "class": "",
+    "children": [],
+    "attributes": {}
+  },
+  {
+    "tag": "script",
+    "text": "/* @component: form-avatar */\n(function () {\n  function initUpload() {\n    const containers = document.querySelectorAll('.form-avatar');\n    \n    containers.forEach(container => {\n      if (container.dataset.initialized) return;\n\n      const dropZone = container.querySelector('.upload-dropzone');\n      const fileInput = container.querySelector('input[type=\"file\"]');\n      const fileInfo = container.querySelector('.file-info');\n      const fileNameDisplay = container.querySelector('.file-name');\n      const removeBtn = container.querySelector('.remove-file');\n      const avatarIcon = container.querySelector('.avatar-icon');\n      const avatarPreview = container.querySelector('.avatar-preview');\n      const changeBtn = container.querySelector('.change-btn');\n      const fileInfoThumb = container.querySelector('.file-info-thumb');\n\n      if (!dropZone || !fileInput) return;\n\n      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {\n        dropZone.addEventListener(eventName, preventDefaults, false);\n        document.body.addEventListener(eventName, preventDefaults, false);\n      });\n\n      ['dragenter', 'dragover'].forEach(eventName => dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over'), false));\n      ['dragleave', 'drop'].forEach(eventName => dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over'), false));\n\n      dropZone.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files, processCoverPhoto), false);\n      fileInput.addEventListener('change', (e) => handleFiles(e.target.files, processCoverPhoto));\n      dropZone.addEventListener('click', (e) => {\n        if (e.target !== fileInput) fileInput.click();\n      });\n\n      if (removeBtn) {\n        removeBtn.addEventListener('click', (e) => {\n          e.stopPropagation();\n          resetCoverUpload();\n        });\n      }\n\n      if (changeBtn) {\n        changeBtn.addEventListener('click', () => {\n          if (fileInput.files && fileInput.files.length > 0) {\n            const file = fileInput.files[0];\n            if (file.type.startsWith('image/')) {\n              processAvatarPhoto(file);\n              resetCoverUpload();\n            } else {\n              alert('Please select an image file in the Cover Photo area.');\n            }\n          } else {\n            alert('Please upload an image to the \"Cover photo\" area below first.');\n          }\n        });\n      }\n\n      function preventDefaults(e) {\n        e.preventDefault();\n        e.stopPropagation();\n      }\n\n      function handleFiles(files, callback) {\n        if (files.length > 0) {\n          const file = files[0];\n          if (file.type.startsWith('image/')) {\n            callback(file);\n          } else {\n            alert('Please upload an image file (PNG, JPG, GIF).');\n          }\n        }\n      }\n\n      function processCoverPhoto(file) {\n        const reader = new FileReader();\n        reader.onload = (e) => {\n          if (fileInfoThumb) fileInfoThumb.src = e.target.result;\n          if (fileNameDisplay) fileNameDisplay.textContent = file.name;\n          if (fileInfo) fileInfo.style.display = 'flex';\n        };\n        reader.readAsDataURL(file);\n      }\n\n      function resetCoverUpload() {\n        fileInput.value = '';\n        if (fileInfo) fileInfo.style.display = 'none';\n        if (fileNameDisplay) fileNameDisplay.textContent = '';\n        if (fileInfoThumb) fileInfoThumb.src = '';\n      }\n\n      function processAvatarPhoto(file) {\n        const reader = new FileReader();\n        reader.onload = (e) => {\n          if (avatarPreview) {\n            avatarPreview.src = e.target.result;\n            avatarPreview.style.display = 'block';\n          }\n          if (avatarIcon) avatarIcon.style.display = 'none';\n        };\n        reader.readAsDataURL(file);\n      }\n\n      container.dataset.initialized = 'true';\n    });\n  }\n\n  if (document.readyState === 'loading') {\n    document.addEventListener('DOMContentLoaded', initUpload);\n  } else {\n    initUpload();\n  }\n\n  setTimeout(initUpload, 300);\n})();\n\n",
+    "class": "",
+    "children": [],
+    "attributes": {}
+  },
+  {
+    "tag": "script",
+    "text": "/* @component: .custom-select */ document.addEventListener('DOMContentLoaded', function (e) {const Selects = [...document.querySelectorAll('.custom-select') ];Selects.forEach(select => { select.addEventListener('click', (e) => clickelect(select, e)) });function clickelect(select, e) {e.stopPropagation(); const target = e.target; var btn = select.querySelector('.dropdown-button'); var span = btn.querySelector('span'); var list = select.querySelector('.dropdown-list'); var items = [...select.querySelectorAll('.dropdown-list__item') ]; var svg = btn.querySelector('svg'); const hidden = select.querySelector('input[type=hidden ]'); const isItem = target.closest('.dropdown-list__item'); if (select.classList.contains('_is-active')) { for (var item of items) { if (isItem && target === item) { select.classList.remove('_is-active'); var v = item.dataset.value; hidden.value = v; span.innerHTML = v; break; } select.classList.remove('_is-active'); } } else { select.classList.add('_is-active'); } } })",
+    "class": "",
+    "children": [],
+    "attributes": {}
+  },
+  {
+    "tag": "script",
+    "class": "",
+    "attributes": {},
+    "text": "/* @component: .form-common */\n\ndocument.addEventListener('DOMContentLoaded', () => {\n  const container = document.querySelector('.form-common');\n  const myButton = container.querySelector('#form__reset');\n  if (!container) return;\n  const elsch = container.querySelector('#form-select');\n  const btns = elsch.querySelector('span');\n  myButton.addEventListener('click', (e) => {\n    e.preventDefault();\n    const form = myButton.closest('form');\n    if (form) form.reset();\n    btns.innerHTML = \"Country\"\n  });\n});\n\n\n",
+    "children": []
+  }
+]

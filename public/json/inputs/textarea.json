@@ -1,0 +1,12 @@
+[
+  {
+    "tag": "textarea",
+    "text": "",
+    "class": "",
+    "style": "",
+    "children": [],
+    "attributes": {
+      "placeholder": "Textarea text"
+    }
+  }
+]

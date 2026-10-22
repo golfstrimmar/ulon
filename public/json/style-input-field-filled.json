@@ -1,0 +1,9 @@
+[
+  {
+    "tag": "style",
+    "text": "/* _filled */ .field-i._filled, .field-t._filled { background-color: rgba(15, 23, 42, 0.4) !important; backdrop-filter: blur(4px) !important; -webkit-backdrop-filter: blur(4px) !important; color: #fff !important; input, textarea { color: #fff !important; } label { color: #fff !important; } &:has(input:focus)>label, &:has(input:not(:placeholder-shown))>label, &:has(textarea:focus)>label, &:has(textarea:not(:placeholder-shown))>label { color: #38bdf8 !important; background-color: #fff !important; border: 1px solid #38bdf8 !important; border-radius: 4px !important; } } /* /_filled */",
+    "attributes": {
+      "data-global": "true"
+    }
+  }
+]

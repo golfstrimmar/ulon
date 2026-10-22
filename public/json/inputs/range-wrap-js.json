@@ -1,0 +1,39 @@
+[
+  {
+    "tag": "div",
+    "text": "",
+    "class": "_range-wrap-js",
+    "style": "position: relative; width: 100%;",
+    "children": [
+      {
+        "tag": "div",
+        "text": "0",
+        "class": "rangeValue",
+        "style": " text-align: center;",
+        "attributes": {}
+      },
+      {
+        "tag": "input",
+        "text": "",
+        "class": "Range",
+        "style": "accent-color: green !important; -webkit-appearance: none; appearance: none; height: 2px; padding: 0; display: block; width: 100%; border-radius: 12px; border: none !important; background: linear-gradient(to right, green 0%, #e5e7eb 0%); outline: none !important; cursor: pointer; visibility: visible; margin: 12px 0; &::-webkit-slider-runnable-track { height: 12px; border-radius: 100%; background: transparent; } &::-moz-range-track { height: 12px; background: transparent; } &::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; height: 12px; width: 12px; border-radius: 50%; background-color: green !important; cursor: ew-resize; border: none; } &::-moz-range-thumb { height: 12px; width: 12px; border-radius: 50%; background-color: green !important; cursor: ew-resize; border: none; } &:active::-webkit-slider-thumb { background-color: green !important; }",
+        "attributes": {
+          "max": "100",
+          "min": "0",
+          "name": "myRange",
+          "step": "1",
+          "type": "range",
+          "value": "0"
+        }
+      }
+    ],
+    "attributes": {}
+  },
+  {
+    "tag": "script",
+    "text": "/* @component: ._range-wrap-js */ (function () { if (!document.getElementById('range-red-fix')) { let s = document.createElement('style'); s.id = 'range-red-fix'; s.textContent = 'input.Range { accent-color: green !important; } input.Range::-webkit-slider-thumb { background-color: green !important; } input.Range::-moz-range-thumb { background-color: green !important; }'; document.head.appendChild(s); } function update(el) { let val = parseFloat(el.value) || 0; let max = parseFloat(el.max) || 100; let min = parseFloat(el.min) || 0; let p = ((val - min) / (max - min)) * 100; el.style.setProperty('background', 'linear-gradient(to right, green ' + p + '%, #e5e7eb ' + p + '%)', 'important'); let wrap = el.closest('._range-wrap-js') || el.parentElement; if (wrap) { let valDisplay = wrap.querySelector('.rangeValue'); if (valDisplay) valDisplay.textContent = el.value; } } document.addEventListener('input', function (e) { let el = e.target.closest('input.Range'); if (el) update(el); }); document.querySelectorAll('input.Range').forEach(update); })();",
+    "class": "",
+    "style": "",
+    "children": []
+  }
+]

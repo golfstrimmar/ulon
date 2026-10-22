@@ -1,0 +1,267 @@
+[
+  {
+    "tag": "script",
+    "class": "",
+    "style": "",
+    "attributes": {},
+    "text": "/* @component: .custom-swiper */ (function() { function initCustomSwiper() { const container = document.querySelector('.custom-swiper'); if (!container) return; new Swiper('.custom-swiper', { slidesPerView: 1, spaceBetween: 10, loop: true, speed: 800, autoplay: { delay: 3000, disableOnInteraction: false }, navigation: { nextEl: '.swiper-button-custom-next', prevEl: '.swiper-button-custom-prev' }, pagination: { el: '.swiper-custom-pagination', clickable: true, bulletClass: 'custom-bullet', bulletActiveClass: 'is-active' }, breakpoints: { 768: { slidesPerView: 2, spaceBetween: 15 }, 1200: { slidesPerView: 3, spaceBetween: 20 } }, observer: true, observeParents: true }); } if (!document.getElementById('swiper-css')) { const link = document.createElement('link'); link.id = 'swiper-css'; link.rel = 'stylesheet'; link.href = 'https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css'; document.head.appendChild(link); } if (typeof Swiper !== 'undefined') { initCustomSwiper(); } else { let script = document.getElementById('swiper-js'); if (!script) { script = document.createElement('script'); script.id = 'swiper-js'; script.src = 'https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js'; document.head.appendChild(script); } script.addEventListener('load', initCustomSwiper); } })();",
+    "children": []
+  },
+  {
+    "tag": "section",
+    "class": "swiper-custom",
+    "style": "position: relative; padding: 0 48px; width: 100%; box-sizing: border-box;",
+    "attributes": {},
+    "children": [
+      {
+        "tag": "div",
+        "class": "swiper custom-swiper",
+        "style": "width: 100%;",
+        "attributes": {},
+        "children": [
+          {
+            "tag": "div",
+            "class": "swiper-wrapper",
+            "style": "",
+            "attributes": {},
+            "children": [
+              {
+                "tag": "div",
+                "class": "swiper-slide swiper-slide--custom",
+                "style": "",
+                "attributes": {},
+                "children": [
+                  {
+                    "tag": "div",
+                    "class": "slide-content",
+                    "style": "height: 100%; border: 1px solid color-mix(in srgb, var(--slate-500) 78%, transparent); margin: 0 auto;",
+                    "attributes": {},
+                    "children": [
+                      {
+                        "tag": "h3",
+                        "text": "Slide 1",
+                        "class": "",
+                        "style": "",
+                        "attributes": {},
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "div",
+                "class": "swiper-slide swiper-slide--custom",
+                "style": "",
+                "attributes": {},
+                "children": [
+                  {
+                    "tag": "div",
+                    "class": "slide-content",
+                    "style": "height: 100%; border: 1px solid color-mix(in srgb, var(--slate-500) 78%, transparent); margin: 0 auto;",
+                    "attributes": {},
+                    "children": [
+                      {
+                        "tag": "h3",
+                        "text": "Slide 2",
+                        "class": "",
+                        "style": "",
+                        "attributes": {},
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "div",
+                "class": "swiper-slide swiper-slide--custom",
+                "style": "",
+                "attributes": {},
+                "children": [
+                  {
+                    "tag": "div",
+                    "class": "slide-content",
+                    "style": "height: 100%; border: 1px solid color-mix(in srgb, var(--slate-500) 78%, transparent); margin: 0 auto;",
+                    "attributes": {},
+                    "children": [
+                      {
+                        "tag": "h3",
+                        "text": "Slide 3",
+                        "class": "",
+                        "style": "",
+                        "attributes": {},
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "div",
+                "class": "swiper-slide swiper-slide--custom",
+                "style": "",
+                "attributes": {},
+                "children": [
+                  {
+                    "tag": "div",
+                    "class": "slide-content",
+                    "style": "height: 100%; border: 1px solid color-mix(in srgb, var(--slate-500) 78%, transparent); margin: 0 auto;",
+                    "attributes": {},
+                    "children": [
+                      {
+                        "tag": "h3",
+                        "text": "Slide 4",
+                        "class": "",
+                        "style": "",
+                        "attributes": {},
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "div",
+                "class": "swiper-slide swiper-slide--custom",
+                "style": "",
+                "attributes": {},
+                "children": [
+                  {
+                    "tag": "div",
+                    "class": "slide-content",
+                    "style": "height: 100%; border: 1px solid color-mix(in srgb, var(--slate-500) 78%, transparent); margin: 0 auto;",
+                    "attributes": {},
+                    "children": [
+                      {
+                        "tag": "h3",
+                        "text": "Slide 5",
+                        "class": "",
+                        "style": "",
+                        "attributes": {},
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "div",
+                "class": "swiper-slide swiper-slide--custom",
+                "style": "",
+                "attributes": {},
+                "children": [
+                  {
+                    "tag": "div",
+                    "class": "slide-content",
+                    "style": "height: 100%; border: 1px solid color-mix(in srgb, var(--slate-500) 78%, transparent); margin: 0 auto;",
+                    "attributes": {},
+                    "children": [
+                      {
+                        "tag": "h3",
+                        "text": "Slide 6",
+                        "class": "",
+                        "style": "",
+                        "attributes": {},
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "tag": "div",
+            "class": "swiper-custom-pagination",
+            "style": "display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 8px; margin-top: 16px; .custom-bullet { width: 8px; height: 8px; border-radius: 50%; background: var(--slate-300); opacity: 0.6; cursor: pointer; transition: all 0.3s ease; &.is-active { width: 12px; height: 12px; background: var(--teal-500); opacity: 1; } &:hover:not(.is-active) { opacity: 0.9; } }",
+            "attributes": {},
+            "children": []
+          }
+        ]
+      },
+      {
+        "tag": "div",
+        "class": "swiper-button-prev swiper-button-custom swiper-button-custom-prev",
+        "style": "left: 0; width: 40px !important; height: 40px !important; cursor: pointer; border-radius: 100%; border: none; background: color-mix(in srgb, var(--accent) 13%, transparent); backdrop-filter: blur(8px); color: var(--slate-400); outline: 2px solid transparent; outline-offset: 2px; transition: all 0.2s ease; top: 50%; transform: translate(0%, -50%); &::after { display: none; } &:hover { background: var(--accent); outline-color: var(--acent); color: var(--teal-400); } &:active { background: var(--teal-300); outline-color: var(--acent); color: var(--teal-200); }",
+        "attributes": {},
+        "children": [
+          {
+            "tag": "i",
+            "class": "svg-wrapper",
+            "style": "transition: all 0.2s ease-in-out; display: inline-block; line-height: 0; vertical-align: middle; width: 20px; height: 20px;",
+            "attributes": {},
+            "children": [
+              {
+                "tag": "svg",
+                "class": "",
+                "style": "",
+                "attributes": {
+                  "xmlns": "http://www.w3.org/2000/svg",
+                  "fill": "none",
+                  "viewBox": "0 0 24 24",
+                  "stroke-width": "1.5",
+                  "stroke": "currentColor"
+                },
+                "children": [
+                  {
+                    "tag": "path",
+                    "class": "",
+                    "style": "",
+                    "attributes": {
+                      "stroke-linecap": "round",
+                      "stroke-linejoin": "round",
+                      "d": "M15.75 19.5 8.25 12l7.5-7.5"
+                    },
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "tag": "div",
+        "class": "swiper-button-next swiper-button-custom swiper-button-custom-next",
+        "style": "right: 0; width: 40px !important; height: 40px !important; cursor: pointer; border-radius: 100%; border: none; background: color-mix(in srgb, var(--accent) 13%, transparent); backdrop-filter: blur(8px); color: var(--slate-400); outline: 2px solid transparent; outline-offset: 2px; transition: all 0.2s ease; top: 50%; transform: translate(0%, -50%); &::after { display: none; } &:hover { background: var(--accent); outline-color: var(--acent); color: var(--teal-400); } &:active { background: var(--teal-300); outline-color: var(--acent); color: var(--teal-200); }",
+        "attributes": {},
+        "children": [
+          {
+            "tag": "i",
+            "class": "svg-wrapper",
+            "style": "transition: all 0.2s ease-in-out; display: inline-block; line-height: 0; vertical-align: middle; width: 20px; height: 20px;",
+            "attributes": {},
+            "children": [
+              {
+                "tag": "svg",
+                "class": "",
+                "style": "",
+                "attributes": {
+                  "xmlns": "http://www.w3.org/2000/svg",
+                  "fill": "none",
+                  "viewBox": "0 0 24 24",
+                  "stroke-width": "1.5",
+                  "stroke": "currentColor"
+                },
+                "children": [
+                  {
+                    "tag": "path",
+                    "class": "",
+                    "style": "",
+                    "attributes": {
+                      "stroke-linecap": "round",
+                      "stroke-linejoin": "round",
+                      "d": "m8.25 4.5 7.5 7.5-7.5 7.5"
+                    },
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

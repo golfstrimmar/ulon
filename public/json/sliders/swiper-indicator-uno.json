@@ -1,0 +1,255 @@
+[
+  {
+    "tag": "div",
+    "text": "",
+    "class": "swiper custom-swiper-indicator-uno",
+    "style": "width: 100%;",
+    "attributes": {},
+    "children": [
+      {
+        "tag": "div",
+        "text": "",
+        "class": "swiper-wrapper",
+        "style": "",
+        "attributes": {},
+        "children": [
+          {
+            "tag": "div",
+            "text": "",
+            "class": "swiper-slide",
+            "style": "",
+            "attributes": {},
+            "children": [
+              {
+                "tag": "div",
+                "text": "",
+                "class": "slide-content",
+                "style": "width: 100%; height: 100%; border: 1px solid color-mix(in srgb, var(--slate-500) 78%, transparent);",
+                "attributes": {},
+                "children": [
+                  {
+                    "tag": "h3",
+                    "text": "slide 1",
+                    "class": "",
+                    "style": "",
+                    "attributes": {},
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "tag": "div",
+            "text": "",
+            "class": "swiper-slide",
+            "style": "",
+            "attributes": {},
+            "children": [
+              {
+                "tag": "div",
+                "text": "",
+                "class": "slide-content",
+                "style": "width: 100%; height: 100%; border: 1px solid color-mix(in srgb, var(--slate-500) 78%, transparent);",
+                "attributes": {},
+                "children": [
+                  {
+                    "tag": "h3",
+                    "text": "slide 2",
+                    "class": "",
+                    "style": "",
+                    "attributes": {},
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "tag": "div",
+            "text": "",
+            "class": "swiper-slide",
+            "style": "",
+            "attributes": {},
+            "children": [
+              {
+                "tag": "div",
+                "text": "",
+                "class": "slide-content",
+                "style": "width: 100%; height: 100%; border: 1px solid color-mix(in srgb, var(--slate-500) 78%, transparent);",
+                "attributes": {},
+                "children": [
+                  {
+                    "tag": "h3",
+                    "text": "slide 3",
+                    "class": "",
+                    "style": "",
+                    "attributes": {},
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "tag": "div",
+            "text": "",
+            "class": "swiper-slide",
+            "style": "",
+            "attributes": {},
+            "children": [
+              {
+                "tag": "div",
+                "text": "",
+                "class": "slide-content",
+                "style": "width: 100%; height: 100%; border: 1px solid color-mix(in srgb, var(--slate-500) 78%, transparent);",
+                "attributes": {},
+                "children": [
+                  {
+                    "tag": "h3",
+                    "text": "slide 4",
+                    "class": "",
+                    "style": "",
+                    "attributes": {},
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "tag": "div",
+        "text": "",
+        "class": "slider-controls",
+        "style": "display: flex; align-items: center; justify-content: space-between; margin-top: 16px; border: 1px solid color-mix(in srgb, var(--slate-700) 61%, transparent); background: color-mix(in srgb, var(--slate-500) 74%, transparent);",
+        "attributes": {},
+        "children": [
+          {
+            "tag": "button",
+            "text": "",
+            "class": "custom-prev-btn custom-btn",
+            "style": "background: #334155; color: var(--color-white); border: 1px solid rgba(255, 255, 255, 0.1); padding: 6px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s ease; display: flex; align-items: center; gap: 4px; &.is-disabled { opacity: 0.3; cursor: not-allowed; } &:hover:not(.is-disabled) { background: #0d9488; color: #ffffff; }",
+            "attributes": { "type": "button" },
+            "children": [
+              {
+                "tag": "i",
+                "text": "",
+                "class": "svg-wrapper",
+                "style": "",
+                "attributes": {},
+                "children": [
+                  {
+                    "tag": "svg",
+                    "text": "",
+                    "class": "",
+                    "style": "",
+                    "attributes": {
+                      "xmlns": "http://www.w3.org/2000/svg",
+                      "fill": "none",
+                      "viewBox": "0 0 24 24",
+                      "stroke-width": "1.5",
+                      "stroke": "currentColor"
+                    },
+                    "children": [
+                      {
+                        "tag": "path",
+                        "text": "",
+                        "class": "",
+                        "style": "",
+                        "attributes": {
+                          "stroke-linecap": "round",
+                          "stroke-linejoin": "round",
+                          "d": "M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"
+                        },
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "span",
+                "text": "Prev",
+                "class": "custom-btn-span",
+                "style": "display: block; font-size: 14px; font-weight: 700;",
+                "attributes": {},
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "div",
+            "text": "",
+            "class": "custom-pagination",
+            "style": "width: auto !important; font-family: monospace; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 4px; .swiper-pagination-fraction {} .swiper-pagination-current { font-size: 26px; font-weight: bold; color: var(--teal-500); min-width: 30px; border-radius: 4px; display: flex; flex-direction: row; align-items: center; justify-content: center; } .swiper-pagination-total { font-size: 16px; }",
+            "attributes": {},
+            "children": []
+          },
+          {
+            "tag": "button",
+            "text": "",
+            "class": "custom-next-btn custom-btn",
+            "style": "background: #334155; color: var(--color-white); border: 1px solid rgba(255, 255, 255, 0.1); padding: 6px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s ease; display: flex; align-items: center; gap: 4px; &.is-disabled { opacity: 0.3; cursor: not-allowed; } &:hover:not(.is-disabled) { background: #0d9488; color: #ffffff; }",
+            "attributes": { "type": "button" },
+            "children": [
+              {
+                "tag": "span",
+                "text": "Next",
+                "class": "custom-btn-span",
+                "style": "display: block; font-size: 14px; font-weight: 700;",
+                "attributes": {},
+                "children": []
+              },
+              {
+                "tag": "i",
+                "text": "",
+                "class": "svg-wrapper",
+                "style": "transition: all 0.2s ease-in-out; display: inline-block; line-height: 0; vertical-align: middle; width: 20px; height: 20px; svg { width: 100%; height: 100%; display: inline-block; }",
+                "attributes": {},
+                "children": [
+                  {
+                    "tag": "svg",
+                    "text": "",
+                    "class": "",
+                    "style": "",
+                    "attributes": {
+                      "xmlns": "http://www.w3.org/2000/svg",
+                      "fill": "none",
+                      "viewBox": "0 0 24 24",
+                      "stroke-width": "1.5",
+                      "stroke": "currentColor"
+                    },
+                    "children": [
+                      {
+                        "tag": "path",
+                        "text": "",
+                        "class": "",
+                        "style": "",
+                        "attributes": {
+                          "stroke-linecap": "round",
+                          "stroke-linejoin": "round",
+                          "d": "M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"
+                        },
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tag": "script",
+    "class": "",
+    "style": "",
+    "attributes": {},
+    "text": "/* @component: .custom-swiper-indicator-uno */ (function() { function initIndicatorUnoSwiper() { const container = document.querySelector('.custom-swiper-indicator-uno'); if (!container) return; new Swiper('.custom-swiper-indicator-uno', { slidesPerView: 1, spaceBetween: 20, loop: false, navigation: { nextEl: '.custom-swiper-indicator-uno .custom-next-btn', prevEl: '.custom-swiper-indicator-uno .custom-prev-btn', disabledClass: 'is-disabled' }, pagination: { el: '.custom-swiper-indicator-uno .custom-pagination', type: 'fraction', renderFraction: function (currentClass, totalClass) { return '<span class=\"' + currentClass + '\"></span> / <span class=\"' + totalClass + '\"></span>'; } } }); } if (!document.getElementById('swiper-css')) { const link = document.createElement('link'); link.id = 'swiper-css'; link.rel = 'stylesheet'; link.href = 'https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css'; document.head.appendChild(link); } if (typeof Swiper !== 'undefined') { initIndicatorUnoSwiper(); } else { let script = document.getElementById('swiper-js'); if (!script) { script = document.createElement('script'); script.id = 'swiper-js'; script.src = 'https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js'; document.head.appendChild(script); } script.addEventListener('load', initIndicatorUnoSwiper); } })();",
+    "children": []
+  }
+]

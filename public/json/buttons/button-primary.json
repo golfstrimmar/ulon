@@ -1,0 +1,38 @@
+[
+  {
+    "tag": "button",
+    "text": "",
+    "class": "btn-primary",
+    "style": "color: var(--blue-200); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0 10px 0 30px; border-radius: 14px; transition: all 200ms ease-in-out; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08); background-color: var(--navy-600); border: 1px solid var(--navy-600); position: relative; height: 30px; &:hover { border: 1px solid var(--purple-200); background-color: var(--slate-500); .buttonBack-svg { width: calc(100% - 4px); z-index: 5; } } &:active { transform: translateY(1px); background-color: var(--accent); }",
+    "children": [
+      {
+        "tag": "svg",
+        "text": "",
+        "class": "buttonBack-svg",
+        "style": "background: var(--teal-500); border-radius: 14px; width: 26px; height: 26px; display: flex; position: absolute; left: 2px; top: 50%; transform: translateY(-50%); color: var(--navy-600); transition: 0.2s all; padding: 0 0 0 0;",
+        "children": [
+          {
+            "tag": "path",
+            "text": "",
+            "class": "",
+            "style": "",
+            "children": [],
+            "attributes": {
+              "d": "M7.72 12.53a.75.75 0 0 1 0-1.06l7.5-7.5a.75.75 0 1 1 1.06 1.06L9.31 12l6.97 6.97a.75.75 0 1 1-1.06 1.06l-7.5-7.5Z",
+              "cliprule": "evenodd",
+              "fillrule": "evenodd"
+            }
+          }
+        ],
+        "attributes": {
+          "fill": "currentColor",
+          "xmlns": "http://www.w3.org/2000/svg",
+          "viewBox": "0 0 24 24"
+        }
+      }
+    ],
+    "attributes": {
+      "type": "button"
+    }
+  }
+]

@@ -1,0 +1,36 @@
+[
+  {
+    "tag": "button",
+    "text": "",
+    "class": "button-svg-l",
+    "style": "width: 40px;height: 40px;cursor: pointer;border-radius: 50%;border: none;background: color-mix(in srgb, var(--accent) 13%, transparent);backdrop-filter: blur(8px);color: var(--slate-400);outline: 2px solid transparent;outline-offset: 2px;transition: all 0.2s ease;&::after {  font-size: 16px;  font-weight: bold;}&:hover {  background: var(--accent);  outline-color: var(--acent);  color: var(--teal-400);}&:active {  background: var(--teal-300);  outline-color: var(--acent);  color: var(--teal-200);}",
+    "children": [
+      {
+        "tag": "svg",
+        "text": "",
+        "class": "",
+        "style": "height: 20px;width: 20px;",
+        "children": [
+          {
+            "tag": "path",
+            "text": "",
+            "class": "",
+            "style": "",
+            "children": [],
+            "attributes": {
+              "d": "M7.72 12.53a.75.75 0 0 1 0-1.06l7.5-7.5a.75.75 0 1 1 1.06 1.06L9.31 12l6.97 6.97a.75.75 0 1 1-1.06 1.06l-7.5-7.5Z",
+              "cliprule": "evenodd",
+              "fillrule": "evenodd"
+            }
+          }
+        ],
+        "attributes": {
+          "fill": "currentColor",
+          "xmlns": "http://www.w3.org/2000/svg",
+          "viewBox": "0 0 24 24"
+        }
+      }
+    ],
+    "attributes": { "type": "button" }
+  }
+]

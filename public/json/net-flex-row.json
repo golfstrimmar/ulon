@@ -1,0 +1,19 @@
+[
+  {
+    "tag": "ul",
+    "text": "",
+    "class": "net-flex-row",
+    "style": "display: flex; flex-direction: row; flex-wrap:wrap; gap: 40px; justify-content: space-between;",
+    "children": [
+      {
+        "tag": "li",
+        "text": "",
+        "class": "net-flex-row-item",
+        "style": "background: color-mix(in srgb, var(--navy-600) 50%, transparent); min-width: 250px; min-height: 350px;",
+        "children": [],
+        "attributes": {}
+      }
+    ],
+    "attributes": {}
+  }
+]

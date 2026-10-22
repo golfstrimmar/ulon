@@ -1,0 +1,9 @@
+[
+  {
+    "tag": "script",
+    "text": "/* @component: .form */document.addEventListener('submit', function(e) {\n  if (e.target.closest('form.form')) {\n    e.preventDefault();\n  }\n});",
+    "class": "",
+    "style": "",
+    "children": []
+  }
+]

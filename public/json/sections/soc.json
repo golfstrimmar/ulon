@@ -1,0 +1,314 @@
+[
+  {
+    "tag": "ul",
+    "text": "",
+    "class": "soc",
+    "style": "display: flex;\r\nalign-items: center;\r\ngap: 5px;\r\nlist-style: none;\r\n",
+    "attributes": {},
+    "children": [
+      {
+        "tag": "li",
+        "text": "",
+        "class": "soc-item",
+        "style": "",
+        "attributes": {},
+        "children": [
+          {
+            "tag": "a",
+            "text": "",
+            "class": "soc-link",
+            "style": "color: var(--color-white); display: inline-block;",
+            "attributes": {
+              "rel": "noopener noreferrer",
+              "href": "#!",
+              "target": ""
+            },
+            "children": [
+              {
+                "tag": "i",
+                "text": "",
+                "class": "svg-node-wrapper",
+                "style": "transition: all 0.2s ease-in-out; display: inline-block; line-height: 0; vertical-align: middle;",
+                "attributes": {},
+                "children": [
+                  {
+                    "tag": "svg",
+                    "text": "",
+                    "class": "",
+                    "style": "width: 100%; height: 100%; display: block;",
+                    "attributes": {
+                      "width": "10",
+                      "height": "18",
+                      "viewBox": "0 0 10 18",
+                      "fill": "none",
+                      "xmlns": "http://www.w3.org/2000/svg",
+                      "color": "currentColor"
+                    },
+                    "children": [
+                      {
+                        "tag": "path",
+                        "text": "",
+                        "class": "",
+                        "style": "",
+                        "attributes": {
+                          "d": "M8.88215 9.80206L9.37504 6.64838H6.29324V4.60186C6.29324 3.73908 6.72375 2.89807 8.10399 2.89807H9.50503V0.213059C9.50503 0.213059 8.23362 0 7.01803 0C4.48007 0 2.82114 1.51047 2.82114 4.24484V6.64838H0V9.80206H2.82114V17.4259H6.29324V9.80206H8.88215Z",
+                          "fill": "currentColor"
+                        },
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "tag": "li",
+        "text": "",
+        "class": "soc-item",
+        "style": "",
+        "attributes": {},
+        "children": [
+          {
+            "tag": "a",
+            "text": "",
+            "class": "soc-link",
+            "style": "color: var(--color-white); display: inline-block;",
+            "attributes": {
+              "rel": "noopener noreferrer",
+              "href": "#!",
+              "target": ""
+            },
+            "children": [
+              {
+                "tag": "i",
+                "text": "",
+                "class": "svg-node-wrapper",
+                "style": "transition: all 0.2s ease-in-out; display: inline-block; line-height: 0; vertical-align: middle;",
+                "attributes": {},
+                "children": [
+                  {
+                    "tag": "svg",
+                    "text": "",
+                    "class": "",
+                    "style": "width: 100%; height: 100%; display: block;",
+                    "attributes": {
+                      "width": "17",
+                      "height": "17",
+                      "viewBox": "0 0 17 17",
+                      "fill": "none",
+                      "xmlns": "http://www.w3.org/2000/svg",
+                      "color": "currentColor"
+                    },
+                    "children": [
+                      {
+                        "tag": "path",
+                        "text": "",
+                        "class": "",
+                        "style": "",
+                        "attributes": {
+                          "d": "M17 4.96273C17 4.01242 16.7888 3.48447 16.5776 2.85093C16.3665 2.32298 16.0497 1.79503 15.6273 1.37267C15.205 0.84472 14.677 0.63354 14.1491 0.42236C13.6211 0.21118 12.9876 0.10559 12.0373 0C11.087 0 10.7702 0 8.4472 0C6.22981 0 5.91304 0 4.96273 0C4.01242 0 3.48447 0.21118 2.85093 0.42236C2.32298 0.63354 1.79503 0.95031 1.37267 1.37267C0.95031 1.90062 0.63354 2.32298 0.42236 2.95652C0.21118 3.48447 0.10559 4.11801 0 4.96273C0 5.91304 0 6.22981 0 8.4472C0 10.7702 0 11.087 0 11.9317C0 12.882 0.21118 13.4099 0.42236 14.0435C0.63354 14.5714 0.95031 15.0994 1.37267 15.5217C1.90062 16.0497 2.32298 16.2609 2.85093 16.472C3.37888 16.6832 4.01242 16.7888 4.96273 16.8944C5.91304 16.8944 6.12422 16.8944 8.4472 16.8944C10.7702 16.8944 11.087 16.8944 11.9317 16.8944C12.882 16.8944 13.4099 16.6832 14.0435 16.472C14.5714 16.2609 15.0994 15.9441 15.5217 15.5217C16.0497 14.9938 16.2609 14.5714 16.472 14.0435C16.6832 13.5155 16.7888 12.882 16.8944 11.9317C17 10.9814 16.8944 10.7702 16.8944 8.4472C16.8944 6.12422 17 5.91304 17 4.96273ZM8.4472 12.882C6.01863 12.882 4.11801 10.8758 4.11801 8.5528C4.11801 6.12422 6.12422 4.2236 8.4472 4.2236C10.8758 4.2236 12.7764 6.22981 12.7764 8.5528C12.882 10.8758 10.8758 12.882 8.4472 12.882ZM12.9876 4.96273C12.4596 4.96273 11.9317 4.54037 11.9317 3.90683C11.9317 3.37888 12.354 2.85093 12.9876 2.85093C13.5155 2.85093 14.0435 3.27329 14.0435 3.90683C14.0435 4.54037 13.6211 4.96273 12.9876 4.96273Z",
+                          "fill": "currentColor"
+                        },
+                        "children": []
+                      },
+                      {
+                        "tag": "path",
+                        "text": "",
+                        "class": "",
+                        "style": "",
+                        "attributes": {
+                          "d": "M11.2976 8.44847C11.2976 10.0323 10.0305 11.2994 8.44663 11.2994C6.86278 11.2994 5.5957 10.0323 5.5957 8.44847C5.5957 6.86462 6.96837 5.70312 8.44663 5.70312C10.0305 5.70312 11.2976 6.97021 11.2976 8.44847Z",
+                          "fill": "currentColor"
+                        },
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "tag": "li",
+        "text": "",
+        "class": "soc-item",
+        "style": "",
+        "attributes": {},
+        "children": [
+          {
+            "tag": "a",
+            "text": "",
+            "class": "soc-link",
+            "style": "color: var(--color-white); display: inline-block;",
+            "attributes": {
+              "rel": "noopener noreferrer",
+              "href": "#!",
+              "target": ""
+            },
+            "children": [
+              {
+                "tag": "i",
+                "text": "",
+                "class": "svg-node-wrapper",
+                "style": "transition: all 0.2s ease-in-out; display: inline-block; line-height: 0; vertical-align: middle;",
+                "attributes": {},
+                "children": [
+                  {
+                    "tag": "svg",
+                    "text": "",
+                    "class": "",
+                    "style": "width: 100%; height: 100%; display: block;",
+                    "attributes": {
+                      "width": "18",
+                      "height": "16",
+                      "viewBox": "0 0 18 16",
+                      "fill": "none",
+                      "xmlns": "http://www.w3.org/2000/svg",
+                      "color": "currentColor"
+                    },
+                    "children": [
+                      {
+                        "tag": "path",
+                        "text": "",
+                        "class": "",
+                        "style": "",
+                        "attributes": {
+                          "d": "M15.6346 3.84783C15.6457 4.01669 15.6457 4.18559 15.6457 4.35445C15.6457 9.50499 12.0522 15.4396 5.48429 15.4396C3.46084 15.4396 1.58116 14.8003 0 13.6906C0.287493 13.7268 0.563891 13.7388 0.862445 13.7388C2.53203 13.7388 4.06898 13.1237 5.29631 12.0743C3.72621 12.0381 2.41042 10.9163 1.95708 9.37233C2.17824 9.40849 2.39936 9.43263 2.63158 9.43263C2.95222 9.43263 3.2729 9.38436 3.57142 9.29996C1.93499 8.93807 0.70762 7.37 0.70762 5.47623V5.428C1.18305 5.7175 1.73595 5.89843 2.32193 5.92252C1.35997 5.2229 0.729743 4.02876 0.729743 2.67778C0.729743 1.95406 0.906622 1.29064 1.21624 0.711652C2.97431 3.07584 5.61695 4.61978 8.5802 4.78868C8.52493 4.49918 8.49175 4.19766 8.49175 3.8961C8.49175 1.749 10.084 0 12.0632 0C13.0915 0 14.0202 0.470425 14.6726 1.23034C15.4798 1.06148 16.2538 0.735786 16.9393 0.289495C16.6739 1.19418 16.11 1.9541 15.3692 2.43655C16.0879 2.35216 16.7845 2.13499 17.4258 1.83347C16.9394 2.60542 16.3312 3.29294 15.6346 3.84783Z",
+                          "fill": "currentColor"
+                        },
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "tag": "li",
+        "text": "",
+        "class": "soc-item",
+        "style": "",
+        "attributes": {},
+        "children": [
+          {
+            "tag": "a",
+            "text": "",
+            "class": "soc-link",
+            "style": "color: var(--color-white); display: inline-block;",
+            "attributes": {
+              "rel": "noopener noreferrer",
+              "href": "#!",
+              "target": ""
+            },
+            "children": [
+              {
+                "tag": "i",
+                "text": "",
+                "class": "svg-node-wrapper",
+                "style": "transition: all 0.2s ease-in-out; display: inline-block; line-height: 0; vertical-align: middle;",
+                "attributes": {},
+                "children": [
+                  {
+                    "tag": "svg",
+                    "text": "",
+                    "class": "",
+                    "style": "width: 100%; height: 100%; display: block;",
+                    "attributes": {
+                      "width": "19",
+                      "height": "19",
+                      "viewBox": "0 0 19 19",
+                      "fill": "none",
+                      "xmlns": "http://www.w3.org/2000/svg",
+                      "color": "currentColor"
+                    },
+                    "children": [
+                      {
+                        "tag": "path",
+                        "text": "",
+                        "class": "",
+                        "style": "",
+                        "attributes": {
+                          "d": "M17.6522 0H1.35362C0.606794 0 0 0.589644 0 1.31348V16.9045C0 17.6283 0.606794 18.218 1.35362 18.218H17.6522C18.399 18.218 19.0101 17.6283 19.0101 16.9045V1.31348C19.0101 0.589644 18.399 0 17.6522 0ZM5.74545 15.6154H2.92789V6.9212H5.74969V15.6154H5.74545ZM4.33667 5.73378C3.43284 5.73378 2.70299 5.03027 2.70299 4.16817C2.70299 3.30607 3.43284 2.60257 4.33667 2.60257C5.23625 2.60257 5.97035 3.30607 5.97035 4.16817C5.97035 5.03434 5.24049 5.73378 4.33667 5.73378ZM16.3071 15.6154H13.4895V11.3862C13.4895 10.3777 13.4683 9.08052 12.0256 9.08052C10.5574 9.08052 10.3325 10.1785 10.3325 11.313V15.6154H7.51491V6.9212H10.2179V8.10862H10.2561C10.6337 7.42545 11.5545 6.70568 12.9251 6.70568C15.7766 6.70568 16.3071 8.50714 16.3071 10.8495V15.6154Z",
+                          "fill": "currentColor"
+                        },
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "tag": "li",
+        "text": "",
+        "class": "soc-item",
+        "style": "",
+        "attributes": {},
+        "children": [
+          {
+            "tag": "a",
+            "text": "",
+            "class": "soc-link",
+            "style": "color: var(--color-white); display: inline-block;",
+            "attributes": {
+              "rel": "noopener noreferrer",
+              "href": "#!",
+              "target": ""
+            },
+            "children": [
+              {
+                "tag": "i",
+                "text": "",
+                "class": "svg-node-wrapper",
+                "style": "transition: all 0.2s ease-in-out; display: inline-block; line-height: 0; vertical-align: middle;",
+                "attributes": {},
+                "children": [
+                  {
+                    "tag": "svg",
+                    "text": "",
+                    "class": "",
+                    "style": "width: 100%; height: 100%; display: block;",
+                    "attributes": {
+                      "width": "20",
+                      "height": "14",
+                      "viewBox": "0 0 20 14",
+                      "fill": "none",
+                      "xmlns": "http://www.w3.org/2000/svg",
+                      "color": "currentColor"
+                    },
+                    "children": [
+                      {
+                        "tag": "path",
+                        "text": "",
+                        "class": "",
+                        "style": "",
+                        "attributes": {
+                          "fill-rule": "evenodd",
+                          "clip-rule": "evenodd",
+                          "d": "M7.98844 9.58611V3.9743C9.98064 4.91173 11.5236 5.8173 13.3485 6.79363C11.8433 7.62834 9.98064 8.56491 7.98844 9.58611ZM19.091 1.18328C18.7474 0.730524 18.1616 0.378089 17.5381 0.261409C15.7053 -0.0866411 4.27099 -0.0876311 2.43915 0.261409C1.93911 0.355149 1.49384 0.581732 1.11133 0.933772C-0.500362 2.42967 0.00466618 10.4517 0.393147 11.7511C0.556507 12.3136 0.76769 12.7193 1.03365 12.9855C1.37631 13.3376 1.84547 13.5799 2.38436 13.6886C3.89345 14.0008 11.668 14.1753 17.5062 13.7355C18.0441 13.6418 18.5202 13.3916 18.8958 13.0246C20.3859 11.5347 20.2843 3.06213 19.091 1.18328Z",
+                          "fill": "currentColor"
+                        },
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

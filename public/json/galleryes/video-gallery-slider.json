@@ -1,0 +1,221 @@
+[
+  {
+    "tag": "section",
+    "text": "",
+    "class": "slider-full",
+    "style": "padding: 50px 0; background: var(--primary-hover); width: 100%; --plyr-color-main: var(--accent);",
+    "children": [
+      {
+        "tag": "div",
+        "text": "",
+        "class": "swiper sliderFull",
+        "style": "width: 100%; padding-bottom: 70px; position: relative; overflow: hidden !important;",
+        "children": [
+          {
+            "tag": "div",
+            "text": "",
+            "class": "swiper-wrapper",
+            "style": "",
+            "children": [
+              {
+                "tag": "div",
+                "text": "",
+                "class": "swiper-slide",
+                "style": "border-radius: 20px; overflow: hidden; background: var(--bg-base); aspect-ratio: 16/9; border: 1px solid rgba(255, 255, 255, 0.1); display: flex; align-items: center; justify-content: center; position: relative; z-index: 1; .plyr {height: 100%; width: 100%;} &:hover { .plyr__controls, .plyr__control--overlaid { opacity: 1 !important; visibility: visible !important; } }",
+                "children": [
+                  {
+                    "tag": "video",
+                    "text": "",
+                    "class": "slide-player",
+                    "style": ".plyr { height: 100%; width: 100%; } .plyr__poster { background-size: cover; } .plyr__controls, .plyr__control--overlaid { opacity: 0 !important; visibility: hidden !important; transition: opacity 0.4s ease, visibility 0.4s ease !important; }",
+                    "children": [
+                      {
+                        "tag": "source",
+                        "attributes": {
+                          "src": "https://media.w3.org/2010/05/sintel/trailer.mp4",
+                          "type": "video/mp4"
+                        }
+                      }
+                    ],
+                    "attributes": {
+                      "poster": "https://images.pexels.com/photos/3408744/pexels-photo-3408744.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+                      "controls": "",
+                      "playsinline": ""
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "div",
+                "text": "",
+                "class": "swiper-slide",
+                "style": "border-radius: 20px; overflow: hidden; background: var(--bg-base); aspect-ratio: 16/9; border: 1px solid rgba(255, 255, 255, 0.1); display: flex; align-items: center; justify-content: center; position: relative; z-index: 1; .plyr {height: 100%; width: 100%;} &:hover { .plyr__controls, .plyr__control--overlaid { opacity: 1 !important; visibility: visible !important; } }",
+                "children": [
+                  {
+                    "tag": "video",
+                    "text": "",
+                    "class": "slide-player",
+                    "style": ".plyr { height: 100%; width: 100%; } .plyr__poster { background-size: cover; } .plyr__controls, .plyr__control--overlaid { opacity: 0 !important; visibility: hidden !important; transition: opacity 0.4s ease, visibility 0.4s ease !important; }",
+                    "children": [
+                      {
+                        "tag": "source",
+                        "attributes": {
+                          "src": "https://vjs.zencdn.net/v/oceans.mp4",
+                          "type": "video/mp4"
+                        }
+                      }
+                    ],
+                    "attributes": {
+                      "poster": "https://images.pexels.com/photos/1001682/pexels-photo-1001682.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+                      "controls": "",
+                      "playsinline": ""
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "div",
+                "text": "",
+                "class": "swiper-slide",
+                "style": "border-radius: 20px; overflow: hidden; background: var(--bg-base); aspect-ratio: 16/9; border: 1px solid rgba(255, 255, 255, 0.1); display: flex; align-items: center; justify-content: center; position: relative; z-index: 1; .plyr {height: 100%; width: 100%;} &:hover { .plyr__controls, .plyr__control--overlaid { opacity: 1 !important; visibility: visible !important; } }",
+                "children": [
+                  {
+                    "tag": "video",
+                    "text": "",
+                    "class": "slide-player",
+                    "style": ".plyr { height: 100%; width: 100%; } .plyr__poster { background-size: cover; } .plyr__controls, .plyr__control--overlaid { opacity: 0 !important; visibility: hidden !important; transition: opacity 0.4s ease, visibility 0.4s ease !important; }",
+                    "children": [
+                      {
+                        "tag": "source",
+                        "attributes": {
+                          "src": "https://vjs.zencdn.net/v/oceans.mp4",
+                          "type": "video/mp4"
+                        }
+                      }
+                    ],
+                    "attributes": {
+                      "poster": "https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+                      "controls": "",
+                      "playsinline": ""
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "div",
+                "text": "",
+                "class": "swiper-slide",
+                "style": "border-radius: 20px; overflow: hidden; background: var(--bg-base); aspect-ratio: 16/9; border: 1px solid rgba(255, 255, 255, 0.1); display: flex; align-items: center; justify-content: center; position: relative; z-index: 1; .plyr {height: 100%; width: 100%;} &:hover { .plyr__controls, .plyr__control--overlaid { opacity: 1 !important; visibility: visible !important; } }",
+                "children": [
+                  {
+                    "tag": "video",
+                    "text": "",
+                    "class": "slide-player",
+                    "style": ".plyr { height: 100%; width: 100%; } .plyr__poster { background-size: cover; } .plyr__controls, .plyr__control--overlaid { opacity: 0 !important; visibility: hidden !important; transition: opacity 0.4s ease, visibility 0.4s ease !important; }",
+                    "children": [
+                      {
+                        "tag": "source",
+                        "attributes": {
+                          "src": "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+                          "type": "video/mp4"
+                        }
+                      }
+                    ],
+                    "attributes": {
+                      "poster": "https://images.pexels.com/photos/3408744/pexels-photo-3408744.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+                      "controls": "",
+                      "playsinline": ""
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "div",
+                "text": "",
+                "class": "swiper-slide",
+                "style": "border-radius: 20px; overflow: hidden; background: var(--bg-base); aspect-ratio: 16/9; border: 1px solid rgba(255, 255, 255, 0.1); display: flex; align-items: center; justify-content: center; position: relative; z-index: 1; .plyr {height: 100%; width: 100%;} &:hover { .plyr__controls, .plyr__control--overlaid { opacity: 1 !important; visibility: visible !important; } }",
+                "children": [
+                  {
+                    "tag": "video",
+                    "text": "",
+                    "class": "slide-player",
+                    "style": ".plyr { height: 100%; width: 100%; } .plyr__poster { background-size: cover; } .plyr__controls, .plyr__control--overlaid { opacity: 0 !important; visibility: hidden !important; transition: opacity 0.4s ease, visibility 0.4s ease !important; }",
+                    "children": [
+                      {
+                        "tag": "source",
+                        "attributes": {
+                          "src": "https://www.w3schools.com/html/movie.mp4",
+                          "type": "video/mp4"
+                        }
+                      }
+                    ],
+                    "attributes": {
+                      "poster": "https://images.pexels.com/photos/414612/pexels-photo-414612.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+                      "controls": "",
+                      "playsinline": ""
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "div",
+                "text": "",
+                "class": "swiper-slide",
+                "style": "border-radius: 20px; overflow: hidden; background: var(--bg-base); aspect-ratio: 16/9; border: 1px solid rgba(255, 255, 255, 0.1); display: flex; align-items: center; justify-content: center; position: relative; z-index: 1; .plyr {height: 100%; width: 100%;} &:hover { .plyr__controls, .plyr__control--overlaid { opacity: 1 !important; visibility: visible !important; } }",
+                "children": [
+                  {
+                    "tag": "video",
+                    "text": "",
+                    "class": "slide-player",
+                    "style": ".plyr { height: 100%; width: 100%; } .plyr__poster { background-size: cover; } .plyr__controls, .plyr__control--overlaid { opacity: 0 !important; visibility: hidden !important; transition: opacity 0.4s ease, visibility 0.4s ease !important; }",
+                    "children": [
+                      {
+                        "tag": "source",
+                        "attributes": {
+                          "src": "https://media.w3.org/2010/05/sintel/trailer.mp4",
+                          "type": "video/mp4"
+                        }
+                      }
+                    ],
+                    "attributes": {
+                      "poster": "https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+                      "controls": "",
+                      "playsinline": ""
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "tag": "div",
+            "text": "",
+            "class": "swiper-button-next",
+            "style": "width: 34px !important; height: 34px !important; background: rgba(156, 163, 175, 0.15) !important; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-radius: 50%; border: none; color: var(--slate-400) !important; outline: 2px solid transparent; outline-offset: 2px; transition: all 0.2s ease; position: absolute; z-index: 9999 !important; pointer-events: auto !important; cursor: pointer !important; bottom: 27px !important; top: auto; right: 10px !important; &:after { font-size: 14px !important; font-weight: bold; } &:hover { background: rgba(156, 163, 175, 0.35) !important; color: var(--accent) !important; outline-color: var(--accent); }",
+            "children": []
+          },
+          {
+            "tag": "div",
+            "text": "",
+            "class": "swiper-button-prev",
+            "style": "width: 34px !important; height: 34px !important; background: rgba(156, 163, 175, 0.15) !important; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-radius: 50%; border: none; color: var(--slate-400) !important; outline: 2px solid transparent; outline-offset: 2px; transition: all 0.2s ease; position: absolute; z-index: 9999 !important; pointer-events: auto !important; cursor: pointer !important; bottom: 27px !important; top: auto; left: 10px !important; &:after { font-size: 14px !important; font-weight: bold; } &:hover { background: rgba(156, 163, 175, 0.35) !important; color: var(--accent) !important; outline-color: var(--accent); }",
+            "children": []
+          },
+          {
+            "tag": "div",
+            "text": "",
+            "class": "swiper-pagination",
+            "style": "bottom: 35px !important; .swiper-pagination-bullet-active { background: var(--accent) !important; }",
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tag": "script",
+    "text": "/* @component: .slider-full */\n(function() {\n  const libs = {\n    swiper: { js: 'https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js', css: 'https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css' },\n    plyr: { js: 'https://cdn.plyr.io/3.7.8/plyr.js', css: 'https://cdn.plyr.io/3.7.8/plyr.css' }\n  };\n\n  const loadLib = (id, js, css, cb) => {\n    if (!document.getElementById(id)) {\n      const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = css; document.head.appendChild(l);\n      const s = document.createElement('script'); s.id = id; s.src = js; s.onload = cb; document.head.appendChild(s);\n    } else { cb(); }\n  };\n\n  const init = () => {\n    const swipers = document.querySelectorAll('.sliderFull');\n    swipers.forEach(s => {\n      if (!s.swiper) {\n        new Swiper(s, {\n          slidesPerView: 1, spaceBetween: 20,\n          loop: true, observer: true, observeParents: true,\n          pagination: { el: '.swiper-pagination', clickable: true },\n          navigation: { nextEl: '.swiper-button-next', prevEl: '.swiper-button-prev' },\n          breakpoints: { 768: { slidesPerView: 2 }, 1200: { slidesPerView: 3 } }\n        });\n      }\n    });\n\n    // Задержка, чтобы Swiper успел создать клоны слайдов (loop mode)\n    setTimeout(() => {\n      const videos = document.querySelectorAll('.slide-player');\n      videos.forEach(v => {\n        // Инициализируем Plyr только если он еще не создан на этом элементе\n        if (v && !v.plyr && !v.closest('.plyr')) {\n           new Plyr(v, {\n             autoplay: false,\n             controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen']\n           });\n        }\n      });\n    }, 500);\n  };\n\n  loadLib('swiper-full-v11', libs.swiper.js, libs.swiper.css, () => {\n    loadLib('plyr-full-v3', libs.plyr.js, libs.plyr.css, () => setTimeout(init, 300));\n  });\n})();",
+    "class": "script-slider-full",
+    "children": []
+  }
+]

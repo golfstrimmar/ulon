@@ -1,0 +1,12 @@
+[
+  {
+    "tag": "button",
+    "text": "Button",
+    "class": "button-grey",
+    "style": "display: flex; align-items: center; justify-content: center; outline: none; cursor: pointer; width: 150px; height: 50px; background-image: linear-gradient(to top, var(--grey-300) 0%, var(--color-white) 80%, var(--grey-100) 100%); border-radius: 30px; border: 1px solid var(--grey-500); transition: all 0.2s ease; font-family: 'Source Sans Pro', sans-serif; font-size: 14px; font-weight: 600; color: var(--grey-600); text-shadow: 0 1px var(--color-white); &:hover { box-shadow: 0 4px 3px 1px var(--grey-100), 0 6px 8px var(--grey-200), 0 -4px 4px var(--slate-300), 0 -6px 4px var(--slate-100), inset 0 0 3px 3px var(--slate-300); } &:active { box-shadow: 0 4px 3px 1px var(--grey-100), 0 6px 8px var(--grey-200), 0 -4px 4px var(--slate-300), 0 -6px 4px var(--slate-100), inset 0 0 5px 3px var(--grey-500), inset 0 0 30px var(--grey-500); } ",
+    "children": [],
+    "attributes": {
+      "type": "button"
+    }
+  }
+]

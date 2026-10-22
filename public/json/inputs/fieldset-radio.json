@@ -1,0 +1,132 @@
+[
+  {
+    "tag": "fieldset",
+    "text": "",
+    "class": "field-radio",
+    "style": "margin: 0;\r\npadding: 0;\r\nborder: none;\r\ndisplay: flex;\r\nflex-direction: column;\r\ngap: 2px;\r\n\r\n.f-radio {\r\n  position: relative;\r\n\r\n  input {\r\n    position: fixed !important;\r\n    left: -9999px !important;\r\n    height: 0;\r\n    width: 0;\r\n\r\n    &:checked+label {\r\n      color: var(--bg-surface);\r\n    }\r\n\r\n    &:checked+label::before {\r\n      border-color: var(--bg-surface);\r\n    }\r\n\r\n    &:checked+label::after {\r\n      opacity: 1;\r\n    }\r\n  }\r\n\r\n  label {\r\n    display: inline-block;\r\n    position: relative;\r\n    cursor: pointer;\r\n    opacity: 1;\r\n    line-height: 17px;\r\n    padding: 0 0 0 28px;\r\n    transition: all 0.2s ease-in-out;\r\n\r\n    &:hover {\r\n      color: var(--bg-surface);\r\n    }\r\n\r\n    &:hover::before {\r\n      border-color: var(--bg-surface);\r\n    }\r\n\r\n    &::before,\r\n    &::after {\r\n      display: block;\r\n      transition: all 0.2s ease-in-out;\r\n      content: '';\r\n      position: absolute;\r\n      left: 0;\r\n      top: 0;\r\n    }\r\n\r\n    &::before {\r\n      border-radius: 50%;\r\n      width: 16px;\r\n      height: 16px;\r\n      border: 2px solid var(--text-main);\r\n      background: transparent;\r\n    }\r\n\r\n    &::after {\r\n      width: 10px;\r\n      height: 10px;\r\n      border-radius: 100%;\r\n      top: -3px;\r\n      left: -3px;\r\n      transform: translate(6px, 6px);\r\n      border: 2px solid var(--bg-surface);\r\n      background-color: var(--bg-surface);\r\n      opacity: 0;\r\n    }\r\n  }\r\n}",
+    "children": [
+      {
+        "tag": "div",
+        "text": "",
+        "class": "f-radio",
+        "style": "",
+        "children": [
+          {
+            "tag": "input",
+            "text": "",
+            "class": "",
+            "style": "",
+            "children": [],
+            "attributes": {
+              "id": "10",
+              "name": "a",
+              "type": "radio",
+              "value": "16-25",
+              "checked": ""
+            }
+          },
+          {
+            "tag": "label",
+            "text": "16-25",
+            "class": "",
+            "style": "",
+            "children": [],
+            "attributes": { "for": "10" }
+          }
+        ],
+        "attributes": {}
+      },
+      {
+        "tag": "div",
+        "text": "",
+        "class": "f-radio",
+        "style": "",
+        "children": [
+          {
+            "tag": "input",
+            "text": "",
+            "class": "",
+            "style": "",
+            "children": [],
+            "attributes": {
+              "id": "11",
+              "name": "a",
+              "type": "radio",
+              "value": "26-35"
+            }
+          },
+          {
+            "tag": "label",
+            "text": "26-35",
+            "class": "",
+            "style": "",
+            "children": [],
+            "attributes": { "for": "11" }
+          }
+        ],
+        "attributes": {}
+      },
+      {
+        "tag": "div",
+        "text": "",
+        "class": "f-radio",
+        "style": "",
+        "children": [
+          {
+            "tag": "input",
+            "text": "",
+            "class": "",
+            "style": "",
+            "children": [],
+            "attributes": {
+              "id": "12",
+              "name": "a",
+              "type": "radio",
+              "value": "36-45"
+            }
+          },
+          {
+            "tag": "label",
+            "text": "36-45",
+            "class": "",
+            "style": "",
+            "children": [],
+            "attributes": { "for": "12" }
+          }
+        ],
+        "attributes": {}
+      },
+      {
+        "tag": "div",
+        "text": "",
+        "class": "f-radio",
+        "style": "",
+        "children": [
+          {
+            "tag": "input",
+            "text": "",
+            "class": "",
+            "style": "",
+            "children": [],
+            "attributes": {
+              "id": "13",
+              "name": "a",
+              "type": "radio",
+              "value": "55"
+            }
+          },
+          {
+            "tag": "label",
+            "text": "more 45",
+            "class": "",
+            "style": "",
+            "children": [],
+            "attributes": { "for": "13" }
+          }
+        ],
+        "attributes": {}
+      }
+    ],
+    "attributes": {}
+  }
+]

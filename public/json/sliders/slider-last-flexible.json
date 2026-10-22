@@ -1,0 +1,287 @@
+[
+  {
+    "tag": "section",
+    "text": "",
+    "class": "slider-last-flexible",
+    "style": "",
+    "children": [
+      {
+        "tag": "div",
+        "text": "",
+        "class": "carousel__nav",
+        "style": "display: flex; gap: 12px; margin: 20px 0; justify-content: flex-end;",
+        "children": [
+          {
+            "tag": "button",
+            "text": "",
+            "class": "carousel__btn carousel__btn--prev",
+            "style": "backdrop-filter: blur(8px); width: 45px; height: 45px; cursor: pointer; border-radius: 50%; border: none; background: color-mix(in srgb, var(--accent) 13%, transparent); color: var(--slate-400); outline: 2px solid transparent; outline-offset: 2px; transition: all 0.2s ease; &:hover { background: var(--accent); outline-color: var(--accent); color: var(--teal-400); } &:active { background: var(--teal-300); outline-color: var(--accent); color: var(--teal-200); }",
+            "children": [
+              {
+                "tag": "svg",
+                "text": "",
+                "class": "",
+                "style": "height: 20px; width: 20px;",
+                "children": [
+                  {
+                    "tag": "path",
+                    "text": "",
+                    "class": "",
+                    "style": "",
+                    "children": [],
+                    "attributes": {
+                      "d": "M7.72 12.53a.75.75 0 0 1 0-1.06l7.5-7.5a.75.75 0 1 1 1.06 1.06L9.31 12l6.97 6.97a.75.75 0 1 1-1.06 1.06l-7.5-7.5Z",
+                      "clip-rule": "evenodd",
+                      "fill-rule": "evenodd"
+                    }
+                  }
+                ],
+                "attributes": {
+                  "fill": "currentColor",
+                  "xmlns": "http://www.w3.org/2000/svg",
+                  "viewBox": "0 0 24 24"
+                }
+              }
+            ],
+            "attributes": { "type": "button" }
+          },
+          {
+            "tag": "button",
+            "text": "",
+            "class": "carousel__btn carousel__btn--next",
+            "style": "backdrop-filter: blur(8px); width: 45px; height: 45px; cursor: pointer; border-radius: 50%; border: none; background: color-mix(in srgb, var(--accent) 13%, transparent); color: var(--slate-400); outline: 2px solid transparent; outline-offset: 2px; transition: all 0.2s ease; &:hover { background: var(--accent); outline-color: var(--accent); color: var(--teal-400); } &:active { background: var(--teal-300); outline-color: var(--accent); color: var(--teal-200); }",
+            "children": [
+              {
+                "tag": "svg",
+                "text": "",
+                "class": "",
+                "style": "height: 20px; width: 20px;",
+                "children": [
+                  {
+                    "tag": "path",
+                    "text": "",
+                    "class": "",
+                    "style": "",
+                    "children": [],
+                    "attributes": {
+                      "d": "M16.28 11.47a.75.75 0 0 1 0 1.06l-7.5 7.5a.75.75 0 0 1-1.06-1.06L14.69 12 7.72 5.03a.75.75 0 0 1 1.06-1.06l7.5 7.5Z",
+                      "clip-rule": "evenodd",
+                      "fill-rule": "evenodd"
+                    }
+                  }
+                ],
+                "attributes": {
+                  "fill": "currentColor",
+                  "xmlns": "http://www.w3.org/2000/svg",
+                  "viewBox": "0 0 24 24"
+                }
+              }
+            ],
+            "attributes": { "type": "button" }
+          }
+        ],
+        "attributes": {}
+      },
+      {
+        "tag": "div",
+        "text": "",
+        "class": "carousel__wrapper",
+        "style": "display: flex; gap: 40px; @media (max-width: 768px) { flex-direction: column; }",
+        "children": [
+          {
+            "tag": "div",
+            "text": "",
+            "class": "carousel__slider-container",
+            "style": " min-width: 0;flex: 1;",
+            "children": [
+              {
+                "tag": "div",
+                "text": "",
+                "class": "swiper carouselSwiperFlexible",
+                "style": "width: 100%;",
+                "children": [
+                  {
+                    "tag": "div",
+                    "text": "",
+                    "class": "swiper-wrapper",
+                    "style": "",
+                    "children": [
+                      {
+                        "tag": "div",
+                        "text": "",
+                        "class": "swiper-slide swiper-slide--carousel",
+                        "style": "",
+                        "children": [
+                          {
+                            "tag": "div",
+                            "text": "",
+                            "class": "slide-content",
+                            "style": "height: 100%; border: 1px solid color-mix(in srgb, var(--slate-500) 78%, transparent); margin: 0 auto;",
+                            "children": [
+                              {
+                                "tag": "h3",
+                                "text": "Project A",
+                                "class": "",
+                                "style": "",
+                                "children": [],
+                                "attributes": {}
+                              }
+                            ],
+                            "attributes": {}
+                          }
+                        ],
+                        "attributes": {}
+                      },
+                      {
+                        "tag": "div",
+                        "text": "",
+                        "class": "swiper-slide swiper-slide--carousel",
+                        "style": "",
+                        "children": [
+                          {
+                            "tag": "div",
+                            "text": "",
+                            "class": "slide-content",
+                            "style": "",
+                            "children": [
+                              {
+                                "tag": "h3",
+                                "text": "Project B",
+                                "class": "",
+                                "style": "",
+                                "children": [],
+                                "attributes": {}
+                              }
+                            ],
+                            "attributes": {}
+                          }
+                        ],
+                        "attributes": {}
+                      },
+                      {
+                        "tag": "div",
+                        "text": "",
+                        "class": "swiper-slide swiper-slide--carousel",
+                        "style": "",
+                        "children": [
+                          {
+                            "tag": "div",
+                            "text": "",
+                            "class": "slide-content",
+                            "style": "",
+                            "children": [
+                              {
+                                "tag": "h3",
+                                "text": "Project C",
+                                "class": "",
+                                "style": "",
+                                "children": [],
+                                "attributes": {}
+                              }
+                            ],
+                            "attributes": {}
+                          }
+                        ],
+                        "attributes": {}
+                      },
+                      {
+                        "tag": "div",
+                        "text": "",
+                        "class": "swiper-slide swiper-slide--carousel",
+                        "style": "",
+                        "children": [
+                          {
+                            "tag": "div",
+                            "text": "",
+                            "class": "slide-content",
+                            "style": "",
+                            "children": [
+                              {
+                                "tag": "h3",
+                                "text": "Project D",
+                                "class": "",
+                                "style": "",
+                                "children": [],
+                                "attributes": {}
+                              }
+                            ],
+                            "attributes": {}
+                          }
+                        ],
+                        "attributes": {}
+                      },
+                      {
+                        "tag": "div",
+                        "text": "",
+                        "class": "swiper-slide swiper-slide--carousel",
+                        "style": "",
+                        "children": [
+                          {
+                            "tag": "div",
+                            "text": "",
+                            "class": "slide-content",
+                            "style": "",
+                            "children": [
+                              {
+                                "tag": "h3",
+                                "text": "Project E",
+                                "class": "",
+                                "style": "",
+                                "children": [],
+                                "attributes": {}
+                              }
+                            ],
+                            "attributes": {}
+                          }
+                        ],
+                        "attributes": {}
+                      },
+                      {
+                        "tag": "div",
+                        "text": "",
+                        "class": "swiper-slide swiper-slide--carousel",
+                        "style": "",
+                        "children": [
+                          {
+                            "tag": "div",
+                            "text": "",
+                            "class": "slide-content",
+                            "style": "",
+                            "children": [
+                              {
+                                "tag": "h3",
+                                "text": "Project F",
+                                "class": "",
+                                "style": "",
+                                "children": [],
+                                "attributes": {}
+                              }
+                            ],
+                            "attributes": {}
+                          }
+                        ],
+                        "attributes": {}
+                      }
+                    ],
+                    "attributes": {}
+                  }
+                ],
+                "attributes": {}
+              }
+            ],
+            "attributes": {}
+          }
+        ],
+        "attributes": {}
+      }
+    ],
+    "attributes": {}
+  },
+  {
+    "tag": "script",
+    "text": "/* @component: .slider-last-flexible */\n(function () {\n  const RIGHTMOST_OFFSET = 2; // 1-й (172px), 2-й (172px), 3-й (400px)\n\n  function updateExpandedSlide(swiper) {\n    if (!swiper || !swiper.slides || swiper.slides.length === 0) return;\n\n    const totalSlides = swiper.slides.length;\n    // Безопасный расчет с замыканием по кругу (чтобы не уходить за пределы массива)\n    const targetIndex = (swiper.activeIndex + RIGHTMOST_OFFSET) % totalSlides;\n\n    swiper.slides.forEach((slide, index) => {\n      if (index === targetIndex) {\n        slide.classList.add('is-expanded');\n      } else {\n        slide.classList.remove('is-expanded');\n      }\n    });\n  }\n\n  function initCarousel() {\n    const container = document.querySelector('.carouselSwiperFlexible');\n    if (!container) return;\n\n    const wrapper = container.querySelector('.swiper-wrapper');\n    if (wrapper) {\n      const originalSlides = Array.from(wrapper.children);\n      // Если в верстке мало слайдов (меньше 10), дублируем их для идеального бесконечного цикла\n      if (originalSlides.length > 0 && originalSlides.length < 10) {\n        const repeatCount = Math.ceil(10 / originalSlides.length);\n        for (let i = 1; i < repeatCount; i++) {\n          originalSlides.forEach((slide) => {\n            wrapper.appendChild(slide.cloneNode(true));\n          });\n        }\n      }\n    }\n\n    new Swiper('.carouselSwiperFlexible', {\n      slidesPerView: 'auto',\n      spaceBetween: 16,\n      loop: true,\n      loopAdditionalSlides: 8, // Запас клонов с обеих сторон\n      loopPreventsSliding: false, // Запрещаем блокировку свайпа\n      watchSlidesProgress: true,\n      grabCursor: true,\n      speed: 450,\n      navigation: {\n        nextEl: '.carousel__btn--next',\n        prevEl: '.carousel__btn--prev',\n      },\n      observer: true,\n      observeParents: true,\n      on: {\n        init: function () {\n          updateExpandedSlide(this);\n        },\n        beforeSlideChangeStart: function () {\n          updateExpandedSlide(this);\n        },\n        slideChangeTransitionStart: function () {\n          updateExpandedSlide(this);\n        },\n        loopFix: function () {\n          updateExpandedSlide(this);\n        }\n      }\n    });\n  }\n\n  // Стили\n  if (!document.getElementById('carousel-dynamic-sizes-css')) {\n    const style = document.createElement('style');\n    style.id = 'carousel-dynamic-sizes-css';\n    style.textContent = `\n      /* Ровно 3 слайда: 172 + 16 + 172 + 16 + 400 = 776px */\n      .carouselSwiperFlexible {\n        max-width: 776px !important;\n        width: 100%;\n        overflow: hidden;\n      }\n\n      .carouselSwiperFlexible .swiper-slide {\n        width: 172px !important;\n        flex-shrink: 0;\n        box-sizing: border-box;\n        transition: width 0.45s cubic-bezier(0.25, 1, 0.5, 1);\n        overflow: hidden;\n      }\n      \n      .carouselSwiperFlexible .swiper-slide.is-expanded {\n        width: 400px !important;\n      }\n\n      /* Защита от блокировки кнопок навигации */\n      .carousel__btn--next, .carousel__btn--prev {\n        pointer-events: auto !important;\n        opacity: 1 !important;\n        cursor: pointer !important;\n      }\n    `;\n    document.head.appendChild(style);\n  }\n\n  // Подключение Swiper CSS\n  if (!document.getElementById('swiper-css')) {\n    const link = document.createElement('link');\n    link.id = 'swiper-css';\n    link.rel = 'stylesheet';\n    link.href = 'https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css';\n    document.head.appendChild(link);\n  }\n\n  // Загрузка Swiper JS и инициализация\n  if (typeof Swiper !== 'undefined') {\n    initCarousel();\n  } else {\n    let script = document.getElementById('swiper-js');\n    if (!script) {\n      script = document.createElement('script');\n      script.id = 'swiper-js';\n      script.src = 'https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js';\n      document.head.appendChild(script);\n    }\n    script.addEventListener('load', initCarousel);\n  }\n})();",
+    "class": "",
+    "children": [],
+    "attributes": {}
+  }
+]

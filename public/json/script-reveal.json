@@ -1,0 +1,6 @@
+[
+  {
+    "tag": "script",
+    "text": "/* rev-on-scroll */\nconst obs = new IntersectionObserver((es) => {\n  const visible = es.filter(e => e.isIntersecting && !e.target.classList.contains('active'));\n  visible.forEach((e, i) => {\n    setTimeout(() => {\n      e.target.classList.add('active');\n    }, i * 150);\n  });\n}, { threshold: 0.1, rootMargin: '0px 0px -100px 0px' });\nconst scan = () => document.querySelectorAll('.rev-on-scroll:not(.active)').forEach(el => obs.observe(el));\nconst mo = new MutationObserver(scan);\nmo.observe(document.body, { childList: true, subtree: true });\nscan();\n/* /rev-on-scroll */"
+  }
+]

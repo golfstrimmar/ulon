@@ -1,0 +1,40 @@
+[
+  {
+    "tag": "ul",
+    "text": "",
+    "class": "",
+    "style": "",
+    "children": [
+      {
+        "tag": "li",
+        "text": "",
+        "class": "",
+        "style": "",
+        "children": [
+          {
+            "tag": "a",
+            "text": "",
+            "class": "",
+            "style": "",
+            "children": [
+              {
+                "tag": "i",
+                "text": "",
+                "class": "",
+                "style": "",
+                "children": []
+              },
+              {
+                "tag": "span",
+                "text": "",
+                "class": "",
+                "style": "",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

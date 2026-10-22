@@ -1,0 +1,12 @@
+[
+  {
+    "tag": "button",
+    "text": "Lorem",
+    "class": "btn",
+    "style": "display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease-in-out; border: 1px solid transparent;&:hover { background-color: var(--accent-hover); color: var(--color-white); } &:active { transform: translateY(1px); }",
+    "children": [],
+    "attributes": {
+      "type": "button"
+    }
+  }
+]

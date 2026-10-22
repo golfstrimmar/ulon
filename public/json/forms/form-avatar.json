@@ -1,0 +1,244 @@
+[
+  {
+    "tag": "div",
+    "text": "",
+    "class": "form-avatar",
+    "style": "width: 100%;\r\nmax-width: 520px;\r\ndisplay: flex;\r\nflex-direction: column;\r\ngap: 2rem;\r\nfont-size: 0.875rem;\r\nline-height: 1.5rem;\r\nfont-weight: 600;\r\ncolor: var(--navy-900);",
+    "attributes": {},
+    "children": [
+      {
+        "tag": "div",
+        "text": "",
+        "class": "form-section",
+        "style": "",
+        "children": [
+          {
+            "tag": "label",
+            "text": "Photo",
+            "class": "section-label",
+            "style": "\r\n\r\nmargin-bottom: 0.75rem;",
+            "children": []
+          },
+          {
+            "tag": "div",
+            "text": "",
+            "class": "photo-content",
+            "style": "display: flex; align-items: center; gap: 1rem;",
+            "children": [
+              {
+                "tag": "div",
+                "text": "",
+                "class": "avatar-display",
+                "style": "",
+                "children": [
+                  {
+                    "tag": "svg",
+                    "text": "",
+                    "class": "avatar-icon",
+                    "style": "display: block; width: 3rem; height: 3rem; color: var(--navy-200);",
+                    "attributes": {
+                      "id": "avatar-icon",
+                      "fill": "currentColor",
+                      "viewBox": "0 0 24 24",
+                      "aria-hidden": "true"
+                    },
+                    "children": [
+                      {
+                        "tag": "path",
+                        "text": "",
+                        "class": "",
+                        "style": "",
+                        "attributes": {
+                          "d": "M18.685 19.097A9.723 9.723 0 0 0 21.75 12c0-5.385-4.365-9.75-9.75-9.75S2.25 6.615 2.25 12a9.723 9.723 0 0 0 3.065 7.097A9.716 9.716 0 0 0 12 21.75a9.716 9.716 0 0 0 6.685-2.653Zm-12.54-1.285A7.486 7.486 0 0 1 12 15a7.486 7.486 0 0 1 5.855 2.812A8.224 8.224 0 0 1 12 20.25a8.224 8.224 0 0 1-5.855-2.438ZM15.75 9a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z",
+                          "clip-rule": "evenodd",
+                          "fill-rule": "evenodd"
+                        },
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "img",
+                    "text": "",
+                    "class": "avatar-preview",
+                    "style": "display: none; width: 3rem; height: 3rem; border-radius: 50%; object-fit: cover;",
+                    "attributes": {
+                      "id": "avatar-preview",
+                      "alt": "Avatar preview"
+                    },
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "tag": "button",
+                "text": "Change",
+                "class": "change-btn btn-primary",
+                "style": "color: var(--blue-200);\r\ndisplay: inline-flex;\r\nalign-items: center;\r\njustify-content: center;\r\ncursor: pointer;\r\npadding: 0 10px ;\r\nborder-radius: 4px;\r\ntransition: all 200ms ease-in-out;\r\nbox-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);\r\nbackground-color: var(--navy-600);\r\nborder: 1px solid var(--navy-600);\r\nposition: relative;\r\nheight: 30px;\r\n\r\n&:hover {\r\n  border: 1px solid var(--purple-200);\r\n  background-color: var(--slate-500);\r\n}\r\n\r\n&:active {\r\n  transform: translateY(1px);\r\n  background-color: var(--accent);\r\n}",
+                "children": [],
+                "attributes": { "type": "button" }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "tag": "div",
+        "text": "",
+        "class": "form-section",
+        "style": "",
+        "children": [
+          {
+            "tag": "label",
+            "text": "Cover photo",
+            "class": "section-label",
+            "style": "display: block;\r\n\r\nmargin-bottom: 0.75rem;",
+            "children": []
+          },
+          {
+            "tag": "div",
+            "text": "",
+            "class": "upload-dropzone",
+            "style": "position: relative; display: flex; justify-content: center; border-radius: 0.75rem; border: 2px dashed rgba(30, 41, 59, 0.2); padding: 3rem 1.5rem; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; background-color: rgba(248, 250, 252, 0.6);",
+            "attributes": { "id": "drop-zone" },
+            "children": [
+              {
+                "tag": "div",
+                "text": "",
+                "class": "upload-content",
+                "style": "text-align: center;",
+                "children": [
+                  {
+                    "tag": "svg",
+                    "text": "",
+                    "class": "upload-icon",
+                    "style": "width: 3.25rem; height: 3.25rem; margin: 0 auto; color: var(--navy-200); transition: color 0.3s ease;",
+                    "attributes": {
+                      "fill": "currentColor",
+                      "viewBox": "0 0 24 24",
+                      "aria-hidden": "true"
+                    },
+                    "children": [
+                      {
+                        "tag": "path",
+                        "text": "",
+                        "class": "",
+                        "style": "",
+                        "attributes": {
+                          "d": "M1.5 6a2.25 2.25 0 0 1 2.25-2.25h16.5A2.25 2.25 0 0 1 22.5 6v12a2.25 2.25 0 0 1-2.25 2.25H3.75A2.25 2.25 0 0 1 1.5 18V6ZM3 16.06V18c0 .414.336.75.75.75h16.5A.75.75 0 0 0 21 18v-1.94l-2.69-2.689a1.5 1.5 0 0 0-2.12 0l-.88.879.97.97a.75.75 0 1 1-1.06 1.06l-5.16-5.159a1.5 1.5 0 0 0-2.12 0L3 16.061Zm10.125-7.81a1.125 1.125 0 1 1 2.25 0 1.125 1.125 0 0 1-2.25 0Z",
+                          "clip-rule": "evenodd",
+                          "fill-rule": "evenodd"
+                        },
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "div",
+                    "text": "",
+                    "class": "upload-text-wrapper",
+                    "style": "margin-top: 1.25rem; display: flex; flex-direction: column; align-items: center;",
+                    "children": [
+                      {
+                        "tag": "div",
+                        "text": "",
+                        "class": "upload-text",
+                        "style": "display: flex; align-items: center; font-size: 0.9rem; line-height: 1.5rem; color: var(--navy-400);",
+                        "children": [
+                          {
+                            "tag": "span",
+                            "text": "Upload a file",
+                            "class": "upload-trigger",
+                            "style": "position: relative;\r\nfont-weight: 600;\r\ncolor: var(--sky-500);\r\nborder-radius: 0.375rem;\r\ncursor: pointer;\r\nbackground: transparent;\r\ntransition: all 0.2s ease;\r\npadding: 0 2px;\r\n\r\n&:hover {\r\n  color: var(--sky-300);\r\n}",
+                            "children": []
+                          },
+                          {
+                            "tag": "input",
+                            "text": "",
+                            "class": "sr-only",
+                            "style": "position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0;",
+                            "attributes": {
+                              "id": "file-upload",
+                              "name": "file-upload",
+                              "type": "file",
+                              "accept": "image/*"
+                            },
+                            "children": []
+                          },
+                          {
+                            "tag": "span",
+                            "text": "or drag and drop",
+                            "class": "upload-drag-text",
+                            "style": "padding-left: 0.35rem;",
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "tag": "p",
+                        "text": "PNG, JPG, GIF up to 10MB",
+                        "class": "upload-hint",
+                        "style": "font-size: 0.75rem; margin-top: 2px; color: var(--slate-300); letter-spacing: 0.01em;",
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "tag": "div",
+            "text": "",
+            "class": "file-info",
+            "style": "display: none; margin-top: 1.25rem; padding: 0.875rem 1rem; background: var(--color-white); border: 1px solid rgba(226, 232, 240, 1); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); border-radius: 0.5rem; align-items: center; justify-content: space-between; width: 100%; transition: all 0.3s ease-out;",
+            "attributes": { "id": "file-info" },
+            "children": [
+              {
+                "tag": "div",
+                "text": "",
+                "class": "file-info-left",
+                "style": "display: flex; align-items: center; gap: 0.75rem; overflow: hidden;",
+                "children": [
+                  {
+                    "tag": "img",
+                    "text": "",
+                    "class": "file-info-thumb",
+                    "style": "width: 32px; height: 32px; border-radius: 0.25rem; object-fit: cover; flex-shrink: 0; border: 1px solid rgba(226, 232, 240, 1);",
+                    "attributes": {
+                      "id": "file-info-thumb",
+                      "alt": "Thumbnail"
+                    },
+                    "children": []
+                  },
+                  {
+                    "tag": "span",
+                    "text": "",
+                    "class": "file-name",
+                    "style": "font-size: 0.875rem; font-weight: 500; color: var(--slate-600); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px;",
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "tag": "button",
+                "text": "×",
+                "class": "remove-file",
+                "style": "background: none;\r\nborder: none;\r\ncolor: var(--color-red);\r\nwidth: 32px;\r\nheight: 32px;\r\ncursor: pointer;\r\nline-height: 1;\r\npadding: 0.25rem;\r\nborder-radius: 50%;\r\ntransition: all 0.2s;\r\n\r\n&:hover {\r\n  background: rgba(244, 63, 94, 0.1);\r\n  color: var(--color-red);\r\n}",
+                "attributes": { "type": "button", "title": "Remove image" },
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tag": "script",
+    "class": "",
+    "attributes": {},
+    "text": "/* @component: form-avatar */\n(function () {\n  function initUpload() {\n    const containers = document.querySelectorAll('.form-avatar');\n    \n    containers.forEach(container => {\n      if (container.dataset.initialized) return;\n\n      const dropZone = container.querySelector('.upload-dropzone');\n      const fileInput = container.querySelector('input[type=\"file\"]');\n      const fileInfo = container.querySelector('.file-info');\n      const fileNameDisplay = container.querySelector('.file-name');\n      const removeBtn = container.querySelector('.remove-file');\n      const avatarIcon = container.querySelector('.avatar-icon');\n      const avatarPreview = container.querySelector('.avatar-preview');\n      const changeBtn = container.querySelector('.change-btn');\n      const fileInfoThumb = container.querySelector('.file-info-thumb');\n\n      if (!dropZone || !fileInput) return;\n\n      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {\n        dropZone.addEventListener(eventName, preventDefaults, false);\n        document.body.addEventListener(eventName, preventDefaults, false);\n      });\n\n      ['dragenter', 'dragover'].forEach(eventName => dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over'), false));\n      ['dragleave', 'drop'].forEach(eventName => dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over'), false));\n\n      dropZone.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files, processCoverPhoto), false);\n      fileInput.addEventListener('change', (e) => handleFiles(e.target.files, processCoverPhoto));\n      dropZone.addEventListener('click', (e) => {\n        if (e.target !== fileInput) fileInput.click();\n      });\n\n      if (removeBtn) {\n        removeBtn.addEventListener('click', (e) => {\n          e.stopPropagation();\n          resetCoverUpload();\n        });\n      }\n\n      if (changeBtn) {\n        changeBtn.addEventListener('click', () => {\n          if (fileInput.files && fileInput.files.length > 0) {\n            const file = fileInput.files[0];\n            if (file.type.startsWith('image/')) {\n              processAvatarPhoto(file);\n              resetCoverUpload();\n            } else {\n              alert('Please select an image file in the Cover Photo area.');\n            }\n          } else {\n            alert('Please upload an image to the \"Cover photo\" area below first.');\n          }\n        });\n      }\n\n      function preventDefaults(e) {\n        e.preventDefault();\n        e.stopPropagation();\n      }\n\n      function handleFiles(files, callback) {\n        if (files.length > 0) {\n          const file = files[0];\n          if (file.type.startsWith('image/')) {\n            callback(file);\n          } else {\n            alert('Please upload an image file (PNG, JPG, GIF).');\n          }\n        }\n      }\n\n      function processCoverPhoto(file) {\n        const reader = new FileReader();\n        reader.onload = (e) => {\n          if (fileInfoThumb) fileInfoThumb.src = e.target.result;\n          if (fileNameDisplay) fileNameDisplay.textContent = file.name;\n          if (fileInfo) fileInfo.style.display = 'flex';\n        };\n        reader.readAsDataURL(file);\n      }\n\n      function resetCoverUpload() {\n        fileInput.value = '';\n        if (fileInfo) fileInfo.style.display = 'none';\n        if (fileNameDisplay) fileNameDisplay.textContent = '';\n        if (fileInfoThumb) fileInfoThumb.src = '';\n      }\n\n      function processAvatarPhoto(file) {\n        const reader = new FileReader();\n        reader.onload = (e) => {\n          if (avatarPreview) {\n            avatarPreview.src = e.target.result;\n            avatarPreview.style.display = 'block';\n          }\n          if (avatarIcon) avatarIcon.style.display = 'none';\n        };\n        reader.readAsDataURL(file);\n      }\n\n      container.dataset.initialized = 'true';\n    });\n  }\n\n  if (document.readyState === 'loading') {\n    document.addEventListener('DOMContentLoaded', initUpload);\n  } else {\n    initUpload();\n  }\n\n  setTimeout(initUpload, 300);\n})();",
+    "children": []
+  }
+]

@@ -1,0 +1,20 @@
+[
+  {
+    "tag": "a",
+    "text": "Scroll to section",
+    "class": "anchor-btn",
+    "style": "display: inline-flex; align-items: center; justify-content: center; padding: 12px 24px; background-color: #2563eb; color: #ffffff; text-decoration: none; font-family: 'Montserrat', sans-serif; font-size: 14px; font-weight: 600; border-radius: 6px; border: none; cursor: pointer; transition: background-color 0.2s ease, transform 0.1s ease; ",
+    "children": [],
+    "attributes": {
+      "href": "#target-section",
+      "data-scroll-to": "target-section"
+    }
+  },
+  {
+    "tag": "script",
+    "text": "/* @component: .anchor-btn */\ndocument.addEventListener('click', function (e) {\n  const btn = e.target.closest('[data-scroll-to]');\n  if (btn) {\n    e.preventDefault();\n    const targetId = btn.getAttribute('data-scroll-to');\n    const targetElement = document.getElementById(targetId);\n    if (targetElement) {\n      targetElement.scrollIntoView({\n        behavior: 'smooth',\n        block: 'start'\n      });\n    }\n  }\n});",
+    "class": "",
+    "children": [],
+    "attributes": {}
+  }
+]

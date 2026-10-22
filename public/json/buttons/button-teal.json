@@ -1,0 +1,12 @@
+[
+  {
+    "tag": "button",
+    "text": "Button",
+    "class": "btn-teal",
+    "style": "cursor: pointer; display: flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: var(--font-button-size); font-weight: var(--font-button-weight); line-height: var(--font-button-line-height);transition: all 0.2s ease-in-out; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08); border: 1px solid var(--teal-400); color: var(--teal-400); &:hover { border: 1px solid var(--teal-700); background-color: color-mix(in srgb, var(--teal-700) 40%, transparent) !important; color: var(--teal-700); } &:active { transform: translateY(1px); border: 1px solid var(--teal-700); color: var(--teal-700); }",
+    "children": [],
+    "attributes": {
+      "type": "button"
+    }
+  }
+]

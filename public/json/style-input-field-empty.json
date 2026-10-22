@@ -1,0 +1,9 @@
+[
+  {
+    "tag": "style",
+    "text": "/* _empty */ .field-i._empty, .field-t._empty { border: none !important; border-radius: 0 !important; border-bottom: 1px solid rgba(0, 0, 0, 0.1) !important;&:hover{border-bottom: 1px solid #38bdf8 !important;} } /* _empty */",
+    "attributes": {
+      "data-global": "true"
+    }
+  }
+]

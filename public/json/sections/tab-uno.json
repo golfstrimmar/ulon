@@ -1,0 +1,160 @@
+[
+  {
+    "tag": "section",
+    "text": "",
+    "class": "tabs tab-uno",
+    "style": "",
+    "children": [
+      {
+        "tag": "div",
+        "text": "",
+        "class": "tabs__nav",
+        "style": " display: inline-block;",
+        "children": [
+          {
+            "tag": "button",
+            "text": "Tab 1",
+            "class": "tabs__btn",
+            "style": "display: flex; flex-direction: row; align-items: center; gap: 10px; padding: 2px; border: none; background: none; cursor: pointer; transition: all 0.3s ease; &:hover { color: var(--accent); } &._is-active { color: var(--accent); border-bottom-color: var(--accent); .svg-wrapper { transform: rotate(180deg); } }",
+            "children": [
+              {
+                "tag": "i",
+                "text": "",
+                "class": "svg-wrapper",
+                "style": "transition: all 0.2s ease-in-out; display: inline-block; line-height: 0; vertical-align: middle; width: 20px; height: 20px; svg { width: 100%; height: 100%; display: inline-block; }",
+                "children": [
+                  {
+                    "tag": "svg",
+                    "text": "",
+                    "class": "w-6 h-6",
+                    "style": "",
+                    "children": [
+                      {
+                        "tag": "path",
+                        "text": "",
+                        "class": "",
+                        "style": "",
+                        "children": [],
+                        "attributes": {
+                          "d": "M12.53 16.28a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 0 1 1.06-1.06L12 14.69l6.97-6.97a.75.75 0 1 1 1.06 1.06l-7.5 7.5Z",
+                          "clip-rule": "evenodd",
+                          "fill-rule": "evenodd"
+                        }
+                      }
+                    ],
+                    "attributes": {
+                      "fill": "currentColor",
+                      "xmlns": "http://www.w3.org/2000/svg",
+                      "viewBox": "0 0 24 24",
+                      "data-slot": "icon",
+                      "aria-hidden": "true"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "tag": "div",
+        "text": "",
+        "class": "tabs__content",
+        "style": "",
+        "children": [
+          {
+            "tag": "div",
+            "text": "",
+            "class": "tabs__pane",
+            "style": "visibility: hidden; opacity: 0; transition: opacity 0.2s ease-in-out; max-height: 0; &._is-active { visibility: visible; opacity: 1; max-height: 100vh; } ",
+            "children": [
+              {
+                "tag": "section",
+                "text": "",
+                "class": "tabs",
+                "style": "",
+                "children": [
+                  {
+                    "tag": "div",
+                    "text": "",
+                    "class": "tabs__nav",
+                    "style": "",
+                    "children": [
+                      {
+                        "tag": "button",
+                        "text": "Tab 1-1",
+                        "class": "tabs__btn",
+                        "style": "",
+                        "children": [
+                          {
+                            "tag": "i",
+                            "text": "",
+                            "class": "svg-wrapper",
+                            "style": "",
+                            "children": [
+                              {
+                                "tag": "svg",
+                                "text": "",
+                                "class": "w-6 h-6",
+                                "style": "",
+                                "children": [
+                                  {
+                                    "tag": "path",
+                                    "text": "",
+                                    "class": "",
+                                    "style": "",
+                                    "children": [],
+                                    "attributes": {
+                                      "d": "M12.53 16.28a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 0 1 1.06-1.06L12 14.69l6.97-6.97a.75.75 0 1 1 1.06 1.06l-7.5 7.5Z",
+                                      "clip-rule": "evenodd",
+                                      "fill-rule": "evenodd"
+                                    }
+                                  }
+                                ],
+                                "attributes": {
+                                  "fill": "currentColor",
+                                  "xmlns": "http://www.w3.org/2000/svg",
+                                  "viewBox": "0 0 24 24",
+                                  "data-slot": "icon",
+                                  "aria-hidden": "true"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "div",
+                    "text": "",
+                    "class": "tabs__content",
+                    "style": "",
+                    "children": [
+                      {
+                        "tag": "div",
+                        "text": "1. You can place any text or other blocks here.",
+                        "class": "tabs__pane",
+                        "style": "",
+                        "children": []
+                      }
+                    ]
+                  }
+                ],
+                "attributes": {}
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "attributes": {}
+  },
+  {
+    "tag": "script",
+    "text": "/* @component: .tabs */document.addEventListener('click', function (e) {\r\n  const btn = e.target.closest('.tabs__btn');\r\n\r\n  if (btn) {\r\n    const tabsContainer = btn.closest('.tabs');\r\n    const allBtns = tabsContainer.querySelectorAll('.tabs__btn');\r\n    const allPanes = tabsContainer.querySelectorAll('.tabs__pane');\r\n    const index = Array.from(allBtns).indexOf(btn);\r\n\r\n    allBtns.forEach(b => {\r\n      if (b !== btn) {\r\n        b.classList.remove('_is-active');\r\n      }\r\n    });\r\n\r\n    const isNowActive = btn.classList.toggle('_is-active');\r\n\r\n    allPanes.forEach(p => p.classList.remove('_is-active'));\r\n\r\n    if (isNowActive && allPanes[index]) {\r\n      allPanes[index].classList.add('_is-active');\r\n    }\r\n\r\n  } else if (!e.target.closest('.tabs')) {\r\n    document.querySelectorAll('.tabs__btn, .tabs__pane').forEach(el => {\r\n      el.classList.remove('_is-active');\r\n    });\r\n  }\r\n});",
+    "class": "",
+    "children": [],
+    "attributes": {}
+  }
+]

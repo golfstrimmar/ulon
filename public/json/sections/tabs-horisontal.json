@@ -1,0 +1,622 @@
+[
+  {
+    "tag": "div",
+    "text": "",
+    "class": "container",
+    "style": "width: 100%; max-width: calc(100vw - 20px); margin: 0 auto;",
+    "children": [
+      {
+        "tag": "section",
+        "text": "",
+        "class": "tabsG",
+        "style": "background: var(--color-white); display: flex; gap: 4px; .tabsG__nav { display: flex; gap: 10px; border-right: 2px solid var(--grey-200); flex-direction: column; align-items: center; } .tabsG__btn { padding: 2px 4px; border: none; background: none; cursor: pointer; font-family: 'Montserrat', sans-serif; font-weight: 600; color: var(--slate-500); transition: all 0.3s ease; border-bottom: 2px solid transparent; margin-bottom: -2px; display: flex; align-items: center; gap: 8px; white-space: nowrap; &:hover { color: var(--accent); } &._is-active { color: var(--accent); border-bottom-color: var(--accent); } } .tabsG__btn .svg-wrapper { transition: all 0.2s ease-in-out; display: inline-block; line-height: 0; vertical-align: middle; } .tabsG__btn svg { display: block; width: 18px; height: 18px; transition: all 0.3s ease; } .tabsG__content { background: var(--color-white); padding: 4px; border-radius: 4px; flex: 0 1 100%; } .tabsG__pane { display: none; animation: fadeIn 0.4s ease; border: 1px solid var(--grey-300); padding: 2px 3px; &._is-active { display: block; } }",
+        "children": [
+          {
+            "tag": "div",
+            "text": "",
+            "class": "tabsG__nav",
+            "style": "",
+            "children": [
+              {
+                "tag": "button",
+                "text": "Tab 1",
+                "class": "tabsG__btn _is-active",
+                "style": "",
+                "children": [
+                  {
+                    "tag": "i",
+                    "text": "",
+                    "class": "svg-wrapper",
+                    "style": "",
+                    "children": [
+                      {
+                        "tag": "svg",
+                        "text": "",
+                        "class": "",
+                        "style": "",
+                        "children": [
+                          {
+                            "tag": "path",
+                            "text": "",
+                            "class": "",
+                            "style": "",
+                            "children": [],
+                            "attributes": {
+                              "d": "M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 0 0 2.25-2.25V6.75a2.25 2.25 0 0 0-2.25-2.25H6.75A2.25 2.25 0 0 0 4.5 6.75v10.5a2.25 2.25 0 0 0 2.25 2.25Zm.75-12h9v9h-9v-9Z",
+                              "stroke-linecap": "round",
+                              "stroke-linejoin": "round"
+                            }
+                          }
+                        ],
+                        "attributes": {
+                          "fill": "none",
+                          "color": "currentColor",
+                          "xmlns": "http://www.w3.org/2000/svg",
+                          "stroke": "currentColor",
+                          "viewBox": "0 0 24 24",
+                          "data-slot": "icon",
+                          "aria-hidden": "true",
+                          "stroke-width": "1.5"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "button",
+                "text": "Tab 2",
+                "class": "tabsG__btn",
+                "style": "",
+                "children": [
+                  {
+                    "tag": "i",
+                    "text": "",
+                    "class": "svg-wrapper",
+                    "style": "",
+                    "children": [
+                      {
+                        "tag": "svg",
+                        "text": "",
+                        "class": "",
+                        "style": "",
+                        "children": [
+                          {
+                            "tag": "path",
+                            "text": "",
+                            "class": "",
+                            "style": "",
+                            "children": [],
+                            "attributes": {
+                              "d": "m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9",
+                              "stroke-linecap": "round",
+                              "stroke-linejoin": "round"
+                            }
+                          }
+                        ],
+                        "attributes": {
+                          "fill": "none",
+                          "color": "currentColor",
+                          "xmlns": "http://www.w3.org/2000/svg",
+                          "stroke": "currentColor",
+                          "viewBox": "0 0 24 24",
+                          "data-slot": "icon",
+                          "aria-hidden": "true",
+                          "stroke-width": "1.5"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "button",
+                "text": "Tab 3",
+                "class": "tabsG__btn",
+                "style": "",
+                "children": [
+                  {
+                    "tag": "i",
+                    "text": "",
+                    "class": "svg-wrapper",
+                    "style": "",
+                    "children": [
+                      {
+                        "tag": "svg",
+                        "text": "",
+                        "class": "",
+                        "style": "",
+                        "children": [
+                          {
+                            "tag": "path",
+                            "text": "",
+                            "class": "",
+                            "style": "",
+                            "children": [],
+                            "attributes": {
+                              "d": "M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z",
+                              "stroke-linecap": "round",
+                              "stroke-linejoin": "round"
+                            }
+                          },
+                          {
+                            "tag": "path",
+                            "text": "",
+                            "class": "",
+                            "style": "",
+                            "children": [],
+                            "attributes": {
+                              "d": "M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z",
+                              "stroke-linecap": "round",
+                              "stroke-linejoin": "round"
+                            }
+                          }
+                        ],
+                        "attributes": {
+                          "fill": "none",
+                          "color": "currentColor",
+                          "xmlns": "http://www.w3.org/2000/svg",
+                          "stroke": "currentColor",
+                          "viewBox": "0 0 24 24",
+                          "data-slot": "icon",
+                          "aria-hidden": "true",
+                          "stroke-width": "1.5"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "tag": "div",
+            "text": "",
+            "class": "tabsG__content",
+            "style": "",
+            "children": [
+              {
+                "tag": "div",
+                "text": "First tab content. You can place any text or other blocks here.",
+                "class": "tabsG__pane _is-active",
+                "style": "",
+                "children": []
+              },
+              {
+                "tag": "div",
+                "text": "Second tab content. We have added smooth transitions using simple CSS animations.",
+                "class": "tabsG__pane",
+                "style": "",
+                "children": []
+              },
+              {
+                "tag": "div",
+                "text": "",
+                "class": "tabsG__pane tabsG__pane--multy",
+                "style": "",
+                "children": [
+                  {
+                    "tag": "section",
+                    "text": "",
+                    "class": "tabsG",
+                    "style": "background: var(--color-white); display: flex; gap: 4px; .tabsG__nav { display: flex; gap: 10px; border-right: 2px solid var(--grey-200); flex-direction: column; align-items: center; } .tabsG__btn { padding: 2px 4px; border: none; background: none; cursor: pointer; font-family: 'Montserrat', sans-serif; font-weight: 600; color: var(--slate-500); transition: all 0.3s ease; border-bottom: 2px solid transparent; margin-bottom: -2px; display: flex; align-items: center; gap: 8px; white-space: nowrap; &:hover { color: var(--accent); } &._is-active { color: var(--accent); border-bottom-color: var(--accent); } } .tabsG__btn .svg-wrapper { transition: all 0.2s ease-in-out; display: inline-block; line-height: 0; vertical-align: middle; } .tabsG__btn svg { display: block; width: 18px; height: 18px; transition: all 0.3s ease; } .tabsG__content { background: var(--color-white); padding: 4px; border-radius: 4px; flex: 0 1 100%; } .tabsG__pane { display: none; animation: fadeIn 0.4s ease; border: 1px solid var(--grey-300); padding: 2px 3px; &._is-active { display: block; } }",
+                    "children": [
+                      {
+                        "tag": "div",
+                        "text": "",
+                        "class": "tabsG__nav",
+                        "style": "",
+                        "children": [
+                          {
+                            "tag": "button",
+                            "text": "Tab 1",
+                            "class": "tabsG__btn _is-active",
+                            "style": "",
+                            "children": [
+                              {
+                                "tag": "i",
+                                "text": "",
+                                "class": "svg-wrapper",
+                                "style": "",
+                                "children": [
+                                  {
+                                    "tag": "svg",
+                                    "text": "",
+                                    "class": "",
+                                    "style": "",
+                                    "children": [
+                                      {
+                                        "tag": "path",
+                                        "text": "",
+                                        "class": "",
+                                        "style": "",
+                                        "children": [],
+                                        "attributes": {
+                                          "d": "M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 0 0 2.25-2.25V6.75a2.25 2.25 0 0 0-2.25-2.25H6.75A2.25 2.25 0 0 0 4.5 6.75v10.5a2.25 2.25 0 0 0 2.25 2.25Zm.75-12h9v9h-9v-9Z",
+                                          "stroke-linecap": "round",
+                                          "stroke-linejoin": "round"
+                                        }
+                                      }
+                                    ],
+                                    "attributes": {
+                                      "fill": "none",
+                                      "color": "currentColor",
+                                      "xmlns": "http://www.w3.org/2000/svg",
+                                      "stroke": "currentColor",
+                                      "viewBox": "0 0 24 24",
+                                      "data-slot": "icon",
+                                      "aria-hidden": "true",
+                                      "stroke-width": "1.5"
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "tag": "button",
+                            "text": "Tab 2",
+                            "class": "tabsG__btn",
+                            "style": "",
+                            "children": [
+                              {
+                                "tag": "i",
+                                "text": "",
+                                "class": "svg-wrapper",
+                                "style": "",
+                                "children": [
+                                  {
+                                    "tag": "svg",
+                                    "text": "",
+                                    "class": "",
+                                    "style": "",
+                                    "children": [
+                                      {
+                                        "tag": "path",
+                                        "text": "",
+                                        "class": "",
+                                        "style": "",
+                                        "children": [],
+                                        "attributes": {
+                                          "d": "m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9",
+                                          "stroke-linecap": "round",
+                                          "stroke-linejoin": "round"
+                                        }
+                                      }
+                                    ],
+                                    "attributes": {
+                                      "fill": "none",
+                                      "color": "currentColor",
+                                      "xmlns": "http://www.w3.org/2000/svg",
+                                      "stroke": "currentColor",
+                                      "viewBox": "0 0 24 24",
+                                      "data-slot": "icon",
+                                      "aria-hidden": "true",
+                                      "stroke-width": "1.5"
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "tag": "button",
+                            "text": "Tab 3",
+                            "class": "tabsG__btn",
+                            "style": "",
+                            "children": [
+                              {
+                                "tag": "i",
+                                "text": "",
+                                "class": "svg-wrapper",
+                                "style": "",
+                                "children": [
+                                  {
+                                    "tag": "svg",
+                                    "text": "",
+                                    "class": "",
+                                    "style": "",
+                                    "children": [
+                                      {
+                                        "tag": "path",
+                                        "text": "",
+                                        "class": "",
+                                        "style": "",
+                                        "children": [],
+                                        "attributes": {
+                                          "d": "M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z",
+                                          "stroke-linecap": "round",
+                                          "stroke-linejoin": "round"
+                                        }
+                                      },
+                                      {
+                                        "tag": "path",
+                                        "text": "",
+                                        "class": "",
+                                        "style": "",
+                                        "children": [],
+                                        "attributes": {
+                                          "d": "M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z",
+                                          "stroke-linecap": "round",
+                                          "stroke-linejoin": "round"
+                                        }
+                                      }
+                                    ],
+                                    "attributes": {
+                                      "fill": "none",
+                                      "color": "currentColor",
+                                      "xmlns": "http://www.w3.org/2000/svg",
+                                      "stroke": "currentColor",
+                                      "viewBox": "0 0 24 24",
+                                      "data-slot": "icon",
+                                      "aria-hidden": "true",
+                                      "stroke-width": "1.5"
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "tag": "div",
+                        "text": "",
+                        "class": "tabsG__content",
+                        "style": "",
+                        "children": [
+                          {
+                            "tag": "div",
+                            "text": "First tab content. You can place any text or other blocks here.",
+                            "class": "tabsG__pane _is-active",
+                            "style": "",
+                            "children": []
+                          },
+                          {
+                            "tag": "div",
+                            "text": "Second tab content. We have added smooth transitions using simple CSS animations.",
+                            "class": "tabsG__pane",
+                            "style": "",
+                            "children": []
+                          },
+                          {
+                            "tag": "div",
+                            "text": "",
+                            "class": "tabsG__pane tabsG__pane--multy",
+                            "style": "",
+                            "children": [
+                              {
+                                "tag": "section",
+                                "text": "",
+                                "class": "tabsG",
+                                "style": "background: var(--color-white); display: flex; gap: 4px; .tabsG__nav { display: flex; gap: 10px; border-right: 2px solid var(--grey-200); flex-direction: column; align-items: center; } .tabsG__btn { padding: 2px 4px; border: none; background: none; cursor: pointer; font-family: 'Montserrat', sans-serif; font-weight: 600; color: var(--slate-500); transition: all 0.3s ease; border-bottom: 2px solid transparent; margin-bottom: -2px; display: flex; align-items: center; gap: 8px; white-space: nowrap; &:hover { color: var(--accent); } &._is-active { color: var(--accent); border-bottom-color: var(--accent); } } .tabsG__btn .svg-wrapper { transition: all 0.2s ease-in-out; display: inline-block; line-height: 0; vertical-align: middle; } .tabsG__btn svg { display: block; width: 18px; height: 18px; transition: all 0.3s ease; } .tabsG__content { background: var(--color-white); padding: 4px; border-radius: 4px; flex: 0 1 100%; } .tabsG__pane { display: none; animation: fadeIn 0.4s ease; border: 1px solid var(--grey-300); padding: 2px 3px; &._is-active { display: block; } }",
+                                "children": [
+                                  {
+                                    "tag": "div",
+                                    "text": "",
+                                    "class": "tabsG__nav",
+                                    "style": "",
+                                    "children": [
+                                      {
+                                        "tag": "button",
+                                        "text": "Tab 1",
+                                        "class": "tabsG__btn _is-active",
+                                        "style": "",
+                                        "children": [
+                                          {
+                                            "tag": "i",
+                                            "text": "",
+                                            "class": "svg-wrapper",
+                                            "style": "",
+                                            "children": [
+                                              {
+                                                "tag": "svg",
+                                                "text": "",
+                                                "class": "",
+                                                "style": "",
+                                                "children": [
+                                                  {
+                                                    "tag": "path",
+                                                    "text": "",
+                                                    "class": "",
+                                                    "style": "",
+                                                    "children": [],
+                                                    "attributes": {
+                                                      "d": "M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 0 0 2.25-2.25V6.75a2.25 2.25 0 0 0-2.25-2.25H6.75A2.25 2.25 0 0 0 4.5 6.75v10.5a2.25 2.25 0 0 0 2.25 2.25Zm.75-12h9v9h-9v-9Z",
+                                                      "stroke-linecap": "round",
+                                                      "stroke-linejoin": "round"
+                                                    }
+                                                  }
+                                                ],
+                                                "attributes": {
+                                                  "fill": "none",
+                                                  "color": "currentColor",
+                                                  "xmlns": "http://www.w3.org/2000/svg",
+                                                  "stroke": "currentColor",
+                                                  "viewBox": "0 0 24 24",
+                                                  "data-slot": "icon",
+                                                  "aria-hidden": "true",
+                                                  "stroke-width": "1.5"
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "tag": "button",
+                                        "text": "Tab 2",
+                                        "class": "tabsG__btn",
+                                        "style": "",
+                                        "children": [
+                                          {
+                                            "tag": "i",
+                                            "text": "",
+                                            "class": "svg-wrapper",
+                                            "style": "",
+                                            "children": [
+                                              {
+                                                "tag": "svg",
+                                                "text": "",
+                                                "class": "",
+                                                "style": "",
+                                                "children": [
+                                                  {
+                                                    "tag": "path",
+                                                    "text": "",
+                                                    "class": "",
+                                                    "style": "",
+                                                    "children": [],
+                                                    "attributes": {
+                                                      "d": "m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9",
+                                                      "stroke-linecap": "round",
+                                                      "stroke-linejoin": "round"
+                                                    }
+                                                  }
+                                                ],
+                                                "attributes": {
+                                                  "fill": "none",
+                                                  "color": "currentColor",
+                                                  "xmlns": "http://www.w3.org/2000/svg",
+                                                  "stroke": "currentColor",
+                                                  "viewBox": "0 0 24 24",
+                                                  "data-slot": "icon",
+                                                  "aria-hidden": "true",
+                                                  "stroke-width": "1.5"
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "tag": "button",
+                                        "text": "Tab 3",
+                                        "class": "tabsG__btn",
+                                        "style": "",
+                                        "children": [
+                                          {
+                                            "tag": "i",
+                                            "text": "",
+                                            "class": "svg-wrapper",
+                                            "style": "",
+                                            "children": [
+                                              {
+                                                "tag": "svg",
+                                                "text": "",
+                                                "class": "",
+                                                "style": "",
+                                                "children": [
+                                                  {
+                                                    "tag": "path",
+                                                    "text": "",
+                                                    "class": "",
+                                                    "style": "",
+                                                    "children": [],
+                                                    "attributes": {
+                                                      "d": "M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z",
+                                                      "stroke-linecap": "round",
+                                                      "stroke-linejoin": "round"
+                                                    }
+                                                  },
+                                                  {
+                                                    "tag": "path",
+                                                    "text": "",
+                                                    "class": "",
+                                                    "style": "",
+                                                    "children": [],
+                                                    "attributes": {
+                                                      "d": "M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z",
+                                                      "stroke-linecap": "round",
+                                                      "stroke-linejoin": "round"
+                                                    }
+                                                  }
+                                                ],
+                                                "attributes": {
+                                                  "fill": "none",
+                                                  "color": "currentColor",
+                                                  "xmlns": "http://www.w3.org/2000/svg",
+                                                  "stroke": "currentColor",
+                                                  "viewBox": "0 0 24 24",
+                                                  "data-slot": "icon",
+                                                  "aria-hidden": "true",
+                                                  "stroke-width": "1.5"
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "tag": "div",
+                                    "text": "",
+                                    "class": "tabsG__content",
+                                    "style": "",
+                                    "children": [
+                                      {
+                                        "tag": "div",
+                                        "text": "First tab content. You can place any text or other blocks here.",
+                                        "class": "tabsG__pane _is-active",
+                                        "style": "",
+                                        "children": []
+                                      },
+                                      {
+                                        "tag": "div",
+                                        "text": "Second tab content. We have added smooth transitions using simple CSS animations.",
+                                        "class": "tabsG__pane",
+                                        "style": "",
+                                        "children": []
+                                      },
+                                      {
+                                        "tag": "div",
+                                        "text": "Third tab content. All three panels are controlled by a single lightweight script.",
+                                        "class": "tabsG__pane",
+                                        "style": "",
+                                        "children": []
+                                      }
+                                    ]
+                                  }
+                                ],
+                                "attributes": {}
+                              }
+                            ]
+                          },
+                          {
+                            "tag": "div",
+                            "text": "Third tab content. All three panels are controlled by a single lightweight script.",
+                            "class": "tabsG__pane",
+                            "style": "",
+                            "children": []
+                          }
+                        ]
+                      }
+                    ],
+                    "attributes": {}
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "attributes": {}
+      }
+    ]
+  },
+  {
+    "tag": "style",
+    "text": "\n  @keyframes fadeIn {\n    from {\n      opacity: 0;\n    \n    }\n\n    to {\n      opacity: 1;\n      \n    }\n  }\n",
+    "class": "",
+    "style": "",
+    "children": [],
+    "attributes": {}
+  },
+  {
+    "tag": "script",
+    "text": "/* @component: .tabsG */\r\ndocument.addEventListener('click', function (e) {\r\n  const btn = e.target.closest('.tabsG__btn');\r\n  if (btn) {\r\n    const tabsGContainer = btn.closest('.tabsG');\r\n    const allBtns = tabsGContainer.querySelectorAll('.tabsG__btn');\r\n    const allPanes = tabsGContainer.querySelectorAll('.tabsG__pane');\r\n    const index = Array.from(allBtns).indexOf(btn);\r\n\r\n    // 1. Сбрасываем и вешаем активный класс у кнопок\r\n    allBtns.forEach(b => b.classList.remove('_is-active'));\r\n    btn.classList.add('_is-active');\r\n\r\n    if (allPanes[index]) {\r\n      // 2. Гасим все активные панели\r\n      allPanes.forEach(p => p.classList.remove('_is-active'));\r\n\r\n      // 3. Вычисляем точный отступ кнопки сверху относительно контейнера\r\n      const containerRect = tabsGContainer.getBoundingClientRect();\r\n      const btnRect = btn.getBoundingClientRect();\r\n      const btnOffsetTop = btnRect.top - containerRect.top;\r\n\r\n      // 4. Просто задаем этот отступ через marginTop\r\n      allPanes[index].style.marginTop = `${btnOffsetTop}px`;\r\n\r\n      // 5. Делаем панель видимой — она сама раздвинет родителя по высоте!\r\n      allPanes[index].classList.add('_is-active');\r\n    }\r\n  }\r\n});",
+    "class": "",
+    "children": [],
+    "attributes": {}
+  }
+]

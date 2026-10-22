@@ -1,0 +1,52 @@
+[
+  {
+    "tag": "div",
+    "text": "",
+    "class": "f-number",
+    "style": "position: relative; display: inline-flex; align-items: center; gap: 4px;padding: 2px 0px;",
+    "children": [
+      {
+        "tag": "button",
+        "text": "−",
+        "class": "num-btn num-btn--dec",
+        "style": "width: 28px; height: 28px; border-radius: 100%; border: none; outline: 1px solid var(--text-main); background: transparent; font-size: 16px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease-in-out; &:hover { outline: 1px solid var(--bg-surface); }",
+        "attributes": {
+          "type": "button"
+        }
+      },
+      {
+        "tag": "input",
+        "text": "",
+        "class": "",
+        "style": "width: min-content; height: 100%; max-width: 50px; cursor: pointer; position: relative; background: transparent; z-index: 5; outline: 1px solid var(--text-main); border: none; padding: 5px; transition: all 0.2s ease-in-out; border-radius: 8px; font-size: 14px; text-align: center; color: var(--bg-surface); -moz-appearance: textfield; &::placeholder{opacity: 0;} &::-webkit-inner-spin-button, &::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; } &:hover, &:focus { outline: 1px solid var(--bg-surface); }",
+        "attributes": {
+          "id": "f-number-input",
+          "max": "10",
+          "min": "0",
+          "name": "f-number-input",
+          "step": "1",
+          "type": "number",
+          "value": "0",
+          "placeholder": ""
+        }
+      },
+      {
+        "tag": "button",
+        "text": "+",
+        "class": "num-btn num-btn--inc",
+        "style": "width: 28px; height: 28px; border-radius: 100%; border: none; outline: 1px solid var(--text-main); background: transparent; font-size: 16px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease-in-out; &:hover { outline: 1px solid var(--bg-surface); }",
+        "attributes": {
+          "type": "button"
+        }
+      }
+    ],
+    "attributes": {}
+  },
+  {
+    "tag": "script",
+    "text": "/* @component: .f-number */\ndocument.addEventListener('click', function(e) {\n  let btnDec = e.target.closest('.num-btn--dec');\n  if (btnDec) {\n    let input = btnDec.parentElement.querySelector('input');\n    if (input && input.stepDown) input.stepDown();\n    return;\n  }\n\n  let btnInc = e.target.closest('.num-btn--inc');\n  if (btnInc) {\n    let input = btnInc.parentElement.querySelector('input');\n    if (input && input.stepUp) input.stepUp();\n    return;\n  }\n});",
+    "class": "",
+    "style": "",
+    "children": []
+  }
+]
