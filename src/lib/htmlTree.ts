@@ -179,8 +179,73 @@ export function updateNodeByKey(
 }
 
 // ============================================================================
-// MOVE / DRAG & DROP
+// MOVE / DUPLICATE / DRAG & DROP
 // ============================================================================
+
+/**
+ * Создает глубокую копию узла с новыми уникальными _key для всей ветки
+ */
+export function cloneNodeWithNewKeys(node: HtmlNode): HtmlNode {
+  return {
+    ...node,
+    _key: generateNodeKey(),
+    children: Array.isArray(node.children)
+      ? node.children.map(cloneNodeWithNewKeys)
+      : node.children,
+  };
+}
+
+/**
+ * Дублирует узел с targetKey, вставляя копию сразу после оригинала
+ */
+export function duplicateNodeInTree(
+  nodes: HtmlNode[],
+  targetKey: string
+): HtmlNode[] {
+  const result: HtmlNode[] = [];
+
+  for (const node of nodes) {
+    if (node._key === targetKey) {
+      result.push(node);
+      result.push(cloneNodeWithNewKeys(node));
+    } else {
+      if (Array.isArray(node.children)) {
+        result.push({
+          ...node,
+          children: duplicateNodeInTree(node.children, targetKey),
+        });
+      } else {
+        result.push(node);
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Удаляет узел с targetKey из массива узлов (на любом уровне вложенности)
+ */
+export function deleteNodeFromArray(
+  nodes: HtmlNode[],
+  targetKey: string
+): HtmlNode[] {
+  const result: HtmlNode[] = [];
+  for (const node of nodes) {
+    if (node._key === targetKey) {
+      continue;
+    }
+    if (Array.isArray(node.children)) {
+      result.push({
+        ...node,
+        children: deleteNodeFromArray(node.children, targetKey),
+      });
+    } else {
+      result.push(node);
+    }
+  }
+  return result;
+}
 
 /**
  * Проверяет, является ли targetKey потомком узла parent

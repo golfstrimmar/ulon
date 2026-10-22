@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { HtmlNode } from "@/types/HtmlNode";
 import { getHtmlJson, saveHtmlJson, deleteHtmlJson } from "@/lib/htmlStorage";
-import { generateNodeKey, moveNodeIntoNode, findNodeByKey, isDescendant } from "@/lib/htmlTree";
+import { generateNodeKey, moveNodeIntoNode, findNodeByKey, isDescendant, duplicateNodeInTree, deleteNodeFromArray } from "@/lib/htmlTree";
 import handleRender from "./utils/handleRender";
 import type { RenderBox } from "./utils/types";
 
@@ -43,6 +43,7 @@ export function CanvasArea() {
   const potentialDraggedKeyRef = useRef<string | null>(null);
   const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
   const hasDraggedRef = useRef<boolean>(false);
+  const clickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 1. Чтение из IndexedDB при старте
   useEffect(() => {
@@ -182,36 +183,36 @@ export function CanvasArea() {
       dragMousePosRef.current = { x, y };
 
       const draggedSourceKey = draggedKeyRef.current;
-      let targetUnderCursor: string | null = null;
+      let targetUnderCursor: { key: string; position: "inside" | "self" } | null = null;
 
       // Ищем узел под курсором (с глубоких к верхним)
       for (let i = boxesRef.current.length - 1; i >= 0; i--) {
         const box = boxesRef.current[i];
         if (x >= box.x && x <= box.x + box.w && y >= box.y && y <= box.y + box.h) {
-          // Нельзя бросать в самого себя
-          if (box.key !== draggedSourceKey) {
-            // Проверяем, не является ли target потомком dragged
-            let sourceNode: HtmlNode | null = null;
-            for (const rootNode of currentJsonRef.current) {
-              const f = findNodeByKey(rootNode, draggedSourceKey);
-              if (f) {
-                sourceNode = f;
-                break;
-              }
-            }
+          // Если навели на самого себя — позиция "self" (для дублирования)
+          if (box.key === draggedSourceKey) {
+            targetUnderCursor = { key: box.key, position: "self" };
+            break;
+          }
 
-            if (sourceNode && !isDescendant(sourceNode, box.key)) {
-              targetUnderCursor = box.key;
+          // Проверяем, не является ли target потомком dragged
+          let sourceNode: HtmlNode | null = null;
+          for (const rootNode of currentJsonRef.current) {
+            const f = findNodeByKey(rootNode, draggedSourceKey);
+            if (f) {
+              sourceNode = f;
               break;
             }
+          }
+
+          if (sourceNode && !isDescendant(sourceNode, box.key)) {
+            targetUnderCursor = { key: box.key, position: "inside" };
+            break;
           }
         }
       }
 
-      dropTargetRef.current = targetUnderCursor
-        ? { key: targetUnderCursor, position: "inside" }
-        : null;
-
+      dropTargetRef.current = targetUnderCursor;
       render();
       return;
     }
@@ -237,15 +238,23 @@ export function CanvasArea() {
       const sourceKey = draggedKeyRef.current;
       const target = dropTargetRef.current;
 
-      if (target && target.key && target.key !== sourceKey) {
-        // Перемещаем ноду вместе со всеми детьми внутрь целевой ноды
-        const updatedTree = moveNodeIntoNode(
-          currentJsonRef.current,
-          sourceKey,
-          target.key
-        );
-        // Сразу отсылаем новое дерево в базу
-        await persist(updatedTree);
+      if (target && target.key) {
+        if (target.key === sourceKey || target.position === "self") {
+          // Сброс на самого себя -> ДУБЛИРУЕМ ноду!
+          const updatedTree = duplicateNodeInTree(
+            currentJsonRef.current,
+            sourceKey
+          );
+          await persist(updatedTree);
+        } else {
+          // Сброс в другую ноду -> ПЕРЕМЕЩАЕМ внутрь
+          const updatedTree = moveNodeIntoNode(
+            currentJsonRef.current,
+            sourceKey,
+            target.key
+          );
+          await persist(updatedTree);
+        }
       }
 
       draggedKeyRef.current = null;
@@ -259,6 +268,36 @@ export function CanvasArea() {
 
     potentialDraggedKeyRef.current = null;
     dragStartPosRef.current = null;
+  };
+
+  // Двойной клик: УДАЛЕНИЕ ноды вместе со всеми потомками
+  const handleDoubleClick = async (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+      clickTimeoutRef.current = null;
+    }
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    let keyToDelete: string | null = null;
+    for (let i = boxesRef.current.length - 1; i >= 0; i--) {
+      const box = boxesRef.current[i];
+      if (x >= box.x && x <= box.x + box.w && y >= box.y && y <= box.y + box.h) {
+        keyToDelete = box.key;
+        break;
+      }
+    }
+
+    if (keyToDelete) {
+      const next = deleteNodeFromArray(currentJsonRef.current, keyToDelete);
+      if (clickedKey === keyToDelete) setClickedKey(null);
+      if (hoveredKey === keyToDelete) setHoveredKey(null);
+      await persist(next);
+    }
   };
 
   const handleMouseLeave = () => {
@@ -300,16 +339,23 @@ export function CanvasArea() {
       }
     }
 
-    // Выбор ноды
-    let clicked: string | null = null;
-    for (let i = boxesRef.current.length - 1; i >= 0; i--) {
-      const b = boxesRef.current[i];
-      if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
-        clicked = b.key;
-        break;
-      }
+    // Задержка на одинарный клик, чтобы не конфликтовать с даблкликом
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
     }
-    setClickedKey(clicked);
+
+    clickTimeoutRef.current = setTimeout(() => {
+      let clicked: string | null = null;
+      for (let i = boxesRef.current.length - 1; i >= 0; i--) {
+        const b = boxesRef.current[i];
+        if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
+          clicked = b.key;
+          break;
+        }
+      }
+      setClickedKey(clicked);
+      clickTimeoutRef.current = null;
+    }, 200);
   };
 
   return (
@@ -371,6 +417,7 @@ export function CanvasArea() {
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseLeave}
           onClick={handleClick}
+          onDoubleClick={handleDoubleClick}
           className="cursor-default relative z-10 block opacity-100"
           style={{
             position: "absolute",

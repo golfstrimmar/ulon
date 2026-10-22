@@ -238,7 +238,9 @@ export default function handleRender(
     }
 
     // 2. Фон блока
-    if (isDrop) {
+    if (isDrop && dropTarget?.position === "self") {
+      ctx.fillStyle = "rgba(168, 85, 247, 0.24)"; // фиолетовый для дублирования на самого себя
+    } else if (isDrop) {
       ctx.fillStyle = "rgba(56, 189, 248, 0.18)"; // sky blue для drop target
     } else if (isDragged) {
       ctx.fillStyle = "rgba(63, 63, 70, 0.3)"; // полупрозрачный для перетаскиваемого
@@ -255,7 +257,10 @@ export default function handleRender(
     ctx.restore();
 
     // 3. Рамка блока
-    if (isDrop) {
+    if (isDrop && dropTarget?.position === "self") {
+      ctx.strokeStyle = "#c084fc"; // purple-400
+      ctx.lineWidth = 2.5;
+    } else if (isDrop) {
       ctx.strokeStyle = "#38bdf8"; // sky blue
       ctx.lineWidth = 2.5;
     } else if (isDragged) {
