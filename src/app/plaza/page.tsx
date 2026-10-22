@@ -1,10 +1,10 @@
 import { Suspense } from "react";
 import { Header } from "@/components/Header";
-import { PlazaClient } from "./PlazaClient";
+import { CanvasArea } from "./components/CanvasArea/CanvasArea";
 
 export const metadata = {
-  title: "Plaza - htmlJson Renderer",
-  description: "Live rendering of htmlJson from browser IndexedDB",
+  title: "Plaza - Canvas htmlJson Renderer",
+  description: "2D Canvas rendering of htmlJson tree from IndexedDB",
 };
 
 export default function PlazaPage() {
@@ -21,13 +21,13 @@ export default function PlazaPage() {
         <Header />
       </Suspense>
 
-      <main className="flex-1 p-6 flex flex-col">
+      <main className="flex-1 p-4 sm:p-6 flex flex-col max-w-7xl w-full mx-auto">
         <Suspense
           fallback={
-            <div className="w-full max-w-4xl mx-auto h-64 bg-zinc-900/50 rounded-2xl animate-pulse" />
+            <div className="w-full h-96 bg-zinc-900/50 rounded-2xl animate-pulse" />
           }
         >
-          <PlazaClient />
+          <CanvasArea />
         </Suspense>
       </main>
     </div>
