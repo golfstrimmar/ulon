@@ -225,18 +225,24 @@ export default function handleRender(
   for (const box of allBoxes) {
     const isHovered = box.key === hoveredKey;
     const isClicked = box.key === clickedKey;
+    const isDragged = box.key === draggedKey;
+    const isDrop = dropTarget?.key === box.key;
     const depthIdx = Math.min(box.depth, depthBg.length - 1);
 
     // 1. Тень (придает объем вложенности "одна поверх другой")
     ctx.save();
-    if (box.depth > 0 || isHovered || isClicked) {
-      ctx.shadowColor = "rgba(0, 0, 0, 0.45)";
-      ctx.shadowBlur = Math.min(12, 4 + box.depth * 3);
+    if (box.depth > 0 || isHovered || isClicked || isDrop) {
+      ctx.shadowColor = isDrop ? "rgba(56, 189, 248, 0.4)" : "rgba(0, 0, 0, 0.45)";
+      ctx.shadowBlur = Math.min(14, 4 + box.depth * 3);
       ctx.shadowOffsetY = Math.min(6, 2 + box.depth * 1.5);
     }
 
     // 2. Фон блока
-    if (isClicked) {
+    if (isDrop) {
+      ctx.fillStyle = "rgba(56, 189, 248, 0.18)"; // sky blue для drop target
+    } else if (isDragged) {
+      ctx.fillStyle = "rgba(63, 63, 70, 0.3)"; // полупрозрачный для перетаскиваемого
+    } else if (isClicked) {
       ctx.fillStyle = "rgba(99, 102, 241, 0.22)";
     } else if (isHovered) {
       ctx.fillStyle = "rgba(99, 102, 241, 0.12)";
@@ -249,7 +255,13 @@ export default function handleRender(
     ctx.restore();
 
     // 3. Рамка блока
-    if (isClicked) {
+    if (isDrop) {
+      ctx.strokeStyle = "#38bdf8"; // sky blue
+      ctx.lineWidth = 2.5;
+    } else if (isDragged) {
+      ctx.strokeStyle = "rgba(161, 161, 170, 0.4)";
+      ctx.lineWidth = 1;
+    } else if (isClicked) {
       ctx.strokeStyle = "#818cf8"; // indigo-400
       ctx.lineWidth = 2;
     } else if (isHovered) {
@@ -324,6 +336,43 @@ export default function handleRender(
       }
 
       ctx.fillText(display, labelX, box.y + 19);
+    }
+  }
+
+  // Отрисовка "призрака" перетаскиваемого узла рядом с курсором
+  if (draggedKey && dragMousePos) {
+    const draggedBox = allBoxes.find((b) => b.key === draggedKey);
+    if (draggedBox) {
+      const ghostW = 140;
+      const ghostH = 34;
+      const gx = dragMousePos.x + 12;
+      const gy = dragMousePos.y + 12;
+
+      ctx.save();
+      ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+      ctx.shadowBlur = 12;
+      ctx.shadowOffsetY = 4;
+
+      ctx.fillStyle = "rgba(49, 46, 129, 0.9)"; // indigo-900
+      drawRoundedRect(ctx, gx, gy, ghostW, ghostH, 6);
+      ctx.fill();
+
+      ctx.strokeStyle = "#818cf8";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.font = "bold 12px ui-monospace, monospace";
+      ctx.fillStyle = "#c7d2fe";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`<${draggedBox.tag}>`, gx + 10, gy + ghostH / 2);
+
+      if (draggedBox.text) {
+        ctx.font = "11px sans-serif";
+        ctx.fillStyle = "#e0e7ff";
+        ctx.fillText(`"${draggedBox.text.slice(0, 8)}"`, gx + 60, gy + ghostH / 2);
+      }
+
+      ctx.restore();
     }
   }
 

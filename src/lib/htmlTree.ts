@@ -179,8 +179,119 @@ export function updateNodeByKey(
 }
 
 // ============================================================================
-// DELETE
+// MOVE / DRAG & DROP
 // ============================================================================
+
+/**
+ * Проверяет, является ли targetKey потомком узла parent
+ */
+export function isDescendant(parent: HtmlNode, targetKey: string): boolean {
+  if (parent._key === targetKey) return true;
+  if (Array.isArray(parent.children)) {
+    for (const child of parent.children) {
+      if (isDescendant(child, targetKey)) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Удаляет узел из дерева (поиском по всему дереву) и возвращает удаленный узел
+ */
+export function removeNodeFromTree(
+  nodes: HtmlNode[],
+  targetKey: string
+): { updatedNodes: HtmlNode[]; removedNode: HtmlNode | null } {
+  let removed: HtmlNode | null = null;
+
+  function filterNodes(list: HtmlNode[]): HtmlNode[] {
+    const result: HtmlNode[] = [];
+    for (const node of list) {
+      if (node._key === targetKey) {
+        removed = node;
+        continue;
+      }
+      if (Array.isArray(node.children)) {
+        result.push({
+          ...node,
+          children: filterNodes(node.children),
+        });
+      } else {
+        result.push(node);
+      }
+    }
+    return result;
+  }
+
+  const updatedNodes = filterNodes(nodes);
+  return { updatedNodes, removedNode: removed };
+}
+
+/**
+ * Вставляет узел в массив children целевого узла
+ */
+export function insertNodeIntoTarget(
+  nodes: HtmlNode[],
+  targetKey: string,
+  nodeToInsert: HtmlNode
+): HtmlNode[] {
+  return nodes.map((node) => {
+    if (node._key === targetKey) {
+      let existingChildren: HtmlNode[] = [];
+      if (Array.isArray(node.children)) {
+        existingChildren = node.children;
+      } else if (typeof node.children === "string" && node.children.trim()) {
+        node = { ...node, text: node.text || node.children };
+      }
+      return {
+        ...node,
+        children: [...existingChildren, nodeToInsert],
+      };
+    }
+    if (Array.isArray(node.children)) {
+      return {
+        ...node,
+        children: insertNodeIntoTarget(node.children, targetKey, nodeToInsert),
+      };
+    }
+    return node;
+  });
+}
+
+/**
+ * Перемещает узел sourceKey вместе со всеми его потомками внутрь targetKey
+ */
+export function moveNodeIntoNode(
+  nodes: HtmlNode[],
+  sourceKey: string,
+  targetKey: string
+): HtmlNode[] {
+  if (sourceKey === targetKey) return nodes;
+
+  // Находим перемещаемый узел
+  let sourceNode: HtmlNode | null = null;
+  for (const rootNode of nodes) {
+    const found = findNodeByKey(rootNode, sourceKey);
+    if (found) {
+      sourceNode = found;
+      break;
+    }
+  }
+  if (!sourceNode) return nodes;
+
+  // Нельзя перемещать узел в самого себя или в своих потомков
+  if (isDescendant(sourceNode, targetKey)) {
+    return nodes;
+  }
+
+  // 1. Удаляем узел из текущего положения
+  const { updatedNodes, removedNode } = removeNodeFromTree(nodes, sourceKey);
+  if (!removedNode) return nodes;
+
+  // 2. Вставляем удаленный узел в детей targetKey
+  return insertNodeIntoTarget(updatedNodes, targetKey, removedNode);
+}
+
 
 /**
  * Удаляет узел с заданным _key из дерева.

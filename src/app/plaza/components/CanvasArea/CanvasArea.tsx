@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { HtmlNode } from "@/types/HtmlNode";
 import { getHtmlJson, saveHtmlJson, deleteHtmlJson } from "@/lib/htmlStorage";
-import { generateNodeKey } from "@/lib/htmlTree";
+import { generateNodeKey, moveNodeIntoNode, findNodeByKey, isDescendant } from "@/lib/htmlTree";
 import handleRender from "./utils/handleRender";
 import type { RenderBox } from "./utils/types";
 
@@ -27,21 +27,35 @@ export function CanvasArea() {
   const containerRef = useRef<HTMLDivElement>(null);
   const boxesRef = useRef<RenderBox[]>([]);
 
-  // Изначально в базе пустота
+  // В базе изначально пустота
   const [currentJson, setCurrentJson] = useState<HtmlNode[]>([]);
+  const currentJsonRef = useRef<HtmlNode[]>([]);
+  currentJsonRef.current = currentJson;
+
   const [collapsedKeys, setCollapsedKeys] = useState<Set<string>>(new Set());
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
   const [clickedKey, setClickedKey] = useState<string | null>(null);
 
-  // Чтение из IndexedDB при старте (если пусто — пустой массив [])
+  // Drag & drop Refs
+  const draggedKeyRef = useRef<string | null>(null);
+  const dropTargetRef = useRef<{ key: string; position: string } | null>(null);
+  const dragMousePosRef = useRef<{ x: number; y: number } | null>(null);
+  const potentialDraggedKeyRef = useRef<string | null>(null);
+  const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const hasDraggedRef = useRef<boolean>(false);
+
+  // 1. Чтение из IndexedDB при старте
   useEffect(() => {
     (async () => {
       try {
         const data = await getHtmlJson(DB_KEY);
         if (data) {
-          setCurrentJson(Array.isArray(data) ? data : [data]);
+          const list = Array.isArray(data) ? data : [data];
+          setCurrentJson(list);
+          currentJsonRef.current = list;
         } else {
           setCurrentJson([]);
+          currentJsonRef.current = [];
         }
       } catch (err) {
         console.error("IndexedDB error:", err);
@@ -50,7 +64,7 @@ export function CanvasArea() {
     })();
   }, []);
 
-  // Отрисовка на canvas
+  // 2. Механизм рендеринга на canvas
   const render = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -61,22 +75,22 @@ export function CanvasArea() {
       canvas,
       ctx,
       boxesRef,
-      currentJson,
+      currentJsonRef.current,
       hoveredKey,
-      null,
-      null,
-      null,
+      draggedKeyRef.current,
+      dropTargetRef.current,
+      dragMousePosRef.current,
       collapsedKeys,
       clickedKey,
       false,
       null,
       0
     );
-  }, [currentJson, hoveredKey, clickedKey, collapsedKeys]);
+  }, [hoveredKey, clickedKey, collapsedKeys]);
 
   useEffect(() => {
     render();
-  }, [render]);
+  }, [currentJson, render]);
 
   useEffect(() => {
     const onResize = () => render();
@@ -87,6 +101,7 @@ export function CanvasArea() {
   // Сохранение в IndexedDB
   const persist = async (next: HtmlNode[]) => {
     setCurrentJson(next);
+    currentJsonRef.current = next;
     try {
       if (next.length > 0) {
         await saveHtmlJson(DB_KEY, next);
@@ -98,7 +113,7 @@ export function CanvasArea() {
     }
   };
 
-  // Добавление узла из /public/json/[tag].json в конец (одна под другой, без вложения)
+  // Добавление узла из /public/json/[tag].json в конец (одна под другой)
   const handleAppendNode = async (tag: "div" | "p") => {
     try {
       const res = await fetch(`/json/${tag}.json`);
@@ -110,8 +125,7 @@ export function CanvasArea() {
       const nodes: HtmlNode[] = Array.isArray(raw) ? raw : [raw];
       const withKeys = nodes.map(assignKeys);
 
-      // Добавляем строго в конец списка (одна под другой)
-      const next = [...currentJson, ...withKeys];
+      const next = [...currentJsonRef.current, ...withKeys];
       await persist(next);
     } catch (e) {
       console.error(`Error adding ${tag}:`, e);
@@ -125,6 +139,26 @@ export function CanvasArea() {
     setHoveredKey(null);
   };
 
+  // --------------------------------------------------------------------------
+  // Drag & Drop события мыши
+  // --------------------------------------------------------------------------
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (e.button !== 0) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Проверяем, навели ли мышь на узел
+    if (hoveredKey) {
+      potentialDraggedKeyRef.current = hoveredKey;
+      dragStartPosRef.current = { x, y };
+      hasDraggedRef.current = false;
+    }
+  };
+
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -132,6 +166,57 @@ export function CanvasArea() {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
+    // 1. Проверяем преодоление порога перетаскивания (порог 4px)
+    if (potentialDraggedKeyRef.current && dragStartPosRef.current) {
+      const dx = x - dragStartPosRef.current.x;
+      const dy = y - dragStartPosRef.current.y;
+      if (Math.hypot(dx, dy) > 4) {
+        draggedKeyRef.current = potentialDraggedKeyRef.current;
+        potentialDraggedKeyRef.current = null;
+        hasDraggedRef.current = true;
+      }
+    }
+
+    // 2. Если сейчас происходит Drag
+    if (draggedKeyRef.current) {
+      dragMousePosRef.current = { x, y };
+
+      const draggedSourceKey = draggedKeyRef.current;
+      let targetUnderCursor: string | null = null;
+
+      // Ищем узел под курсором (с глубоких к верхним)
+      for (let i = boxesRef.current.length - 1; i >= 0; i--) {
+        const box = boxesRef.current[i];
+        if (x >= box.x && x <= box.x + box.w && y >= box.y && y <= box.y + box.h) {
+          // Нельзя бросать в самого себя
+          if (box.key !== draggedSourceKey) {
+            // Проверяем, не является ли target потомком dragged
+            let sourceNode: HtmlNode | null = null;
+            for (const rootNode of currentJsonRef.current) {
+              const f = findNodeByKey(rootNode, draggedSourceKey);
+              if (f) {
+                sourceNode = f;
+                break;
+              }
+            }
+
+            if (sourceNode && !isDescendant(sourceNode, box.key)) {
+              targetUnderCursor = box.key;
+              break;
+            }
+          }
+        }
+      }
+
+      dropTargetRef.current = targetUnderCursor
+        ? { key: targetUnderCursor, position: "inside" }
+        : null;
+
+      render();
+      return;
+    }
+
+    // 3. Обычный hover (когда не перетаскиваем)
     let foundKey: string | null = null;
     for (let i = boxesRef.current.length - 1; i >= 0; i--) {
       const box = boxesRef.current[i];
@@ -146,11 +231,53 @@ export function CanvasArea() {
     }
   };
 
+  const handleMouseUp = async () => {
+    // Если завершаем перетаскивание
+    if (draggedKeyRef.current) {
+      const sourceKey = draggedKeyRef.current;
+      const target = dropTargetRef.current;
+
+      if (target && target.key && target.key !== sourceKey) {
+        // Перемещаем ноду вместе со всеми детьми внутрь целевой ноды
+        const updatedTree = moveNodeIntoNode(
+          currentJsonRef.current,
+          sourceKey,
+          target.key
+        );
+        // Сразу отсылаем новое дерево в базу
+        await persist(updatedTree);
+      }
+
+      draggedKeyRef.current = null;
+      dropTargetRef.current = null;
+      dragMousePosRef.current = null;
+      potentialDraggedKeyRef.current = null;
+      dragStartPosRef.current = null;
+      render();
+      return;
+    }
+
+    potentialDraggedKeyRef.current = null;
+    dragStartPosRef.current = null;
+  };
+
   const handleMouseLeave = () => {
+    draggedKeyRef.current = null;
+    dropTargetRef.current = null;
+    dragMousePosRef.current = null;
+    potentialDraggedKeyRef.current = null;
+    dragStartPosRef.current = null;
     if (hoveredKey) setHoveredKey(null);
+    render();
   };
 
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // Если только что завершили перетаскивание — клик не обрабатываем
+    if (hasDraggedRef.current) {
+      hasDraggedRef.current = false;
+      return;
+    }
+
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
@@ -173,6 +300,7 @@ export function CanvasArea() {
       }
     }
 
+    // Выбор ноды
     let clicked: string | null = null;
     for (let i = boxesRef.current.length - 1; i >= 0; i--) {
       const b = boxesRef.current[i];
@@ -187,14 +315,14 @@ export function CanvasArea() {
   return (
     <div className="w-full flex gap-4 h-[calc(100vh-120px)] min-h-[500px]">
       {/* Боковая панель с кнопками */}
-      <aside className="w-40 shrink-0 bg-zinc-900 border border-zinc-800 rounded-xl p-3 flex flex-col justify-between shadow-xl">
+      <aside className="w-40 shrink-0 bg-zinc-900 border border-zinc-800 rounded-xl p-3 flex flex-col justify-between shadow-xl select-none">
         <div className="space-y-3">
           <div className="border-b border-zinc-800 pb-2">
             <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-semibold block">
               Elements
             </span>
             <span className="text-[10px] text-zinc-500 font-mono">
-              /public/json
+              Drag & Drop on canvas
             </span>
           </div>
 
@@ -238,7 +366,9 @@ export function CanvasArea() {
       >
         <canvas
           ref={canvasRef}
+          onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseLeave}
           onClick={handleClick}
           className="cursor-default relative z-10 block opacity-100"
