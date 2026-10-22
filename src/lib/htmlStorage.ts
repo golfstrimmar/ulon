@@ -45,7 +45,7 @@ export function openHtmlDatabase(): Promise<IDBDatabase> {
  * @param id Идентификатор записи (например: "root", "plaza_tree")
  * @param root Дерево HtmlNode
  */
-export async function saveHtmlJson(id: string, root: HtmlNode): Promise<void> {
+export async function saveHtmlJson(id: string, root: HtmlNode | HtmlNode[]): Promise<void> {
   const db = await openHtmlDatabase();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, "readwrite");
@@ -66,7 +66,7 @@ export async function saveHtmlJson(id: string, root: HtmlNode): Promise<void> {
  * Читает дерево HtmlNode из IndexedDB по id.
  * Если ничего не сохранено — возвращает null (изначально в базе пустота).
  */
-export async function getHtmlJson(id: string): Promise<HtmlNode | null> {
+export async function getHtmlJson(id: string): Promise<HtmlNode | HtmlNode[] | null> {
   const db = await openHtmlDatabase();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, "readonly");
