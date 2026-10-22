@@ -10,6 +10,7 @@ export interface ElementFolder {
 
 export const ROOT_TAGS: ElementItem[] = [
   { name: "div", path: "/json/div.json" },
+  { name: "section-container", path: "/json/section_container_wrap.json" },
   { name: "p", path: "/json/p.json" },
   { name: "span", path: "/json/span.json" },
   { name: "a", path: "/json/a.json" },

@@ -28,9 +28,9 @@ function computeNodeLayout(
   const hasChildren = Array.isArray(node.children) && node.children.length > 0;
 
   const HEADER_HEIGHT = 38;
-  const PADDING_BOTTOM = 14;
+  const PADDING_BOTTOM = 5;
   const GAP_Y = 10;
-  const INDENT_X = 18; // Видимый внутренний отступ для эффекта вложенности
+  const INDENT_X = 10; // Видимый внутренний отступ для эффекта вложенности
 
   const toggleBtnBounds = hasChildren
     ? { x: x + 10, y: y + 10, w: 18, h: 18 }
@@ -301,7 +301,7 @@ export default function handleRender(
     }
 
     // 5. Бейдж тега <tag> с цветовой дифференциацией
-    const tagText = `<${box.tag}>`;
+    const tagText = `${box.tag}`;
     ctx.font = "bold 12px ui-monospace, SFMono-Regular, monospace";
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
@@ -426,7 +426,7 @@ export default function handleRender(
       ctx.font = "bold 12px ui-monospace, monospace";
       ctx.fillStyle = "#c7d2fe";
       ctx.textBaseline = "middle";
-      ctx.fillText(`<${draggedBox.tag}>`, gx + 10, gy + ghostH / 2);
+      ctx.fillText(`${draggedBox.tag}`, gx + 10, gy + ghostH / 2);
 
       if (draggedBox.text) {
         ctx.font = "11px sans-serif";

@@ -21,7 +21,7 @@ export default function PlazaPage() {
         <Header />
       </Suspense>
 
-      <main className="flex-1 p-4 sm:p-6 flex flex-col max-w-7xl w-full mx-auto">
+      <main className="flex-1 p-1  flex flex-col  w-full mx-auto">
         <Suspense
           fallback={
             <div className="w-full h-96 bg-zinc-900/50 rounded-2xl animate-pulse" />

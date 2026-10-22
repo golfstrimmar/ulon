@@ -469,14 +469,11 @@ export function CanvasArea() {
   return (
     <div className="w-full flex gap-4 h-[calc(100vh-120px)] min-h-[500px]">
       {/* Боковая панель с кнопками и папками */}
-      <aside className="w-56 shrink-0 bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 flex flex-col justify-between shadow-xl select-none overflow-hidden">
+      <aside className=" shrink-0 bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 flex flex-col justify-between shadow-xl select-none overflow-hidden">
         {/* Верхняя часть: История + элементы */}
         <div className="space-y-2.5 flex-1 overflow-y-auto pr-1 min-h-0 custom-scrollbar">
           {/* Блок Undo / Redo */}
           <div className="space-y-1 border-b border-zinc-800 pb-2">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-semibold block">
-              History
-            </span>
             <div className="grid grid-cols-2 gap-1">
               <button
                 onClick={handleUndo}
@@ -552,10 +549,10 @@ export function CanvasArea() {
                 <button
                   key={tag.path}
                   onClick={() => handleAppendFromPath(tag.path)}
-                  className="py-0.5 px-1 text-[11px] font-mono rounded bg-zinc-800/70 hover:bg-zinc-700 hover:text-white border border-zinc-750 text-zinc-300 truncate text-center transition cursor-pointer"
+                  className="py-0.5 px-1 text-[11px] font-bold rounded bg-zinc-800/70 hover:bg-zinc-700 hover:text-white border border-zinc-750 text-zinc-300 truncate text-center transition cursor-pointer"
                   title={`Add <${tag.name}>`}
                 >
-                  &lt;{tag.name}&gt;
+                  {tag.name}
                 </button>
               ))}
             </div>
