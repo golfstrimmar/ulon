@@ -169,7 +169,8 @@ export default function handleRender(
     currentY += layout.totalHeight + 16;
   }
 
-  const totalContentHeight = Math.max(300, currentY + 40, visibleMockupHeight);
+  const containerHeight = canvas.parentElement?.clientHeight || 600;
+  const totalContentHeight = Math.max(containerHeight, currentY + 40, visibleMockupHeight);
 
   // Ресайз холста под размер контента с учетом DPR
   if (
