@@ -2,22 +2,8 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Suspense } from "react";
-import { LogoutButton } from "@/components/LogoutButton";
+import { Header } from "@/components/Header";
 import { prisma } from "@/lib/prisma";
-
-async function AccountHeader() {
-  const session = await auth();
-  if (!session?.user) redirect("/login");
-
-  return (
-    <div className="flex items-center gap-4">
-      <span className="text-sm text-indigo-400 font-medium">
-        {session.user.name || session.user.email}
-      </span>
-      <LogoutButton />
-    </div>
-  );
-}
 
 async function AccountDetails() {
   const session = await auth();
@@ -35,8 +21,9 @@ async function AccountDetails() {
         {session.user.image ? (
           <img
             src={session.user.image}
-            alt=""
-            className="w-16 h-16 rounded-full border border-zinc-700 object-cover"
+            alt={session.user.name || "Аватар"}
+            referrerPolicy="no-referrer"
+            className="w-16 h-16 rounded-full border border-zinc-700 object-cover ring-2 ring-indigo-500/20"
           />
         ) : (
           <div className="w-16 h-16 rounded-full bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 font-bold text-2xl flex items-center justify-center">
@@ -114,23 +101,16 @@ async function AccountDetails() {
 export default function AccountPage() {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col">
-      <header className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur px-6 py-4 flex items-center justify-between">
-        <Link
-          href="/"
-          className="flex items-center gap-2 hover:opacity-80 transition"
-        >
-          <span className="font-bold text-xl tracking-tight text-white">
-            Ulon
-          </span>
-        </Link>
-        <Suspense
-          fallback={
-            <div className="h-8 w-24 bg-zinc-800/50 rounded animate-pulse" />
-          }
-        >
-          <AccountHeader />
-        </Suspense>
-      </header>
+      <Suspense
+        fallback={
+          <header className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur px-6 py-4 flex items-center justify-between">
+            <span className="font-bold text-xl tracking-tight text-white">Ulon</span>
+            <div className="h-8 w-28 bg-zinc-800/50 rounded-full animate-pulse" />
+          </header>
+        }
+      >
+        <Header />
+      </Suspense>
 
       <main className="flex-1 max-w-2xl w-full mx-auto p-6 flex flex-col justify-center">
         <Suspense

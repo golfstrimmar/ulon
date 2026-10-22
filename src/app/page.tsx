@@ -1,51 +1,8 @@
 import { auth } from "@/auth";
 import Link from "next/link";
 import { Suspense } from "react";
-import { LogoutButton } from "@/components/LogoutButton";
+import { Header } from "@/components/Header";
 import { WelcomeToast } from "@/components/WelcomeToast";
-
-async function UserNav() {
-  const session = await auth();
-
-  if (session?.user) {
-    return (
-      <div className="flex items-center gap-4">
-        <Link
-          href="/account"
-          className="text-sm text-zinc-300 hover:text-indigo-400 font-medium transition hover:underline underline-offset-4 flex items-center gap-2"
-          title="Открыть личный кабинет"
-        >
-          {session.user.image && (
-            <img
-              src={session.user.image}
-              alt=""
-              className="w-6 h-6 rounded-full object-cover border border-zinc-700"
-            />
-          )}
-          <span>{session.user.name || session.user.email}</span>
-        </Link>
-        <LogoutButton />
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center gap-3">
-      <Link
-        href="/login"
-        className="text-sm text-zinc-300 hover:text-white px-3 py-1.5 transition"
-      >
-        Войти
-      </Link>
-      <Link
-        href="/register"
-        className="text-sm bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-1.5 rounded-lg font-medium transition shadow"
-      >
-        Регистрация
-      </Link>
-    </div>
-  );
-}
 
 async function MainContent() {
   const session = await auth();
@@ -104,21 +61,16 @@ export default function HomePage() {
         <WelcomeToast />
       </Suspense>
 
-      <header className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="font-bold text-xl tracking-tight text-white">
-            Ulon
-          </span>
-        </div>
-
-        <Suspense
-          fallback={
-            <div className="h-8 w-24 bg-zinc-800/50 rounded animate-pulse" />
-          }
-        >
-          <UserNav />
-        </Suspense>
-      </header>
+      <Suspense
+        fallback={
+          <header className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur px-6 py-4 flex items-center justify-between">
+            <span className="font-bold text-xl tracking-tight text-white">Ulon</span>
+            <div className="h-8 w-28 bg-zinc-800/50 rounded-full animate-pulse" />
+          </header>
+        }
+      >
+        <Header />
+      </Suspense>
 
       <main className="flex-1 flex flex-col items-center justify-center p-6 text-center max-w-2xl mx-auto">
         <Suspense
