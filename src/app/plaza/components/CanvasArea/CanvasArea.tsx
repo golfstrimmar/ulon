@@ -3,7 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { HtmlNode } from "@/types/HtmlNode";
 import { getHtmlJson, saveHtmlJson, deleteHtmlJson } from "@/lib/htmlStorage";
-import { generateNodeKey, moveNodeIntoNode, moveNodePosition, findNodeByKey, isDescendant, duplicateNodeInTree, deleteNodeFromArray } from "@/lib/htmlTree";
+import {
+  generateNodeKey,
+  moveNodePosition,
+  findNodeByKey,
+  isDescendant,
+  duplicateNodeInTree,
+  deleteNodeFromArray,
+} from "@/lib/htmlTree";
 import handleRender from "./utils/handleRender";
 import type { RenderBox } from "./utils/types";
 
@@ -32,13 +39,22 @@ export function CanvasArea() {
   const currentJsonRef = useRef<HtmlNode[]>([]);
   currentJsonRef.current = currentJson;
 
+  // Стек истории для Undo / Redo
+  const historyRef = useRef<HtmlNode[][]>([]);
+  const futureRef = useRef<HtmlNode[][]>([]);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
   const [collapsedKeys, setCollapsedKeys] = useState<Set<string>>(new Set());
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
   const [clickedKey, setClickedKey] = useState<string | null>(null);
 
   // Drag & drop Refs
   const draggedKeyRef = useRef<string | null>(null);
-  const dropTargetRef = useRef<{ key: string; position: string } | null>(null);
+  const dropTargetRef = useRef<{
+    key: string;
+    position: "inside" | "self" | "before" | "after";
+  } | null>(null);
   const dragMousePosRef = useRef<{ x: number; y: number } | null>(null);
   const potentialDraggedKeyRef = useRef<string | null>(null);
   const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
@@ -99,10 +115,20 @@ export function CanvasArea() {
     return () => window.removeEventListener("resize", onResize);
   }, [render]);
 
-  // Сохранение в IndexedDB
-  const persist = async (next: HtmlNode[]) => {
+  // Сохранение состояния в IndexedDB и запись в историю Undo
+  const persist = async (next: HtmlNode[], recordHistory = true) => {
+    if (recordHistory) {
+      // Сохраняем снимок текущего состояния в стек истории
+      const snapshot = JSON.parse(JSON.stringify(currentJsonRef.current));
+      historyRef.current = [...historyRef.current.slice(-49), snapshot];
+      futureRef.current = []; // Любое новое действие очищает стек Redo
+      setCanUndo(true);
+      setCanRedo(false);
+    }
+
     setCurrentJson(next);
     currentJsonRef.current = next;
+
     try {
       if (next.length > 0) {
         await saveHtmlJson(DB_KEY, next);
@@ -113,6 +139,77 @@ export function CanvasArea() {
       console.error("Failed to save to IndexedDB:", e);
     }
   };
+
+  // --------------------------------------------------------------------------
+  // UNDO & REDO
+  // --------------------------------------------------------------------------
+
+  const handleUndo = useCallback(async () => {
+    if (historyRef.current.length === 0) return;
+
+    const previousState = historyRef.current[historyRef.current.length - 1];
+    historyRef.current = historyRef.current.slice(0, -1);
+
+    const currentSnapshot = JSON.parse(JSON.stringify(currentJsonRef.current));
+    futureRef.current = [currentSnapshot, ...futureRef.current];
+
+    setCanUndo(historyRef.current.length > 0);
+    setCanRedo(true);
+
+    // Восстанавливаем состояние и синхронизируем базу
+    await persist(previousState, false);
+  }, []);
+
+  const handleRedo = useCallback(async () => {
+    if (futureRef.current.length === 0) return;
+
+    const nextState = futureRef.current[0];
+    futureRef.current = futureRef.current.slice(1);
+
+    const currentSnapshot = JSON.parse(JSON.stringify(currentJsonRef.current));
+    historyRef.current = [...historyRef.current.slice(-49), currentSnapshot];
+
+    setCanUndo(true);
+    setCanRedo(futureRef.current.length > 0);
+
+    // Восстанавливаем состояние и синхронизируем базу
+    await persist(nextState, false);
+  }, []);
+
+  // Глобальные горячие клавиши: Ctrl+Z / Cmd+Z (Undo) и Ctrl+Y / Ctrl+Shift+Z (Redo)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+
+      const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+      if (!isCtrlOrCmd) return;
+
+      const key = e.key.toLowerCase();
+
+      // Undo: Ctrl+Z / Cmd+Z (латиница z или русская я)
+      if ((key === "z" || key === "я") && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      }
+      // Redo: Ctrl+Shift+Z / Cmd+Shift+Z или Ctrl+Y (латиница y или русская н)
+      else if (
+        ((key === "z" || key === "я") && e.shiftKey) ||
+        key === "y" ||
+        key === "н"
+      ) {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleUndo, handleRedo]);
 
   // Добавление узла из /public/json/[tag].json в конец (одна под другой)
   const handleAppendNode = async (tag: "div" | "p") => {
@@ -152,7 +249,6 @@ export function CanvasArea() {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    // Проверяем, навели ли мышь на узел
     if (hoveredKey) {
       potentialDraggedKeyRef.current = hoveredKey;
       dragStartPosRef.current = { x, y };
@@ -167,7 +263,7 @@ export function CanvasArea() {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    // 1. Проверяем преодоление порога перетаскивания (порог 4px)
+    // 1. Порог перетаскивания (4px)
     if (potentialDraggedKeyRef.current && dragStartPosRef.current) {
       const dx = x - dragStartPosRef.current.x;
       const dy = y - dragStartPosRef.current.y;
@@ -178,24 +274,25 @@ export function CanvasArea() {
       }
     }
 
-    // 2. Если сейчас происходит Drag
+    // 2. Режим Drag
     if (draggedKeyRef.current) {
       dragMousePosRef.current = { x, y };
 
       const draggedSourceKey = draggedKeyRef.current;
-      let targetUnderCursor: { key: string; position: "inside" | "self" | "before" | "after" } | null = null;
+      let targetUnderCursor: {
+        key: string;
+        position: "inside" | "self" | "before" | "after";
+      } | null = null;
 
-      // Ищем узел под курсором (с глубоких к верхним)
       for (let i = boxesRef.current.length - 1; i >= 0; i--) {
         const box = boxesRef.current[i];
         if (x >= box.x && x <= box.x + box.w && y >= box.y && y <= box.y + box.h) {
-          // Если навели на самого себя — позиция "self" (для дублирования)
+          // Сброс на самого себя -> позиция "self" (дублирование)
           if (box.key === draggedSourceKey) {
             targetUnderCursor = { key: box.key, position: "self" };
             break;
           }
 
-          // Проверяем, не является ли target потомком dragged
           let sourceNode: HtmlNode | null = null;
           for (const rootNode of currentJsonRef.current) {
             const f = findNodeByKey(rootNode, draggedSourceKey);
@@ -205,6 +302,7 @@ export function CanvasArea() {
             }
           }
 
+          // Защита: нельзя бросать в своих потомков
           if (sourceNode && !isDescendant(sourceNode, box.key)) {
             const relY = (y - box.y) / box.h;
             let position: "before" | "inside" | "after" = "inside";
@@ -226,7 +324,7 @@ export function CanvasArea() {
       return;
     }
 
-    // 3. Обычный hover (когда не перетаскиваем)
+    // 3. Обычный hover
     let foundKey: string | null = null;
     for (let i = boxesRef.current.length - 1; i >= 0; i--) {
       const box = boxesRef.current[i];
@@ -242,14 +340,13 @@ export function CanvasArea() {
   };
 
   const handleMouseUp = async () => {
-    // Если завершаем перетаскивание
     if (draggedKeyRef.current) {
       const sourceKey = draggedKeyRef.current;
       const target = dropTargetRef.current;
 
       if (target && target.key) {
         if (target.key === sourceKey || target.position === "self") {
-          // Сброс на самого себя -> ДУБЛИРУЕМ ноду!
+          // Сброс на самого себя -> дублируем ноду
           const updatedTree = duplicateNodeInTree(
             currentJsonRef.current,
             sourceKey
@@ -280,7 +377,7 @@ export function CanvasArea() {
     dragStartPosRef.current = null;
   };
 
-  // Двойной клик: УДАЛЕНИЕ ноды вместе со всеми потомками
+  // Двойной клик: удаление ноды
   const handleDoubleClick = async (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (clickTimeoutRef.current) {
       clearTimeout(clickTimeoutRef.current);
@@ -321,7 +418,6 @@ export function CanvasArea() {
   };
 
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    // Если только что завершили перетаскивание — клик не обрабатываем
     if (hasDraggedRef.current) {
       hasDraggedRef.current = false;
       return;
@@ -371,35 +467,63 @@ export function CanvasArea() {
   return (
     <div className="w-full flex gap-4 h-[calc(100vh-120px)] min-h-[500px]">
       {/* Боковая панель с кнопками */}
-      <aside className="w-40 shrink-0 bg-zinc-900 border border-zinc-800 rounded-xl p-3 flex flex-col justify-between shadow-xl select-none">
-        <div className="space-y-3">
-          <div className="border-b border-zinc-800 pb-2">
+      <aside className="w-44 shrink-0 bg-zinc-900 border border-zinc-800 rounded-xl p-3 flex flex-col justify-between shadow-xl select-none">
+        <div className="space-y-4">
+          {/* Блок Undo / Redo */}
+          <div className="space-y-1.5 border-b border-zinc-800 pb-3">
             <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-semibold block">
-              Elements
+              History
             </span>
-            <span className="text-[10px] text-zinc-500 font-mono">
-              Drag & Drop on canvas
-            </span>
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                onClick={handleUndo}
+                disabled={!canUndo}
+                className="py-1.5 px-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:hover:bg-zinc-800 border border-zinc-700/60 text-zinc-200 text-xs font-medium flex items-center justify-center gap-1 transition cursor-pointer disabled:cursor-not-allowed"
+                title="Undo (Ctrl+Z)"
+              >
+                <span>↶</span> Undo
+              </button>
+              <button
+                onClick={handleRedo}
+                disabled={!canRedo}
+                className="py-1.5 px-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:hover:bg-zinc-800 border border-zinc-700/60 text-zinc-200 text-xs font-medium flex items-center justify-center gap-1 transition cursor-pointer disabled:cursor-not-allowed"
+                title="Redo (Ctrl+Y / Ctrl+Shift+Z)"
+              >
+                <span>↷</span> Redo
+              </button>
+            </div>
           </div>
 
-          <div className="flex flex-col gap-2">
-            <button
-              onClick={() => handleAppendNode("div")}
-              className="w-full py-2 px-3 rounded-lg bg-indigo-950/70 hover:bg-indigo-900 border border-indigo-700/60 hover:border-indigo-500 text-indigo-300 hover:text-white font-mono text-xs font-semibold flex items-center justify-between transition cursor-pointer shadow-sm"
-              title="Add div to end"
-            >
-              <span>&lt;div&gt;</span>
-              <span className="text-[10px] text-indigo-400/80 font-sans">+ add</span>
-            </button>
+          {/* Блок добавления элементов */}
+          <div className="space-y-2">
+            <div>
+              <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-semibold block">
+                Elements
+              </span>
+              <span className="text-[10px] text-zinc-500 font-mono">
+                from /public/json
+              </span>
+            </div>
 
-            <button
-              onClick={() => handleAppendNode("p")}
-              className="w-full py-2 px-3 rounded-lg bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-700/60 hover:border-emerald-500 text-emerald-300 hover:text-white font-mono text-xs font-semibold flex items-center justify-between transition cursor-pointer shadow-sm"
-              title="Add p to end"
-            >
-              <span>&lt;p&gt;</span>
-              <span className="text-[10px] text-emerald-400/80 font-sans">+ add</span>
-            </button>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => handleAppendNode("div")}
+                className="w-full py-2 px-3 rounded-lg bg-indigo-950/70 hover:bg-indigo-900 border border-indigo-700/60 hover:border-indigo-500 text-indigo-300 hover:text-white font-mono text-xs font-semibold flex items-center justify-between transition cursor-pointer shadow-sm"
+                title="Add div to end"
+              >
+                <span>&lt;div&gt;</span>
+                <span className="text-[10px] text-indigo-400/80 font-sans">+ add</span>
+              </button>
+
+              <button
+                onClick={() => handleAppendNode("p")}
+                className="w-full py-2 px-3 rounded-lg bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-700/60 hover:border-emerald-500 text-emerald-300 hover:text-white font-mono text-xs font-semibold flex items-center justify-between transition cursor-pointer shadow-sm"
+                title="Add p to end"
+              >
+                <span>&lt;p&gt;</span>
+                <span className="text-[10px] text-emerald-400/80 font-sans">+ add</span>
+              </button>
+            </div>
           </div>
         </div>
 
