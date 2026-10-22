@@ -4,6 +4,7 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { modal } from "@/lib/modal";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -28,8 +29,11 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (!res.ok) {
+        await modal.error("Ошибка регистрации", data.error || "Не удалось создать аккаунт", 2000);
         throw new Error(data.error || "Ошибка регистрации");
       }
+
+      await modal.success("Успешная регистрация!", "Аккаунт создан! Выполняем вход...", 2000);
 
       // Automatically sign in upon successful registration
       const signInRes = await signIn("credentials", {
@@ -41,7 +45,7 @@ export default function RegisterPage() {
       if (signInRes?.error) {
         router.push("/login?registered=true");
       } else {
-        router.push("/");
+        router.push("/?welcome=1");
         router.refresh();
       }
     } catch (err: any) {

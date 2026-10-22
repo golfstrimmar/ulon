@@ -1,20 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Suspense } from "react";
+import { modal } from "@/lib/modal";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const registered = searchParams.get("registered");
+  const urlError = searchParams.get("error");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    urlError === "OAuthAccountNotLinked"
+      ? "Этот email уже был зарегистрирован через пароль. Попробуйте войти через Google ещё раз (аккаунты будут связаны)."
+      : urlError
+        ? "Ошибка авторизации: " + urlError
+        : null
+  );
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (urlError === "OAuthAccountNotLinked") {
+      modal.warning(
+        "Аккаунт уже существует",
+        "Этот email уже был зарегистрирован через пароль. Войдите через Google ещё раз, и аккаунты будут автоматически объединены."
+      );
+    } else if (urlError) {
+      modal.error("Ошибка авторизации", `Код ошибки: ${urlError}`);
+    } else if (registered) {
+      modal.success("Успешная регистрация!", "Ваш аккаунт создан. Войдите, используя email и пароль.");
+    }
+  }, [urlError, registered]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,20 +50,25 @@ function LoginForm() {
       });
 
       if (res?.error) {
-        setError("Неверный email или пароль");
+        const msg = "Неверный email или пароль";
+        setError(msg);
+        await modal.error("Ошибка входа", msg, 2000);
       } else {
-        router.push("/");
+        router.push("/?welcome=1");
         router.refresh();
       }
     } catch (err: any) {
-      setError("Не удалось выполнить вход. Попробуйте снова.");
+      const msg = "Не удалось выполнить вход. Попробуйте снова.";
+      setError(msg);
+      await modal.error("Сбой сервера", msg, 2000);
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleSignIn = () => {
-    signIn("google", { callbackUrl: "/" });
+    modal.info("Google Авторизация", "Перенаправляем на страницу входа Google...", 1500);
+    signIn("google", { callbackUrl: "/?welcome=1" });
   };
 
   return (
