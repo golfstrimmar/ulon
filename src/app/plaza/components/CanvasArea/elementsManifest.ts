@@ -1,0 +1,142 @@
+export interface ElementItem {
+  name: string;
+  path: string;
+}
+
+export interface ElementFolder {
+  name: string;
+  items: ElementItem[];
+}
+
+export const ROOT_TAGS: ElementItem[] = [
+  { name: "div", path: "/json/div.json" },
+  { name: "p", path: "/json/p.json" },
+  { name: "span", path: "/json/span.json" },
+  { name: "a", path: "/json/a.json" },
+  { name: "button", path: "/json/button.json" },
+  { name: "h1", path: "/json/h1.json" },
+  { name: "h2", path: "/json/h2.json" },
+  { name: "h3", path: "/json/h3.json" },
+  { name: "h4", path: "/json/h4.json" },
+  { name: "h5", path: "/json/h5.json" },
+  { name: "h6", path: "/json/h6.json" },
+  { name: "header", path: "/json/header.json" },
+  { name: "footer", path: "/json/footer.json" },
+  { name: "main", path: "/json/main.json" },
+  { name: "section", path: "/json/section.json" },
+  { name: "nav", path: "/json/nav.json" },
+  { name: "article", path: "/json/article.json" },
+  { name: "aside", path: "/json/aside.json" },
+  { name: "container", path: "/json/container.json" },
+  { name: "flex-col", path: "/json/flex-col.json" },
+  { name: "flex-row", path: "/json/flex-row.json" },
+  { name: "grid-3", path: "/json/grid-3.json" },
+  { name: "grid-300-1fr", path: "/json/grid-300-1fr.json" },
+  { name: "grid-auto-col", path: "/json/grid-auto-col.json" },
+  { name: "grid-minmax", path: "/json/grid-minmax.json" },
+  { name: "ul", path: "/json/ul.json" },
+  { name: "ol", path: "/json/ol.json" },
+  { name: "li", path: "/json/li.json" },
+  { name: "img", path: "/json/img.json" },
+  { name: "svg", path: "/json/svg.json" },
+  { name: "label", path: "/json/label.json" },
+  { name: "table", path: "/json/table.json" },
+  { name: "tr", path: "/json/tr.json" },
+  { name: "td", path: "/json/td.json" },
+  { name: "th", path: "/json/th.json" },
+  { name: "audio", path: "/json/audio.json" },
+  { name: "br", path: "/json/br.json" },
+  { name: "hr", path: "/json/hr.json" },
+  { name: "em", path: "/json/em.json" },
+  { name: "strong", path: "/json/strong.json" },
+  { name: "i", path: "/json/i.json" },
+];
+
+export const ELEMENT_FOLDERS: ElementFolder[] = [
+  {
+    name: "buttons",
+    items: [
+      { name: "button-primary", path: "/json/buttons/button-primary.json" },
+      { name: "button-teal", path: "/json/buttons/button-teal.json" },
+      { name: "button-grey", path: "/json/buttons/button-grey.json" },
+      { name: "button-anker", path: "/json/buttons/button-anker.json" },
+      { name: "button-svg-l", path: "/json/buttons/button-svg-l.json" },
+      { name: "button-svg-r", path: "/json/buttons/button-svg-r.json" },
+      { name: "button", path: "/json/buttons/button.json" },
+    ],
+  },
+  {
+    name: "forms",
+    items: [
+      { name: "form", path: "/json/forms/form.json" },
+      { name: "form-common", path: "/json/forms/form-common.json" },
+      { name: "form-avatar", path: "/json/forms/form-avatar.json" },
+      { name: "fieldset", path: "/json/forms/fieldset.json" },
+    ],
+  },
+  {
+    name: "inputs",
+    items: [
+      { name: "input", path: "/json/inputs/input.json" },
+      { name: "input-field", path: "/json/inputs/input-field.json" },
+      { name: "textarea", path: "/json/inputs/textarea.json" },
+      { name: "textarea-field", path: "/json/inputs/textarea-field.json" },
+      { name: "search-small", path: "/json/inputs/search-small.json" },
+      { name: "search-f", path: "/json/inputs/search-f.json" },
+      { name: "f-check", path: "/json/inputs/f-check.json" },
+      { name: "f-number", path: "/json/inputs/f-number.json" },
+      { name: "fieldset", path: "/json/inputs/fieldset.json" },
+      { name: "fieldset-radio", path: "/json/inputs/fieldset-radio.json" },
+      { name: "fildset-input-data", path: "/json/inputs/fildset-input-data.json" },
+      { name: "fildset-rating", path: "/json/inputs/fildset-rating.json" },
+      { name: "range-wrap-js", path: "/json/inputs/range-wrap-js.json" },
+    ],
+  },
+  {
+    name: "sections",
+    items: [
+      { name: "hero", path: "/json/sections/hero.json" },
+      { name: "card", path: "/json/sections/card.json" },
+      { name: "cards", path: "/json/sections/cards.json" },
+      { name: "cards-more", path: "/json/sections/cards-more.json" },
+      { name: "accordion", path: "/json/sections/accordion.json" },
+      { name: "modal", path: "/json/sections/modal.json" },
+      { name: "tabs", path: "/json/sections/tabs.json" },
+      { name: "tabs-horisontal", path: "/json/sections/tabs-horisontal.json" },
+      { name: "tab-uno", path: "/json/sections/tab-uno.json" },
+      { name: "tab-hover", path: "/json/sections/tab-hover.json" },
+      { name: "tab-hover-horisontal", path: "/json/sections/tab-hover-horisontal.json" },
+      { name: "custom-select", path: "/json/sections/custom-select.json" },
+      { name: "pagination", path: "/json/sections/pagination.json" },
+      { name: "soc", path: "/json/sections/soc.json" },
+      { name: "look", path: "/json/sections/look.json" },
+      { name: "video", path: "/json/sections/video.json" },
+    ],
+  },
+  {
+    name: "sliders",
+    items: [
+      { name: "slider", path: "/json/sliders/slider.json" },
+      { name: "double-slider", path: "/json/sliders/double-slider.json" },
+      { name: "fade-slider", path: "/json/sliders/fade-slider.json" },
+      { name: "slider-last-flexible", path: "/json/sliders/slider-last-flexible.json" },
+      { name: "carousel", path: "/json/sliders/carousel.json" },
+      { name: "bunner-slider", path: "/json/sliders/bunner-slider.json" },
+      { name: "swiper-center-scale", path: "/json/sliders/swiper-center-scale.json" },
+      { name: "swiper-indicator-uno", path: "/json/sliders/swiper-indicator-uno.json" },
+      { name: "swiper-indicator-numers", path: "/json/sliders/swiper-indicator-numers.json" },
+      { name: "swiper-indicator-dinamic", path: "/json/sliders/swiper-indicator-dinamic.json" },
+      { name: "swiper-indicator-multy", path: "/json/sliders/swiper-indicator-multy.json" },
+    ],
+  },
+  {
+    name: "galleryes",
+    items: [
+      { name: "gallery", path: "/json/galleryes/gallery.json" },
+      { name: "gallery-slider", path: "/json/galleryes/gallery-slider.json" },
+      { name: "gallery-popup", path: "/json/galleryes/gallery-popup.json" },
+      { name: "gallery-slider-popup", path: "/json/galleryes/gallery-slider-popup.json" },
+      { name: "video-gallery-slider", path: "/json/galleryes/video-gallery-slider.json" },
+    ],
+  },
+];

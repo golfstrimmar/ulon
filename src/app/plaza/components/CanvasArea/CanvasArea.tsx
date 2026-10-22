@@ -13,6 +13,7 @@ import {
 } from "@/lib/htmlTree";
 import handleRender from "./utils/handleRender";
 import type { RenderBox } from "./utils/types";
+import { ROOT_TAGS, ELEMENT_FOLDERS } from "./elementsManifest";
 
 const DB_KEY = "plaza_tree";
 
@@ -44,6 +45,9 @@ export function CanvasArea() {
   const futureRef = useRef<HtmlNode[][]>([]);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
+
+  // Состояние раскрытых папок в боковой панели
+  const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
 
   const [collapsedKeys, setCollapsedKeys] = useState<Set<string>>(new Set());
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
@@ -118,10 +122,9 @@ export function CanvasArea() {
   // Сохранение состояния в IndexedDB и запись в историю Undo
   const persist = async (next: HtmlNode[], recordHistory = true) => {
     if (recordHistory) {
-      // Сохраняем снимок текущего состояния в стек истории
       const snapshot = JSON.parse(JSON.stringify(currentJsonRef.current));
       historyRef.current = [...historyRef.current.slice(-49), snapshot];
-      futureRef.current = []; // Любое новое действие очищает стек Redo
+      futureRef.current = [];
       setCanUndo(true);
       setCanRedo(false);
     }
@@ -156,7 +159,6 @@ export function CanvasArea() {
     setCanUndo(historyRef.current.length > 0);
     setCanRedo(true);
 
-    // Восстанавливаем состояние и синхронизируем базу
     await persist(previousState, false);
   }, []);
 
@@ -172,7 +174,6 @@ export function CanvasArea() {
     setCanUndo(true);
     setCanRedo(futureRef.current.length > 0);
 
-    // Восстанавливаем состояние и синхронизируем базу
     await persist(nextState, false);
   }, []);
 
@@ -191,13 +192,10 @@ export function CanvasArea() {
 
       const key = e.key.toLowerCase();
 
-      // Undo: Ctrl+Z / Cmd+Z (латиница z или русская я)
       if ((key === "z" || key === "я") && !e.shiftKey) {
         e.preventDefault();
         handleUndo();
-      }
-      // Redo: Ctrl+Shift+Z / Cmd+Shift+Z или Ctrl+Y (латиница y или русская н)
-      else if (
+      } else if (
         ((key === "z" || key === "я") && e.shiftKey) ||
         key === "y" ||
         key === "н"
@@ -211,12 +209,12 @@ export function CanvasArea() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleUndo, handleRedo]);
 
-  // Добавление узла из /public/json/[tag].json в конец (одна под другой)
-  const handleAppendNode = async (tag: "div" | "p") => {
+  // Загрузка любого JSON-файла по пути и добавление в конец
+  const handleAppendFromPath = async (path: string) => {
     try {
-      const res = await fetch(`/json/${tag}.json`);
+      const res = await fetch(path);
       if (!res.ok) {
-        console.error(`Failed to fetch /json/${tag}.json`);
+        console.error(`Failed to fetch ${path}`);
         return;
       }
       const raw = await res.json();
@@ -226,7 +224,7 @@ export function CanvasArea() {
       const next = [...currentJsonRef.current, ...withKeys];
       await persist(next);
     } catch (e) {
-      console.error(`Error adding ${tag}:`, e);
+      console.error(`Error adding from ${path}:`, e);
     }
   };
 
@@ -235,6 +233,16 @@ export function CanvasArea() {
     await persist([]);
     setClickedKey(null);
     setHoveredKey(null);
+  };
+
+  // Переключение состояния папки (раскрыть / скрыть)
+  const toggleFolder = (folderName: string) => {
+    setOpenFolders((prev) => {
+      const next = new Set(prev);
+      if (next.has(folderName)) next.delete(folderName);
+      else next.add(folderName);
+      return next;
+    });
   };
 
   // --------------------------------------------------------------------------
@@ -287,7 +295,6 @@ export function CanvasArea() {
       for (let i = boxesRef.current.length - 1; i >= 0; i--) {
         const box = boxesRef.current[i];
         if (x >= box.x && x <= box.x + box.w && y >= box.y && y <= box.y + box.h) {
-          // Сброс на самого себя -> позиция "self" (дублирование)
           if (box.key === draggedSourceKey) {
             targetUnderCursor = { key: box.key, position: "self" };
             break;
@@ -302,7 +309,6 @@ export function CanvasArea() {
             }
           }
 
-          // Защита: нельзя бросать в своих потомков
           if (sourceNode && !isDescendant(sourceNode, box.key)) {
             const relY = (y - box.y) / box.h;
             let position: "before" | "inside" | "after" = "inside";
@@ -346,14 +352,12 @@ export function CanvasArea() {
 
       if (target && target.key) {
         if (target.key === sourceKey || target.position === "self") {
-          // Сброс на самого себя -> дублируем ноду
           const updatedTree = duplicateNodeInTree(
             currentJsonRef.current,
             sourceKey
           );
           await persist(updatedTree);
         } else {
-          // Сброс before / after / inside
           const updatedTree = moveNodePosition(
             currentJsonRef.current,
             sourceKey,
@@ -429,7 +433,6 @@ export function CanvasArea() {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    // Сворачивание / разворачивание ветки
     for (const box of boxesRef.current) {
       if (box.toggleBtnBounds) {
         const tb = box.toggleBtnBounds;
@@ -445,7 +448,6 @@ export function CanvasArea() {
       }
     }
 
-    // Задержка на одинарный клик, чтобы не конфликтовать с даблкликом
     if (clickTimeoutRef.current) {
       clearTimeout(clickTimeoutRef.current);
     }
@@ -466,19 +468,20 @@ export function CanvasArea() {
 
   return (
     <div className="w-full flex gap-4 h-[calc(100vh-120px)] min-h-[500px]">
-      {/* Боковая панель с кнопками */}
-      <aside className="w-44 shrink-0 bg-zinc-900 border border-zinc-800 rounded-xl p-3 flex flex-col justify-between shadow-xl select-none">
-        <div className="space-y-4">
+      {/* Боковая панель с кнопками и папками */}
+      <aside className="w-56 shrink-0 bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 flex flex-col justify-between shadow-xl select-none overflow-hidden">
+        {/* Верхняя часть: История + элементы */}
+        <div className="space-y-2.5 flex-1 overflow-y-auto pr-1 min-h-0 custom-scrollbar">
           {/* Блок Undo / Redo */}
-          <div className="space-y-1.5 border-b border-zinc-800 pb-3">
-            <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-semibold block">
+          <div className="space-y-1 border-b border-zinc-800 pb-2">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-semibold block">
               History
             </span>
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="grid grid-cols-2 gap-1">
               <button
                 onClick={handleUndo}
                 disabled={!canUndo}
-                className="py-1.5 px-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:hover:bg-zinc-800 border border-zinc-700/60 text-zinc-200 text-xs font-medium flex items-center justify-center gap-1 transition cursor-pointer disabled:cursor-not-allowed"
+                className="py-1 px-1.5 rounded bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:hover:bg-zinc-800 border border-zinc-700/60 text-zinc-200 text-[11px] font-medium flex items-center justify-center gap-1 transition cursor-pointer disabled:cursor-not-allowed"
                 title="Undo (Ctrl+Z)"
               >
                 <span>↶</span> Undo
@@ -486,7 +489,7 @@ export function CanvasArea() {
               <button
                 onClick={handleRedo}
                 disabled={!canRedo}
-                className="py-1.5 px-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:hover:bg-zinc-800 border border-zinc-700/60 text-zinc-200 text-xs font-medium flex items-center justify-center gap-1 transition cursor-pointer disabled:cursor-not-allowed"
+                className="py-1 px-1.5 rounded bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:hover:bg-zinc-800 border border-zinc-700/60 text-zinc-200 text-[11px] font-medium flex items-center justify-center gap-1 transition cursor-pointer disabled:cursor-not-allowed"
                 title="Redo (Ctrl+Y / Ctrl+Shift+Z)"
               >
                 <span>↷</span> Redo
@@ -494,44 +497,77 @@ export function CanvasArea() {
             </div>
           </div>
 
-          {/* Блок добавления элементов */}
-          <div className="space-y-2">
-            <div>
-              <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-semibold block">
-                Elements
-              </span>
-              <span className="text-[10px] text-zinc-500 font-mono">
-                from /public/json
-              </span>
+          {/* Вложенные папки категорий */}
+          <div className="space-y-1">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-semibold block">
+              Folders
+            </span>
+            <div className="space-y-1">
+              {ELEMENT_FOLDERS.map((folder) => {
+                const isOpen = openFolders.has(folder.name);
+                return (
+                  <div key={folder.name} className="space-y-1">
+                    <button
+                      onClick={() => toggleFolder(folder.name)}
+                      className="w-full py-1 px-2 rounded bg-zinc-850 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-300 text-[11px] font-medium flex items-center justify-between transition cursor-pointer"
+                    >
+                      <span className="flex items-center gap-1.5 truncate">
+                        <span>{isOpen ? "📂" : "📁"}</span>
+                        <span className="font-mono">{folder.name}</span>
+                      </span>
+                      <span className="text-[10px] text-zinc-500 font-mono">
+                        {isOpen ? "−" : "+"}
+                      </span>
+                    </button>
+
+                    {isOpen && (
+                      <div className="pl-3 py-0.5 space-y-1 border-l border-zinc-800/80">
+                        <div className="flex flex-col gap-1">
+                          {folder.items.map((item) => (
+                            <button
+                              key={item.path}
+                              onClick={() => handleAppendFromPath(item.path)}
+                              className="w-full py-0.5 px-1.5 text-left text-[10px] font-mono rounded bg-zinc-800/60 hover:bg-zinc-700 hover:text-white border border-zinc-750 text-zinc-300 truncate transition cursor-pointer"
+                              title={`Add ${item.name}`}
+                            >
+                              {item.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
+          </div>
 
-            <div className="flex flex-col gap-2">
-              <button
-                onClick={() => handleAppendNode("div")}
-                className="w-full py-2 px-3 rounded-lg bg-indigo-950/70 hover:bg-indigo-900 border border-indigo-700/60 hover:border-indigo-500 text-indigo-300 hover:text-white font-mono text-xs font-semibold flex items-center justify-between transition cursor-pointer shadow-sm"
-                title="Add div to end"
-              >
-                <span>&lt;div&gt;</span>
-                <span className="text-[10px] text-indigo-400/80 font-sans">+ add</span>
-              </button>
-
-              <button
-                onClick={() => handleAppendNode("p")}
-                className="w-full py-2 px-3 rounded-lg bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-700/60 hover:border-emerald-500 text-emerald-300 hover:text-white font-mono text-xs font-semibold flex items-center justify-between transition cursor-pointer shadow-sm"
-                title="Add p to end"
-              >
-                <span>&lt;p&gt;</span>
-                <span className="text-[10px] text-emerald-400/80 font-sans">+ add</span>
-              </button>
+          {/* Базовые теги (плотная сетка из 2 колонок) */}
+          <div className="space-y-1 pt-1.5 border-t border-zinc-800">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-semibold block">
+              Tags
+            </span>
+            <div className="grid grid-cols-2 gap-1">
+              {ROOT_TAGS.map((tag) => (
+                <button
+                  key={tag.path}
+                  onClick={() => handleAppendFromPath(tag.path)}
+                  className="py-0.5 px-1 text-[11px] font-mono rounded bg-zinc-800/70 hover:bg-zinc-700 hover:text-white border border-zinc-750 text-zinc-300 truncate text-center transition cursor-pointer"
+                  title={`Add <${tag.name}>`}
+                >
+                  &lt;{tag.name}&gt;
+                </button>
+              ))}
             </div>
           </div>
         </div>
 
+        {/* Нижняя часть: Clear Canvas */}
         {currentJson.length > 0 && (
-          <div className="pt-3 border-t border-zinc-800">
+          <div className="pt-2 border-t border-zinc-800">
             <button
               onClick={handleClear}
-              className="w-full py-1.5 rounded-lg bg-red-950/50 hover:bg-red-900/60 border border-red-800/60 text-red-300 text-xs font-medium transition cursor-pointer"
+              className="w-full py-1 rounded bg-red-950/40 hover:bg-red-900/60 border border-red-800/50 text-red-300 text-[11px] font-medium transition cursor-pointer"
             >
               Clear
             </button>
