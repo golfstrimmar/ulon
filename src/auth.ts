@@ -95,7 +95,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (token?.picture) {
           session.user.image = token.picture as string;
         } else if (session.user.id) {
-          // Если старый токен куки еще не хранит аватарку, берем свежую из базы
+          // If legacy cookie token lacks avatar picture, fetch fresh from DB
           try {
             const dbUser = await prisma.user.findUnique({
               where: { id: session.user.id },

@@ -17,7 +17,7 @@ export default function LoginPage() {
       </Suspense>
 
       <main className="flex-1 flex items-center justify-center p-4">
-        <Suspense fallback={<div className="text-zinc-400">Загрузка...</div>}>
+        <Suspense fallback={<div className="text-zinc-400">Loading...</div>}>
           <LoginForm />
         </Suspense>
       </main>
