@@ -8,33 +8,31 @@
  * Поддерживает как список свойств (color: red; padding: 10px),
  * так и полноценные блоки селекторов (.class { ... }, .class:hover { ... }).
  */
-export function compileClassesCss(styles: Record<string, string>): string {
-  if (!styles || typeof styles !== "object") return "";
+export function compileClassesCss(
+  classesCss: Record<string, string> = {},
+): string {
+  const result: string[] = [];
 
-  const blocks: string[] = [];
-
-  for (const [rawClass, rawCss] of Object.entries(styles)) {
-    const className = rawClass.trim().replace(/^\./, "");
+  for (const [rawCls, rawCss] of Object.entries(classesCss)) {
+    const cleanCls = rawCls.trim().replace(/^\./, "");
     const trimmedCss = (rawCss || "").trim();
-    if (!className || !trimmedCss) continue;
 
-    // Если пользователь уже ввел селектор с фигурными скобками { ... }
-    if (trimmedCss.includes("{") && trimmedCss.includes("}")) {
-      blocks.push(trimmedCss);
+    if (!cleanCls || !trimmedCss) continue;
+
+    // Если стили уже были обернуты в этот же селектор — не дублируем
+    if (trimmedCss.startsWith(`.${cleanCls}`) && trimmedCss.includes("{")) {
+      result.push(trimmedCss);
     } else {
-      // Форматируем как валидный блок .className { ... }
-      const indented = trimmedCss
-        .split("\n")
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .map((line) => (line.endsWith(";") ? `  ${line}` : `  ${line};`))
-        .join("\n");
-
-      blocks.push(`.${className} {\n${indented}\n}`);
+      result.push(
+        `.${cleanCls} {\n  ${trimmedCss
+          .split("\n")
+          .map((l) => l.trimEnd())
+          .join("\n  ")}\n}`,
+      );
     }
   }
 
-  return blocks.join("\n\n");
+  return result.join("\n\n");
 }
 
 /**
@@ -45,20 +43,39 @@ export function parseClassesCss(fullCss: string): Record<string, string> {
   const result: Record<string, string> = {};
   if (!fullCss || !fullCss.trim()) return result;
 
-  // Ищем селекторы вида .className { rules }
-  const ruleRegex = /\.([a-zA-Z0-9_\-]+(?:[:][a-zA-Z0-9_\-]+)?)\s*\{([^}]*)\}/g;
-  let match: RegExpExecArray | null;
+  let pos = 0;
+  const len = fullCss.length;
 
-  while ((match = ruleRegex.exec(fullCss)) !== null) {
-    const selector = match[1].trim();
-    const rules = match[2]
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .join("\n");
+  while (pos < len) {
+    // Пропускаем пробелы и комментарии
+    const nextBrace = fullCss.indexOf("{", pos);
+    if (nextBrace === -1) break;
 
-    if (selector && rules) {
-      result[selector] = rules;
+    const selector = fullCss.slice(pos, nextBrace).trim();
+    pos = nextBrace + 1;
+
+    // Считаем баланс фигурных скобок, чтобы не сломаться на &:hover { ... }
+    let braceCount = 1;
+    const bodyStart = pos;
+
+    while (pos < len && braceCount > 0) {
+      const char = fullCss[pos];
+      if (char === "{") braceCount++;
+      else if (char === "}") braceCount--;
+      pos++;
+    }
+
+    const body = fullCss
+      .slice(bodyStart, pos - (braceCount === 0 ? 1 : 0))
+      .trim();
+
+    if (selector) {
+      // Извлекаем имя класса из селектора (например ".btn:hover" -> "btn")
+      const match = /\.([a-zA-Z0-9_-]+)/.exec(selector);
+      if (match && match[1]) {
+        const className = match[1];
+        result[className] = body;
+      }
     }
   }
 

@@ -10,18 +10,12 @@ const DB_KEY = "plaza_tree";
 const FONTS_STORAGE_KEY = "plaza_preview_fonts";
 const DEFAULT_FONT_STORAGE_KEY = "plaza_preview_default_font";
 const CLASSES_CSS_STORAGE_KEY = "plaza_classes_css";
+const SCRIPTS_STORAGE_KEY = "plaza_scripts_js";
 
-/**
- * Рекурсивно превращает массив HtmlNode в HTML-строку.
- */
 function renderTree(nodes: HtmlNode[]): string {
   return nodes.map((n) => treeToHtml(n, 0)).join("\n");
 }
 
-/**
- * Извлекает имена семейств шрифтов из ссылок Google Fonts.
- * Например: family=Edu+QLD+Hand:wght@400..700&family=Lobster -> ['Edu QLD Hand', 'Lobster']
- */
 function extractFontFamilies(entries: string[]): string[] {
   const families: Set<string> = new Set();
   const regex = /family=([^&:'"\s\)]+)/g;
@@ -30,9 +24,10 @@ function extractFontFamilies(entries: string[]): string[] {
     let match: RegExpExecArray | null;
     while ((match = regex.exec(entry)) !== null) {
       if (match[1]) {
-        // Убираем параметры веса :wght@...
         const rawName = match[1].split(":")[0];
-        const cleanName = decodeURIComponent(rawName.replace(/\+/g, " ").trim());
+        const cleanName = decodeURIComponent(
+          rawName.replace(/\+/g, " ").trim(),
+        );
         if (cleanName) {
           families.add(cleanName);
         }
@@ -43,37 +38,28 @@ function extractFontFamilies(entries: string[]): string[] {
   return Array.from(families);
 }
 
-/**
- * Преобразует введенную ссылку/импорт в корректный тег <link rel="stylesheet"> для <head>.
- * Поддерживает:
- * - <link href="..." rel="stylesheet">
- * - https://fonts.googleapis.com/...
- * - @import url('...');
- */
 function parseFontHeaderTag(entry: string): string {
   const trimmed = entry.trim();
   if (!trimmed) return "";
 
-  // Если это уже тег <link ...>
   if (trimmed.startsWith("<link")) {
     return trimmed;
   }
 
-  // Если это чистый URL (https://...)
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
     return `<link rel="stylesheet" href="${trimmed}">`;
   }
 
-  // Если это @import url('...') — преобразуем в <link>
   if (trimmed.includes("@import")) {
     const urlMatch = /url\(['"]?([^'"\)]+)['"]?\)/.exec(trimmed);
     if (urlMatch && urlMatch[1]) {
       return `<link rel="stylesheet" href="${urlMatch[1]}">`;
     }
-    return trimmed.startsWith("<style") ? trimmed : `<style>\n  ${trimmed}\n</style>`;
+    return trimmed.startsWith("<style")
+      ? trimmed
+      : `<style>\n  ${trimmed}\n</style>`;
   }
 
-  // Если это <style>...</style>
   if (trimmed.startsWith("<style")) {
     return trimmed;
   }
@@ -82,19 +68,44 @@ function parseFontHeaderTag(entry: string): string {
 }
 
 /**
- * Собирает полный HTML-документ для iframe.
- * Включает:
- * 1. Preconnect к Google Fonts
- * 2. Внедрение тегов <link rel="stylesheet"> в <head>
- * 3. Генерацию вспомогательных классов для каждого шрифта (.font-barlow-condensed, .font-lobster)
- * 4. Настройку Tailwind fontFamily
- * 5. Опциональный шрифт по умолчанию для всего body
+ * Собирает итоговый JS-бандл из всех скриптов
  */
+function compileScriptsBundle(scriptsJs: Record<string, string> = {}): string {
+  const keys = Object.keys(scriptsJs);
+  if (keys.length === 0) return "";
+
+  // Если был сохранён общий бандл напрямую
+  if (scriptsJs.__bundle__) {
+    return scriptsJs.__bundle__;
+  }
+
+  const chunks: string[] = [];
+
+  for (const key of keys) {
+    const code = (scriptsJs[key] || "").trim();
+    if (!code) continue;
+
+    // Оборачиваем скрипт в безопасный IIFE контекст
+    chunks.push(`
+  /* --- Скрипт: ${key} --- */
+  try {
+    (function() {
+      ${code}
+    })();
+  } catch (err) {
+    console.error("[Plaza Script Error in ${key}]:", err);
+  }`);
+  }
+
+  return chunks.join("\n\n");
+}
+
 function buildDocument(
   bodyHtml: string,
   fontEntries: string[] = [],
   defaultFont = "",
-  classesCss: Record<string, string> = {}
+  classesCss: Record<string, string> = {},
+  scriptsJs: Record<string, string> = {},
 ): string {
   const fontsHtml = fontEntries
     .map(parseFontHeaderTag)
@@ -103,8 +114,8 @@ function buildDocument(
 
   const detectedFamilies = extractFontFamilies(fontEntries);
   const compiledClassesStyles = compileClassesCss(classesCss);
+  const compiledBundleScripts = compileScriptsBundle(scriptsJs);
 
-  // Генерируем хелпер-классы и конфиг Tailwind для каждого распознанного шрифта
   const helperClasses = detectedFamilies
     .map((name) => {
       const slug = name.toLowerCase().replace(/\s+/g, "-");
@@ -175,6 +186,20 @@ ${compiledClassesStyles}
 </head>
 <body class="bg-white text-zinc-900">
 ${bodyHtml}
+
+${
+  compiledBundleScripts
+    ? `<!-- Итоговый бандл скриптов (JS) -->
+<script id="compiled-bundle-scripts">
+document.addEventListener("DOMContentLoaded", () => {
+${compiledBundleScripts}
+});
+if (document.readyState === "complete" || document.readyState === "interactive") {
+${compiledBundleScripts}
+}
+<\/script>`
+    : ""
+}
 </body>
 </html>`;
 }
@@ -185,21 +210,21 @@ export function PreviewArea() {
   const [isEmpty, setIsEmpty] = useState<boolean>(true);
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
 
-  // Состояние шрифтов
   const [fontEntries, setFontEntries] = useState<string[]>([]);
   const [defaultFont, setDefaultFont] = useState<string>("");
   const [isFontsPanelOpen, setIsFontsPanelOpen] = useState<boolean>(false);
   const [newFontInput, setNewFontInput] = useState<string>("");
 
-  // Скомпилированные стили классов из Monaco
   const [classesCss, setClassesCss] = useState<Record<string, string>>({});
   const classesCssRef = useRef<Record<string, string>>({});
   classesCssRef.current = classesCss;
 
-  // Хранилище последнего сгенерированного body HTML
+  const [scriptsJs, setScriptsJs] = useState<Record<string, string>>({});
+  const scriptsJsRef = useRef<Record<string, string>>({});
+  scriptsJsRef.current = scriptsJs;
+
   const currentBodyHtmlRef = useRef<string>("");
 
-  // Чтение сохраненных шрифтов, дефолтного шрифта и стилей классов при старте
   useEffect(() => {
     try {
       const saved = localStorage.getItem(FONTS_STORAGE_KEY);
@@ -218,7 +243,6 @@ export function PreviewArea() {
       console.error("[PreviewArea] Failed to read fonts from localStorage:", e);
     }
 
-    // Чтение стилей классов из localStorage (быстрый старт)
     try {
       const savedCss = localStorage.getItem(CLASSES_CSS_STORAGE_KEY);
       if (savedCss) {
@@ -229,56 +253,104 @@ export function PreviewArea() {
         }
       }
     } catch (e) {
-      console.error("[PreviewArea] Failed to read classes CSS from localStorage:", e);
+      console.error(
+        "[PreviewArea] Failed to read classes CSS from localStorage:",
+        e,
+      );
     }
 
-    // Чтение стилей классов из IndexedDB (авторитетный источник)
+    try {
+      const savedJs = localStorage.getItem(SCRIPTS_STORAGE_KEY);
+      if (savedJs) {
+        const parsed = JSON.parse(savedJs);
+        if (parsed && typeof parsed === "object") {
+          setScriptsJs(parsed);
+          scriptsJsRef.current = parsed;
+        }
+      }
+    } catch (e) {
+      console.error(
+        "[PreviewArea] Failed to read scripts JS from localStorage:",
+        e,
+      );
+    }
+
     getClassesCss()
       .then((dbStyles) => {
         if (dbStyles && typeof dbStyles === "object") {
           setClassesCss(dbStyles);
           classesCssRef.current = dbStyles;
-          // Обновляем превью с актуальным списком стилей из БД
           if (currentBodyHtmlRef.current) {
-            setSrcDoc(buildDocument(currentBodyHtmlRef.current, fontEntries, defaultFont, dbStyles));
+            setSrcDoc(
+              buildDocument(
+                currentBodyHtmlRef.current,
+                fontEntries,
+                defaultFont,
+                dbStyles,
+                scriptsJsRef.current,
+              ),
+            );
           }
         }
       })
-      .catch((err) => console.error("[PreviewArea] Failed to read classes CSS from DB:", err));
+      .catch((err) =>
+        console.error("[PreviewArea] Failed to read classes CSS from DB:", err),
+      );
   }, []);
 
-  /** Читает дерево из IndexedDB и генерирует HTML для iframe */
   const refreshPreview = useCallback(async () => {
     try {
       const data = await getHtmlJson(DB_KEY);
       if (!data) {
         setIsEmpty(true);
         currentBodyHtmlRef.current = "";
-        setSrcDoc(buildDocument("", fontEntries, defaultFont, classesCssRef.current));
+        setSrcDoc(
+          buildDocument(
+            "",
+            fontEntries,
+            defaultFont,
+            classesCssRef.current,
+            scriptsJsRef.current,
+          ),
+        );
         return;
       }
       const nodes: HtmlNode[] = Array.isArray(data) ? data : [data];
       if (nodes.length === 0) {
         setIsEmpty(true);
         currentBodyHtmlRef.current = "";
-        setSrcDoc(buildDocument("", fontEntries, defaultFont, classesCssRef.current));
+        setSrcDoc(
+          buildDocument(
+            "",
+            fontEntries,
+            defaultFont,
+            classesCssRef.current,
+            scriptsJsRef.current,
+          ),
+        );
         return;
       }
       setIsEmpty(false);
       const html = renderTree(nodes);
       currentBodyHtmlRef.current = html;
-      setSrcDoc(buildDocument(html, fontEntries, defaultFont, classesCssRef.current));
+      setSrcDoc(
+        buildDocument(
+          html,
+          fontEntries,
+          defaultFont,
+          classesCssRef.current,
+          scriptsJsRef.current,
+        ),
+      );
     } catch (err) {
       console.error("[PreviewArea] Failed to read IndexedDB:", err);
     }
   }, [fontEntries, defaultFont]);
 
-  /** При монтировании и при смене списка шрифтов — обновляем превью */
   useEffect(() => {
     refreshPreview();
   }, [refreshPreview]);
 
-  /** Слушаем кастомное событие от CanvasArea при каждом сохранении дерева */
   useEffect(() => {
     const handleTreeUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<HtmlNode[]>;
@@ -286,20 +358,36 @@ export function PreviewArea() {
       if (!nodes || nodes.length === 0) {
         setIsEmpty(true);
         currentBodyHtmlRef.current = "";
-        setSrcDoc(buildDocument("", fontEntries, defaultFont, classesCssRef.current));
+        setSrcDoc(
+          buildDocument(
+            "",
+            fontEntries,
+            defaultFont,
+            classesCssRef.current,
+            scriptsJsRef.current,
+          ),
+        );
         return;
       }
       setIsEmpty(false);
       const html = renderTree(nodes);
       currentBodyHtmlRef.current = html;
-      setSrcDoc(buildDocument(html, fontEntries, defaultFont, classesCssRef.current));
+      setSrcDoc(
+        buildDocument(
+          html,
+          fontEntries,
+          defaultFont,
+          classesCssRef.current,
+          scriptsJsRef.current,
+        ),
+      );
     };
 
     window.addEventListener("plaza-tree-updated", handleTreeUpdate);
-    return () => window.removeEventListener("plaza-tree-updated", handleTreeUpdate);
+    return () =>
+      window.removeEventListener("plaza-tree-updated", handleTreeUpdate);
   }, [fontEntries, defaultFont]);
 
-  /** Слушаем кастомное событие изменения стилей классов из Monaco */
   useEffect(() => {
     const handleStylesUpdate = async (e: Event) => {
       const customEvent = e as CustomEvent<Record<string, string>>;
@@ -307,33 +395,46 @@ export function PreviewArea() {
       setClassesCss(nextStyles);
       classesCssRef.current = nextStyles;
 
-      let bodyHtml = currentBodyHtmlRef.current;
-      if (!bodyHtml) {
-        try {
-          const data = await getHtmlJson(DB_KEY);
-          if (data) {
-            const nodes = Array.isArray(data) ? data : [data];
-            bodyHtml = renderTree(nodes);
-            currentBodyHtmlRef.current = bodyHtml;
-          }
-        } catch {}
-      }
-
       setSrcDoc(
         buildDocument(
-          bodyHtml,
+          currentBodyHtmlRef.current,
           fontEntries,
           defaultFont,
-          nextStyles
-        )
+          nextStyles,
+          scriptsJsRef.current,
+        ),
       );
     };
 
     window.addEventListener("plaza-styles-updated", handleStylesUpdate);
-    return () => window.removeEventListener("plaza-styles-updated", handleStylesUpdate);
+    return () =>
+      window.removeEventListener("plaza-styles-updated", handleStylesUpdate);
   }, [fontEntries, defaultFont]);
 
-  // Добавление новой ссылки/тега на шрифт
+  // Слушатель обновления JS-скриптов
+  useEffect(() => {
+    const handleScriptsUpdate = async (e: Event) => {
+      const customEvent = e as CustomEvent<Record<string, string>>;
+      const nextScripts = customEvent.detail || {};
+      setScriptsJs(nextScripts);
+      scriptsJsRef.current = nextScripts;
+
+      setSrcDoc(
+        buildDocument(
+          currentBodyHtmlRef.current,
+          fontEntries,
+          defaultFont,
+          classesCssRef.current,
+          nextScripts,
+        ),
+      );
+    };
+
+    window.addEventListener("plaza-scripts-updated", handleScriptsUpdate);
+    return () =>
+      window.removeEventListener("plaza-scripts-updated", handleScriptsUpdate);
+  }, [fontEntries, defaultFont]);
+
   const handleAddFont = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const trimmed = newFontInput.trim();
@@ -347,7 +448,6 @@ export function PreviewArea() {
     const next = [...fontEntries, trimmed];
     setFontEntries(next);
 
-    // Если шрифт по умолчанию еще не выбран, выберем первый обнаруженный
     const detected = extractFontFamilies(next);
     let nextDefault = defaultFont;
     if (!nextDefault && detected.length > 0) {
@@ -365,10 +465,17 @@ export function PreviewArea() {
     }
 
     setNewFontInput("");
-    setSrcDoc(buildDocument(currentBodyHtmlRef.current, next, nextDefault, classesCssRef.current));
+    setSrcDoc(
+      buildDocument(
+        currentBodyHtmlRef.current,
+        next,
+        nextDefault,
+        classesCssRef.current,
+        scriptsJsRef.current,
+      ),
+    );
   };
 
-  // Удаление шрифта
   const handleRemoveFont = (fontToRemove: string) => {
     const next = fontEntries.filter((f) => f !== fontToRemove);
     setFontEntries(next);
@@ -388,27 +495,48 @@ export function PreviewArea() {
     } catch (err) {
       console.error("[PreviewArea] Failed to save fonts to localStorage:", err);
     }
-    setSrcDoc(buildDocument(currentBodyHtmlRef.current, next, nextDefault, classesCssRef.current));
+    setSrcDoc(
+      buildDocument(
+        currentBodyHtmlRef.current,
+        next,
+        nextDefault,
+        classesCssRef.current,
+        scriptsJsRef.current,
+      ),
+    );
   };
 
-  // Переключение шрифта по умолчанию для всего тела сайта
   const handleSetDefaultFont = (fontName: string) => {
     const nextDefault = defaultFont === fontName ? "" : fontName;
     setDefaultFont(nextDefault);
     try {
       localStorage.setItem(DEFAULT_FONT_STORAGE_KEY, nextDefault);
     } catch {}
-    setSrcDoc(buildDocument(currentBodyHtmlRef.current, fontEntries, nextDefault, classesCssRef.current));
+    setSrcDoc(
+      buildDocument(
+        currentBodyHtmlRef.current,
+        fontEntries,
+        nextDefault,
+        classesCssRef.current,
+        scriptsJsRef.current,
+      ),
+    );
   };
 
   const detectedFamilies = extractFontFamilies(fontEntries);
 
+  const cssCount = Object.keys(classesCss).filter((k) =>
+    classesCss[k]?.trim(),
+  ).length;
+
+  const scriptsCount = Object.keys(scriptsJs).filter((k) =>
+    scriptsJs[k]?.trim(),
+  ).length;
+
   return (
     <div className="w-full flex flex-col border border-zinc-800 rounded-xl overflow-hidden bg-zinc-900 shadow-xl">
-      {/* Заголовок панели превью */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-800 bg-zinc-900/80 shrink-0">
         <div className="flex items-center gap-2">
-          {/* Цветные кружки в духе браузерного окна */}
           <span className="w-3 h-3 rounded-full bg-red-500/80" />
           <span className="w-3 h-3 rounded-full bg-yellow-500/80" />
           <span className="w-3 h-3 rounded-full bg-green-500/80" />
@@ -419,33 +547,47 @@ export function PreviewArea() {
 
         <div className="flex items-center gap-2">
           {isEmpty && (
-            <span className="text-[10px] font-mono text-zinc-600">Холст пуст</span>
+            <span className="text-[10px] font-mono text-zinc-600">
+              Холст пуст
+            </span>
           )}
 
-          {/* Индикатор скомпилированных стилей классов */}
-          {(() => {
-            const count = Object.keys(classesCss).filter((k) =>
-              classesCss[k]?.trim()
-            ).length;
-            return (
-              <div
-                title="Скомпилированные стили классов, внедренные в <head> iframe"
-                className={`text-[10px] font-mono px-2 py-0.5 rounded border transition flex items-center gap-1.5 ${
-                  count > 0
-                    ? "bg-emerald-950/70 border-emerald-500/60 text-emerald-300"
-                    : "bg-zinc-800 border-zinc-700 text-zinc-500"
-                }`}
-              >
-                <span>🎨</span>
-                <span className="hidden sm:inline">CSS в &lt;head&gt;:</span>
-                <span className={`font-bold rounded-full px-1 text-[9px] ${count > 0 ? "bg-emerald-600 text-white" : "bg-zinc-700 text-zinc-400"}`}>
-                  {count}
-                </span>
-              </div>
-            );
-          })()}
+          {/* Индикатор стилей */}
+          <div
+            title="Скомпилированные стили классов, внедренные в <head> iframe"
+            className={`text-[10px] font-mono px-2 py-0.5 rounded border transition flex items-center gap-1.5 ${
+              cssCount > 0
+                ? "bg-emerald-950/70 border-emerald-500/60 text-emerald-300"
+                : "bg-zinc-800 border-zinc-700 text-zinc-500"
+            }`}
+          >
+            <span>🎨</span>
+            <span className="hidden sm:inline">CSS:</span>
+            <span
+              className={`font-bold rounded-full px-1 text-[9px] ${cssCount > 0 ? "bg-emerald-600 text-white" : "bg-zinc-700 text-zinc-400"}`}
+            >
+              {cssCount}
+            </span>
+          </div>
 
-          {/* Кнопка открытия панели шрифтов */}
+          {/* Индикатор скриптов */}
+          <div
+            title="Итоговый бандл JS-скриптов, подключенный в конец <body> iframe"
+            className={`text-[10px] font-mono px-2 py-0.5 rounded border transition flex items-center gap-1.5 ${
+              scriptsCount > 0
+                ? "bg-amber-950/70 border-amber-500/60 text-amber-300"
+                : "bg-zinc-800 border-zinc-700 text-zinc-500"
+            }`}
+          >
+            <span>⚡</span>
+            <span className="hidden sm:inline">JS:</span>
+            <span
+              className={`font-bold rounded-full px-1 text-[9px] ${scriptsCount > 0 ? "bg-amber-600 text-white" : "bg-zinc-700 text-zinc-400"}`}
+            >
+              {scriptsCount}
+            </span>
+          </div>
+
           <button
             type="button"
             onClick={() => setIsFontsPanelOpen((prev) => !prev)}
@@ -484,10 +626,12 @@ export function PreviewArea() {
         </div>
       </div>
 
-      {/* Панель добавления шрифтов */}
       {isFontsPanelOpen && (
         <div className="px-4 py-3 bg-zinc-950/95 border-b border-zinc-800/80 flex flex-col gap-2.5">
-          <form onSubmit={handleAddFont} className="flex flex-col sm:flex-row items-stretch sm:items-start gap-2">
+          <form
+            onSubmit={handleAddFont}
+            className="flex flex-col sm:flex-row items-stretch sm:items-start gap-2"
+          >
             <div className="flex-1 flex flex-col gap-1">
               <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-semibold">
                 Вставьте тег &lt;link rel="stylesheet" ...&gt; или URL шрифта:
@@ -503,13 +647,12 @@ export function PreviewArea() {
             <button
               type="submit"
               disabled={!newFontInput.trim()}
-              className="px-4 py-2 self-end sm:self-center bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:hover:bg-indigo-600 text-white text-xs font-semibold rounded-lg transition cursor-pointer shrink-0 shadow"
+              className="px-4 py-2 self-end sm:self-center bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-xs font-semibold rounded-lg transition cursor-pointer shrink-0 shadow"
             >
               + Добавить в &lt;head&gt;
             </button>
           </form>
 
-          {/* Распознанные шрифты и выбор дефолтного */}
           {detectedFamilies.length > 0 && (
             <div className="p-2 rounded-lg bg-zinc-900/80 border border-zinc-800 flex flex-wrap items-center gap-2">
               <span className="text-[10px] font-mono text-zinc-400 font-semibold uppercase tracking-wider">
@@ -525,7 +668,8 @@ export function PreviewArea() {
                   >
                     <span className="font-semibold text-indigo-300">{fam}</span>
                     <span className="text-[10px] text-zinc-400 font-mono">
-                      (класс: <code className="text-emerald-400">font-{slug}</code>)
+                      (класс:{" "}
+                      <code className="text-emerald-400">font-{slug}</code>)
                     </span>
                     <button
                       type="button"
@@ -535,7 +679,11 @@ export function PreviewArea() {
                           ? "bg-emerald-600 text-white font-bold"
                           : "bg-zinc-700 hover:bg-zinc-600 text-zinc-300"
                       }`}
-                      title={isDef ? "Активен как шрифт всего сайта" : "Сделать шрифтом всего сайта"}
+                      title={
+                        isDef
+                          ? "Активен как шрифт всего сайта"
+                          : "Сделать шрифтом всего сайта"
+                      }
                     >
                       {isDef ? "✓ По умолчанию" : "Сделать по умолчанию"}
                     </button>
@@ -545,7 +693,6 @@ export function PreviewArea() {
             </div>
           )}
 
-          {/* Список подключенных сниппетов */}
           {fontEntries.length > 0 ? (
             <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
               <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
@@ -572,27 +719,31 @@ export function PreviewArea() {
             </div>
           ) : (
             <p className="text-[10px] text-zinc-600 font-mono">
-              Вставьте код Google Fonts (&lt;style&gt; @import... &lt;/style&gt; или &lt;link...&gt;), и шрифт моментально подключится в превью.
+              Вставьте код Google Fonts, и шрифт моментально подключится в
+              превью.
             </p>
           )}
         </div>
       )}
 
-      {/* iframe с белым фоном */}
       {!isCollapsed && (
         <div className="relative w-full bg-white" style={{ height: "340px" }}>
           {isEmpty ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-300 gap-2 bg-white">
               <span className="text-2xl">🖼️</span>
-              <p className="text-sm font-medium text-zinc-400">Нет элементов для отображения</p>
-              <p className="text-xs text-zinc-500">Добавьте блоки на холст — они появятся здесь</p>
+              <p className="text-sm font-medium text-zinc-400">
+                Нет элементов для отображения
+              </p>
+              <p className="text-xs text-zinc-500">
+                Добавьте блоки на холст — они появятся здесь
+              </p>
             </div>
           ) : (
             <iframe
               ref={iframeRef}
               srcDoc={srcDoc}
               title="Предпросмотр"
-              sandbox="allow-scripts allow-same-origin"
+              sandbox="allow-scripts allow-same-origin allow-modals allow-forms"
               className="w-full h-full border-0 bg-white"
             />
           )}

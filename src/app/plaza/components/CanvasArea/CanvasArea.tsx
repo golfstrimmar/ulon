@@ -20,78 +20,114 @@ import {
 } from "@/lib/htmlTree";
 import { ROOT_TAGS, ELEMENT_FOLDERS } from "./elementsManifest";
 import { MonacoPropertiesEditor } from "../MonacoPropertiesEditor/MonacoPropertiesEditor";
-import { parseClassesCss } from "@/lib/cssCompiler";
+import { compileClassesCss, parseClassesCss } from "@/lib/cssCompiler";
 
 const DB_KEY = "plaza_tree";
+const SCRIPTS_STORAGE_KEY = "plaza_scripts_js";
 
 /**
- * Рекурсивное присвоение уникальных _key для загружаемого фрагмента
+ * Очищает CSS от возможных случайных точек с запятой после скобок (}; -> })
  */
-function assignKeys(node: HtmlNode): HtmlNode {
-  return {
-    ...node,
-    _key: generateNodeKey(),
-    children: Array.isArray(node.children)
-      ? node.children.map(assignKeys)
-      : node.children || [],
-  };
+function sanitizeCssBody(css: string): string {
+  return css.replace(/\}\s*;/g, "}").trim();
 }
 
 /**
- * Определение ориентации контейнера:
- * Если flex-row / row / flex без col -> РЯДОМ (в одну линию).
- * Если flex-col / column / по умолчанию -> В КОЛОНКУ (друг под другом).
+ * Извлекает ВСЕ инлайн-стили (node.style) в итоговый список CSS.
+ * Гарантирует, что КАЖДЫЙ стиль привязан к классу, а инлайн удаляется.
  */
+function extractInlineStylesToClasses(nodes: HtmlNode[]): {
+  cleanNodes: HtmlNode[];
+  extractedCss: Record<string, string>;
+} {
+  const extractedCss: Record<string, string> = {};
+
+  function processNode(node: HtmlNode): HtmlNode {
+    const key = node._key || generateNodeKey();
+    let classList = (node.class || "").split(/\s+/).filter(Boolean);
+
+    if (node.style && node.style.trim()) {
+      const cleanBody = sanitizeCssBody(node.style);
+
+      // Имя класса: берем первый существующий осмысленный класс или генерируем новый
+      let targetClass = classList.find(
+        (c) =>
+          !c.includes(":") && !c.startsWith("flex") && !c.startsWith("grid"),
+      );
+
+      if (!targetClass) {
+        const tagPrefix = (node.tag || "box")
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "");
+        targetClass = `${tagPrefix}-${key.slice(-5)}`;
+        classList.push(targetClass);
+      }
+
+      extractedCss[targetClass] = cleanBody;
+    }
+
+    const processedChildren = Array.isArray(node.children)
+      ? node.children.map(processNode)
+      : node.children || [];
+
+    const cleaned: HtmlNode = {
+      ...node,
+      _key: key,
+      class: classList.length > 0 ? classList.join(" ") : undefined,
+      children: processedChildren,
+    };
+    delete cleaned.style;
+
+    return cleaned;
+  }
+
+  const cleanNodes = nodes.map(processNode);
+  return { cleanNodes, extractedCss };
+}
+
 function isRowContainer(node: HtmlNode): boolean {
   const raw = (node.class || "").toLowerCase();
   const cls = raw.replace(/[-_]/g, " ");
-  const style = (node.style || "").toLowerCase();
 
-  // Если явно указана колонка
   if (
     raw.includes("flex-col") ||
     raw.includes("flex-column") ||
     cls.includes("flex col") ||
-    cls.includes("flex column") ||
-    style.includes("flex-direction: column")
+    cls.includes("flex column")
   ) {
     return false;
   }
 
-  // Если явно указана строка / ряд
   if (
     raw.includes("flex-row") ||
     cls.includes("flex row") ||
     raw.includes("ul-flex-row") ||
-    raw.includes("grid") ||
-    style.includes("flex-direction: row")
+    raw.includes("grid")
   ) {
     return true;
   }
 
-  // Просто flex без указания col — по умолчанию строка
-  if (raw.includes("flex") || style.includes("display: flex")) {
+  if (raw.includes("flex")) {
     return true;
   }
 
   return false;
 }
 
-// Палитра глубины кирпичиков
 const DEPTH_BG = [
-  "rgba(18, 18, 24, 0.96)", // depth 0
-  "rgba(26, 26, 34, 0.96)", // depth 1
-  "rgba(34, 34, 44, 0.96)", // depth 2
-  "rgba(42, 42, 54, 0.96)", // depth 3
-  "rgba(50, 50, 64, 0.96)", // depth 4+
+  "rgba(18, 18, 24, 0.96)",
+  "rgba(26, 26, 34, 0.96)",
+  "rgba(34, 34, 44, 0.96)",
+  "rgba(42, 42, 54, 0.96)",
+  "rgba(50, 50, 64, 0.96)",
 ];
 
 const DEPTH_BORDER = [
-  "rgba(63, 63, 70, 0.8)", // zinc-700
-  "rgba(82, 82, 91, 0.85)", // zinc-600
-  "rgba(113, 113, 122, 0.9)", // zinc-500
-  "rgba(161, 161, 170, 0.9)", // zinc-400
-  "rgba(212, 212, 216, 0.9)", // zinc-300
+  "rgba(63, 63, 70, 0.8)",
+  "rgba(82, 82, 91, 0.85)",
+  "rgba(113, 113, 122, 0.9)",
+  "rgba(161, 161, 170, 0.9)",
+  "rgba(212, 212, 216, 0.9)",
 ];
 
 const COMMON_TAGS = [
@@ -127,26 +163,6 @@ interface DropTarget {
   position: "self" | "before" | "after" | "inside";
 }
 
-interface NodeProps {
-  node: HtmlNode;
-  depth: number;
-  parentIsRow?: boolean;
-  draggedKey: string | null;
-  dropTarget: DropTarget | null;
-  collapsedKeys: Set<string>;
-  clickedKey: string | null;
-  hoveredKey: string | null;
-  onPointerDownNode: (e: React.PointerEvent, key: string) => void;
-  onClickNode: (key: string) => void;
-  onDoubleClickNode: (key: string) => void;
-  onToggleCollapse: (key: string) => void;
-  onHoverNode: (key: string | null) => void;
-}
-
-/**
- * Интерактивный зазор (DropGap) между соседними кирпичиками.
- * Поддерживает вертикальный вид (в строке) и горизонтальный (в колонке).
- */
 function DropGap({
   targetKey,
   position,
@@ -201,11 +217,6 @@ function DropGap({
   );
 }
 
-/**
- * Служебный кирпичик ноды:
- * Сохраняет свой фирменный вид (шапка с бейджем, классами, текстом, сворачиванием),
- * а дочерние элементы выстраивает строго РЯДОМ (если flex-row) или В КОЛОНКУ (если flex-col).
- */
 function NodeCard({
   node,
   depth,
@@ -220,11 +231,9 @@ function NodeCard({
   onDoubleClickNode,
   onToggleCollapse,
   onHoverNode,
-}: NodeProps) {
+}: any) {
   const key = node._key || "";
-  const children = Array.isArray(node.children)
-    ? (node.children as HtmlNode[])
-    : [];
+  const children = Array.isArray(node.children) ? node.children : [];
   const hasChildren = children.length > 0;
   const isCollapsed = collapsedKeys.has(key);
 
@@ -237,40 +246,34 @@ function NodeCard({
   const depthIdx = Math.min(depth, DEPTH_BG.length - 1);
   const isRow = isRowContainer(node);
 
-  // Стили рамок и подсветки кирпичика
   let borderStyle = DEPTH_BORDER[depthIdx];
   let bgStyle = DEPTH_BG[depthIdx];
   let shadowStyle = `0 1px 3px rgba(0, 0, 0, 0.4)`;
 
   if (isDrop && dropPos === "self") {
-    borderStyle = "#c084fc"; // purple-400 (дублирование)
+    borderStyle = "#c084fc";
     bgStyle = "rgba(168, 85, 247, 0.22)";
     shadowStyle = "0 0 12px rgba(192, 132, 252, 0.4)";
   } else if (isDrop && dropPos === "inside") {
-    borderStyle = "#38bdf8"; // sky blue (вставка внутрь)
+    borderStyle = "#38bdf8";
     bgStyle = "rgba(56, 189, 248, 0.16)";
     shadowStyle = "0 0 10px rgba(56, 189, 248, 0.4)";
   } else if (isClicked) {
-    borderStyle = "#818cf8"; // indigo-400
+    borderStyle = "#818cf8";
     bgStyle = "rgba(99, 102, 241, 0.2)";
     shadowStyle = "0 0 10px rgba(129, 140, 248, 0.35)";
   } else if (isHovered && !draggedKey) {
-    borderStyle = "#a5b4fc"; // indigo-300
+    borderStyle = "#a5b4fc";
     bgStyle = "rgba(99, 102, 241, 0.1)";
   }
 
-  // Цвета бейджа тега
   const tagLower = (node.tag || "div").toLowerCase();
   let tagBadgeClass = "bg-zinc-800/80 border-zinc-600/80 text-zinc-200";
   if (tagLower === "div") {
     tagBadgeClass = "bg-indigo-950/80 border-indigo-500/80 text-indigo-200";
   } else if (tagLower === "p") {
     tagBadgeClass = "bg-emerald-950/80 border-emerald-500/80 text-emerald-200";
-  } else if (
-    tagLower === "section" ||
-    tagLower === "header" ||
-    tagLower === "footer"
-  ) {
+  } else if (["section", "header", "footer"].includes(tagLower)) {
     tagBadgeClass = "bg-amber-950/80 border-amber-500/80 text-amber-200";
   }
 
@@ -293,9 +296,10 @@ function NodeCard({
         onHoverNode(null);
       }}
       onPointerDown={(e) => {
-        if (e.button !== 0) return;
-        e.stopPropagation();
-        onPointerDownNode(e, key);
+        if (e.button === 0) {
+          e.stopPropagation();
+          onPointerDownNode(e, key);
+        }
       }}
       onClick={(e) => {
         e.stopPropagation();
@@ -314,28 +318,8 @@ function NodeCard({
         boxShadow: shadowStyle,
       }}
     >
-      {/* Чувствительный краюшек "ДО" (слева если в строке, сверху если в колонке) */}
-      {isDrop && dropPos === "before" && (
-        <div
-          className={`absolute z-30 pointer-events-none flex items-center ${
-            parentIsRow
-              ? "-left-[2px] top-0 bottom-0 flex-col"
-              : "-top-[2px] left-0 right-0 flex-row"
-          }`}
-        >
-          {/*<div className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_8px_#38bdf8] shrink-0" />
-          <div
-            className={`bg-sky-400 rounded-full shadow-[0_0_8px_#38bdf8] ${
-              parentIsRow ? "w-[2px] flex-1" : "h-[2px] flex-1"
-            }`}
-          />*/}
-        </div>
-      )}
-
-      {/* Шапка кирпичика: тег, класс, текст, кнопка сворачивания */}
       <div className="h-[28px] px-2 flex items-center justify-between gap-1 rounded-t-md border-b border-zinc-800/60 shrink-0">
         <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
-          {/* Кнопка сворачивания [+] / [-] */}
           {hasChildren ? (
             <button
               type="button"
@@ -345,7 +329,6 @@ function NodeCard({
                 onToggleCollapse(key);
               }}
               className="w-4 h-4 rounded bg-zinc-900/90 border border-zinc-700 hover:border-zinc-500 text-cyan-400 text-[10px] font-mono font-bold flex items-center justify-center shrink-0 transition"
-              title={isCollapsed ? "Раскрыть" : "Свернуть"}
             >
               {isCollapsed ? "+" : "−"}
             </button>
@@ -353,24 +336,21 @@ function NodeCard({
             <div className="w-3 shrink-0" />
           )}
 
-          {/* Бейдж тега */}
           <span
-            className={`px-1.5 py-0.5 rounded text-[12px]  tracking-tight border uppercase shrink-0 leading-none ${tagBadgeClass}`}
+            className={`px-1.5 py-0.5 rounded text-[12px] tracking-tight border uppercase shrink-0 leading-none ${tagBadgeClass}`}
           >
             {node.tag || "div"}
           </span>
 
-          {/* Классы тега */}
           {hasClass && (
             <span
-              className="text-[12px] font-mono text-green-300  truncate max-w-[200px] leading-none"
+              className="text-[12px] font-mono text-green-300 truncate max-w-[200px] leading-none"
               title={classStr}
             >
               {classStr}
             </span>
           )}
 
-          {/* Текст тега */}
           {hasText && (
             <span
               className="text-[11px] text-zinc-200 truncate max-w-[180px] font-sans leading-none"
@@ -380,25 +360,13 @@ function NodeCard({
             </span>
           )}
         </div>
-
-        {/*{/* Индикатор дублирования при drop на себя
-        {isDrop && dropPos === "self" && (
-          <span className="text-[9.5px] font-mono text-purple-300 font-semibold bg-purple-950/90 border border-purple-500/60 px-1 py-0.5 rounded shrink-0 animate-pulse leading-none">
-            ✦ Duplicate
-          </span>
-        )}*/}
       </div>
 
-      {/* Вложенные дочерние кирпичики: РЯДОМ в строку (если flex-row) или В КОЛОНКУ (если flex-col) */}
       {hasChildren && !isCollapsed && (
         <div
-          className={`w-full flex-1 relative  ${
-            isRow
-              ? "flex flex-row flex-nowrap items-stretch gap-1 overflow-x-auto pb-2"
-              : "flex flex-col gap-1 px-1 border-l border-zinc-700/60"
-          }`}
+          className={`w-full flex-1 relative ${isRow ? "flex flex-row flex-nowrap items-stretch gap-1 overflow-x-auto pb-2" : "flex flex-col gap-1 px-1 border-l border-zinc-700/60"}`}
         >
-          {children.map((child, idx) => (
+          {children.map((child: HtmlNode, idx: number) => (
             <React.Fragment key={child._key || idx}>
               {idx === 0 && (
                 <DropGap
@@ -409,7 +377,6 @@ function NodeCard({
                   dropTarget={dropTarget}
                 />
               )}
-
               <NodeCard
                 node={child}
                 depth={depth + 1}
@@ -425,7 +392,6 @@ function NodeCard({
                 onToggleCollapse={onToggleCollapse}
                 onHoverNode={onHoverNode}
               />
-
               <DropGap
                 targetKey={child._key || ""}
                 position="after"
@@ -437,55 +403,30 @@ function NodeCard({
           ))}
         </div>
       )}
-
-      {/* Чувствительный краюшек "ПОСЛЕ" (справа если в строке, снизу если в колонке) */}
-      {isDrop && dropPos === "after" && (
-        <div
-          className={`absolute z-30 pointer-events-none flex items-center ${
-            parentIsRow
-              ? "-right-[2px] top-0 bottom-0 flex-col"
-              : "-bottom-[2px] left-0 right-0 flex-row"
-          }`}
-        >
-          {/*<div className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_8px_#38bdf8] shrink-0" />*/}
-          {/*<div
-            className={`bg-sky-400 rounded-full shadow-[0_0_8px_#38bdf8] ${
-              parentIsRow ? "w-[2px] flex-1" : "h-[2px] flex-1"
-            }`}
-          />*/}
-        </div>
-      )}
     </div>
   );
 }
 
 export function CanvasArea() {
   const containerRef = useRef<HTMLDivElement>(null);
-
-  // В базе изначально пустота
   const [currentJson, setCurrentJson] = useState<HtmlNode[]>([]);
   const currentJsonRef = useRef<HtmlNode[]>([]);
   currentJsonRef.current = currentJson;
 
-  // Стек истории для Undo / Redo
   const historyRef = useRef<HtmlNode[][]>([]);
   const futureRef = useRef<HtmlNode[][]>([]);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
 
-  // Состояние раскрытых папок в боковой панели
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
-
   const [collapsedKeys, setCollapsedKeys] = useState<Set<string>>(new Set());
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
   const [clickedKey, setClickedKey] = useState<string | null>(null);
 
-  // Локальные состояния редактирования выбранной ноды
   const [editTag, setEditTag] = useState<string>("div");
   const [editClass, setEditClass] = useState<string>("");
   const [editText, setEditText] = useState<string>("");
 
-  // Текущая выбранная нода
   let selectedNode: HtmlNode | null = null;
   if (clickedKey) {
     for (const r of currentJson) {
@@ -497,7 +438,6 @@ export function CanvasArea() {
     }
   }
 
-  // При смене выбранной ноды обновляем локальные поля
   useEffect(() => {
     if (selectedNode) {
       setEditTag(selectedNode.tag || "div");
@@ -512,7 +452,6 @@ export function CanvasArea() {
     selectedNode?.text,
   ]);
 
-  // Drag & drop состояния
   const [draggedKey, setDraggedKey] = useState<string | null>(null);
   const draggedKeyRef = useRef<string | null>(null);
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
@@ -523,136 +462,180 @@ export function CanvasArea() {
     x: number;
     y: number;
   } | null>(null);
-
   const potentialDragKeyRef = useRef<string | null>(null);
   const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
   const hasDraggedRef = useRef<boolean>(false);
   const clickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Стили классов (компилируются в <head> iframe)
   const [classesCss, setClassesCss] = useState<Record<string, string>>({});
   const classesCssRef = useRef<Record<string, string>>({});
   classesCssRef.current = classesCss;
 
-  // 1. Чтение дерева и стилей классов из IndexedDB / localStorage при старте
+  const [scriptsJs, setScriptsJs] = useState<Record<string, string>>({});
+  const scriptsJsRef = useRef<Record<string, string>>({});
+  scriptsJsRef.current = scriptsJs;
+
+  const updateAndPersistClassesCss = async (
+    nextCss: Record<string, string>,
+  ) => {
+    setClassesCss(nextCss);
+    classesCssRef.current = nextCss;
+    try {
+      localStorage.setItem("plaza_classes_css", JSON.stringify(nextCss));
+      await saveClassesCss(nextCss);
+    } catch (e) {
+      console.error(e);
+    }
+    window.dispatchEvent(
+      new CustomEvent("plaza-styles-updated", { detail: nextCss }),
+    );
+  };
+
+  // Первоначальная загрузка и автоматическая миграция любых инлайн-стилей
   useEffect(() => {
     (async () => {
-      try {
-        const data = await getHtmlJson(DB_KEY);
-        if (data) {
-          const list = Array.isArray(data) ? data : [data];
-          setCurrentJson(list);
-          currentJsonRef.current = list;
-        } else {
-          setCurrentJson([]);
-          currentJsonRef.current = [];
-        }
-      } catch (err) {
-        console.error("IndexedDB error:", err);
-        setCurrentJson([]);
-      }
+      let initialStyles: Record<string, string> = {};
 
-      // Чтение стилей классов из localStorage (быстрый старт) и IndexedDB
       try {
         const local = localStorage.getItem("plaza_classes_css");
         if (local) {
           const parsed = JSON.parse(local);
-          if (parsed && typeof parsed === "object") {
-            setClassesCss(parsed);
-            classesCssRef.current = parsed;
-          }
+          if (parsed && typeof parsed === "object")
+            initialStyles = { ...parsed };
         }
-      } catch (e) {
-        console.error("Failed to read classes CSS from localStorage:", e);
-      }
+      } catch {}
 
       try {
         const dbStyles = await getClassesCss();
-        if (dbStyles && typeof dbStyles === "object") {
-          setClassesCss(dbStyles);
-          classesCssRef.current = dbStyles;
-          try {
-            localStorage.setItem("plaza_classes_css", JSON.stringify(dbStyles));
-          } catch {}
+        if (dbStyles && typeof dbStyles === "object")
+          initialStyles = { ...initialStyles, ...dbStyles };
+      } catch {}
+
+      try {
+        const localScripts = localStorage.getItem(SCRIPTS_STORAGE_KEY);
+        if (localScripts) {
+          const parsed = JSON.parse(localScripts);
+          if (parsed && typeof parsed === "object") {
+            setScriptsJs(parsed);
+            scriptsJsRef.current = parsed;
+          }
+        }
+      } catch {}
+
+      try {
+        const data = await getHtmlJson(DB_KEY);
+        if (data) {
+          const list = Array.isArray(data) ? data : [data];
+          const { cleanNodes, extractedCss } =
+            extractInlineStylesToClasses(list);
+          const merged = { ...initialStyles, ...extractedCss };
+
+          setCurrentJson(cleanNodes);
+          currentJsonRef.current = cleanNodes;
+          await updateAndPersistClassesCss(merged);
+
+          if (Object.keys(extractedCss).length > 0) {
+            await saveHtmlJson(DB_KEY, cleanNodes);
+          }
+        } else {
+          setCurrentJson([]);
+          currentJsonRef.current = [];
+          await updateAndPersistClassesCss(initialStyles);
         }
       } catch (err) {
-        console.error("Failed to read classes CSS from IndexedDB:", err);
+        console.error("IndexedDB error:", err);
       }
     })();
   }, []);
 
-  // Сохранение стилей для конкретного класса (при изменении или удалении)
   const handleSaveClassCss = async (className: string, css: string) => {
     const clean = className.trim().replace(/^\./, "");
     if (!clean) return;
 
-    const trimmed = (css || "").trim();
+    const trimmed = sanitizeCssBody(css || "");
     const next = { ...classesCssRef.current };
 
     if (!trimmed) {
-      // Если свойства очищены — удаляем класс из финального списка
       delete next[clean];
     } else {
       next[clean] = trimmed;
     }
 
-    setClassesCss(next);
-    classesCssRef.current = next;
-
-    try {
-      localStorage.setItem("plaza_classes_css", JSON.stringify(next));
-      await saveClassesCss(next);
-    } catch (err) {
-      console.error("Failed to persist classes CSS:", err);
-    }
-
-    // Оповещаем PreviewArea об изменении финального списка свойств
-    window.dispatchEvent(
-      new CustomEvent("plaza-styles-updated", { detail: next }),
-    );
+    await updateAndPersistClassesCss(next);
   };
 
-  // Удаление стилей для класса
   const handleDeleteClassCss = async (className: string) => {
     const clean = className.trim().replace(/^\./, "");
     if (!clean) return;
 
     const next = { ...classesCssRef.current };
     delete next[clean];
-    setClassesCss(next);
-    classesCssRef.current = next;
-
-    try {
-      localStorage.setItem("plaza_classes_css", JSON.stringify(next));
-      await saveClassesCss(next);
-    } catch (err) {
-      console.error("Failed to persist classes CSS:", err);
-    }
-
-    window.dispatchEvent(
-      new CustomEvent("plaza-styles-updated", { detail: next }),
-    );
+    await updateAndPersistClassesCss(next);
   };
 
-  // Сохранение при прямом редактировании всего финального списка стилей
   const handleSaveFullCss = async (fullCss: string) => {
     const parsed = parseClassesCss(fullCss);
-    setClassesCss(parsed);
-    classesCssRef.current = parsed;
+    await updateAndPersistClassesCss(parsed);
+  };
 
-    try {
-      localStorage.setItem("plaza_classes_css", JSON.stringify(parsed));
-      await saveClassesCss(parsed);
-    } catch (err) {
-      console.error("Failed to persist classes CSS:", err);
+  const handleSaveScriptJs = (targetName: string, jsCode: string) => {
+    const clean = targetName.trim().replace(/^\./, "");
+    if (!clean) return;
+
+    const trimmed = (jsCode || "").trim();
+    const next = { ...scriptsJsRef.current };
+
+    if (!trimmed) {
+      delete next[clean];
+    } else {
+      next[clean] = trimmed;
     }
 
+    setScriptsJs(next);
+    scriptsJsRef.current = next;
+
+    try {
+      localStorage.setItem(SCRIPTS_STORAGE_KEY, JSON.stringify(next));
+    } catch {}
+
     window.dispatchEvent(
-      new CustomEvent("plaza-styles-updated", { detail: parsed }),
+      new CustomEvent("plaza-scripts-updated", { detail: next }),
     );
   };
 
-  // Добавление класса к текущей выбранной ноде
+  const handleDeleteScriptJs = (targetName: string) => {
+    const clean = targetName.trim().replace(/^\./, "");
+    if (!clean) return;
+
+    const next = { ...scriptsJsRef.current };
+    delete next[clean];
+    setScriptsJs(next);
+    scriptsJsRef.current = next;
+
+    try {
+      localStorage.setItem(SCRIPTS_STORAGE_KEY, JSON.stringify(next));
+    } catch {}
+
+    window.dispatchEvent(
+      new CustomEvent("plaza-scripts-updated", { detail: next }),
+    );
+  };
+
+  const handleSaveFullJs = (fullJs: string) => {
+    const trimmed = fullJs.trim();
+    const next: Record<string, string> = trimmed ? { __bundle__: trimmed } : {};
+    setScriptsJs(next);
+    scriptsJsRef.current = next;
+
+    try {
+      localStorage.setItem(SCRIPTS_STORAGE_KEY, JSON.stringify(next));
+    } catch {}
+
+    window.dispatchEvent(
+      new CustomEvent("plaza-scripts-updated", { detail: next }),
+    );
+  };
+
   const handleAddClassToNode = async (newCls: string) => {
     const clean = newCls.trim().replace(/^\./, "");
     if (!clean || !clickedKey || !selectedNode) return;
@@ -667,7 +650,6 @@ export function CanvasArea() {
     }
   };
 
-  // Сохранение состояния в IndexedDB и запись в историю Undo
   const persist = async (next: HtmlNode[], recordHistory = true) => {
     if (recordHistory) {
       const snapshot = JSON.parse(JSON.stringify(currentJsonRef.current));
@@ -686,64 +668,50 @@ export function CanvasArea() {
       } else {
         await deleteHtmlJson(DB_KEY);
       }
-      // Оповещаем PreviewArea об изменении дерева
       window.dispatchEvent(
         new CustomEvent("plaza-tree-updated", { detail: next }),
       );
     } catch (e) {
-      console.error("Failed to save to IndexedDB:", e);
+      console.error(e);
     }
   };
 
-  // --------------------------------------------------------------------------
-  // UNDO & REDO
-  // --------------------------------------------------------------------------
-
   const handleUndo = useCallback(async () => {
     if (historyRef.current.length === 0) return;
-
     const previousState = historyRef.current[historyRef.current.length - 1];
     historyRef.current = historyRef.current.slice(0, -1);
-
-    const currentSnapshot = JSON.parse(JSON.stringify(currentJsonRef.current));
-    futureRef.current = [currentSnapshot, ...futureRef.current];
-
+    futureRef.current = [
+      JSON.parse(JSON.stringify(currentJsonRef.current)),
+      ...futureRef.current,
+    ];
     setCanUndo(historyRef.current.length > 0);
     setCanRedo(true);
-
     await persist(previousState, false);
   }, []);
 
   const handleRedo = useCallback(async () => {
     if (futureRef.current.length === 0) return;
-
     const nextState = futureRef.current[0];
     futureRef.current = futureRef.current.slice(1);
-
-    const currentSnapshot = JSON.parse(JSON.stringify(currentJsonRef.current));
-    historyRef.current = [...historyRef.current.slice(-49), currentSnapshot];
-
+    historyRef.current = [
+      ...historyRef.current.slice(-49),
+      JSON.parse(JSON.stringify(currentJsonRef.current)),
+    ];
     setCanUndo(true);
     setCanRedo(futureRef.current.length > 0);
-
     await persist(nextState, false);
   }, []);
 
-  // Глобальные горячие клавиши: Ctrl+Z / Cmd+Z (Undo) и Ctrl+Y / Ctrl+Shift+Z (Redo)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
         e.target instanceof HTMLInputElement ||
         e.target instanceof HTMLTextAreaElement
-      ) {
+      )
         return;
-      }
-
       const isCtrlOrCmd = e.ctrlKey || e.metaKey;
       if (!isCtrlOrCmd) return;
-
       const key = e.key.toLowerCase();
-
       if ((key === "z" || key === "я") && !e.shiftKey) {
         e.preventDefault();
         handleUndo();
@@ -756,38 +724,37 @@ export function CanvasArea() {
         handleRedo();
       }
     };
-
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleUndo, handleRedo]);
 
-  // Загрузка любого JSON-файла по пути и добавление в конец
   const handleAppendFromPath = async (path: string) => {
     try {
       const res = await fetch(path);
-      if (!res.ok) {
-        console.error(`Failed to fetch ${path}`);
-        return;
-      }
+      if (!res.ok) return;
       const raw = await res.json();
       const nodes: HtmlNode[] = Array.isArray(raw) ? raw : [raw];
-      const withKeys = nodes.map(assignKeys);
 
-      const next = [...currentJsonRef.current, ...withKeys];
+      const { cleanNodes, extractedCss } = extractInlineStylesToClasses(nodes);
+
+      if (Object.keys(extractedCss).length > 0) {
+        const nextStyles = { ...classesCssRef.current, ...extractedCss };
+        await updateAndPersistClassesCss(nextStyles);
+      }
+
+      const next = [...currentJsonRef.current, ...cleanNodes];
       await persist(next);
     } catch (e) {
       console.error(`Error adding from ${path}:`, e);
     }
   };
 
-  // Очистка базы и холста
   const handleClear = async () => {
     await persist([]);
     setClickedKey(null);
     setHoveredKey(null);
   };
 
-  // Переключение состояния папки (раскрыть / скрыть)
   const toggleFolder = (folderName: string) => {
     setOpenFolders((prev) => {
       const next = new Set(prev);
@@ -796,10 +763,6 @@ export function CanvasArea() {
       return next;
     });
   };
-
-  // --------------------------------------------------------------------------
-  // Интерактивные действия с кирпичиками
-  // --------------------------------------------------------------------------
 
   const handlePointerDownNode = (e: React.PointerEvent, key: string) => {
     if (e.button !== 0) return;
@@ -822,12 +785,9 @@ export function CanvasArea() {
       hasDraggedRef.current = false;
       return;
     }
-    if (clickTimeoutRef.current) {
-      clearTimeout(clickTimeoutRef.current);
-    }
-    // Одиночный клик: открываем/переключаем панель редактирования
+    if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
     clickTimeoutRef.current = setTimeout(() => {
-      setClickedKey(key); // всегда открываем (не закрываем при повторном клике на ту же ноду)
+      setClickedKey(key);
       clickTimeoutRef.current = null;
     }, 200);
   };
@@ -843,9 +803,8 @@ export function CanvasArea() {
     await persist(next);
   };
 
-  // Сохранение изменений выбранной ноды по потере фокуса
   const handleSaveNodeField = async (
-    field: "tag" | "class" | "text" | "style" | "attributes",
+    field: "tag" | "class" | "text" | "attributes",
     value: any,
   ) => {
     if (!clickedKey) return;
@@ -856,13 +815,8 @@ export function CanvasArea() {
     await persist(next);
   };
 
-  // --------------------------------------------------------------------------
-  // Глобальное отслеживание Drag & Drop: свободное перемещение в любую позицию
-  // --------------------------------------------------------------------------
-
   useEffect(() => {
     const handlePointerMove = (e: PointerEvent) => {
-      // 1. Порог перетаскивания (4px)
       if (potentialDragKeyRef.current && dragStartPosRef.current) {
         const dx = e.clientX - dragStartPosRef.current.x;
         const dy = e.clientY - dragStartPosRef.current.y;
@@ -877,10 +831,8 @@ export function CanvasArea() {
       const activeDragKey = draggedKeyRef.current;
       if (!activeDragKey) return;
 
-      // 2. Обновление координат курсора для "призрака"
       setDragMousePos({ x: e.clientX, y: e.clientY });
 
-      // 3. Поиск элемента под курсором
       const elements = document.elementsFromPoint(e.clientX, e.clientY);
       if (!elements || elements.length === 0) {
         dropTargetRef.current = null;
@@ -888,39 +840,31 @@ export function CanvasArea() {
         return;
       }
 
-      // Попадание в зазор (DropGap)
       const gapEl = elements
         .map((el) => el.closest("[data-gap-key]"))
         .find(Boolean) as HTMLElement | undefined;
-
       if (gapEl) {
         const key = gapEl.getAttribute("data-gap-key")!;
         const position = gapEl.getAttribute("data-gap-pos") as
           "before" | "after";
-
-        // Если это зазор самого перетаскиваемого элемента - игнорируем
         if (key === activeDragKey) {
           dropTargetRef.current = null;
           setDropTarget(null);
           return;
         }
-
         const nextTarget: DropTarget = { key, position };
         dropTargetRef.current = nextTarget;
         setDropTarget(nextTarget);
         return;
       }
 
-      // Поиск карточки кирпичика под курсором
       const cardEl = elements
         .map((el) => el.closest("[data-node-key]"))
         .find(Boolean) as HTMLElement | undefined;
-
       if (cardEl) {
         const key = cardEl.getAttribute("data-node-key")!;
         const isParentRow = cardEl.getAttribute("data-is-row") === "true";
 
-        // Бросок на самого себя = дублирование
         if (key === activeDragKey) {
           const nextTarget: DropTarget = {
             key: activeDragKey,
@@ -931,7 +875,6 @@ export function CanvasArea() {
           return;
         }
 
-        // Запрет сброса внутрь своих потомков
         let sourceNode: HtmlNode | null = null;
         for (const root of currentJsonRef.current) {
           const found = findNodeByKey(root, activeDragKey);
@@ -967,11 +910,9 @@ export function CanvasArea() {
         return;
       }
 
-      // Если курсор на пустом месте внизу холста — возможность бросить в конец списка
       const workspaceEl = elements
         .map((el) => el.closest(".plaza-workspace"))
         .find(Boolean);
-
       if (workspaceEl && currentJsonRef.current.length > 0) {
         const lastRoot =
           currentJsonRef.current[currentJsonRef.current.length - 1];
@@ -992,7 +933,6 @@ export function CanvasArea() {
       const activeDragKey = draggedKeyRef.current;
       const target = dropTargetRef.current;
 
-      // Немедленно и синхронно сбрасываем всё состояние перетаскивания
       draggedKeyRef.current = null;
       setDraggedKey(null);
       dropTargetRef.current = null;
@@ -1001,22 +941,19 @@ export function CanvasArea() {
       potentialDragKeyRef.current = null;
       dragStartPosRef.current = null;
 
-      if (hasDraggedRef.current) {
+      if (hasDraggedRef.current)
         setTimeout(() => {
           hasDraggedRef.current = false;
         }, 50);
-      }
 
       if (activeDragKey && target && target.key) {
         if (target.position === "self") {
-          // Дублирование ноды только при явном сбросе на самого себя
           const updated = duplicateNodeInTree(
             currentJsonRef.current,
             activeDragKey,
           );
           await persist(updated);
         } else {
-          // Перемещение ноды (before / after / inside)
           const updated = moveNodePosition(
             currentJsonRef.current,
             activeDragKey,
@@ -1039,7 +976,6 @@ export function CanvasArea() {
     };
   }, []);
 
-  // Найти текущий перетаскиваемый узел для отображения в "призраке"
   let draggedNode: HtmlNode | null = null;
   if (draggedKey) {
     for (const r of currentJson) {
@@ -1053,19 +989,15 @@ export function CanvasArea() {
 
   return (
     <div className="w-full flex gap-1 h-[calc(100vh-80px)] min-h-[500px] select-none">
-      {/* Боковая панель с кнопками и папками */}
       <aside className="w-48 shrink-0 bg-zinc-900 border border-zinc-800 rounded-xl p-1 flex flex-col justify-between shadow-xl select-none overflow-hidden">
-        {/* Верхняя часть: История + элементы */}
         <div className="space-y-2.5 flex-1 overflow-y-auto pr-1 min-h-0 custom-scrollbar">
-          {/* Блок Undo / Redo */}
           <div className="space-y-1 border-b border-zinc-800 pb-2">
             <div className="grid grid-cols-2 gap-1">
               <button
                 type="button"
                 onClick={handleUndo}
                 disabled={!canUndo}
-                className="py-1 px-1.5 rounded bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:hover:bg-zinc-800 border border-zinc-700/60 text-zinc-200 text-[11px] font-medium flex items-center justify-center gap-1 transition cursor-pointer disabled:cursor-not-allowed"
-                title="Undo (Ctrl+Z)"
+                className="py-1 px-1.5 rounded bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 border border-zinc-700/60 text-zinc-200 text-[11px] font-medium flex items-center justify-center gap-1 transition cursor-pointer disabled:cursor-not-allowed"
               >
                 <span>↶</span> Undo
               </button>
@@ -1073,15 +1005,13 @@ export function CanvasArea() {
                 type="button"
                 onClick={handleRedo}
                 disabled={!canRedo}
-                className="py-1 px-1.5 rounded bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:hover:bg-zinc-800 border border-zinc-700/60 text-zinc-200 text-[11px] font-medium flex items-center justify-center gap-1 transition cursor-pointer disabled:cursor-not-allowed"
-                title="Redo (Ctrl+Y / Ctrl+Shift+Z)"
+                className="py-1 px-1.5 rounded bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 border border-zinc-700/60 text-zinc-200 text-[11px] font-medium flex items-center justify-center gap-1 transition cursor-pointer disabled:cursor-not-allowed"
               >
                 <span>↷</span> Redo
               </button>
             </div>
           </div>
 
-          {/* Вложенные папки категорий */}
           <div className="space-y-1">
             <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-semibold block">
               Folders
@@ -1094,7 +1024,7 @@ export function CanvasArea() {
                     <button
                       type="button"
                       onClick={() => toggleFolder(folder.name)}
-                      className="w-full py-1 px-2 rounded bg-zinc-850 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-300 text-[11px] font-medium flex items-center justify-between transition cursor-pointer"
+                      className="w-full py-1 px-2 rounded bg-zinc-850 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 text-[11px] font-medium flex items-center justify-between transition cursor-pointer"
                     >
                       <span className="flex items-center gap-1.5 truncate">
                         <span>{isOpen ? "📂" : "📁"}</span>
@@ -1104,7 +1034,6 @@ export function CanvasArea() {
                         {isOpen ? "−" : "+"}
                       </span>
                     </button>
-
                     {isOpen && (
                       <div className="pl-3 py-0.5 space-y-1 border-l border-zinc-800/80">
                         <div className="flex flex-col gap-1">
@@ -1114,7 +1043,6 @@ export function CanvasArea() {
                               key={item.path}
                               onClick={() => handleAppendFromPath(item.path)}
                               className="w-full py-0.5 px-1.5 text-left text-[10px] font-mono rounded bg-zinc-800/60 hover:bg-zinc-700 hover:text-white border border-zinc-750 text-zinc-300 truncate transition cursor-pointer"
-                              title={`Add ${item.name}`}
                             >
                               {item.name}
                             </button>
@@ -1128,7 +1056,6 @@ export function CanvasArea() {
             </div>
           </div>
 
-          {/* Базовые теги (плотная сетка из 2 колонок) */}
           <div className="space-y-1 pt-1.5 border-t border-zinc-800">
             <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-semibold block">
               Tags
@@ -1140,7 +1067,6 @@ export function CanvasArea() {
                   key={tag.path}
                   onClick={() => handleAppendFromPath(tag.path)}
                   className="py-0.5 px-1 text-[11px] font-bold rounded bg-zinc-700/70 hover:bg-zinc-700 hover:text-white border border-zinc-750 text-zinc-300 truncate text-center transition cursor-pointer"
-                  title={`Add <${tag.name}>`}
                 >
                   {tag.name}
                 </button>
@@ -1149,7 +1075,6 @@ export function CanvasArea() {
           </div>
         </div>
 
-        {/* Нижняя часть: Clear Canvas */}
         {currentJson.length > 0 && (
           <div className="pt-2 border-t border-zinc-800">
             <button
@@ -1163,24 +1088,18 @@ export function CanvasArea() {
         )}
       </aside>
 
-      {/* Рабочая область: Разметка кирпичиков */}
       <div
         ref={containerRef}
         className="plaza-workspace flex-1 relative bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl"
       >
-        {/* Scrollable inner area */}
         <div className="plaza-inner w-full h-full overflow-auto custom-scrollbar p-4 pb-2">
           {currentJson.length === 0 ? (
             <div className="h-full min-h-[300px] flex flex-col items-center justify-center text-zinc-500 gap-2">
               <span className="text-3xl">🧩</span>
               <p className="text-sm font-medium">Canvas is empty</p>
-              <p className="text-xs text-zinc-600 max-w-sm text-center">
-                Select a tag or component from the sidebar to start building
-                your markup schema.
-              </p>
             </div>
           ) : (
-            <div className="w-full  mx-auto flex flex-col min-h-full">
+            <div className="w-full mx-auto flex flex-col min-h-full">
               {currentJson.map((node, index) => (
                 <React.Fragment key={node._key || index}>
                   {index === 0 && (
@@ -1192,7 +1111,6 @@ export function CanvasArea() {
                       dropTarget={dropTarget}
                     />
                   )}
-
                   <NodeCard
                     node={node}
                     depth={0}
@@ -1208,7 +1126,6 @@ export function CanvasArea() {
                     onToggleCollapse={handleToggleCollapse}
                     onHoverNode={setHoveredKey}
                   />
-
                   <DropGap
                     targetKey={node._key || ""}
                     position="after"
@@ -1221,64 +1138,25 @@ export function CanvasArea() {
             </div>
           )}
         </div>
-        {/* end plaza-inner scrollable */}
 
-        {/* Плавающий "призрак" перетаскиваемой ноды со статусом действия */}
-        {draggedNode && dragMousePos && (
-          <div
-            className="fixed pointer-events-none z-50 py-1.5 px-3 rounded-lg bg-indigo-950/95 border border-indigo-400 shadow-[0_10px_25px_rgba(0,0,0,0.6)] flex items-center gap-2 -translate-x-3 -translate-y-3 backdrop-blur-md"
-            style={{
-              left: dragMousePos.x,
-              top: dragMousePos.y,
-            }}
-          >
-            <span className="font-mono text-xs font-bold text-indigo-300 uppercase leading-none">
-              {draggedNode.tag || "div"}
-            </span>
-            {dropTarget && (
-              <span
-                className={`text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded border leading-none ${
-                  dropTarget.position === "self"
-                    ? "bg-purple-950/80 border-purple-400 text-purple-200"
-                    : "bg-sky-950/80 border-sky-400 text-sky-200"
-                }`}
-              >
-                {dropTarget.position === "self"
-                  ? "✦ Дублировать"
-                  : dropTarget.position === "inside"
-                    ? "↳ Внутрь"
-                    : dropTarget.position === "before"
-                      ? "↑ До"
-                      : "↓ После"}
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* ================================================================ */}
-        {/* Панель редактирования ноды — выезжает снизу при клике            */}
-        {/* ================================================================ */}
+        {/* Редактор ноды */}
         <div
-          className={`absolute bottom-0 left-0 right-0 z-40 transition-transform duration-300 ease-in-out ${
-            clickedKey ? "translate-y-0" : "translate-y-full"
-          }`}
+          className={`absolute bottom-0 left-0 right-0 z-40 transition-transform duration-300 ease-in-out ${clickedKey ? "translate-y-0" : "translate-y-full"}`}
         >
           {clickedKey && selectedNode && (
             <div className="relative bg-zinc-900 border-t border-zinc-700 rounded-t-2xl shadow-[0_-8px_32px_rgba(0,0,0,0.6)] backdrop-blur-md">
-              {/* Кнопка закрытия — большая, красная, слева сверху */}
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   setClickedKey(null);
                 }}
-                className="absolute top-1 left-1 z-50 w-10 h-5 rounded-lg bg-red-600 hover:bg-red-500 border-2 border-red-400 text-white text-sm font-bold flex items-center justify-center shadow-[0_0_16px_rgba(239,68,68,0.6)] transition-all cursor-pointer"
+                className="absolute top-1 left-1 z-50 w-10 h-5 rounded-lg bg-red-600 hover:bg-red-500 border-2 border-red-400 text-white text-sm font-bold flex items-center justify-center shadow transition-all cursor-pointer"
               >
                 ✕
               </button>
 
-              <div className="p-1 ">
-                {/* Заголовок */}
+              <div className="p-1">
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] pl-15 font-mono text-zinc-500 uppercase tracking-widest">
                     Editing
@@ -1290,9 +1168,9 @@ export function CanvasArea() {
                       : ""}
                   </span>
                 </div>
-                {/* --- Тег --- */}
-                <div className=" flex items-center gap-2  mt-2">
-                  <label className="text-[10px]   tracking-widest text-zinc-400 block">
+
+                <div className="flex items-center gap-2 mt-2">
+                  <label className="text-[10px] tracking-widest text-zinc-400 block">
                     Тag
                   </label>
                   <div className="flex flex-wrap gap-1">
@@ -1306,7 +1184,7 @@ export function CanvasArea() {
                         }}
                         className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border transition-all cursor-pointer ${
                           editTag === t
-                            ? "bg-indigo-600 border-indigo-400 text-white shadow-[0_0_8px_rgba(99,102,241,0.5)]"
+                            ? "bg-indigo-600 border-indigo-400 text-white shadow"
                             : "bg-zinc-800 border-zinc-600 text-zinc-300 hover:border-indigo-500 hover:text-indigo-300"
                         }`}
                       >
@@ -1315,10 +1193,10 @@ export function CanvasArea() {
                     ))}
                   </div>
                 </div>
-                <div className="grid grid-cols-[1fr_2fr] gap-2 items-start  mt-2">
-                  {/* --- Класс --- */}
-                  <div className="">
-                    <label className="text-[10px]  tracking-widest text-zinc-400 block">
+
+                <div className="grid grid-cols-[1fr_2fr] gap-2 items-start mt-2">
+                  <div>
+                    <label className="text-[10px] tracking-widest text-zinc-400 block">
                       Classes
                     </label>
                     <input
@@ -1329,12 +1207,11 @@ export function CanvasArea() {
                         await handleSaveNodeField("class", e.target.value);
                       }}
                       placeholder="flex items-center gap-2..."
-                      className="w-full px-2.5 py-1 rounded-lg bg-zinc-800 border border-zinc-600 text-green-300 text-[14px]   placeholder-zinc-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition"
+                      className="w-full px-2.5 py-1 rounded-lg bg-zinc-800 border border-zinc-600 text-green-300 text-[14px] placeholder-zinc-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition"
                     />
                   </div>
 
-                  {/* --- Текст --- */}
-                  <div className="">
+                  <div>
                     <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 block">
                       Теxt
                     </label>
@@ -1351,11 +1228,7 @@ export function CanvasArea() {
                   </div>
                 </div>
 
-                {/* --- Свойства ноды: Monaco Editor (стили классов / style / attributes) --- */}
-                <div className=" pt-2 border-t border-zinc-800">
-                  {/*<label className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 block">
-                    Свойства и стили (Monaco Editor)
-                  </label>*/}
+                <div className="pt-2 border-t border-zinc-800">
                   {(() => {
                     const classSource =
                       editClass !== undefined && editClass !== null
@@ -1368,19 +1241,21 @@ export function CanvasArea() {
 
                     return (
                       <MonacoPropertiesEditor
+                        nodeKey={selectedNode._key || ""}
+                        nodeTag={selectedNode.tag || "div"}
                         nodeClasses={nodeClasses}
                         classesCss={classesCss}
-                        inlineStyleValue={selectedNode.style || ""}
+                        scriptsJs={scriptsJs}
                         attributesValue={selectedNode.attributes}
                         onSaveClassCss={handleSaveClassCss}
                         onDeleteClassCss={handleDeleteClassCss}
-                        onSaveInlineStyle={async (newStyle) => {
-                          await handleSaveNodeField("style", newStyle);
-                        }}
+                        onSaveFullCss={handleSaveFullCss}
+                        onSaveScriptJs={handleSaveScriptJs}
+                        onDeleteScriptJs={handleDeleteScriptJs}
+                        onSaveFullJs={handleSaveFullJs}
                         onSaveAttributes={async (newAttrs) => {
                           await handleSaveNodeField("attributes", newAttrs);
                         }}
-                        onSaveFullCss={handleSaveFullCss}
                         onAddClassToNode={handleAddClassToNode}
                       />
                     );
