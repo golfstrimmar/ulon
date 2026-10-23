@@ -117,3 +117,44 @@ export async function deleteHtmlJson(id: string): Promise<void> {
     tx.oncomplete = () => db.close();
   });
 }
+
+// ============================================================================
+// CLASSES CSS (Компилированные стили классов)
+// ============================================================================
+
+const CLASSES_CSS_KEY = "plaza_classes_css";
+
+/**
+ * Сохраняет словарь стилей классов в IndexedDB
+ */
+export async function saveClassesCss(styles: Record<string, string>): Promise<void> {
+  const db = await openHtmlDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.put({ id: CLASSES_CSS_KEY, styles });
+
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error || new Error("Failed to save classes CSS"));
+    tx.oncomplete = () => db.close();
+  });
+}
+
+/**
+ * Загружает словарь стилей классов из IndexedDB
+ */
+export async function getClassesCss(): Promise<Record<string, string>> {
+  const db = await openHtmlDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.get(CLASSES_CSS_KEY);
+
+    req.onsuccess = () => {
+      resolve(req.result?.styles || {});
+    };
+    req.onerror = () => reject(req.error || new Error("Failed to get classes CSS"));
+    tx.oncomplete = () => db.close();
+  });
+}
+

@@ -2,7 +2,13 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { HtmlNode } from "@/types/HtmlNode";
-import { getHtmlJson, saveHtmlJson, deleteHtmlJson } from "@/lib/htmlStorage";
+import {
+  getHtmlJson,
+  saveHtmlJson,
+  deleteHtmlJson,
+  getClassesCss,
+  saveClassesCss,
+} from "@/lib/htmlStorage";
 import {
   generateNodeKey,
   moveNodePosition,
@@ -10,8 +16,11 @@ import {
   isDescendant,
   duplicateNodeInTree,
   deleteNodeFromArray,
+  updateNodeByKey,
 } from "@/lib/htmlTree";
 import { ROOT_TAGS, ELEMENT_FOLDERS } from "./elementsManifest";
+import { MonacoPropertiesEditor } from "../MonacoPropertiesEditor/MonacoPropertiesEditor";
+import { parseClassesCss } from "@/lib/cssCompiler";
 
 const DB_KEY = "plaza_tree";
 
@@ -83,6 +92,34 @@ const DEPTH_BORDER = [
   "rgba(113, 113, 122, 0.9)", // zinc-500
   "rgba(161, 161, 170, 0.9)", // zinc-400
   "rgba(212, 212, 216, 0.9)", // zinc-300
+];
+
+const COMMON_TAGS = [
+  "div",
+  "p",
+  "span",
+  "button",
+  "a",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "section",
+  "header",
+  "footer",
+  "main",
+  "nav",
+  "aside",
+  "article",
+  "ul",
+  "ol",
+  "li",
+  "input",
+  "form",
+  "label",
+  "img",
 ];
 
 interface DropTarget {
@@ -318,7 +355,7 @@ function NodeCard({
 
           {/* Бейдж тега */}
           <span
-            className={`px-1.5 py-0.5 rounded text-[12px]  font-mono tracking-tight border uppercase shrink-0 leading-none ${tagBadgeClass}`}
+            className={`px-1.5 py-0.5 rounded text-[12px]  tracking-tight border uppercase shrink-0 leading-none ${tagBadgeClass}`}
           >
             {node.tag || "div"}
           </span>
@@ -326,7 +363,7 @@ function NodeCard({
           {/* Классы тега */}
           {hasClass && (
             <span
-              className="text-[12px] font-mono text-lime-300  truncate max-w-[200px] leading-none"
+              className="text-[12px] font-mono text-green-300  truncate max-w-[200px] leading-none"
               title={classStr}
             >
               {classStr}
@@ -443,6 +480,38 @@ export function CanvasArea() {
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
   const [clickedKey, setClickedKey] = useState<string | null>(null);
 
+  // Локальные состояния редактирования выбранной ноды
+  const [editTag, setEditTag] = useState<string>("div");
+  const [editClass, setEditClass] = useState<string>("");
+  const [editText, setEditText] = useState<string>("");
+
+  // Текущая выбранная нода
+  let selectedNode: HtmlNode | null = null;
+  if (clickedKey) {
+    for (const r of currentJson) {
+      const f = findNodeByKey(r, clickedKey);
+      if (f) {
+        selectedNode = f;
+        break;
+      }
+    }
+  }
+
+  // При смене выбранной ноды обновляем локальные поля
+  useEffect(() => {
+    if (selectedNode) {
+      setEditTag(selectedNode.tag || "div");
+      setEditClass(selectedNode.class || "");
+      setEditText(selectedNode.text || "");
+    }
+  }, [
+    clickedKey,
+    selectedNode?._key,
+    selectedNode?.tag,
+    selectedNode?.class,
+    selectedNode?.text,
+  ]);
+
   // Drag & drop состояния
   const [draggedKey, setDraggedKey] = useState<string | null>(null);
   const draggedKeyRef = useRef<string | null>(null);
@@ -460,7 +529,12 @@ export function CanvasArea() {
   const hasDraggedRef = useRef<boolean>(false);
   const clickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 1. Чтение из IndexedDB при старте
+  // Стили классов (компилируются в <head> iframe)
+  const [classesCss, setClassesCss] = useState<Record<string, string>>({});
+  const classesCssRef = useRef<Record<string, string>>({});
+  classesCssRef.current = classesCss;
+
+  // 1. Чтение дерева и стилей классов из IndexedDB / localStorage при старте
   useEffect(() => {
     (async () => {
       try {
@@ -477,8 +551,121 @@ export function CanvasArea() {
         console.error("IndexedDB error:", err);
         setCurrentJson([]);
       }
+
+      // Чтение стилей классов из localStorage (быстрый старт) и IndexedDB
+      try {
+        const local = localStorage.getItem("plaza_classes_css");
+        if (local) {
+          const parsed = JSON.parse(local);
+          if (parsed && typeof parsed === "object") {
+            setClassesCss(parsed);
+            classesCssRef.current = parsed;
+          }
+        }
+      } catch (e) {
+        console.error("Failed to read classes CSS from localStorage:", e);
+      }
+
+      try {
+        const dbStyles = await getClassesCss();
+        if (dbStyles && typeof dbStyles === "object") {
+          setClassesCss(dbStyles);
+          classesCssRef.current = dbStyles;
+          try {
+            localStorage.setItem("plaza_classes_css", JSON.stringify(dbStyles));
+          } catch {}
+        }
+      } catch (err) {
+        console.error("Failed to read classes CSS from IndexedDB:", err);
+      }
     })();
   }, []);
+
+  // Сохранение стилей для конкретного класса (при изменении или удалении)
+  const handleSaveClassCss = async (className: string, css: string) => {
+    const clean = className.trim().replace(/^\./, "");
+    if (!clean) return;
+
+    const trimmed = (css || "").trim();
+    const next = { ...classesCssRef.current };
+
+    if (!trimmed) {
+      // Если свойства очищены — удаляем класс из финального списка
+      delete next[clean];
+    } else {
+      next[clean] = trimmed;
+    }
+
+    setClassesCss(next);
+    classesCssRef.current = next;
+
+    try {
+      localStorage.setItem("plaza_classes_css", JSON.stringify(next));
+      await saveClassesCss(next);
+    } catch (err) {
+      console.error("Failed to persist classes CSS:", err);
+    }
+
+    // Оповещаем PreviewArea об изменении финального списка свойств
+    window.dispatchEvent(
+      new CustomEvent("plaza-styles-updated", { detail: next }),
+    );
+  };
+
+  // Удаление стилей для класса
+  const handleDeleteClassCss = async (className: string) => {
+    const clean = className.trim().replace(/^\./, "");
+    if (!clean) return;
+
+    const next = { ...classesCssRef.current };
+    delete next[clean];
+    setClassesCss(next);
+    classesCssRef.current = next;
+
+    try {
+      localStorage.setItem("plaza_classes_css", JSON.stringify(next));
+      await saveClassesCss(next);
+    } catch (err) {
+      console.error("Failed to persist classes CSS:", err);
+    }
+
+    window.dispatchEvent(
+      new CustomEvent("plaza-styles-updated", { detail: next }),
+    );
+  };
+
+  // Сохранение при прямом редактировании всего финального списка стилей
+  const handleSaveFullCss = async (fullCss: string) => {
+    const parsed = parseClassesCss(fullCss);
+    setClassesCss(parsed);
+    classesCssRef.current = parsed;
+
+    try {
+      localStorage.setItem("plaza_classes_css", JSON.stringify(parsed));
+      await saveClassesCss(parsed);
+    } catch (err) {
+      console.error("Failed to persist classes CSS:", err);
+    }
+
+    window.dispatchEvent(
+      new CustomEvent("plaza-styles-updated", { detail: parsed }),
+    );
+  };
+
+  // Добавление класса к текущей выбранной ноде
+  const handleAddClassToNode = async (newCls: string) => {
+    const clean = newCls.trim().replace(/^\./, "");
+    if (!clean || !clickedKey || !selectedNode) return;
+
+    const currentClasses = (selectedNode.class || "")
+      .split(/\s+/)
+      .filter(Boolean);
+    if (!currentClasses.includes(clean)) {
+      const updatedClassStr = [...currentClasses, clean].join(" ");
+      setEditClass(updatedClassStr);
+      await handleSaveNodeField("class", updatedClassStr);
+    }
+  };
 
   // Сохранение состояния в IndexedDB и запись в историю Undo
   const persist = async (next: HtmlNode[], recordHistory = true) => {
@@ -499,6 +686,10 @@ export function CanvasArea() {
       } else {
         await deleteHtmlJson(DB_KEY);
       }
+      // Оповещаем PreviewArea об изменении дерева
+      window.dispatchEvent(
+        new CustomEvent("plaza-tree-updated", { detail: next }),
+      );
     } catch (e) {
       console.error("Failed to save to IndexedDB:", e);
     }
@@ -634,8 +825,9 @@ export function CanvasArea() {
     if (clickTimeoutRef.current) {
       clearTimeout(clickTimeoutRef.current);
     }
+    // Одиночный клик: открываем/переключаем панель редактирования
     clickTimeoutRef.current = setTimeout(() => {
-      setClickedKey((prev) => (prev === key ? null : key));
+      setClickedKey(key); // всегда открываем (не закрываем при повторном клике на ту же ноду)
       clickTimeoutRef.current = null;
     }, 200);
   };
@@ -648,6 +840,19 @@ export function CanvasArea() {
     const next = deleteNodeFromArray(currentJsonRef.current, key);
     if (clickedKey === key) setClickedKey(null);
     if (hoveredKey === key) setHoveredKey(null);
+    await persist(next);
+  };
+
+  // Сохранение изменений выбранной ноды по потере фокуса
+  const handleSaveNodeField = async (
+    field: "tag" | "class" | "text" | "style" | "attributes",
+    value: any,
+  ) => {
+    if (!clickedKey) return;
+    const patch: Partial<HtmlNode> = { [field]: value };
+    const next = currentJsonRef.current.map((root) =>
+      updateNodeByKey(root, clickedKey, patch),
+    );
     await persist(next);
   };
 
@@ -961,59 +1166,62 @@ export function CanvasArea() {
       {/* Рабочая область: Разметка кирпичиков */}
       <div
         ref={containerRef}
-        onClick={() => setClickedKey(null)}
-        className="plaza-workspace flex-1 relative bg-zinc-950 border border-zinc-800 rounded-xl overflow-auto  shadow-2xl custom-scrollbar"
+        className="plaza-workspace flex-1 relative bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl"
       >
-        {currentJson.length === 0 ? (
-          <div className="h-full min-h-[300px] flex flex-col items-center justify-center text-zinc-500 gap-2">
-            <span className="text-3xl">🧩</span>
-            <p className="text-sm font-medium">Холст пуст</p>
-            <p className="text-xs text-zinc-600 max-w-sm text-center">
-              Выберите тег или компонент из боковой панели, чтобы начать
-              построение схемы разметки.
-            </p>
-          </div>
-        ) : (
-          <div className="w-full  mx-auto flex flex-col min-h-full">
-            {currentJson.map((node, index) => (
-              <React.Fragment key={node._key || index}>
-                {index === 0 && (
+        {/* Scrollable inner area */}
+        <div className="plaza-inner w-full h-full overflow-auto custom-scrollbar p-4 pb-2">
+          {currentJson.length === 0 ? (
+            <div className="h-full min-h-[300px] flex flex-col items-center justify-center text-zinc-500 gap-2">
+              <span className="text-3xl">🧩</span>
+              <p className="text-sm font-medium">Canvas is empty</p>
+              <p className="text-xs text-zinc-600 max-w-sm text-center">
+                Select a tag or component from the sidebar to start building
+                your markup schema.
+              </p>
+            </div>
+          ) : (
+            <div className="w-full  mx-auto flex flex-col min-h-full">
+              {currentJson.map((node, index) => (
+                <React.Fragment key={node._key || index}>
+                  {index === 0 && (
+                    <DropGap
+                      targetKey={node._key || ""}
+                      position="before"
+                      orientation="horizontal"
+                      draggedKey={draggedKey}
+                      dropTarget={dropTarget}
+                    />
+                  )}
+
+                  <NodeCard
+                    node={node}
+                    depth={0}
+                    parentIsRow={false}
+                    draggedKey={draggedKey}
+                    dropTarget={dropTarget}
+                    collapsedKeys={collapsedKeys}
+                    clickedKey={clickedKey}
+                    hoveredKey={hoveredKey}
+                    onPointerDownNode={handlePointerDownNode}
+                    onClickNode={handleClickNode}
+                    onDoubleClickNode={handleDoubleClickNode}
+                    onToggleCollapse={handleToggleCollapse}
+                    onHoverNode={setHoveredKey}
+                  />
+
                   <DropGap
                     targetKey={node._key || ""}
-                    position="before"
+                    position="after"
                     orientation="horizontal"
                     draggedKey={draggedKey}
                     dropTarget={dropTarget}
                   />
-                )}
-
-                <NodeCard
-                  node={node}
-                  depth={0}
-                  parentIsRow={false}
-                  draggedKey={draggedKey}
-                  dropTarget={dropTarget}
-                  collapsedKeys={collapsedKeys}
-                  clickedKey={clickedKey}
-                  hoveredKey={hoveredKey}
-                  onPointerDownNode={handlePointerDownNode}
-                  onClickNode={handleClickNode}
-                  onDoubleClickNode={handleDoubleClickNode}
-                  onToggleCollapse={handleToggleCollapse}
-                  onHoverNode={setHoveredKey}
-                />
-
-                <DropGap
-                  targetKey={node._key || ""}
-                  position="after"
-                  orientation="horizontal"
-                  draggedKey={draggedKey}
-                  dropTarget={dropTarget}
-                />
-              </React.Fragment>
-            ))}
-          </div>
-        )}
+                </React.Fragment>
+              ))}
+            </div>
+          )}
+        </div>
+        {/* end plaza-inner scrollable */}
 
         {/* Плавающий "призрак" перетаскиваемой ноды со статусом действия */}
         {draggedNode && dragMousePos && (
@@ -1046,6 +1254,142 @@ export function CanvasArea() {
             )}
           </div>
         )}
+
+        {/* ================================================================ */}
+        {/* Панель редактирования ноды — выезжает снизу при клике            */}
+        {/* ================================================================ */}
+        <div
+          className={`absolute bottom-0 left-0 right-0 z-40 transition-transform duration-300 ease-in-out ${
+            clickedKey ? "translate-y-0" : "translate-y-full"
+          }`}
+        >
+          {clickedKey && selectedNode && (
+            <div className="relative bg-zinc-900 border-t border-zinc-700 rounded-t-2xl shadow-[0_-8px_32px_rgba(0,0,0,0.6)] backdrop-blur-md">
+              {/* Кнопка закрытия — большая, красная, слева сверху */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setClickedKey(null);
+                }}
+                className="absolute top-1 left-1 z-50 w-10 h-5 rounded-lg bg-red-600 hover:bg-red-500 border-2 border-red-400 text-white text-sm font-bold flex items-center justify-center shadow-[0_0_16px_rgba(239,68,68,0.6)] transition-all cursor-pointer"
+              >
+                ✕
+              </button>
+
+              <div className="p-1 ">
+                {/* Заголовок */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] pl-15 font-mono text-zinc-500 uppercase tracking-widest">
+                    Editing
+                  </span>
+                  <span className="text-[11px] font-mono text-emerald-300 truncate max-w-[200px]">
+                    &lt;{selectedNode.tag || "div"}&gt;
+                    {selectedNode.class
+                      ? ` .${selectedNode.class.split(" ")[0]}`
+                      : ""}
+                  </span>
+                </div>
+                {/* --- Тег --- */}
+                <div className=" flex items-center gap-2  mt-2">
+                  <label className="text-[10px]   tracking-widest text-zinc-400 block">
+                    Тag
+                  </label>
+                  <div className="flex flex-wrap gap-1">
+                    {COMMON_TAGS.map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={async () => {
+                          setEditTag(t);
+                          await handleSaveNodeField("tag", t);
+                        }}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border transition-all cursor-pointer ${
+                          editTag === t
+                            ? "bg-indigo-600 border-indigo-400 text-white shadow-[0_0_8px_rgba(99,102,241,0.5)]"
+                            : "bg-zinc-800 border-zinc-600 text-zinc-300 hover:border-indigo-500 hover:text-indigo-300"
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="grid grid-cols-[1fr_2fr] gap-2 items-start  mt-2">
+                  {/* --- Класс --- */}
+                  <div className="">
+                    <label className="text-[10px]  tracking-widest text-zinc-400 block">
+                      Classes
+                    </label>
+                    <input
+                      type="text"
+                      value={editClass}
+                      onChange={(e) => setEditClass(e.target.value)}
+                      onBlur={async (e) => {
+                        await handleSaveNodeField("class", e.target.value);
+                      }}
+                      placeholder="flex items-center gap-2..."
+                      className="w-full px-2.5 py-1 rounded-lg bg-zinc-800 border border-zinc-600 text-green-300 text-[14px]   placeholder-zinc-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition"
+                    />
+                  </div>
+
+                  {/* --- Текст --- */}
+                  <div className="">
+                    <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 block">
+                      Теxt
+                    </label>
+                    <textarea
+                      value={editText}
+                      onChange={(e) => setEditText(e.target.value)}
+                      onBlur={async (e) => {
+                        await handleSaveNodeField("text", e.target.value);
+                      }}
+                      rows={3}
+                      placeholder="Текстовое содержимое..."
+                      className="w-full px-2.5 py-1.5 rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-100 text-[12px] font-mono placeholder-zinc-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition resize-none"
+                    />
+                  </div>
+                </div>
+
+                {/* --- Свойства ноды: Monaco Editor (стили классов / style / attributes) --- */}
+                <div className=" pt-2 border-t border-zinc-800">
+                  {/*<label className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 block">
+                    Свойства и стили (Monaco Editor)
+                  </label>*/}
+                  {(() => {
+                    const classSource =
+                      editClass !== undefined && editClass !== null
+                        ? editClass
+                        : selectedNode.class || "";
+                    const nodeClasses = classSource
+                      .split(/\s+/)
+                      .map((c) => c.trim().replace(/^\./, ""))
+                      .filter(Boolean);
+
+                    return (
+                      <MonacoPropertiesEditor
+                        nodeClasses={nodeClasses}
+                        classesCss={classesCss}
+                        inlineStyleValue={selectedNode.style || ""}
+                        attributesValue={selectedNode.attributes}
+                        onSaveClassCss={handleSaveClassCss}
+                        onDeleteClassCss={handleDeleteClassCss}
+                        onSaveInlineStyle={async (newStyle) => {
+                          await handleSaveNodeField("style", newStyle);
+                        }}
+                        onSaveAttributes={async (newAttrs) => {
+                          await handleSaveNodeField("attributes", newAttrs);
+                        }}
+                        onSaveFullCss={handleSaveFullCss}
+                        onAddClassToNode={handleAddClassToNode}
+                      />
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

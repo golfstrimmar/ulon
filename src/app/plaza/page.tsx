@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { Header } from "@/components/Header";
+import { PreviewArea } from "./components/PreviewArea/PreviewArea";
 import { CanvasArea } from "./components/CanvasArea/CanvasArea";
 
 export const metadata = {
@@ -21,7 +22,17 @@ export default function PlazaPage() {
         <Header />
       </Suspense>
 
-      <main className="flex-1 p-1  flex flex-col  w-full mx-auto">
+      <main className="flex-1 p-2 flex flex-col gap-3 w-full mx-auto">
+        {/* Компонент интерактивного превью реального сайта */}
+        <Suspense
+          fallback={
+            <div className="w-full h-80 bg-zinc-900/50 rounded-xl animate-pulse" />
+          }
+        >
+          <PreviewArea />
+        </Suspense>
+
+        {/* Интерактивная область кирпичиков разметки */}
         <Suspense
           fallback={
             <div className="w-full h-96 bg-zinc-900/50 rounded-2xl animate-pulse" />
