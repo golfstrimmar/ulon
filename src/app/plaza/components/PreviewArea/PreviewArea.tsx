@@ -42,26 +42,6 @@ export function PreviewArea() {
         <div className="flex items-center gap-2">
           {/* Индикатор стилей CSS */}
           <ButtonCss />
-          <div
-            title="Compiled class styles embedded in the <head> iframe"
-            className={`text-[10px] font-mono px-2 py-0.5 rounded border transition flex items-center gap-1.5 ${
-              cssCount > 0
-                ? "bg-emerald-950/70 border-emerald-500/60 text-emerald-300"
-                : "bg-zinc-800 border-zinc-700 text-zinc-500"
-            }`}
-          >
-            <span>🎨</span>
-            <span className="hidden sm:inline">CSS:</span>
-            <span
-              className={`font-bold rounded-full px-1 text-[9px] ${
-                cssCount > 0
-                  ? "bg-emerald-600 text-white"
-                  : "bg-zinc-700 text-zinc-400"
-              }`}
-            >
-              {cssCount}
-            </span>
-          </div>
 
           {/* Индикатор скриптов JS */}
           <div

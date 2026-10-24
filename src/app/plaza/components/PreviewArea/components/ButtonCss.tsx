@@ -48,7 +48,7 @@ export default function ButtonCss() {
         <span>🎨</span>
         <span className="hidden sm:inline">CSS:</span>
         <span
-          className={`font-bold rounded-full px-1 text-[9px]
+          className={`font-bold center rounded-full w-6 text-[10px]
           ${
             cssCount > 0
               ? "bg-emerald-600 text-white"

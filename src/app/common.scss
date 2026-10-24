@@ -1,6 +1,11 @@
 :root {
     --color-zinc-750: #333338;
 }
+.center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 /*─────🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹──────*/
 .red-btn {
     width: 100%;

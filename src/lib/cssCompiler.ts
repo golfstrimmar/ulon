@@ -1,12 +1,31 @@
 /**
  * @file cssCompiler.ts
- * @description Компиляция и парсинг словаря стилей классов для финального списка свойств.
+ * @description Компиляция и парсинг стандартного классического CSS (.class и .class:hover).
  */
 
 /**
- * Преобразует словарь { [className]: cssRules } в валидный CSS для блока <style>.
- * Поддерживает как список свойств (color: red; padding: 10px),
- * так и полноценные блоки селекторов (.class { ... }, .class:hover { ... }).
+ * Очищает CSS от старых ошибочных матрешек (.ttt { .ttt { ... } })
+ */
+function sanitizeDoubleNesting(className: string, cssText: string): string {
+  let cleaned = (cssText || "").trim();
+  const cls = className.replace(/^\./, "");
+
+  // Если текст начинается с .cls { и внутри снова есть .cls {
+  const doubleWrapRegex = new RegExp(
+    `^\\.${cls}\\s*\\{\\s*(\\.(?:${cls})[\\s\\S]*)\\}\\s*$`,
+  );
+  const match = doubleWrapRegex.exec(cleaned);
+  if (match && match[1]) {
+    cleaned = match[1].trim();
+  }
+
+  return cleaned;
+}
+
+/**
+ * Собирает CSS для вставки в <style>.
+ * Если стиль уже написан как нормальное правило со скобками (.ttt { ... } .ttt:hover { ... }) —
+ * отдает его КАК ЕСТЬ, без слепых оберток!
  */
 export function compileClassesCss(
   classesCss: Record<string, string> = {},
@@ -15,20 +34,17 @@ export function compileClassesCss(
 
   for (const [rawCls, rawCss] of Object.entries(classesCss)) {
     const cleanCls = rawCls.trim().replace(/^\./, "");
-    const trimmedCss = (rawCss || "").trim();
+    if (!cleanCls || !rawCss) continue;
 
-    if (!cleanCls || !trimmedCss) continue;
+    let body = sanitizeDoubleNesting(cleanCls, rawCss.trim());
+    if (!body) continue;
 
-    // Если стили уже были обернуты в этот же селектор — не дублируем
-    if (trimmedCss.startsWith(`.${cleanCls}`) && trimmedCss.includes("{")) {
-      result.push(trimmedCss);
+    // Если код уже содержит селекторы и скобки (например .ttt { ... } или .ttt:hover { ... })
+    if (body.includes("{") && body.includes("}")) {
+      result.push(body);
     } else {
-      result.push(
-        `.${cleanCls} {\n  ${trimmedCss
-          .split("\n")
-          .map((l) => l.trimEnd())
-          .join("\n  ")}\n}`,
-      );
+      // Это просто плоский список свойств (color: red; font-size: 20px;) -> только тогда оборачиваем
+      result.push(`.${cleanCls} {\n  ${body}\n}`);
     }
   }
 
@@ -36,8 +52,8 @@ export function compileClassesCss(
 }
 
 /**
- * Парсит скомпилированный CSS обратно в словарь { [className]: cssRules }.
- * Позволяет двустороннее редактирование финального списка свойств.
+ * Парсит полный CSS обратно в словарь.
+ * Группирует .ttt, .ttt:hover, .ttt:active, .ttt::before друг под другом без вложений.
  */
 export function parseClassesCss(fullCss: string): Record<string, string> {
   const result: Record<string, string> = {};
@@ -47,14 +63,12 @@ export function parseClassesCss(fullCss: string): Record<string, string> {
   const len = fullCss.length;
 
   while (pos < len) {
-    // Пропускаем пробелы и комментарии
     const nextBrace = fullCss.indexOf("{", pos);
     if (nextBrace === -1) break;
 
-    const selector = fullCss.slice(pos, nextBrace).trim();
+    const rawSelector = fullCss.slice(pos, nextBrace).trim();
     pos = nextBrace + 1;
 
-    // Считаем баланс фигурных скобок, чтобы не сломаться на &:hover { ... }
     let braceCount = 1;
     const bodyStart = pos;
 
@@ -69,14 +83,46 @@ export function parseClassesCss(fullCss: string): Record<string, string> {
       .slice(bodyStart, pos - (braceCount === 0 ? 1 : 0))
       .trim();
 
-    if (selector) {
-      // Извлекаем имя класса из селектора (например ".btn:hover" -> "btn")
-      const match = /\.([a-zA-Z0-9_-]+)/.exec(selector);
-      if (match && match[1]) {
-        const className = match[1];
-        result[className] = body;
+    if (!rawSelector) continue;
+
+    // СЛУЧАЙ 1: @media
+    if (rawSelector.startsWith("@media")) {
+      const classMatches = body.matchAll(/\.([a-zA-Z0-9_-]+)/g);
+      const foundClasses = new Set<string>();
+      for (const m of classMatches) {
+        if (m[1]) foundClasses.add(m[1]);
+      }
+
+      const mediaBlock = `${rawSelector} {\n  ${body}\n}`;
+      for (const cls of foundClasses) {
+        result[cls] = result[cls]
+          ? `${result[cls]}\n\n${mediaBlock}`
+          : mediaBlock;
+      }
+      continue;
+    }
+
+    // СЛУЧАЙ 2: Стандартные правила (.ttt, .ttt:hover, .ttt::before)
+    const match = /\.([a-zA-Z0-9_-]+)/.exec(rawSelector);
+    if (match && match[1]) {
+      const className = match[1];
+      const cleanSelector = rawSelector.replace(/\/\*[\s\S]*?\*\//g, "").trim();
+
+      // Стандартный плоский блок CSS
+      const fullRule = `${cleanSelector} {\n  ${body}\n}`;
+
+      if (result[className]) {
+        // Дописываем правило рядом, а не внутрь!
+        result[className] = `${result[className]}\n\n${fullRule}`;
+      } else {
+        result[className] = fullRule;
       }
     }
+  }
+
+  // Финальная чистка от случайных матрешек
+  for (const [cls, css] of Object.entries(result)) {
+    result[cls] = sanitizeDoubleNesting(cls, css);
   }
 
   return result;

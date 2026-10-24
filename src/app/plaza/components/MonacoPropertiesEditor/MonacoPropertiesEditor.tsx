@@ -17,6 +17,26 @@ interface MonacoPropertiesEditorProps {
   onAddClassToNode?: (className: string) => void;
 }
 
+/**
+ * Приводит стили к полноценному CSS правилу со скобками .class { ... }
+ */
+function ensureFullCssRule(className: string, rawCss: string): string {
+  const clean = className.trim().replace(/^\./, "");
+  const trimmed = (rawCss || "").trim();
+
+  if (!trimmed) {
+    return `.${clean} {\n  \n}`;
+  }
+
+  // Если уже содержит скобки — отдаем как есть
+  if (trimmed.includes("{")) {
+    return trimmed;
+  }
+
+  // Если это были голые свойства — красиво оборачиваем в .class { ... }
+  return `.${clean} {\n  ${trimmed.split("\n").join("\n  ")}\n}`;
+}
+
 export function MonacoPropertiesEditor({
   nodeTag = "div",
   nodeClasses = [],
@@ -27,7 +47,6 @@ export function MonacoPropertiesEditor({
   onSaveAttributes,
   onAddClassToNode,
 }: MonacoPropertiesEditorProps) {
-  // openTarget: либо имя класса (например "btn-1"), либо "__attributes__", либо null
   const [openTarget, setOpenTarget] = useState<string | null>(null);
 
   const [currentText, setCurrentText] = useState<string>("");
@@ -49,15 +68,15 @@ export function MonacoPropertiesEditor({
       currentTextRef.current = formatted;
       isDirtyRef.current = false;
     } else {
-      // Это CSS класс
-      const freshCss = classesCss[openTarget] || "";
-      setCurrentText(freshCss);
-      currentTextRef.current = freshCss;
+      const rawCss = classesCss[openTarget] || "";
+      const fullRule = ensureFullCssRule(openTarget, rawCss);
+      setCurrentText(fullRule);
+      currentTextRef.current = fullRule;
       isDirtyRef.current = false;
     }
   }, [classesCss, attributesValue, openTarget]);
 
-  // Сохранение текущего открытого таба
+  // Сохранение
   const saveCurrentOpenTarget = (targetToSave: string | null = openTarget) => {
     if (!targetToSave || !isDirtyRef.current) return;
 
@@ -71,7 +90,6 @@ export function MonacoPropertiesEditor({
         console.warn("Invalid attributes JSON in Monaco editor:", err);
       }
     } else {
-      // Сохраняем CSS класса
       onSaveClassCss(targetToSave, currentTextRef.current);
     }
 
@@ -93,9 +111,11 @@ export function MonacoPropertiesEditor({
       saveCurrentOpenTarget(openTarget);
     }
 
-    const classCss = classesCss[clean] || "";
-    setCurrentText(classCss);
-    currentTextRef.current = classCss;
+    const rawCss = classesCss[clean] || "";
+    const fullRule = ensureFullCssRule(clean, rawCss);
+
+    setCurrentText(fullRule);
+    currentTextRef.current = fullRule;
     isDirtyRef.current = false;
     setOpenTarget(clean);
   };
@@ -119,7 +139,7 @@ export function MonacoPropertiesEditor({
     setOpenTarget("__attributes__");
   };
 
-  // Добавление нового класса в ноду
+  // Добавление нового класса
   const handleAddNewClass = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const clean = newClassInput.trim().replace(/^\./, "");
@@ -133,15 +153,15 @@ export function MonacoPropertiesEditor({
       onAddClassToNode(clean);
     }
 
-    const existing = classesCss[clean] || "";
-    setCurrentText(existing);
-    currentTextRef.current = existing;
+    const template = `.${clean} {\n  \n}`;
+    setCurrentText(template);
+    currentTextRef.current = template;
     isDirtyRef.current = false;
     setOpenTarget(clean);
     setNewClassInput("");
   };
 
-  // Удаление стилей текущего класса
+  // Очистка CSS текущего класса
   const handleDeleteCurrentClassCss = () => {
     if (!openTarget || openTarget === "__attributes__") return;
     const targetToDelete = openTarget;
@@ -169,7 +189,6 @@ export function MonacoPropertiesEditor({
     });
   };
 
-  // Закрываем редактор, если класс был удален из ноды
   useEffect(() => {
     if (
       openTarget &&
@@ -266,7 +285,7 @@ export function MonacoPropertiesEditor({
         </button>
       </div>
 
-      {/* Окно редактора Monaco (для выбранного класса или атрибутов) */}
+      {/* Окно редактора Monaco */}
       {openTarget && (
         <div className="w-full flex flex-col rounded-lg border border-indigo-500/60 bg-zinc-950 overflow-hidden shadow-xl animate-in fade-in duration-150">
           <div className="flex items-center justify-between px-3 py-1.5 bg-indigo-950/70 border-b border-indigo-900/60 select-none">
@@ -274,10 +293,10 @@ export function MonacoPropertiesEditor({
               {openTarget !== "__attributes__" ? (
                 <>
                   <span className="text-[11px] font-mono text-zinc-300">
-                    CSS свойства класса:
+                    CSS правила для класса:
                   </span>
                   <code className="text-[12px] font-mono font-bold text-indigo-200 bg-indigo-900/90 px-2 py-0.5 rounded border border-indigo-600">
-                    .{openTarget} &#123; ... &#125;
+                    .{openTarget}
                   </code>
                 </>
               ) : (
@@ -310,10 +329,10 @@ export function MonacoPropertiesEditor({
             </div>
           </div>
 
-          <div className="h-[140px] w-full relative">
+          <div className="h-[160px] w-full relative">
             <Editor
               key={openTarget}
-              height="140px"
+              height="160px"
               theme="vs-dark"
               language={openTarget === "__attributes__" ? "json" : "css"}
               value={currentText}
