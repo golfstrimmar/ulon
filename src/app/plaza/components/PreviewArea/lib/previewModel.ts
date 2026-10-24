@@ -19,7 +19,8 @@ export interface BuildDocumentParams {
   bodyHtml: string;
   fontEntries?: string[];
   defaultFont?: string;
-  classesCss?: Record<string, string>;
+  globalCss?: string; // <--- Скомпилированный CSS из SCSS бандла
+  classesCss?: Record<string, string>; // резерв
   scriptsJs?: Record<string, string>;
 }
 
@@ -145,6 +146,7 @@ export function buildDocument({
   bodyHtml,
   fontEntries = [],
   defaultFont = "",
+  globalCss = "",
   classesCss = {},
   scriptsJs = {},
 }: BuildDocumentParams): string {
@@ -154,16 +156,17 @@ export function buildDocument({
     .join("\n  ");
 
   const detectedFamilies = extractFontFamilies(fontEntries);
-  const compiledClassesStyles = compileClassesCss(classesCss);
+  // Используем скомпилированный SCSS напрямую
+  const compiledClassesStyles = globalCss || "";
   const compiledBundleScripts = compileScriptsBundle(scriptsJs);
 
   const helperClasses = detectedFamilies
     .map((name) => {
       const slug = name.toLowerCase().replace(/\s+/g, "-");
       return `
-    .${slug}, .font-${slug} {
-      font-family: '${name}', sans-serif !important;
-    }`;
+     .${slug}, .font-${slug} {
+       font-family: '${name}', sans-serif !important;
+     }`;
     })
     .join("\n");
 
@@ -179,70 +182,70 @@ export function buildDocument({
     : `font-family: Arial, Helvetica, sans-serif;`;
 
   return `<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <script src="https://cdn.tailwindcss.com"></script>
-  ${fontsHtml}
+ <html lang="ru">
+ <head>
+   <meta charset="UTF-8" />
+   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+   <script src="https://cdn.tailwindcss.com"></script>
+   ${fontsHtml}
 
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            ${tailwindFamiliesObj}
-          }
-        }
-      }
-    }
-  </script>
+   <script>
+     tailwind.config = {
+       theme: {
+         extend: {
+           fontFamily: {
+             ${tailwindFamiliesObj}
+           }
+         }
+       }
+     }
+   </script>
 
-  <style>
-    *, *::before, *::after { box-sizing: border-box; }
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: #ffffff;
-      color: #171717;
-      ${defaultFontRule}
-      min-height: 100%;
-    }
-    ${helperClasses}
-  </style>
+   <style>
+     *, *::before, *::after { box-sizing: border-box; }
+     html, body {
+       margin: 0;
+       padding: 0;
+       background: #ffffff;
+       color: #171717;
+       ${defaultFontRule}
+       min-height: 100%;
+     }
+     ${helperClasses}
+   </style>
 
-  ${
-    compiledClassesStyles
-      ? `<!-- Скомпилированные стили классов из Monaco -->
-  <style id="compiled-classes-styles">
-/* ==========================================================================
-   Скомпилированные стили классов
-   ========================================================================== */
-${compiledClassesStyles}
-  </style>`
-      : ""
-  }
-</head>
-<body class="bg-white text-zinc-900">
-${bodyHtml}
+   ${
+     compiledClassesStyles
+       ? `<!-- Скомпилированный SCSS в чистый CSS -->
+   <style id="compiled-classes-styles">
+ /* ==========================================================================
+    Скомпилированные стили (SCSS -> CSS)
+    ========================================================================== */
+ ${compiledClassesStyles}
+   </style>`
+       : ""
+   }
+ </head>
+ <body class="bg-white text-zinc-900">
+ ${bodyHtml}
 
-${
-  compiledBundleScripts
-    ? `<!-- Итоговый бандл скриптов (JS) -->
-<script id="compiled-bundle-scripts">
-document.addEventListener("DOMContentLoaded", () => {
-${compiledBundleScripts}
-});
-if (document.readyState === "complete" || document.readyState === "interactive") {
-${compiledBundleScripts}
-}
-</script>`
-    : ""
-}
-</body>
-</html>`;
+ ${
+   compiledBundleScripts
+     ? `<!-- Итоговый бандл скриптов (JS) -->
+ <script id="compiled-bundle-scripts">
+ document.addEventListener("DOMContentLoaded", () => {
+ ${compiledBundleScripts}
+ });
+ if (document.readyState === "complete" || document.readyState === "interactive") {
+ ${compiledBundleScripts}
+ }
+ </script>`
+     : ""
+ }
+ </body>
+ </html>`;
 }
 
 /* ==========================================================================

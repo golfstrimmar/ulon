@@ -3,8 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Editor from "@monaco-editor/react";
-import { getClassesCss, saveClassesCss } from "@/lib/htmlStorage";
-import { parseClassesCss } from "@/lib/cssCompiler";
+import { getGlobalScss, saveGlobalScss } from "@/lib/htmlStorage";
 
 interface ModalCssProps {
   openModalCss: boolean;
@@ -15,50 +14,39 @@ export default function ModalCss({
   openModalCss,
   setopenModalCss,
 }: ModalCssProps) {
-  const [cssCode, setCssCode] = useState<string>("");
+  const [scssCode, setScssCode] = useState<string>("");
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isSaved, setIsSaved] = useState<boolean>(false);
   const editorRef = useRef<any>(null);
 
-  // Читаем из IndexedDB при открытии модалки
   useEffect(() => {
     if (openModalCss) {
-      getClassesCss().then((styles) => {
-        const formatted = Object.entries(styles || {})
-          .filter(([_, body]) => Boolean(body?.trim()))
-          .map(([cls, body]) => `.${cls} {\n  ${body.trim()}\n}`)
-          .join("\n\n");
-
-        setCssCode(formatted);
+      getGlobalScss().then((code) => {
+        setScssCode(code || "");
         setIsSaved(false);
       });
     }
   }, [openModalCss]);
 
-  // Сохранение в IndexedDB и уведомление приложения через шину
   const handleSave = async () => {
     try {
       setIsSaving(true);
-      const parsedStyles = parseClassesCss(cssCode);
+      await saveGlobalScss(scssCode);
 
-      // 1. Сохраняем в изолированную таблицу IndexedDB
-      await saveClassesCss(parsedStyles);
-
-      // 2. Отправляем событие, чтобы превью и холст обновились в реальном времени
+      // Оповещаем все компоненты
       window.dispatchEvent(
-        new CustomEvent("plaza-styles-updated", { detail: parsedStyles }),
+        new CustomEvent("plaza-styles-updated", { detail: scssCode }),
       );
 
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 2000);
     } catch (err) {
-      console.error("[ModalCss] Failed to save CSS to IndexedDB:", err);
+      console.error("[ModalCss] Failed to save SCSS to IndexedDB:", err);
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Подключение горячей клавиши Ctrl+S / Cmd+S внутри Monaco
   const handleEditorDidMount = (editor: any, monaco: any) => {
     editorRef.current = editor;
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
@@ -77,19 +65,17 @@ export default function ModalCss({
           transition={{ duration: 0.2, ease: "easeOut" }}
           className="fixed inset-0 w-screen h-screen z-[1000] bg-zinc-950/95 backdrop-blur-md flex flex-col p-4"
         >
-          {/* Шапка модалки */}
           <div className="flex items-center justify-between pb-3 border-b border-zinc-800 mb-3">
             <div className="flex items-center gap-3">
               <span className="text-sm font-mono font-bold text-zinc-200">
-                CSS Редактор классов
+                Глобальный SCSS Редактор (styles.scss)
               </span>
-              <span className="text-xs text-zinc-500 font-mono">
-                (IndexedDB: classes_css)
+              <span className="text-xs text-indigo-400 font-mono">
+                (Поддержка вложенности, переменных $var, &:hover)
               </span>
             </div>
 
             <div className="flex items-center gap-2">
-              {/* Кнопка сохранить */}
               <button
                 type="button"
                 onClick={handleSave}
@@ -103,7 +89,6 @@ export default function ModalCss({
                 {isSaved ? "✓ Сохранено в базу" : "Сохранить (Ctrl+S)"}
               </button>
 
-              {/* Кнопка закрыть */}
               <button
                 type="button"
                 onClick={() => setopenModalCss(false)}
@@ -114,14 +99,13 @@ export default function ModalCss({
             </div>
           </div>
 
-          {/* Редактор Monaco */}
           <div className="flex-1 w-full rounded-lg overflow-hidden border border-zinc-800 shadow-2xl bg-[#1e1e1e]">
             <Editor
               height="100%"
-              defaultLanguage="css"
+              language="scss"
               theme="vs-dark"
-              value={cssCode}
-              onChange={(value) => setCssCode(value || "")}
+              value={scssCode}
+              onChange={(value) => setScssCode(value || "")}
               onMount={handleEditorDidMount}
               options={{
                 fontSize: 13,

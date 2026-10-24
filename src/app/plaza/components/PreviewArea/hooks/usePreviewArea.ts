@@ -4,11 +4,12 @@ import { useState, useRef, useEffect } from "react";
 import type { HtmlNode } from "@/types/HtmlNode";
 import {
   getHtmlJson,
-  getClassesCss,
+  getGlobalScss,
   getScriptsJs,
   getFontsSettings,
   saveFontsSettings,
 } from "@/lib/htmlStorage";
+import { compileScssToCss } from "@/lib/scssCompiler";
 import {
   DB_KEY,
   renderTree,
@@ -23,14 +24,12 @@ export function usePreviewArea() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const currentBodyHtmlRef = useRef<string>("");
 
-  // Состояние отображения
   const [srcDoc, setSrcDoc] = useState<string>("");
   const [isEmpty, setIsEmpty] = useState<boolean>(true);
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
   const [isFontsPanelOpen, setIsFontsPanelOpen] = useState<boolean>(false);
   const [newFontInput, setNewFontInput] = useState<string>("");
 
-  // Данные документа (в памяти)
   const [fontEntries, setFontEntries] = useState<string[]>([]);
   const fontEntriesRef = useRef<string[]>([]);
   fontEntriesRef.current = fontEntries;
@@ -39,20 +38,19 @@ export function usePreviewArea() {
   const defaultFontRef = useRef<string>("");
   defaultFontRef.current = defaultFont;
 
-  const [classesCss, setClassesCss] = useState<Record<string, string>>({});
-  const classesCssRef = useRef<Record<string, string>>({});
-  classesCssRef.current = classesCss;
+  const [compiledCss, setCompiledCss] = useState<string>("");
+  const compiledCssRef = useRef<string>("");
+  compiledCssRef.current = compiledCss;
 
   const [scriptsJs, setScriptsJs] = useState<Record<string, string>>({});
   const scriptsJsRef = useRef<Record<string, string>>({});
   scriptsJsRef.current = scriptsJs;
 
-  // Вспомогательная функция обновления документа в iframe (из памяти)
   const updatePreviewDoc = (
     bodyHtml: string,
     fonts = fontEntriesRef.current,
     defFont = defaultFontRef.current,
-    css = classesCssRef.current,
+    css = compiledCssRef.current,
     scripts = scriptsJsRef.current,
   ) => {
     currentBodyHtmlRef.current = bodyHtml;
@@ -62,7 +60,7 @@ export function usePreviewArea() {
         bodyHtml,
         fontEntries: fonts,
         defaultFont: defFont,
-        classesCss: css,
+        globalCss: css,
         scriptsJs: scripts,
       }),
     );
@@ -74,31 +72,29 @@ export function usePreviewArea() {
   useEffect(() => {
     async function initPreview() {
       try {
-        const [rawTree, dbStyles, dbScripts, dbFonts] = await Promise.all([
+        const [rawTree, dbScss, dbScripts, dbFonts] = await Promise.all([
           getHtmlJson(DB_KEY),
-          getClassesCss().catch(() => ({})),
+          getGlobalScss().catch(() => ""),
           getScriptsJs().catch(() => ({})),
           getFontsSettings().catch(() => ({ fonts: [], defaultFont: "" })),
         ]);
 
-        const loadedStyles = dbStyles || {};
         const loadedScripts = dbScripts || {};
         const loadedFonts = dbFonts?.fonts || [];
         const loadedDefaultFont = dbFonts?.defaultFont || "";
 
-        setClassesCss(loadedStyles);
-        classesCssRef.current = loadedStyles;
-
+        setFontEntries(loadedFonts);
+        fontEntriesRef.current = loadedFonts;
+        setDefaultFont(loadedDefaultFont);
+        defaultFontRef.current = loadedDefaultFont;
         setScriptsJs(loadedScripts);
         scriptsJsRef.current = loadedScripts;
 
-        setFontEntries(loadedFonts);
-        fontEntriesRef.current = loadedFonts;
+        // Компилируем SCSS в чистый CSS
+        const css = await compileScssToCss(dbScss || "");
+        setCompiledCss(css);
+        compiledCssRef.current = css;
 
-        setDefaultFont(loadedDefaultFont);
-        defaultFontRef.current = loadedDefaultFont;
-
-        // Формируем HTML дерева разметки
         let initialHtml = "";
         if (rawTree) {
           const nodes: HtmlNode[] = Array.isArray(rawTree)
@@ -109,7 +105,6 @@ export function usePreviewArea() {
           }
         }
 
-        // Рендеринг собранного документа
         currentBodyHtmlRef.current = initialHtml;
         setIsEmpty(!initialHtml.trim());
         setSrcDoc(
@@ -117,7 +112,7 @@ export function usePreviewArea() {
             bodyHtml: initialHtml,
             fontEntries: loadedFonts,
             defaultFont: loadedDefaultFont,
-            classesCss: loadedStyles,
+            globalCss: css,
             scriptsJs: loadedScripts,
           }),
         );
@@ -130,10 +125,10 @@ export function usePreviewArea() {
   }, []);
 
   /* ==========================================================================
-     2. РЕАКЦИЯ НА СОБЫТИЯ ШИНЫ (Автообновление в реальном времени)
+     2. РЕАКЦИЯ НА СОБЫТИЯ ШИНЫ
      ========================================================================== */
 
-  // Изменение дерева в холсте
+  // Изменение дерева HTML
   useEffect(() => {
     const handleTreeUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<HtmlNode[]>;
@@ -147,18 +142,26 @@ export function usePreviewArea() {
       window.removeEventListener("plaza-tree-updated", handleTreeUpdate);
   }, []);
 
-  // Изменение стилей CSS
+  // Изменение глобального SCSS: компилируем и обновляем iframe
   useEffect(() => {
-    const handleStylesUpdate = (e: Event) => {
-      const customEvent = e as CustomEvent<Record<string, string>>;
-      const nextStyles = customEvent.detail || {};
-      setClassesCss(nextStyles);
-      classesCssRef.current = nextStyles;
+    const handleStylesUpdate = async (e: Event) => {
+      const customEvent = e as CustomEvent<string | Record<string, string>>;
+      let rawScss = "";
+      if (typeof customEvent.detail === "string") {
+        rawScss = customEvent.detail;
+      } else if (customEvent.detail && typeof customEvent.detail === "object") {
+        rawScss = Object.values(customEvent.detail).join("\n\n");
+      }
+
+      const css = await compileScssToCss(rawScss);
+      setCompiledCss(css);
+      compiledCssRef.current = css;
+
       updatePreviewDoc(
         currentBodyHtmlRef.current,
         fontEntriesRef.current,
         defaultFontRef.current,
-        nextStyles,
+        css,
         scriptsJsRef.current,
       );
     };
@@ -179,7 +182,7 @@ export function usePreviewArea() {
         currentBodyHtmlRef.current,
         fontEntriesRef.current,
         defaultFontRef.current,
-        classesCssRef.current,
+        compiledCssRef.current,
         nextScripts,
       );
     };
@@ -189,10 +192,6 @@ export function usePreviewArea() {
       window.removeEventListener("plaza-scripts-updated", handleScriptsUpdate);
   }, []);
 
-  /* ==========================================================================
-     3. ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ СО ШРИФТАМИ (Сохранение в IndexedDB)
-     ========================================================================== */
-
   const handleAddFont = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!newFontInput.trim()) return;
@@ -200,17 +199,15 @@ export function usePreviewArea() {
     const result = addFont(fontEntries, newFontInput, defaultFont);
     setFontEntries(result.fonts);
     fontEntriesRef.current = result.fonts;
-
     setDefaultFont(result.defaultFont);
     defaultFontRef.current = result.defaultFont;
-
     setNewFontInput("");
+
     updatePreviewDoc(
       currentBodyHtmlRef.current,
       result.fonts,
       result.defaultFont,
     );
-
     await saveFontsSettings({
       fonts: result.fonts,
       defaultFont: result.defaultFont,
@@ -221,7 +218,6 @@ export function usePreviewArea() {
     const result = removeFont(fontEntries, fontToRemove, defaultFont);
     setFontEntries(result.fonts);
     fontEntriesRef.current = result.fonts;
-
     setDefaultFont(result.defaultFont);
     defaultFontRef.current = result.defaultFont;
 
@@ -230,7 +226,6 @@ export function usePreviewArea() {
       result.fonts,
       result.defaultFont,
     );
-
     await saveFontsSettings({
       fonts: result.fonts,
       defaultFont: result.defaultFont,
@@ -243,17 +238,11 @@ export function usePreviewArea() {
     defaultFontRef.current = nextDefault;
 
     updatePreviewDoc(currentBodyHtmlRef.current, fontEntries, nextDefault);
-
-    await saveFontsSettings({
-      fonts: fontEntries,
-      defaultFont: nextDefault,
-    });
+    await saveFontsSettings({ fonts: fontEntries, defaultFont: nextDefault });
   };
 
   const detectedFamilies = extractFontFamilies(fontEntries);
-  const cssCount = Object.keys(classesCss).filter((k) =>
-    classesCss[k]?.trim(),
-  ).length;
+  const cssCount = compiledCss.trim() ? 1 : 0;
   const scriptsCount = Object.keys(scriptsJs).filter((k) =>
     scriptsJs[k]?.trim(),
   ).length;

@@ -2,34 +2,51 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Editor, { type OnMount } from "@monaco-editor/react";
-import { repairCss } from "@/lib/cssCompiler";
+import {
+  extractClassSnippet,
+  updateClassInGlobalScss,
+} from "@/lib/scssCompiler";
 
 interface MonacoPropertiesEditorProps {
   nodeKey?: string;
   nodeTag?: string;
   nodeClasses: string[];
-  classesCss: Record<string, string>;
+  globalScss: string;
   attributesValue?: Record<string, string>;
-  onSaveClassCss: (className: string, css: string) => Promise<void> | void;
-  onDeleteClassCss?: (className: string) => Promise<void> | void;
+  onSaveGlobalScss: (nextScss: string) => Promise<void> | void;
   onSaveAttributes?: (
     attributes: Record<string, string>,
   ) => Promise<void> | void;
   onAddClassToNode?: (className: string) => void;
 }
 
+function ensureSelectorWrapper(className: string, code: string): string {
+  const cls = className.trim().replace(/^\./, "");
+  const trimmed = (code || "").trim();
+  if (!cls) return trimmed;
+  if (!trimmed) return `.${cls} {\n  \n}`;
+
+  const regex = new RegExp(`^\\.${cls}[\\s\\{\\:\\.]`);
+  if (regex.test(trimmed)) {
+    return trimmed;
+  }
+
+  return `.${cls} {\n  ${trimmed
+    .split("\n")
+    .map((l) => (l.trim() ? `  ${l}` : ""))
+    .join("\n")}\n}`;
+}
+
 export function MonacoPropertiesEditor({
   nodeTag = "div",
   nodeClasses = [],
-  classesCss = {},
+  globalScss = "",
   attributesValue = {},
-  onSaveClassCss,
-  onDeleteClassCss,
+  onSaveGlobalScss,
   onSaveAttributes,
   onAddClassToNode,
 }: MonacoPropertiesEditorProps) {
   const [openTarget, setOpenTarget] = useState<string | null>(null);
-
   const [currentText, setCurrentText] = useState<string>("");
   const currentTextRef = useRef<string>("");
   currentTextRef.current = currentText;
@@ -37,25 +54,38 @@ export function MonacoPropertiesEditor({
   const isDirtyRef = useRef<boolean>(false);
   const [newClassInput, setNewClassInput] = useState<string>("");
 
-  // Синхронизация при внешних изменениях
+  const globalScssRef = useRef<string>(globalScss);
+  globalScssRef.current = globalScss;
+
+  // ОПЕРАТИВНОЕ ОБНОВЛЕНИЕ: следит за globalScss и openTarget
   useEffect(() => {
-    if (!openTarget) return;
+    if (!openTarget) {
+      setCurrentText("");
+      currentTextRef.current = "";
+      isDirtyRef.current = false;
+      return;
+    }
+
+    // Если пользователь прямо сейчас в процессе набора — не сбиваем его
+    if (isDirtyRef.current) return;
 
     if (openTarget === "__attributes__") {
       const formatted = JSON.stringify(attributesValue || {}, null, 2);
-      setCurrentText(formatted);
-      currentTextRef.current = formatted;
-      isDirtyRef.current = false;
+      if (formatted !== currentTextRef.current) {
+        setCurrentText(formatted);
+        currentTextRef.current = formatted;
+      }
     } else {
-      const raw = classesCss[openTarget] || "";
-      const cleaned = repairCss(openTarget, raw);
-      setCurrentText(cleaned);
-      currentTextRef.current = cleaned;
-      isDirtyRef.current = false;
+      // Моментально вытягиваем свежий вариант из глобального SCSS
+      const freshSnippet = extractClassSnippet(globalScss, openTarget);
+      if (freshSnippet !== currentTextRef.current) {
+        setCurrentText(freshSnippet);
+        currentTextRef.current = freshSnippet;
+      }
     }
-  }, [classesCss, attributesValue, openTarget]);
+  }, [globalScss, openTarget, attributesValue]);
 
-  // Сохранение
+  // Сохранение вызывается ТОЛЬКО по событию (blur, закрытие, Ctrl+S)
   const saveCurrentOpenTarget = (targetToSave: string | null = openTarget) => {
     if (!targetToSave || !isDirtyRef.current) return;
 
@@ -66,17 +96,25 @@ export function MonacoPropertiesEditor({
           onSaveAttributes(parsed);
         }
       } catch (err) {
-        console.warn("Invalid attributes JSON in Monaco editor:", err);
+        console.warn("[MonacoPropertiesEditor] Invalid JSON attributes:", err);
       }
     } else {
-      // Сохраняем честный CSS как есть
-      onSaveClassCss(targetToSave, currentTextRef.current.trim());
+      const preparedCode = ensureSelectorWrapper(
+        targetToSave,
+        currentTextRef.current,
+      );
+      const nextScss = updateClassInGlobalScss(
+        globalScssRef.current,
+        targetToSave,
+        preparedCode,
+      );
+      globalScssRef.current = nextScss;
+      onSaveGlobalScss(nextScss);
     }
 
     isDirtyRef.current = false;
   };
 
-  // Клик по кнопке класса
   const handleToggleClass = (cls: string) => {
     const clean = cls.trim().replace(/^\./, "");
     if (!clean) return;
@@ -91,16 +129,13 @@ export function MonacoPropertiesEditor({
       saveCurrentOpenTarget(openTarget);
     }
 
-    const raw = classesCss[clean] || "";
-    const cleanCss = repairCss(clean, raw);
-
-    setCurrentText(cleanCss);
-    currentTextRef.current = cleanCss;
+    const snippet = extractClassSnippet(globalScssRef.current, clean);
+    setCurrentText(snippet);
+    currentTextRef.current = snippet;
     isDirtyRef.current = false;
     setOpenTarget(clean);
   };
 
-  // Клик по атрибутам
   const handleToggleAttributes = () => {
     if (openTarget === "__attributes__") {
       saveCurrentOpenTarget("__attributes__");
@@ -119,7 +154,6 @@ export function MonacoPropertiesEditor({
     setOpenTarget("__attributes__");
   };
 
-  // Добавление нового класса
   const handleAddNewClass = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const clean = newClassInput.trim().replace(/^\./, "");
@@ -133,10 +167,14 @@ export function MonacoPropertiesEditor({
       onAddClassToNode(clean);
     }
 
-    const template = `.${clean} {\n  \n}`;
+    // Если такой класс уже есть в globalScss — берем его, если нет — создаем заготовку
+    const existing = extractClassSnippet(globalScssRef.current, clean);
+    const template =
+      existing !== `.${clean} {\n  \n}` ? existing : `.${clean} {\n  \n}`;
+
     setCurrentText(template);
     currentTextRef.current = template;
-    isDirtyRef.current = false;
+    isDirtyRef.current = true;
     setOpenTarget(clean);
     setNewClassInput("");
   };
@@ -144,16 +182,18 @@ export function MonacoPropertiesEditor({
   const handleDeleteCurrentClassCss = () => {
     if (!openTarget || openTarget === "__attributes__") return;
     const targetToDelete = openTarget;
+
     setCurrentText("");
     currentTextRef.current = "";
     isDirtyRef.current = false;
 
-    if (onDeleteClassCss) {
-      onDeleteClassCss(targetToDelete);
-    } else {
-      onSaveClassCss(targetToDelete, "");
-    }
-
+    const nextScss = updateClassInGlobalScss(
+      globalScssRef.current,
+      targetToDelete,
+      "",
+    );
+    globalScssRef.current = nextScss;
+    onSaveGlobalScss(nextScss);
     setOpenTarget(null);
   };
 
@@ -162,22 +202,16 @@ export function MonacoPropertiesEditor({
     setOpenTarget(null);
   };
 
-  const handleEditorDidMount: OnMount = (editor) => {
+  // Слушаем потерю фокуса и Ctrl+S в Monaco
+  const handleEditorDidMount: OnMount = (editor, monaco) => {
     editor.onDidBlurEditorText(() => {
       saveCurrentOpenTarget();
     });
-  };
 
-  useEffect(() => {
-    if (
-      openTarget &&
-      openTarget !== "__attributes__" &&
-      nodeClasses.length > 0 &&
-      !nodeClasses.includes(openTarget)
-    ) {
-      setOpenTarget(null);
-    }
-  }, [nodeClasses, openTarget]);
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+      saveCurrentOpenTarget();
+    });
+  };
 
   const attrsCount = useMemo(() => {
     return Object.keys(attributesValue || {}).length;
@@ -185,7 +219,6 @@ export function MonacoPropertiesEditor({
 
   return (
     <div className="w-full flex flex-col gap-2">
-      {/* Список классов */}
       <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-lg bg-zinc-950/80 border border-zinc-800">
         <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-semibold mr-1 shrink-0">
           Классы:
@@ -194,24 +227,24 @@ export function MonacoPropertiesEditor({
         {nodeClasses.length > 0 ? (
           nodeClasses.map((cls) => {
             const isOpen = openTarget === cls;
-            const hasCss = Boolean(classesCss[cls]?.trim());
+            const hasSnippet = globalScss.includes(`.${cls}`);
 
             return (
               <button
                 key={cls}
                 type="button"
                 onClick={() => handleToggleClass(cls)}
-                title={`Редактировать CSS для .${cls}`}
+                title={`Редактировать SCSS для .${cls}`}
                 className={`px-2 py-0.5 rounded text-[11px] font-mono border transition cursor-pointer flex items-center gap-1.5 ${
                   isOpen
                     ? "bg-indigo-600 border-indigo-400 text-white font-bold shadow"
-                    : hasCss
+                    : hasSnippet
                       ? "bg-zinc-900 border-zinc-700 text-emerald-400 hover:bg-zinc-800"
                       : "bg-zinc-900 border-zinc-750 text-zinc-300 hover:bg-zinc-800"
                 }`}
               >
                 <span>.{cls}</span>
-                {hasCss && (
+                {hasSnippet && (
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                 )}
               </button>
@@ -261,13 +294,12 @@ export function MonacoPropertiesEditor({
         </button>
       </div>
 
-      {/* Окно Monaco */}
       {openTarget && (
-        <div className="w-full flex flex-col rounded-lg border border-indigo-500/60 bg-zinc-950 overflow-hidden shadow-xl animate-in fade-in duration-150">
+        <div className="w-full flex flex-col rounded-lg border border-indigo-500/60 bg-zinc-950 overflow-hidden shadow-xl">
           <div className="flex items-center justify-between px-3 py-1.5 bg-indigo-950/70 border-b border-indigo-900/60 select-none">
             <span className="text-[12px] font-mono font-bold text-indigo-200">
               {openTarget !== "__attributes__"
-                ? `CSS для .${openTarget}`
+                ? `SCSS: .${openTarget}`
                 : `Атрибуты <${nodeTag}> (JSON)`}
             </span>
 
@@ -297,12 +329,12 @@ export function MonacoPropertiesEditor({
               key={openTarget}
               height="160px"
               theme="vs-dark"
-              language={openTarget === "__attributes__" ? "json" : "css"}
+              language={openTarget === "__attributes__" ? "json" : "scss"}
               value={currentText}
               onChange={(val) => {
-                const nextVal = val || "";
-                setCurrentText(nextVal);
-                currentTextRef.current = nextVal;
+                const text = val || "";
+                setCurrentText(text);
+                currentTextRef.current = text;
                 isDirtyRef.current = true;
               }}
               onMount={handleEditorDidMount}
@@ -312,8 +344,6 @@ export function MonacoPropertiesEditor({
                 fontSize: 12,
                 fontFamily: "var(--font-mono), monospace",
                 lineNumbers: "on",
-                lineDecorationsWidth: 6,
-                lineNumbersMinChars: 3,
                 scrollBeyondLastLine: false,
                 automaticLayout: true,
                 wordWrap: "on",

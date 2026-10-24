@@ -6,8 +6,8 @@ import {
   getHtmlJson,
   saveHtmlJson,
   deleteHtmlJson,
-  getClassesCss,
-  saveClassesCss,
+  getGlobalScss,
+  saveGlobalScss,
   getScriptsJs,
   saveScriptsJs,
 } from "@/lib/htmlStorage";
@@ -22,7 +22,6 @@ import {
 } from "@/lib/htmlTree";
 import { ROOT_TAGS, ELEMENT_FOLDERS } from "./elementsManifest";
 import { MonacoPropertiesEditor } from "../MonacoPropertiesEditor/MonacoPropertiesEditor";
-import { parseClassesCss } from "@/lib/cssCompiler";
 import { motion, AnimatePresence } from "framer-motion";
 
 const DB_KEY = "plaza_tree";
@@ -33,9 +32,9 @@ function sanitizeCssBody(css: string): string {
 
 function extractInlineStylesToClasses(nodes: HtmlNode[]): {
   cleanNodes: HtmlNode[];
-  extractedCss: Record<string, string>;
+  extractedScss: string;
 } {
-  const extractedCss: Record<string, string> = {};
+  const extractedRules: string[] = [];
 
   function processNode(node: HtmlNode): HtmlNode {
     const key = node._key || generateNodeKey();
@@ -57,7 +56,7 @@ function extractInlineStylesToClasses(nodes: HtmlNode[]): {
         classList.push(targetClass);
       }
 
-      extractedCss[targetClass] = cleanBody;
+      extractedRules.push(`.${targetClass} {\n  ${cleanBody}\n}`);
     }
 
     const processedChildren = Array.isArray(node.children)
@@ -76,7 +75,7 @@ function extractInlineStylesToClasses(nodes: HtmlNode[]): {
   }
 
   const cleanNodes = nodes.map(processNode);
-  return { cleanNodes, extractedCss };
+  return { cleanNodes, extractedScss: extractedRules.join("\n\n") };
 }
 
 function isRowContainer(node: HtmlNode): boolean {
@@ -459,31 +458,30 @@ export function CanvasArea() {
   const hasDraggedRef = useRef<boolean>(false);
   const clickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [classesCss, setClassesCss] = useState<Record<string, string>>({});
-  const classesCssRef = useRef<Record<string, string>>({});
-  classesCssRef.current = classesCss;
+  // Единое состояние SCSS-бандла
+  const [globalScss, setGlobalScss] = useState<string>("");
+  const globalScssRef = useRef<string>("");
+  globalScssRef.current = globalScss;
 
   const [scriptsJs, setScriptsJs] = useState<Record<string, string>>({});
   const scriptsJsRef = useRef<Record<string, string>>({});
   scriptsJsRef.current = scriptsJs;
 
-  // Сохранение стилей строго в IndexedDB
-  const updateAndPersistClassesCss = async (
-    nextCss: Record<string, string>,
-  ) => {
-    setClassesCss(nextCss);
-    classesCssRef.current = nextCss;
+  // Сохранение глобального SCSS-бандла в IndexedDB
+  const updateAndPersistScss = async (nextScss: string) => {
+    setGlobalScss(nextScss);
+    globalScssRef.current = nextScss;
     try {
-      await saveClassesCss(nextCss);
+      await saveGlobalScss(nextScss);
     } catch (e) {
-      console.error("[CanvasArea] Error saving classes CSS to DB:", e);
+      console.error("[CanvasArea] Error saving global SCSS to DB:", e);
     }
     window.dispatchEvent(
-      new CustomEvent("plaza-styles-updated", { detail: nextCss }),
+      new CustomEvent("plaza-styles-updated", { detail: nextScss }),
     );
   };
 
-  // Сохранение скриптов строго в IndexedDB
+  // Сохранение скриптов в IndexedDB
   const updateAndPersistScriptsJs = async (
     nextScripts: Record<string, string>,
   ) => {
@@ -502,17 +500,17 @@ export function CanvasArea() {
   // Первоначальная загрузка строго из IndexedDB
   useEffect(() => {
     (async () => {
-      let initialStyles: Record<string, string> = {};
+      let initialScss = "";
 
       try {
-        const [dbStyles, dbScripts, data] = await Promise.all([
-          getClassesCss(),
+        const [dbScss, dbScripts, data] = await Promise.all([
+          getGlobalScss(),
           getScriptsJs(),
           getHtmlJson(DB_KEY),
         ]);
 
-        if (dbStyles && typeof dbStyles === "object") {
-          initialStyles = { ...dbStyles };
+        if (typeof dbScss === "string") {
+          initialScss = dbScss;
         }
 
         if (dbScripts && typeof dbScripts === "object") {
@@ -522,34 +520,46 @@ export function CanvasArea() {
 
         if (data) {
           const list = Array.isArray(data) ? data : [data];
-          const { cleanNodes, extractedCss } =
+          const { cleanNodes, extractedScss } =
             extractInlineStylesToClasses(list);
-          const merged = { ...initialStyles, ...extractedCss };
+
+          let mergedScss = initialScss;
+          if (extractedScss) {
+            mergedScss = initialScss
+              ? `${initialScss}\n\n${extractedScss}`
+              : extractedScss;
+          }
 
           setCurrentJson(cleanNodes);
           currentJsonRef.current = cleanNodes;
-          await updateAndPersistClassesCss(merged);
+          await updateAndPersistScss(mergedScss);
 
-          if (Object.keys(extractedCss).length > 0) {
+          if (extractedScss) {
             await saveHtmlJson(DB_KEY, cleanNodes);
           }
         } else {
           setCurrentJson([]);
           currentJsonRef.current = [];
-          await updateAndPersistClassesCss(initialStyles);
+          await updateAndPersistScss(initialScss);
         }
       } catch (err) {
         console.error("[CanvasArea] IndexedDB mount load error:", err);
       }
     })();
   }, []);
-  // Слушаем обновления стилей от внешних модалок (ModalCss и т.д.)
+
+  // Слушаем обновления стилей от ModalCss и других внешних панелей
   useEffect(() => {
     const handleExternalStyles = (e: Event) => {
-      const customEvent = e as CustomEvent<Record<string, string>>;
-      const nextStyles = customEvent.detail || {};
-      setClassesCss(nextStyles);
-      classesCssRef.current = nextStyles;
+      const customEvent = e as CustomEvent<string | Record<string, string>>;
+      let nextScss = "";
+      if (typeof customEvent.detail === "string") {
+        nextScss = customEvent.detail;
+      } else if (customEvent.detail && typeof customEvent.detail === "object") {
+        nextScss = Object.values(customEvent.detail).join("\n\n");
+      }
+      setGlobalScss(nextScss);
+      globalScssRef.current = nextScss;
     };
 
     window.addEventListener("plaza-styles-updated", handleExternalStyles);
@@ -575,35 +585,6 @@ export function CanvasArea() {
       );
     };
   }, []);
-  const handleSaveClassCss = async (className: string, css: string) => {
-    const clean = className.trim().replace(/^\./, "");
-    if (!clean) return;
-
-    const trimmed = sanitizeCssBody(css || "");
-    const next = { ...classesCssRef.current };
-
-    if (!trimmed) {
-      delete next[clean];
-    } else {
-      next[clean] = trimmed;
-    }
-
-    await updateAndPersistClassesCss(next);
-  };
-
-  const handleDeleteClassCss = async (className: string) => {
-    const clean = className.trim().replace(/^\./, "");
-    if (!clean) return;
-
-    const next = { ...classesCssRef.current };
-    delete next[clean];
-    await updateAndPersistClassesCss(next);
-  };
-
-  const handleSaveFullCss = async (fullCss: string) => {
-    const parsed = parseClassesCss(fullCss);
-    await updateAndPersistClassesCss(parsed);
-  };
 
   const handleSaveScriptJs = async (targetName: string, jsCode: string) => {
     const clean = targetName.trim().replace(/^\./, "");
@@ -735,11 +716,13 @@ export function CanvasArea() {
       const raw = await res.json();
       const nodes: HtmlNode[] = Array.isArray(raw) ? raw : [raw];
 
-      const { cleanNodes, extractedCss } = extractInlineStylesToClasses(nodes);
+      const { cleanNodes, extractedScss } = extractInlineStylesToClasses(nodes);
 
-      if (Object.keys(extractedCss).length > 0) {
-        const nextStyles = { ...classesCssRef.current, ...extractedCss };
-        await updateAndPersistClassesCss(nextStyles);
+      if (extractedScss) {
+        const nextScss = globalScssRef.current
+          ? `${globalScssRef.current}\n\n${extractedScss}`
+          : extractedScss;
+        await updateAndPersistScss(nextScss);
       }
 
       const next = [...currentJsonRef.current, ...cleanNodes];
@@ -1243,15 +1226,9 @@ export function CanvasArea() {
                         nodeKey={selectedNode._key || ""}
                         nodeTag={selectedNode.tag || "div"}
                         nodeClasses={nodeClasses}
-                        classesCss={classesCss}
-                        scriptsJs={scriptsJs}
+                        globalScss={globalScss}
                         attributesValue={selectedNode.attributes}
-                        onSaveClassCss={handleSaveClassCss}
-                        onDeleteClassCss={handleDeleteClassCss}
-                        onSaveFullCss={handleSaveFullCss}
-                        onSaveScriptJs={handleSaveScriptJs}
-                        onDeleteScriptJs={handleDeleteScriptJs}
-                        onSaveFullJs={handleSaveFullJs}
+                        onSaveGlobalScss={updateAndPersistScss}
                         onSaveAttributes={async (newAttrs) => {
                           await handleSaveNodeField("attributes", newAttrs);
                         }}
