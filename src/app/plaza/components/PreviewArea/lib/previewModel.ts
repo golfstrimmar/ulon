@@ -1,5 +1,5 @@
 // Отвечает за: структуры данных, парсинг ссылок шрифтов, сборку HTML-строки, изоляцию скриптов,
-// сохранение в localStorage и чистые бизнес-правила мутаций. Не зависит от React.
+// сохранение шрифтов и скриптов в хранилище и чистые бизнес-правила мутаций. Не зависит от React.
 
 import type { HtmlNode } from "@/types/HtmlNode";
 import { treeToHtml } from "@/lib/htmlTree";
@@ -12,7 +12,6 @@ import { compileClassesCss } from "@/lib/cssCompiler";
 export interface PreviewSettings {
   fonts: string[];
   defaultFont: string;
-  classesCss: Record<string, string>;
   scriptsJs: Record<string, string>;
 }
 
@@ -36,7 +35,6 @@ export interface FontMutationResult {
 export const DB_KEY = "plaza_tree";
 export const FONTS_STORAGE_KEY = "plaza_preview_fonts";
 export const DEFAULT_FONT_STORAGE_KEY = "plaza_preview_default_font";
-export const CLASSES_CSS_STORAGE_KEY = "plaza_classes_css";
 export const SCRIPTS_STORAGE_KEY = "plaza_scripts_js";
 
 /* ==========================================================================
@@ -255,7 +253,6 @@ export function loadPreviewSettings(): PreviewSettings {
   const result: PreviewSettings = {
     fonts: [],
     defaultFont: "",
-    classesCss: {},
     scriptsJs: {},
   };
 
@@ -277,19 +274,6 @@ export function loadPreviewSettings(): PreviewSettings {
   } catch (e) {
     console.error(
       "[previewModel] Failed to read default font from localStorage:",
-      e,
-    );
-  }
-
-  try {
-    const savedCss = localStorage.getItem(CLASSES_CSS_STORAGE_KEY);
-    if (savedCss) {
-      const parsed = JSON.parse(savedCss);
-      if (parsed && typeof parsed === "object") result.classesCss = parsed;
-    }
-  } catch (e) {
-    console.error(
-      "[previewModel] Failed to read classes CSS from localStorage:",
       e,
     );
   }

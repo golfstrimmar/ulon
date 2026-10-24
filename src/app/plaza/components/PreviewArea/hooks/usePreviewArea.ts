@@ -2,13 +2,18 @@
 
 import { useState, useRef, useEffect } from "react";
 import type { HtmlNode } from "@/types/HtmlNode";
-import { getHtmlJson, getClassesCss } from "@/lib/htmlStorage";
+import {
+  getHtmlJson,
+  getClassesCss,
+  getScriptsJs,
+  getFontsSettings,
+  saveFontsSettings,
+} from "@/lib/htmlStorage";
 import {
   DB_KEY,
   renderTree,
   extractFontFamilies,
   buildDocument,
-  loadPreviewSettings,
   addFont,
   removeFont,
   toggleDefaultFont,
@@ -25,9 +30,14 @@ export function usePreviewArea() {
   const [isFontsPanelOpen, setIsFontsPanelOpen] = useState<boolean>(false);
   const [newFontInput, setNewFontInput] = useState<string>("");
 
-  // Данные документа
+  // Данные документа (в памяти)
   const [fontEntries, setFontEntries] = useState<string[]>([]);
+  const fontEntriesRef = useRef<string[]>([]);
+  fontEntriesRef.current = fontEntries;
+
   const [defaultFont, setDefaultFont] = useState<string>("");
+  const defaultFontRef = useRef<string>("");
+  defaultFontRef.current = defaultFont;
 
   const [classesCss, setClassesCss] = useState<Record<string, string>>({});
   const classesCssRef = useRef<Record<string, string>>({});
@@ -40,8 +50,8 @@ export function usePreviewArea() {
   // Вспомогательная функция обновления документа в iframe (из памяти)
   const updatePreviewDoc = (
     bodyHtml: string,
-    fonts = fontEntries,
-    defFont = defaultFont,
+    fonts = fontEntriesRef.current,
+    defFont = defaultFontRef.current,
     css = classesCssRef.current,
     scripts = scriptsJsRef.current,
   ) => {
@@ -59,32 +69,36 @@ export function usePreviewArea() {
   };
 
   /* ==========================================================================
-     1. ПЕРВОНАЧАЛЬНАЯ ЗАГРУЗКА И РЕНДЕР ПРИ МОНТИРОВАНИИ (Один раз при старте)
+     1. ПЕРВОНАЧАЛЬНАЯ ЗАГРУЗКА ИЗ INDEXEDDB ПРИ СТАРТЕ
      ========================================================================== */
   useEffect(() => {
     async function initPreview() {
-      // 1. Читаем шрифты и скрипты из localStorage
-      const settings = loadPreviewSettings();
-      setFontEntries(settings.fonts);
-      setDefaultFont(settings.defaultFont);
-      setClassesCss(settings.classesCss);
-      classesCssRef.current = settings.classesCss;
-      setScriptsJs(settings.scriptsJs);
-      scriptsJsRef.current = settings.scriptsJs;
-
-      // 2. Параллельно забираем из IndexedDB дерево разметки и стили классов
       try {
-        const [rawTree, dbStyles] = await Promise.all([
+        const [rawTree, dbStyles, dbScripts, dbFonts] = await Promise.all([
           getHtmlJson(DB_KEY),
-          getClassesCss().catch(() => null),
+          getClassesCss().catch(() => ({})),
+          getScriptsJs().catch(() => ({})),
+          getFontsSettings().catch(() => ({ fonts: [], defaultFont: "" })),
         ]);
 
-        if (dbStyles && typeof dbStyles === "object") {
-          setClassesCss(dbStyles);
-          classesCssRef.current = dbStyles;
-        }
+        const loadedStyles = dbStyles || {};
+        const loadedScripts = dbScripts || {};
+        const loadedFonts = dbFonts?.fonts || [];
+        const loadedDefaultFont = dbFonts?.defaultFont || "";
 
-        // 3. Формируем HTML дерева разметки
+        setClassesCss(loadedStyles);
+        classesCssRef.current = loadedStyles;
+
+        setScriptsJs(loadedScripts);
+        scriptsJsRef.current = loadedScripts;
+
+        setFontEntries(loadedFonts);
+        fontEntriesRef.current = loadedFonts;
+
+        setDefaultFont(loadedDefaultFont);
+        defaultFontRef.current = loadedDefaultFont;
+
+        // Формируем HTML дерева разметки
         let initialHtml = "";
         if (rawTree) {
           const nodes: HtmlNode[] = Array.isArray(rawTree)
@@ -95,25 +109,25 @@ export function usePreviewArea() {
           }
         }
 
-        // 4. Первичный рендеринг собранного документа!
+        // Рендеринг собранного документа
         currentBodyHtmlRef.current = initialHtml;
         setIsEmpty(!initialHtml.trim());
         setSrcDoc(
           buildDocument({
             bodyHtml: initialHtml,
-            fontEntries: settings.fonts,
-            defaultFont: settings.defaultFont,
-            classesCss: dbStyles || settings.classesCss,
-            scriptsJs: settings.scriptsJs,
+            fontEntries: loadedFonts,
+            defaultFont: loadedDefaultFont,
+            classesCss: loadedStyles,
+            scriptsJs: loadedScripts,
           }),
         );
       } catch (err) {
-        console.error("[usePreviewArea] Initial mount load error:", err);
+        console.error("[usePreviewArea] IndexedDB init preview error:", err);
       }
     }
 
     initPreview();
-  }, []); // <--- Ровно один раз при загрузке страницы!
+  }, []);
 
   /* ==========================================================================
      2. РЕАКЦИЯ НА СОБЫТИЯ ШИНЫ (Автообновление в реальном времени)
@@ -131,7 +145,7 @@ export function usePreviewArea() {
     window.addEventListener("plaza-tree-updated", handleTreeUpdate);
     return () =>
       window.removeEventListener("plaza-tree-updated", handleTreeUpdate);
-  }, [fontEntries, defaultFont]);
+  }, []);
 
   // Изменение стилей CSS
   useEffect(() => {
@@ -142,16 +156,17 @@ export function usePreviewArea() {
       classesCssRef.current = nextStyles;
       updatePreviewDoc(
         currentBodyHtmlRef.current,
-        fontEntries,
-        defaultFont,
+        fontEntriesRef.current,
+        defaultFontRef.current,
         nextStyles,
+        scriptsJsRef.current,
       );
     };
 
     window.addEventListener("plaza-styles-updated", handleStylesUpdate);
     return () =>
       window.removeEventListener("plaza-styles-updated", handleStylesUpdate);
-  }, [fontEntries, defaultFont]);
+  }, []);
 
   // Изменение скриптов JS
   useEffect(() => {
@@ -162,8 +177,8 @@ export function usePreviewArea() {
       scriptsJsRef.current = nextScripts;
       updatePreviewDoc(
         currentBodyHtmlRef.current,
-        fontEntries,
-        defaultFont,
+        fontEntriesRef.current,
+        defaultFontRef.current,
         classesCssRef.current,
         nextScripts,
       );
@@ -172,42 +187,67 @@ export function usePreviewArea() {
     window.addEventListener("plaza-scripts-updated", handleScriptsUpdate);
     return () =>
       window.removeEventListener("plaza-scripts-updated", handleScriptsUpdate);
-  }, [fontEntries, defaultFont]);
+  }, []);
 
   /* ==========================================================================
-     3. ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ СО ШРИФТАМИ (Без похода в базу, сразу в память)
+     3. ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ СО ШРИФТАМИ (Сохранение в IndexedDB)
      ========================================================================== */
 
-  const handleAddFont = (e?: React.FormEvent) => {
+  const handleAddFont = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!newFontInput.trim()) return;
 
     const result = addFont(fontEntries, newFontInput, defaultFont);
     setFontEntries(result.fonts);
+    fontEntriesRef.current = result.fonts;
+
     setDefaultFont(result.defaultFont);
+    defaultFontRef.current = result.defaultFont;
+
     setNewFontInput("");
     updatePreviewDoc(
       currentBodyHtmlRef.current,
       result.fonts,
       result.defaultFont,
     );
+
+    await saveFontsSettings({
+      fonts: result.fonts,
+      defaultFont: result.defaultFont,
+    });
   };
 
-  const handleRemoveFont = (fontToRemove: string) => {
+  const handleRemoveFont = async (fontToRemove: string) => {
     const result = removeFont(fontEntries, fontToRemove, defaultFont);
     setFontEntries(result.fonts);
+    fontEntriesRef.current = result.fonts;
+
     setDefaultFont(result.defaultFont);
+    defaultFontRef.current = result.defaultFont;
+
     updatePreviewDoc(
       currentBodyHtmlRef.current,
       result.fonts,
       result.defaultFont,
     );
+
+    await saveFontsSettings({
+      fonts: result.fonts,
+      defaultFont: result.defaultFont,
+    });
   };
 
-  const handleSetDefaultFont = (fontName: string) => {
+  const handleSetDefaultFont = async (fontName: string) => {
     const nextDefault = toggleDefaultFont(fontEntries, defaultFont, fontName);
     setDefaultFont(nextDefault);
+    defaultFontRef.current = nextDefault;
+
     updatePreviewDoc(currentBodyHtmlRef.current, fontEntries, nextDefault);
+
+    await saveFontsSettings({
+      fonts: fontEntries,
+      defaultFont: nextDefault,
+    });
   };
 
   const detectedFamilies = extractFontFamilies(fontEntries);

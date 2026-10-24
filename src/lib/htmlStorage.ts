@@ -1,19 +1,26 @@
 /**
  * @file htmlStorage.ts
- * @description Хранение сущности HtmlNode (htmlJson) в IndexedDB браузера.
- * Изначально в базе пустота: никаких демо-данных и моков не создается.
+ * @description Единый изолированный слой IndexedDB.
+ * Каждая сущность хранится в своей собственной таблице (Object Store).
  */
 
-import { HtmlNode } from "@/types/htmlJson";
+import { HtmlNode } from "@/types/HtmlNode";
 
-const DB_NAME = "ulon_html_db";
-const DB_VERSION = 2;
-const STORE_NAME = "html_trees";
+const DB_NAME = "ulon_plaza_db";
+const DB_VERSION = 1;
+
+// Изолированные таблицы базы данных
+export const STORES = {
+  HTML_TREES: "html_trees", // Деревья разметки (HtmlNode)
+  CLASSES_CSS: "classes_css", // Словарь стилей классов
+  SCRIPTS_JS: "scripts_js", // Словарь пользовательских JS-скриптов
+  PREVIEW_SETTINGS: "settings", // Настройки шрифтов и дефолтного шрифта
+} as const;
 
 /**
- * Открытие соединения с IndexedDB
+ * Инициализация соединения и создание изолированных хранилищ
  */
-export function openHtmlDatabase(): Promise<IDBDatabase> {
+export function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     if (typeof window === "undefined" || !window.indexedDB) {
       return reject(new Error("IndexedDB is not available"));
@@ -23,138 +30,215 @@ export function openHtmlDatabase(): Promise<IDBDatabase> {
 
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
-      if (db.objectStoreNames.contains("html_documents")) {
-        db.deleteObjectStore("html_documents");
+
+      // 1. Таблица для HTML-деревьев
+      if (!db.objectStoreNames.contains(STORES.HTML_TREES)) {
+        db.createObjectStore(STORES.HTML_TREES, { keyPath: "id" });
       }
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: "id" });
+
+      // 2. Таблица для CSS-стилей классов
+      if (!db.objectStoreNames.contains(STORES.CLASSES_CSS)) {
+        db.createObjectStore(STORES.CLASSES_CSS, { keyPath: "id" });
+      }
+
+      // 3. Таблица для JS-скриптов
+      if (!db.objectStoreNames.contains(STORES.SCRIPTS_JS)) {
+        db.createObjectStore(STORES.SCRIPTS_JS, { keyPath: "id" });
+      }
+
+      // 4. Таблица для настроек шрифтов
+      if (!db.objectStoreNames.contains(STORES.PREVIEW_SETTINGS)) {
+        db.createObjectStore(STORES.PREVIEW_SETTINGS, { keyPath: "id" });
       }
     };
 
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error || new Error("Failed to open IndexedDB"));
+    request.onerror = () =>
+      reject(request.error || new Error("Failed to open IndexedDB"));
   });
 }
 
-// ============================================================================
-// CREATE / UPDATE
-// ============================================================================
+/* ============================================================================
+   1. HTML TREES (Деревья разметки)
+   ============================================================================ */
 
-/**
- * Сохраняет или обновляет дерево HtmlNode в IndexedDB
- * @param id Идентификатор записи (например: "root", "plaza_tree")
- * @param root Дерево HtmlNode
- */
-export async function saveHtmlJson(id: string, root: HtmlNode | HtmlNode[]): Promise<void> {
-  const db = await openHtmlDatabase();
+export async function saveHtmlJson(
+  id: string,
+  root: HtmlNode | HtmlNode[],
+): Promise<void> {
+  const db = await openDatabase();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    const store = tx.objectStore(STORE_NAME);
+    const tx = db.transaction(STORES.HTML_TREES, "readwrite");
+    const store = tx.objectStore(STORES.HTML_TREES);
     const req = store.put({ id, root });
 
     req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error || new Error(`Failed to save htmlJson ${id}`));
+    req.onerror = () =>
+      reject(req.error || new Error(`Failed to save htmlJson ${id}`));
     tx.oncomplete = () => db.close();
   });
 }
 
-// ============================================================================
-// READ
-// ============================================================================
-
-/**
- * Читает дерево HtmlNode из IndexedDB по id.
- * Если ничего не сохранено — возвращает null (изначально в базе пустота).
- */
-export async function getHtmlJson(id: string): Promise<HtmlNode | HtmlNode[] | null> {
-  const db = await openHtmlDatabase();
+export async function getHtmlJson(
+  id: string,
+): Promise<HtmlNode | HtmlNode[] | null> {
+  const db = await openDatabase();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readonly");
-    const store = tx.objectStore(STORE_NAME);
+    const tx = db.transaction(STORES.HTML_TREES, "readonly");
+    const store = tx.objectStore(STORES.HTML_TREES);
     const req = store.get(id);
 
-    req.onsuccess = () => {
-      const result = req.result;
-      resolve(result?.root || null);
-    };
-    req.onerror = () => reject(req.error || new Error(`Failed to get htmlJson ${id}`));
+    req.onsuccess = () => resolve(req.result?.root || null);
+    req.onerror = () =>
+      reject(req.error || new Error(`Failed to get htmlJson ${id}`));
     tx.oncomplete = () => db.close();
   });
 }
 
-/**
- * Получает все сохраненные деревья
- */
-export async function getAllHtmlJson(): Promise<{ id: string; root: HtmlNode }[]> {
-  const db = await openHtmlDatabase();
+export async function getAllHtmlJson(): Promise<
+  { id: string; root: HtmlNode }[]
+> {
+  const db = await openDatabase();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readonly");
-    const store = tx.objectStore(STORE_NAME);
+    const tx = db.transaction(STORES.HTML_TREES, "readonly");
+    const store = tx.objectStore(STORES.HTML_TREES);
     const req = store.getAll();
 
     req.onsuccess = () => resolve(req.result || []);
-    req.onerror = () => reject(req.error || new Error("Failed to get all htmlJson"));
+    req.onerror = () =>
+      reject(req.error || new Error("Failed to get all htmlJson"));
     tx.oncomplete = () => db.close();
   });
 }
 
-// ============================================================================
-// DELETE
-// ============================================================================
-
-/**
- * Удаляет дерево HtmlNode из IndexedDB
- */
 export async function deleteHtmlJson(id: string): Promise<void> {
-  const db = await openHtmlDatabase();
+  const db = await openDatabase();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    const store = tx.objectStore(STORE_NAME);
+    const tx = db.transaction(STORES.HTML_TREES, "readwrite");
+    const store = tx.objectStore(STORES.HTML_TREES);
     const req = store.delete(id);
 
     req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error || new Error(`Failed to delete htmlJson ${id}`));
+    req.onerror = () =>
+      reject(req.error || new Error(`Failed to delete htmlJson ${id}`));
     tx.oncomplete = () => db.close();
   });
 }
 
-// ============================================================================
-// CLASSES CSS (Компилированные стили классов)
-// ============================================================================
+/* ============================================================================
+   2. CLASSES CSS (Изолированная таблица стилей)
+   ============================================================================ */
 
-const CLASSES_CSS_KEY = "plaza_classes_css";
+const CLASSES_KEY = "active_classes";
 
-/**
- * Сохраняет словарь стилей классов в IndexedDB
- */
-export async function saveClassesCss(styles: Record<string, string>): Promise<void> {
-  const db = await openHtmlDatabase();
+export async function saveClassesCss(
+  styles: Record<string, string>,
+): Promise<void> {
+  const db = await openDatabase();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    const store = tx.objectStore(STORE_NAME);
-    const req = store.put({ id: CLASSES_CSS_KEY, styles });
+    const tx = db.transaction(STORES.CLASSES_CSS, "readwrite");
+    const store = tx.objectStore(STORES.CLASSES_CSS);
+    const req = store.put({ id: CLASSES_KEY, styles });
 
     req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error || new Error("Failed to save classes CSS"));
+    req.onerror = () =>
+      reject(req.error || new Error("Failed to save classes CSS"));
     tx.oncomplete = () => db.close();
   });
 }
 
-/**
- * Загружает словарь стилей классов из IndexedDB
- */
 export async function getClassesCss(): Promise<Record<string, string>> {
-  const db = await openHtmlDatabase();
+  const db = await openDatabase();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readonly");
-    const store = tx.objectStore(STORE_NAME);
-    const req = store.get(CLASSES_CSS_KEY);
+    const tx = db.transaction(STORES.CLASSES_CSS, "readonly");
+    const store = tx.objectStore(STORES.CLASSES_CSS);
+    const req = store.get(CLASSES_KEY);
+
+    req.onsuccess = () => resolve(req.result?.styles || {});
+    req.onerror = () =>
+      reject(req.error || new Error("Failed to get classes CSS"));
+    tx.oncomplete = () => db.close();
+  });
+}
+
+/* ============================================================================
+   3. SCRIPTS JS (Изолированная таблица скриптов)
+   ============================================================================ */
+
+const SCRIPTS_KEY = "active_scripts";
+
+export async function saveScriptsJs(
+  scripts: Record<string, string>,
+): Promise<void> {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.SCRIPTS_JS, "readwrite");
+    const store = tx.objectStore(STORES.SCRIPTS_JS);
+    const req = store.put({ id: SCRIPTS_KEY, scripts });
+
+    req.onsuccess = () => resolve();
+    req.onerror = () =>
+      reject(req.error || new Error("Failed to save scripts JS"));
+    tx.oncomplete = () => db.close();
+  });
+}
+
+export async function getScriptsJs(): Promise<Record<string, string>> {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.SCRIPTS_JS, "readonly");
+    const store = tx.objectStore(STORES.SCRIPTS_JS);
+    const req = store.get(SCRIPTS_KEY);
+
+    req.onsuccess = () => resolve(req.result?.scripts || {});
+    req.onerror = () =>
+      reject(req.error || new Error("Failed to get scripts JS"));
+    tx.oncomplete = () => db.close();
+  });
+}
+
+/* ============================================================================
+   4. FONTS SETTINGS (Изолированная таблица настроек шрифтов)
+   ============================================================================ */
+
+const FONTS_KEY = "active_fonts";
+
+export interface FontsSettingsData {
+  fonts: string[];
+  defaultFont: string;
+}
+
+export async function saveFontsSettings(
+  data: FontsSettingsData,
+): Promise<void> {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.PREVIEW_SETTINGS, "readwrite");
+    const store = tx.objectStore(STORES.PREVIEW_SETTINGS);
+    const req = store.put({ id: FONTS_KEY, ...data });
+
+    req.onsuccess = () => resolve();
+    req.onerror = () =>
+      reject(req.error || new Error("Failed to save fonts settings"));
+    tx.oncomplete = () => db.close();
+  });
+}
+
+export async function getFontsSettings(): Promise<FontsSettingsData> {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.PREVIEW_SETTINGS, "readonly");
+    const store = tx.objectStore(STORES.PREVIEW_SETTINGS);
+    const req = store.get(FONTS_KEY);
 
     req.onsuccess = () => {
-      resolve(req.result?.styles || {});
+      resolve({
+        fonts: req.result?.fonts || [],
+        defaultFont: req.result?.defaultFont || "",
+      });
     };
-    req.onerror = () => reject(req.error || new Error("Failed to get classes CSS"));
+    req.onerror = () =>
+      reject(req.error || new Error("Failed to get fonts settings"));
     tx.oncomplete = () => db.close();
   });
 }
-

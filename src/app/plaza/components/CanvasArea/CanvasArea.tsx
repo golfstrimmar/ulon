@@ -8,6 +8,8 @@ import {
   deleteHtmlJson,
   getClassesCss,
   saveClassesCss,
+  getScriptsJs,
+  saveScriptsJs,
 } from "@/lib/htmlStorage";
 import {
   generateNodeKey,
@@ -20,22 +22,15 @@ import {
 } from "@/lib/htmlTree";
 import { ROOT_TAGS, ELEMENT_FOLDERS } from "./elementsManifest";
 import { MonacoPropertiesEditor } from "../MonacoPropertiesEditor/MonacoPropertiesEditor";
-import { compileClassesCss, parseClassesCss } from "@/lib/cssCompiler";
+import { parseClassesCss } from "@/lib/cssCompiler";
 import { motion, AnimatePresence } from "framer-motion";
-const DB_KEY = "plaza_tree";
-const SCRIPTS_STORAGE_KEY = "plaza_scripts_js";
 
-/**
- * Очищает CSS от возможных случайных точек с запятой после скобок (}; -> })
- */
+const DB_KEY = "plaza_tree";
+
 function sanitizeCssBody(css: string): string {
   return css.replace(/\}\s*;/g, "}").trim();
 }
 
-/**
- * Извлекает ВСЕ инлайн-стили (node.style) в итоговый список CSS.
- * Гарантирует, что КАЖДЫЙ стиль привязан к классу, а инлайн удаляется.
- */
 function extractInlineStylesToClasses(nodes: HtmlNode[]): {
   cleanNodes: HtmlNode[];
   extractedCss: Record<string, string>;
@@ -49,7 +44,6 @@ function extractInlineStylesToClasses(nodes: HtmlNode[]): {
     if (node.style && node.style.trim()) {
       const cleanBody = sanitizeCssBody(node.style);
 
-      // Имя класса: берем первый существующий осмысленный класс или генерируем новый
       let targetClass = classList.find(
         (c) =>
           !c.includes(":") && !c.startsWith("flex") && !c.startsWith("grid"),
@@ -107,11 +101,7 @@ function isRowContainer(node: HtmlNode): boolean {
     return true;
   }
 
-  if (raw.includes("flex")) {
-    return true;
-  }
-
-  return false;
+  return raw.includes("flex");
 }
 
 const DEPTH_BG = [
@@ -320,7 +310,7 @@ function NodeCard({
     >
       <div className="h-[28px] px-2 flex items-center justify-between gap-1 rounded-t-md border-b border-zinc-800/60 shrink-0">
         <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
-          {hasChildren ? (
+          {hasChildren && (
             <button
               type="button"
               onPointerDown={(e) => e.stopPropagation()}
@@ -332,8 +322,6 @@ function NodeCard({
             >
               {isCollapsed ? "+" : "−"}
             </button>
-          ) : (
-            <></>
           )}
 
           <span
@@ -364,7 +352,11 @@ function NodeCard({
 
       {hasChildren && !isCollapsed && (
         <div
-          className={`pl-2 w-full flex-1 relative ${isRow ? "flex flex-row flex-nowrap items-stretch gap-1 overflow-x-auto  pb-2" : "flex flex-col gap-1 px-1 border-l border-zinc-700/60"}`}
+          className={`pl-2 w-full flex-1 relative ${
+            isRow
+              ? "flex flex-row flex-nowrap items-stretch gap-1 overflow-x-auto pb-2"
+              : "flex flex-col gap-1 px-1 border-l border-zinc-700/60"
+          }`}
         >
           {children.map((child: HtmlNode, idx: number) => (
             <React.Fragment key={child._key || idx}>
@@ -475,55 +467,59 @@ export function CanvasArea() {
   const scriptsJsRef = useRef<Record<string, string>>({});
   scriptsJsRef.current = scriptsJs;
 
+  // Сохранение стилей строго в IndexedDB
   const updateAndPersistClassesCss = async (
     nextCss: Record<string, string>,
   ) => {
     setClassesCss(nextCss);
     classesCssRef.current = nextCss;
     try {
-      localStorage.setItem("plaza_classes_css", JSON.stringify(nextCss));
       await saveClassesCss(nextCss);
     } catch (e) {
-      console.error(e);
+      console.error("[CanvasArea] Error saving classes CSS to DB:", e);
     }
     window.dispatchEvent(
       new CustomEvent("plaza-styles-updated", { detail: nextCss }),
     );
   };
 
-  // Первоначальная загрузка и автоматическая миграция любых инлайн-стилей
+  // Сохранение скриптов строго в IndexedDB
+  const updateAndPersistScriptsJs = async (
+    nextScripts: Record<string, string>,
+  ) => {
+    setScriptsJs(nextScripts);
+    scriptsJsRef.current = nextScripts;
+    try {
+      await saveScriptsJs(nextScripts);
+    } catch (e) {
+      console.error("[CanvasArea] Error saving scripts JS to DB:", e);
+    }
+    window.dispatchEvent(
+      new CustomEvent("plaza-scripts-updated", { detail: nextScripts }),
+    );
+  };
+
+  // Первоначальная загрузка строго из IndexedDB
   useEffect(() => {
     (async () => {
       let initialStyles: Record<string, string> = {};
 
       try {
-        const local = localStorage.getItem("plaza_classes_css");
-        if (local) {
-          const parsed = JSON.parse(local);
-          if (parsed && typeof parsed === "object")
-            initialStyles = { ...parsed };
+        const [dbStyles, dbScripts, data] = await Promise.all([
+          getClassesCss(),
+          getScriptsJs(),
+          getHtmlJson(DB_KEY),
+        ]);
+
+        if (dbStyles && typeof dbStyles === "object") {
+          initialStyles = { ...dbStyles };
         }
-      } catch {}
 
-      try {
-        const dbStyles = await getClassesCss();
-        if (dbStyles && typeof dbStyles === "object")
-          initialStyles = { ...initialStyles, ...dbStyles };
-      } catch {}
-
-      try {
-        const localScripts = localStorage.getItem(SCRIPTS_STORAGE_KEY);
-        if (localScripts) {
-          const parsed = JSON.parse(localScripts);
-          if (parsed && typeof parsed === "object") {
-            setScriptsJs(parsed);
-            scriptsJsRef.current = parsed;
-          }
+        if (dbScripts && typeof dbScripts === "object") {
+          setScriptsJs(dbScripts);
+          scriptsJsRef.current = dbScripts;
         }
-      } catch {}
 
-      try {
-        const data = await getHtmlJson(DB_KEY);
         if (data) {
           const list = Array.isArray(data) ? data : [data];
           const { cleanNodes, extractedCss } =
@@ -543,7 +539,7 @@ export function CanvasArea() {
           await updateAndPersistClassesCss(initialStyles);
         }
       } catch (err) {
-        console.error("IndexedDB error:", err);
+        console.error("[CanvasArea] IndexedDB mount load error:", err);
       }
     })();
   }, []);
@@ -578,7 +574,7 @@ export function CanvasArea() {
     await updateAndPersistClassesCss(parsed);
   };
 
-  const handleSaveScriptJs = (targetName: string, jsCode: string) => {
+  const handleSaveScriptJs = async (targetName: string, jsCode: string) => {
     const clean = targetName.trim().replace(/^\./, "");
     if (!clean) return;
 
@@ -591,49 +587,22 @@ export function CanvasArea() {
       next[clean] = trimmed;
     }
 
-    setScriptsJs(next);
-    scriptsJsRef.current = next;
-
-    try {
-      localStorage.setItem(SCRIPTS_STORAGE_KEY, JSON.stringify(next));
-    } catch {}
-
-    window.dispatchEvent(
-      new CustomEvent("plaza-scripts-updated", { detail: next }),
-    );
+    await updateAndPersistScriptsJs(next);
   };
 
-  const handleDeleteScriptJs = (targetName: string) => {
+  const handleDeleteScriptJs = async (targetName: string) => {
     const clean = targetName.trim().replace(/^\./, "");
     if (!clean) return;
 
     const next = { ...scriptsJsRef.current };
     delete next[clean];
-    setScriptsJs(next);
-    scriptsJsRef.current = next;
-
-    try {
-      localStorage.setItem(SCRIPTS_STORAGE_KEY, JSON.stringify(next));
-    } catch {}
-
-    window.dispatchEvent(
-      new CustomEvent("plaza-scripts-updated", { detail: next }),
-    );
+    await updateAndPersistScriptsJs(next);
   };
 
-  const handleSaveFullJs = (fullJs: string) => {
+  const handleSaveFullJs = async (fullJs: string) => {
     const trimmed = fullJs.trim();
     const next: Record<string, string> = trimmed ? { __bundle__: trimmed } : {};
-    setScriptsJs(next);
-    scriptsJsRef.current = next;
-
-    try {
-      localStorage.setItem(SCRIPTS_STORAGE_KEY, JSON.stringify(next));
-    } catch {}
-
-    window.dispatchEvent(
-      new CustomEvent("plaza-scripts-updated", { detail: next }),
-    );
+    await updateAndPersistScriptsJs(next);
   };
 
   const handleAddClassToNode = async (newCls: string) => {
@@ -986,7 +955,7 @@ export function CanvasArea() {
       }
     }
   }
-  //  ─────🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹──────
+
   return (
     <div className="w-full flex gap-1 h-[calc(100vh-80px)] min-h-[500px] select-none">
       <aside className="w-48 shrink-0 bg-zinc-900 border border-zinc-800 rounded-sm p-1 flex flex-col justify-between shadow-xl select-none overflow-hidden">
@@ -1045,8 +1014,6 @@ export function CanvasArea() {
                           animate={{ height: "auto", opacity: 1, y: 0 }}
                           exit={{ height: 0, opacity: 0, y: 0 }}
                           transition={{ duration: 0.2, ease: "easeInOut" }}
-                          // className="absolute top-full bg-white border border-gray-200 rounded-b-md shadow-md z-10 w-fit min-w-[150px] max-w-full"
-
                           className="pl-3 py-0.5 space-y-1 border-l border-zinc-800/80"
                         >
                           <div className="flex flex-col gap-1">
@@ -1140,7 +1107,9 @@ export function CanvasArea() {
 
         {/* Редактор ноды */}
         <div
-          className={`fixed shadow-[0_-6px_18px_rgba(32,75,110,0.7)] bottom-0 right-0  w-[calc(100vw-210px)] z-40 transition-transform duration-300 ease-in-out ${clickedKey ? "translate-y-0" : "translate-y-full"}`}
+          className={`fixed shadow-[0_-6px_18px_rgba(32,75,110,0.7)] bottom-0 right-0 w-[calc(100vw-210px)] z-40 transition-transform duration-300 ease-in-out ${
+            clickedKey ? "translate-y-0" : "translate-y-full"
+          }`}
         >
           {clickedKey && selectedNode && (
             <div className="relative bg-zinc-800 border-t border-zinc-700 rounded-t-sm shadow-[0_-8px_32px_rgba(0,0,0,0.6)] backdrop-blur-md">
@@ -1170,7 +1139,7 @@ export function CanvasArea() {
 
                 <div className="flex items-center gap-2 mt-2">
                   <label className="text-[10px] tracking-widest text-zinc-400 block">
-                    Тag
+                    Tag
                   </label>
                   <div className="flex flex-wrap gap-1">
                     {COMMON_TAGS.map((t) => (
@@ -1212,7 +1181,7 @@ export function CanvasArea() {
 
                   <div>
                     <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 block">
-                      Теxt
+                      Text
                     </label>
                     <textarea
                       value={editText}
@@ -1265,6 +1234,7 @@ export function CanvasArea() {
           )}
         </div>
       </div>
+
       {/* 👻 ПРИЗРАК ПЕРЕТАСКИВАЕМОГО УЗЛА (следует за курсором) */}
       {draggedNode && dragMousePos && (
         <div
@@ -1277,19 +1247,16 @@ export function CanvasArea() {
           }}
           className="px-2.5 py-1 rounded-md bg-indigo-950/90 border border-indigo-400 text-white shadow-2xl flex items-center gap-2 backdrop-blur-sm select-none"
         >
-          {/* Тег узла */}
           <span className="px-1.5 py-0.5 rounded text-[11px] font-mono uppercase bg-indigo-900 border border-indigo-500 text-indigo-200 leading-none">
             {draggedNode.tag || "div"}
           </span>
 
-          {/* Классы (если есть) */}
           {draggedNode.class && (
             <span className="text-[11px] font-mono text-green-300 max-w-[140px] truncate leading-none">
               .{draggedNode.class.trim().replace(/\s+/g, " .")}
             </span>
           )}
 
-          {/* Текст (если есть) */}
           {draggedNode.text && (
             <span className="text-[11px] text-zinc-300 max-w-[100px] truncate leading-none font-sans">
               &quot;{draggedNode.text}&quot;

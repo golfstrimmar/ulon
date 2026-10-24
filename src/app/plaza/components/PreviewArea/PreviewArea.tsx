@@ -3,6 +3,8 @@
 import React from "react";
 import { usePreviewArea } from "@/app/plaza/components/PreviewArea/hooks/usePreviewArea";
 import { motion, AnimatePresence } from "framer-motion";
+import ButtonCss from "@/app/plaza/components/PreviewArea/components/ButtonCss";
+
 export function PreviewArea() {
   const {
     iframeRef,
@@ -39,6 +41,7 @@ export function PreviewArea() {
 
         <div className="flex items-center gap-2">
           {/* Индикатор стилей CSS */}
+          <ButtonCss />
           <div
             title="Compiled class styles embedded in the <head> iframe"
             className={`text-[10px] font-mono px-2 py-0.5 rounded border transition flex items-center gap-1.5 ${
