@@ -21,7 +21,7 @@ import {
 import { ROOT_TAGS, ELEMENT_FOLDERS } from "./elementsManifest";
 import { MonacoPropertiesEditor } from "../MonacoPropertiesEditor/MonacoPropertiesEditor";
 import { compileClassesCss, parseClassesCss } from "@/lib/cssCompiler";
-
+import { motion, AnimatePresence } from "framer-motion";
 const DB_KEY = "plaza_tree";
 const SCRIPTS_STORAGE_KEY = "plaza_scripts_js";
 
@@ -333,7 +333,7 @@ function NodeCard({
               {isCollapsed ? "+" : "−"}
             </button>
           ) : (
-            <div className="w-3 shrink-0" />
+            <></>
           )}
 
           <span
@@ -364,7 +364,7 @@ function NodeCard({
 
       {hasChildren && !isCollapsed && (
         <div
-          className={`w-full flex-1 relative ${isRow ? "flex flex-row flex-nowrap items-stretch gap-1 overflow-x-auto pb-2" : "flex flex-col gap-1 px-1 border-l border-zinc-700/60"}`}
+          className={`pl-2 w-full flex-1 relative ${isRow ? "flex flex-row flex-nowrap items-stretch gap-1 overflow-x-auto  pb-2" : "flex flex-col gap-1 px-1 border-l border-zinc-700/60"}`}
         >
           {children.map((child: HtmlNode, idx: number) => (
             <React.Fragment key={child._key || idx}>
@@ -986,18 +986,25 @@ export function CanvasArea() {
       }
     }
   }
-
+  //  ─────🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹──────
   return (
     <div className="w-full flex gap-1 h-[calc(100vh-80px)] min-h-[500px] select-none">
-      <aside className="w-48 shrink-0 bg-zinc-900 border border-zinc-800 rounded-xl p-1 flex flex-col justify-between shadow-xl select-none overflow-hidden">
+      <aside className="w-48 shrink-0 bg-zinc-900 border border-zinc-800 rounded-sm p-1 flex flex-col justify-between shadow-xl select-none overflow-hidden">
         <div className="space-y-2.5 flex-1 overflow-y-auto pr-1 min-h-0 custom-scrollbar">
+          {currentJson.length > 0 && (
+            <div className="">
+              <button type="button" onClick={handleClear} className="red-btn">
+                Clear
+              </button>
+            </div>
+          )}
           <div className="space-y-1 border-b border-zinc-800 pb-2">
             <div className="grid grid-cols-2 gap-1">
               <button
                 type="button"
                 onClick={handleUndo}
                 disabled={!canUndo}
-                className="py-1 px-1.5 rounded bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 border border-zinc-700/60 text-zinc-200 text-[11px] font-medium flex items-center justify-center gap-1 transition cursor-pointer disabled:cursor-not-allowed"
+                className="grey-btn"
               >
                 <span>↶</span> Undo
               </button>
@@ -1005,7 +1012,7 @@ export function CanvasArea() {
                 type="button"
                 onClick={handleRedo}
                 disabled={!canRedo}
-                className="py-1 px-1.5 rounded bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 border border-zinc-700/60 text-zinc-200 text-[11px] font-medium flex items-center justify-center gap-1 transition cursor-pointer disabled:cursor-not-allowed"
+                className="grey-btn"
               >
                 <span>↷</span> Redo
               </button>
@@ -1013,9 +1020,6 @@ export function CanvasArea() {
           </div>
 
           <div className="space-y-1">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-semibold block">
-              Folders
-            </span>
             <div className="space-y-1">
               {ELEMENT_FOLDERS.map((folder) => {
                 const isOpen = openFolders.has(folder.name);
@@ -1024,32 +1028,42 @@ export function CanvasArea() {
                     <button
                       type="button"
                       onClick={() => toggleFolder(folder.name)}
-                      className="w-full py-1 px-2 rounded bg-zinc-850 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 text-[11px] font-medium flex items-center justify-between transition cursor-pointer"
+                      className="admin-btn !justify-between"
                     >
                       <span className="flex items-center gap-1.5 truncate">
                         <span>{isOpen ? "📂" : "📁"}</span>
                         <span className="font-mono">{folder.name}</span>
                       </span>
-                      <span className="text-[10px] text-zinc-500 font-mono">
+                      <span className="text-[12px] text-zinc-500 font-mono">
                         {isOpen ? "−" : "+"}
                       </span>
                     </button>
-                    {isOpen && (
-                      <div className="pl-3 py-0.5 space-y-1 border-l border-zinc-800/80">
-                        <div className="flex flex-col gap-1">
-                          {folder.items.map((item) => (
-                            <button
-                              type="button"
-                              key={item.path}
-                              onClick={() => handleAppendFromPath(item.path)}
-                              className="w-full py-0.5 px-1.5 text-left text-[10px] font-mono rounded bg-zinc-800/60 hover:bg-zinc-700 hover:text-white border border-zinc-750 text-zinc-300 truncate transition cursor-pointer"
-                            >
-                              {item.name}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                    <AnimatePresence>
+                      {isOpen && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0, y: 0 }}
+                          animate={{ height: "auto", opacity: 1, y: 0 }}
+                          exit={{ height: 0, opacity: 0, y: 0 }}
+                          transition={{ duration: 0.2, ease: "easeInOut" }}
+                          // className="absolute top-full bg-white border border-gray-200 rounded-b-md shadow-md z-10 w-fit min-w-[150px] max-w-full"
+
+                          className="pl-3 py-0.5 space-y-1 border-l border-zinc-800/80"
+                        >
+                          <div className="flex flex-col gap-1">
+                            {folder.items.map((item) => (
+                              <button
+                                type="button"
+                                key={item.path}
+                                onClick={() => handleAppendFromPath(item.path)}
+                                className="admin-btn"
+                              >
+                                {item.name}
+                              </button>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 );
               })}
@@ -1057,16 +1071,13 @@ export function CanvasArea() {
           </div>
 
           <div className="space-y-1 pt-1.5 border-t border-zinc-800">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-semibold block">
-              Tags
-            </span>
             <div className="grid grid-cols-2 gap-1">
               {ROOT_TAGS.map((tag) => (
                 <button
                   type="button"
                   key={tag.path}
                   onClick={() => handleAppendFromPath(tag.path)}
-                  className="py-0.5 px-1 text-[11px] font-bold rounded bg-zinc-700/70 hover:bg-zinc-700 hover:text-white border border-zinc-750 text-zinc-300 truncate text-center transition cursor-pointer"
+                  className="admin-btn"
                 >
                   {tag.name}
                 </button>
@@ -1074,25 +1085,13 @@ export function CanvasArea() {
             </div>
           </div>
         </div>
-
-        {currentJson.length > 0 && (
-          <div className="pt-2 border-t border-zinc-800">
-            <button
-              type="button"
-              onClick={handleClear}
-              className="w-full py-1 rounded bg-red-950/40 hover:bg-red-900/60 border border-red-800/50 text-red-300 text-[11px] font-medium transition cursor-pointer"
-            >
-              Clear
-            </button>
-          </div>
-        )}
       </aside>
 
       <div
         ref={containerRef}
-        className="plaza-workspace flex-1 relative bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl"
+        className="plaza-workspace flex-1 relative bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl "
       >
-        <div className="plaza-inner w-full h-full overflow-auto custom-scrollbar p-4 pb-2">
+        <div className="plaza-inner w-full h-full overflow-auto custom-scrollbar p-1 pb-[500px]">
           {currentJson.length === 0 ? (
             <div className="h-full min-h-[300px] flex flex-col items-center justify-center text-zinc-500 gap-2">
               <span className="text-3xl">🧩</span>
@@ -1141,22 +1140,22 @@ export function CanvasArea() {
 
         {/* Редактор ноды */}
         <div
-          className={`absolute bottom-0 left-0 right-0 z-40 transition-transform duration-300 ease-in-out ${clickedKey ? "translate-y-0" : "translate-y-full"}`}
+          className={`fixed shadow-[0_-6px_18px_rgba(0,255,255,0.55)] bottom-0 right-0  w-[calc(100vw-210px)] z-40 transition-transform duration-300 ease-in-out ${clickedKey ? "translate-y-0" : "translate-y-full"}`}
         >
           {clickedKey && selectedNode && (
-            <div className="relative bg-zinc-900 border-t border-zinc-700 rounded-t-2xl shadow-[0_-8px_32px_rgba(0,0,0,0.6)] backdrop-blur-md">
+            <div className="relative bg-zinc-800 border-t border-zinc-700 rounded-t-sm shadow-[0_-8px_32px_rgba(0,0,0,0.6)] backdrop-blur-md">
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   setClickedKey(null);
                 }}
-                className="absolute top-1 left-1 z-50 w-10 h-5 rounded-lg bg-red-600 hover:bg-red-500 border-2 border-red-400 text-white text-sm font-bold flex items-center justify-center shadow transition-all cursor-pointer"
+                className="absolute top-1 left-2 z-50 w-10 h-4.5 rounded-lg bg-red-600 hover:bg-red-500 border-2 border-red-400 text-white text-sm font-bold flex items-center justify-center shadow transition-all cursor-pointer"
               >
                 ✕
               </button>
 
-              <div className="p-1">
+              <div className="p-1 mt-1">
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] pl-15 font-mono text-zinc-500 uppercase tracking-widest">
                     Editing
@@ -1266,6 +1265,38 @@ export function CanvasArea() {
           )}
         </div>
       </div>
+      {/* 👻 ПРИЗРАК ПЕРЕТАСКИВАЕМОГО УЗЛА (следует за курсором) */}
+      {draggedNode && dragMousePos && (
+        <div
+          style={{
+            position: "fixed",
+            left: dragMousePos.x + 14,
+            top: dragMousePos.y + 14,
+            pointerEvents: "none",
+            zIndex: 99999,
+          }}
+          className="px-2.5 py-1 rounded-md bg-indigo-950/90 border border-indigo-400 text-white shadow-2xl flex items-center gap-2 backdrop-blur-sm select-none"
+        >
+          {/* Тег узла */}
+          <span className="px-1.5 py-0.5 rounded text-[11px] font-mono uppercase bg-indigo-900 border border-indigo-500 text-indigo-200 leading-none">
+            {draggedNode.tag || "div"}
+          </span>
+
+          {/* Классы (если есть) */}
+          {draggedNode.class && (
+            <span className="text-[11px] font-mono text-green-300 max-w-[140px] truncate leading-none">
+              .{draggedNode.class.trim().replace(/\s+/g, " .")}
+            </span>
+          )}
+
+          {/* Текст (если есть) */}
+          {draggedNode.text && (
+            <span className="text-[11px] text-zinc-300 max-w-[100px] truncate leading-none font-sans">
+              &quot;{draggedNode.text}&quot;
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

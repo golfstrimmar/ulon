@@ -34,3 +34,19 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+import { motion, AnimatePresence } from "framer-motion";
+<AnimatePresence></AnimatePresence>
+                      {isOpen && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0, y: 0 }}
+                          animate={{ height: "auto", opacity: 1, y: 0 }}
+                          exit={{ height: 0, opacity: 0, y: 0 }}
+                          transition={{ duration: 0.2, ease: "easeInOut" }}
+                          // className="absolute top-full bg-white border border-gray-200 rounded-b-md shadow-md z-10 w-fit min-w-[150px] max-w-full"
+
+                          className="pl-3 py-0.5 space-y-1 border-l border-zinc-800/80"
+                        >
+                       </motion.div>
+                      )}
+</AnimatePresence>

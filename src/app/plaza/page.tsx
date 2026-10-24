@@ -14,7 +14,9 @@ export default function PlazaPage() {
       <Suspense
         fallback={
           <header className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur px-6 py-4 flex items-center justify-between">
-            <span className="font-bold text-xl tracking-tight text-white">Ulon</span>
+            <span className="font-bold text-xl tracking-tight text-white">
+              Ulon
+            </span>
             <div className="h-8 w-28 bg-zinc-800/50 rounded-full animate-pulse" />
           </header>
         }
@@ -22,7 +24,7 @@ export default function PlazaPage() {
         <Header />
       </Suspense>
 
-      <main className="flex-1 p-2 flex flex-col gap-3 w-full mx-auto">
+      <main className="flex-1 py-2 flex flex-col gap-3 w-full mx-auto">
         {/* Компонент интерактивного превью реального сайта */}
         <Suspense
           fallback={

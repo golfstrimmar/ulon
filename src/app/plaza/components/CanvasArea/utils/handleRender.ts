@@ -21,17 +21,18 @@ function computeNodeLayout(
   y: number,
   width: number,
   depth: number,
-  collapsedKeys: Set<string>
+  collapsedKeys: Set<string>,
 ): LayoutResult {
   const key = node._key || `node_${depth}_${Math.random()}`;
   const isCollapsed = collapsedKeys.has(key);
   const hasChildren = Array.isArray(node.children) && node.children.length > 0;
 
   const HEADER_HEIGHT = 38;
-  const PADDING_BOTTOM = 5;
+  const PADDING_BOTTOM = 8;
   const GAP_Y = 10;
-  const INDENT_X = 10; // Видимый внутренний отступ для эффекта вложенности
+  const INDENT_X = 10; // Отступ потомков внутри родителя ровно 10px
 
+  // Кнопка [+] / [-] позиционируется на 10px от левого края блока
   const toggleBtnBounds = hasChildren
     ? { x: x + 10, y: y + 10, w: 18, h: 18 }
     : undefined;
@@ -58,7 +59,7 @@ function computeNodeLayout(
     };
   }
 
-  // Расчет геометрии вложенных потомков (внутри родительского блока)
+  // Расчет геометрии вложенных потомков со сдвигом на 10px
   const childX = x + INDENT_X;
   const childWidth = Math.max(120, width - INDENT_X * 2);
   let currentY = y + HEADER_HEIGHT + 6;
@@ -71,13 +72,13 @@ function computeNodeLayout(
       currentY,
       childWidth,
       depth + 1,
-      collapsedKeys
+      collapsedKeys,
     );
     childLayouts.push(childLayout);
     currentY += childLayout.totalHeight + GAP_Y;
   }
 
-  const totalHeight = (currentY - GAP_Y - y) + PADDING_BOTTOM;
+  const totalHeight = currentY - GAP_Y - y + PADDING_BOTTOM;
 
   return {
     box: {
@@ -99,7 +100,10 @@ function computeNodeLayout(
   };
 }
 
-function flattenBoxes(layout: LayoutResult, result: RenderBox[] = []): RenderBox[] {
+function flattenBoxes(
+  layout: LayoutResult,
+  result: RenderBox[] = [],
+): RenderBox[] {
   result.push(layout.box);
   for (const child of layout.children) {
     flattenBoxes(child, result);
@@ -113,7 +117,7 @@ function drawRoundedRect(
   y: number,
   w: number,
   h: number,
-  r: number
+  r: number,
 ) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -140,7 +144,7 @@ export default function handleRender(
   clickedKey: string | null = null,
   hasVisibleBg: boolean = false,
   targetParentKey: string | null = null,
-  visibleMockupHeight: number = 0
+  visibleMockupHeight: number = 0,
 ): void {
   const dpr = window.devicePixelRatio || 1;
   const parentWidth = canvas.parentElement?.clientWidth || 1000;
@@ -148,7 +152,10 @@ export default function handleRender(
 
   // Если данных нет — холст чист
   if (!currentJson || currentJson.length === 0) {
-    if (canvas.width !== parentWidth * dpr || canvas.height !== containerHeight * dpr) {
+    if (
+      canvas.width !== parentWidth * dpr ||
+      canvas.height !== containerHeight * dpr
+    ) {
       canvas.width = parentWidth * dpr;
       canvas.height = containerHeight * dpr;
       canvas.style.width = `${parentWidth}px`;
@@ -177,13 +184,17 @@ export default function handleRender(
       currentY,
       availableWidth,
       0,
-      collapsedKeys
+      collapsedKeys,
     );
     allLayouts.push(layout);
     currentY += layout.totalHeight + 16;
   }
 
-  const totalContentHeight = Math.max(containerHeight, currentY + 40, visibleMockupHeight);
+  const totalContentHeight = Math.max(
+    containerHeight,
+    currentY + 40,
+    visibleMockupHeight,
+  );
 
   if (
     canvas.width !== parentWidth * dpr ||
@@ -206,24 +217,24 @@ export default function handleRender(
   }
   boxesRef.current = allBoxes;
 
-  // Палитра глубины: каждый вложенный слой становится визуально "выше" (светлее + тень)
+  // Палитра глубины: каждый вложенный слой визуально "выше"
   const depthBg = [
-    "rgba(18, 18, 23, 0.96)", // depth 0: основание
-    "rgba(28, 28, 35, 0.96)", // depth 1: блок поверх основания
-    "rgba(38, 38, 48, 0.96)", // depth 2: блок поверх первого
-    "rgba(48, 48, 60, 0.96)", // depth 3: блок поверх второго
+    "rgba(18, 18, 23, 0.96)", // depth 0
+    "rgba(28, 28, 35, 0.96)", // depth 1
+    "rgba(38, 38, 48, 0.96)", // depth 2
+    "rgba(48, 48, 60, 0.96)", // depth 3
     "rgba(58, 58, 72, 0.96)", // depth 4+
   ];
 
   const depthBorder = [
-    "rgba(63, 63, 70, 0.8)",   // zinc-700
-    "rgba(82, 82, 91, 0.85)",  // zinc-600
-    "rgba(113, 113, 122, 0.9)", // zinc-500
-    "rgba(161, 161, 170, 0.9)", // zinc-400
+    "rgba(63, 63, 70, 0.8)",
+    "rgba(82, 82, 91, 0.85)",
+    "rgba(113, 113, 122, 0.9)",
+    "rgba(161, 161, 170, 0.9)",
     "rgba(212, 212, 216, 0.9)",
   ];
 
-  // Отрисовка каждого блока от родителя к детям
+  // Отрисовка каждого блока
   for (const box of allBoxes) {
     const isHovered = box.key === hoveredKey;
     const isClicked = box.key === clickedKey;
@@ -231,21 +242,23 @@ export default function handleRender(
     const isDrop = dropTarget?.key === box.key;
     const depthIdx = Math.min(box.depth, depthBg.length - 1);
 
-    // 1. Тень (придает объем вложенности "одна поверх другой")
+    // 1. Тень
     ctx.save();
     if (box.depth > 0 || isHovered || isClicked || isDrop) {
-      ctx.shadowColor = isDrop ? "rgba(56, 189, 248, 0.4)" : "rgba(0, 0, 0, 0.45)";
+      ctx.shadowColor = isDrop
+        ? "rgba(56, 189, 248, 0.4)"
+        : "rgba(0, 0, 0, 0.45)";
       ctx.shadowBlur = Math.min(14, 4 + box.depth * 3);
       ctx.shadowOffsetY = Math.min(6, 2 + box.depth * 1.5);
     }
 
     // 2. Фон блока
     if (isDrop && dropTarget?.position === "self") {
-      ctx.fillStyle = "rgba(168, 85, 247, 0.24)"; // фиолетовый для дублирования на самого себя
+      ctx.fillStyle = "rgba(168, 85, 247, 0.24)";
     } else if (isDrop && dropTarget?.position === "inside") {
-      ctx.fillStyle = "rgba(56, 189, 248, 0.18)"; // sky blue для вставки внутрь
+      ctx.fillStyle = "rgba(56, 189, 248, 0.18)";
     } else if (isDragged) {
-      ctx.fillStyle = "rgba(63, 63, 70, 0.3)"; // полупрозрачный для перетаскиваемого
+      ctx.fillStyle = "rgba(63, 63, 70, 0.3)";
     } else if (isClicked) {
       ctx.fillStyle = "rgba(99, 102, 241, 0.22)";
     } else if (isHovered) {
@@ -260,19 +273,19 @@ export default function handleRender(
 
     // 3. Рамка блока
     if (isDrop && dropTarget?.position === "self") {
-      ctx.strokeStyle = "#c084fc"; // purple-400
+      ctx.strokeStyle = "#c084fc";
       ctx.lineWidth = 2.5;
     } else if (isDrop && dropTarget?.position === "inside") {
-      ctx.strokeStyle = "#38bdf8"; // sky blue
+      ctx.strokeStyle = "#38bdf8";
       ctx.lineWidth = 2.5;
     } else if (isDragged) {
       ctx.strokeStyle = "rgba(161, 161, 170, 0.4)";
       ctx.lineWidth = 1;
     } else if (isClicked) {
-      ctx.strokeStyle = "#818cf8"; // indigo-400
+      ctx.strokeStyle = "#818cf8";
       ctx.lineWidth = 2;
     } else if (isHovered) {
-      ctx.strokeStyle = "#a5b4fc"; // indigo-300
+      ctx.strokeStyle = "#a5b4fc";
       ctx.lineWidth = 1.5;
     } else {
       ctx.strokeStyle = depthBorder[depthIdx];
@@ -280,8 +293,11 @@ export default function handleRender(
     }
     ctx.stroke();
 
-    // 4. Кнопка сворачивания [+] / [-]
-    let textStartX = box.x + 12;
+    // 4. Позиционирование: кнопка [+] / [-] или прижатый шильдик
+    // Если потомков нет — прижимаем шильдик ровно на 10px слева:
+    let textStartX = box.x + 10;
+
+    // Если есть потомки — рисуем кнопку [+] / [-] и сдвигаем шильдик за неё:
     if (box.hasChildren && box.toggleBtnBounds) {
       const tb = box.toggleBtnBounds;
       ctx.fillStyle = "rgba(24, 24, 27, 0.9)";
@@ -295,12 +311,17 @@ export default function handleRender(
       ctx.font = "bold 11px monospace";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(box.isCollapsed ? "+" : "-", tb.x + tb.w / 2, tb.y + tb.h / 2);
+      ctx.fillText(
+        box.isCollapsed ? "+" : "-",
+        tb.x + tb.w / 2,
+        tb.y + tb.h / 2,
+      );
 
-      textStartX = tb.x + tb.w + 10;
+      // Шильдик тега отступает на 8px от кнопки [+]
+      textStartX = tb.x + tb.w + 8;
     }
 
-    // 5. Бейдж тега <tag> с цветовой дифференциацией
+    // 5. Бейдж тега <tag>
     const tagText = `${box.tag}`;
     ctx.font = "bold 12px ui-monospace, SFMono-Regular, monospace";
     ctx.textAlign = "left";
@@ -308,13 +329,13 @@ export default function handleRender(
     const tagWidth = ctx.measureText(tagText).width;
 
     if (box.tag.toLowerCase() === "div") {
-      ctx.fillStyle = "rgba(49, 46, 129, 0.85)"; // indigo
+      ctx.fillStyle = "rgba(49, 46, 129, 0.85)";
       ctx.strokeStyle = "#6366f1";
     } else if (box.tag.toLowerCase() === "p") {
-      ctx.fillStyle = "rgba(6, 78, 59, 0.85)"; // emerald
+      ctx.fillStyle = "rgba(6, 78, 59, 0.85)";
       ctx.strokeStyle = "#10b981";
     } else {
-      ctx.fillStyle = "rgba(39, 39, 42, 0.85)"; // zinc
+      ctx.fillStyle = "rgba(39, 39, 42, 0.85)";
       ctx.strokeStyle = "#71717a";
     }
 
@@ -323,26 +344,36 @@ export default function handleRender(
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    ctx.fillStyle = box.tag.toLowerCase() === "div" ? "#c7d2fe" : box.tag.toLowerCase() === "p" ? "#a7f3d0" : "#e4e4e7";
+    ctx.fillStyle =
+      box.tag.toLowerCase() === "div"
+        ? "#c7d2fe"
+        : box.tag.toLowerCase() === "p"
+          ? "#a7f3d0"
+          : "#e4e4e7";
     ctx.fillText(tagText, textStartX + 6, box.y + 19);
 
-    let nextX = textStartX + tagWidth + 16;
+    let nextX = textStartX + tagWidth + 14;
 
-    // 6. Классы узла (в одну строку, мелким шрифтом)
+    // 6. Классы узла
     const hasClass = Boolean(box.class && box.class.trim());
     const hasText = Boolean(box.text && box.text.trim());
 
     if (hasClass) {
       const classStr = "." + box.class!.trim().replace(/\s+/g, " .");
       const availableSpace = Math.max(30, box.w - (nextX - box.x) - 16);
-      const maxClassWidth = hasText ? Math.min(availableSpace * 0.55, availableSpace - 50) : availableSpace;
+      const maxClassWidth = hasText
+        ? Math.min(availableSpace * 0.55, availableSpace - 50)
+        : availableSpace;
 
       ctx.font = "10.5px ui-monospace, SFMono-Regular, Menlo, monospace";
-      ctx.fillStyle = "#a1a1aa"; // мягкий цвет для мелких классов
+      ctx.fillStyle = "#a1a1aa";
 
       let displayClass = classStr;
       if (ctx.measureText(displayClass).width > maxClassWidth) {
-        while (displayClass.length > 3 && ctx.measureText(displayClass + "…").width > maxClassWidth) {
+        while (
+          displayClass.length > 3 &&
+          ctx.measureText(displayClass + "…").width > maxClassWidth
+        ) {
           displayClass = displayClass.slice(0, -1);
         }
         displayClass += "…";
@@ -352,7 +383,7 @@ export default function handleRender(
       nextX += ctx.measureText(displayClass).width + 12;
     }
 
-    // 7. Текст содержимого (например "Lorem" из p.json)
+    // 7. Текст содержимого
     if (hasText) {
       const maxTextWidth = Math.max(30, box.w - (nextX - box.x) - 16);
 
@@ -361,7 +392,10 @@ export default function handleRender(
 
       let display = `"${box.text}"`;
       if (ctx.measureText(display).width > maxTextWidth) {
-        while (display.length > 4 && ctx.measureText(display + "…").width > maxTextWidth) {
+        while (
+          display.length > 4 &&
+          ctx.measureText(display + "…").width > maxTextWidth
+        ) {
           display = display.slice(0, -1);
         }
         display += "…";
@@ -371,28 +405,32 @@ export default function handleRender(
     }
   }
 
-  // Отрисовка линии-индикатора для вставки между нодами (before / after)
-  if (dropTarget && (dropTarget.position === "before" || dropTarget.position === "after")) {
+  // Индикатор для вставки (dropTarget)
+  if (
+    dropTarget &&
+    (dropTarget.position === "before" || dropTarget.position === "after")
+  ) {
     const targetBox = allBoxes.find((b) => b.key === dropTarget.key);
     if (targetBox) {
-      const lineY = dropTarget.position === "before" ? targetBox.y - 2 : targetBox.y + targetBox.h + 2;
+      const lineY =
+        dropTarget.position === "before"
+          ? targetBox.y - 2
+          : targetBox.y + targetBox.h + 2;
       const startX = targetBox.x;
       const endX = targetBox.x + targetBox.w;
 
       ctx.save();
       ctx.shadowColor = "rgba(56, 189, 248, 0.9)";
       ctx.shadowBlur = 8;
-      ctx.strokeStyle = "#38bdf8"; // sky-400
+      ctx.strokeStyle = "#38bdf8";
       ctx.fillStyle = "#38bdf8";
       ctx.lineWidth = 3;
 
-      // Горизонтальная линия места вставки
       ctx.beginPath();
       ctx.moveTo(startX + 8, lineY);
       ctx.lineTo(endX, lineY);
       ctx.stroke();
 
-      // Точка-маркер в начале линии
       ctx.beginPath();
       ctx.arc(startX + 4, lineY, 4, 0, Math.PI * 2);
       ctx.fill();
@@ -401,7 +439,7 @@ export default function handleRender(
     }
   }
 
-  // Отрисовка "призрака" перетаскиваемого узла рядом с курсором
+  // Призрак при перетаскивании
   if (draggedKey && dragMousePos) {
     const draggedBox = allBoxes.find((b) => b.key === draggedKey);
     if (draggedBox) {
@@ -415,7 +453,7 @@ export default function handleRender(
       ctx.shadowBlur = 12;
       ctx.shadowOffsetY = 4;
 
-      ctx.fillStyle = "rgba(49, 46, 129, 0.9)"; // indigo-900
+      ctx.fillStyle = "rgba(49, 46, 129, 0.9)";
       drawRoundedRect(ctx, gx, gy, ghostW, ghostH, 6);
       ctx.fill();
 
@@ -431,7 +469,11 @@ export default function handleRender(
       if (draggedBox.text) {
         ctx.font = "11px sans-serif";
         ctx.fillStyle = "#e0e7ff";
-        ctx.fillText(`"${draggedBox.text.slice(0, 8)}"`, gx + 60, gy + ghostH / 2);
+        ctx.fillText(
+          `"${draggedBox.text.slice(0, 8)}"`,
+          gx + 60,
+          gy + ghostH / 2,
+        );
       }
 
       ctx.restore();
