@@ -543,7 +543,38 @@ export function CanvasArea() {
       }
     })();
   }, []);
+  // Слушаем обновления стилей от внешних модалок (ModalCss и т.д.)
+  useEffect(() => {
+    const handleExternalStyles = (e: Event) => {
+      const customEvent = e as CustomEvent<Record<string, string>>;
+      const nextStyles = customEvent.detail || {};
+      setClassesCss(nextStyles);
+      classesCssRef.current = nextStyles;
+    };
 
+    window.addEventListener("plaza-styles-updated", handleExternalStyles);
+    return () => {
+      window.removeEventListener("plaza-styles-updated", handleExternalStyles);
+    };
+  }, []);
+
+  // Слушаем обновления скриптов от внешних модалок
+  useEffect(() => {
+    const handleExternalScripts = (e: Event) => {
+      const customEvent = e as CustomEvent<Record<string, string>>;
+      const nextScripts = customEvent.detail || {};
+      setScriptsJs(nextScripts);
+      scriptsJsRef.current = nextScripts;
+    };
+
+    window.addEventListener("plaza-scripts-updated", handleExternalScripts);
+    return () => {
+      window.removeEventListener(
+        "plaza-scripts-updated",
+        handleExternalScripts,
+      );
+    };
+  }, []);
   const handleSaveClassCss = async (className: string, css: string) => {
     const clean = className.trim().replace(/^\./, "");
     if (!clean) return;
