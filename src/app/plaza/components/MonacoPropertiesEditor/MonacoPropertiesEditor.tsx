@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Editor, { type OnMount } from "@monaco-editor/react";
+import { repairCss } from "@/lib/cssCompiler";
 
 interface MonacoPropertiesEditorProps {
   nodeKey?: string;
@@ -15,26 +16,6 @@ interface MonacoPropertiesEditorProps {
     attributes: Record<string, string>,
   ) => Promise<void> | void;
   onAddClassToNode?: (className: string) => void;
-}
-
-/**
- * Приводит стили к полноценному CSS правилу со скобками .class { ... }
- */
-function ensureFullCssRule(className: string, rawCss: string): string {
-  const clean = className.trim().replace(/^\./, "");
-  const trimmed = (rawCss || "").trim();
-
-  if (!trimmed) {
-    return `.${clean} {\n  \n}`;
-  }
-
-  // Если уже содержит скобки — отдаем как есть
-  if (trimmed.includes("{")) {
-    return trimmed;
-  }
-
-  // Если это были голые свойства — красиво оборачиваем в .class { ... }
-  return `.${clean} {\n  ${trimmed.split("\n").join("\n  ")}\n}`;
 }
 
 export function MonacoPropertiesEditor({
@@ -56,9 +37,7 @@ export function MonacoPropertiesEditor({
   const isDirtyRef = useRef<boolean>(false);
   const [newClassInput, setNewClassInput] = useState<string>("");
 
-  /* ==========================================================================
-     СИНХРОНИЗАЦИЯ: если стили или атрибуты обновились снаружи
-     ========================================================================== */
+  // Синхронизация при внешних изменениях
   useEffect(() => {
     if (!openTarget) return;
 
@@ -68,10 +47,10 @@ export function MonacoPropertiesEditor({
       currentTextRef.current = formatted;
       isDirtyRef.current = false;
     } else {
-      const rawCss = classesCss[openTarget] || "";
-      const fullRule = ensureFullCssRule(openTarget, rawCss);
-      setCurrentText(fullRule);
-      currentTextRef.current = fullRule;
+      const raw = classesCss[openTarget] || "";
+      const cleaned = repairCss(openTarget, raw);
+      setCurrentText(cleaned);
+      currentTextRef.current = cleaned;
       isDirtyRef.current = false;
     }
   }, [classesCss, attributesValue, openTarget]);
@@ -90,13 +69,14 @@ export function MonacoPropertiesEditor({
         console.warn("Invalid attributes JSON in Monaco editor:", err);
       }
     } else {
-      onSaveClassCss(targetToSave, currentTextRef.current);
+      // Сохраняем честный CSS как есть
+      onSaveClassCss(targetToSave, currentTextRef.current.trim());
     }
 
     isDirtyRef.current = false;
   };
 
-  // Клик по классу
+  // Клик по кнопке класса
   const handleToggleClass = (cls: string) => {
     const clean = cls.trim().replace(/^\./, "");
     if (!clean) return;
@@ -111,16 +91,16 @@ export function MonacoPropertiesEditor({
       saveCurrentOpenTarget(openTarget);
     }
 
-    const rawCss = classesCss[clean] || "";
-    const fullRule = ensureFullCssRule(clean, rawCss);
+    const raw = classesCss[clean] || "";
+    const cleanCss = repairCss(clean, raw);
 
-    setCurrentText(fullRule);
-    currentTextRef.current = fullRule;
+    setCurrentText(cleanCss);
+    currentTextRef.current = cleanCss;
     isDirtyRef.current = false;
     setOpenTarget(clean);
   };
 
-  // Клик по кнопке атрибутов
+  // Клик по атрибутам
   const handleToggleAttributes = () => {
     if (openTarget === "__attributes__") {
       saveCurrentOpenTarget("__attributes__");
@@ -161,7 +141,6 @@ export function MonacoPropertiesEditor({
     setNewClassInput("");
   };
 
-  // Очистка CSS текущего класса
   const handleDeleteCurrentClassCss = () => {
     if (!openTarget || openTarget === "__attributes__") return;
     const targetToDelete = openTarget;
@@ -206,13 +185,12 @@ export function MonacoPropertiesEditor({
 
   return (
     <div className="w-full flex flex-col gap-2">
-      {/* Панель классов + Атрибуты */}
+      {/* Список классов */}
       <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-lg bg-zinc-950/80 border border-zinc-800">
         <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-semibold mr-1 shrink-0">
           Классы:
         </span>
 
-        {/* Список классов элемента */}
         {nodeClasses.length > 0 ? (
           nodeClasses.map((cls) => {
             const isOpen = openTarget === cls;
@@ -245,7 +223,6 @@ export function MonacoPropertiesEditor({
           </span>
         )}
 
-        {/* Форма добавления класса */}
         <form
           onSubmit={handleAddNewClass}
           className="flex items-center gap-1 ml-auto shrink-0"
@@ -266,7 +243,6 @@ export function MonacoPropertiesEditor({
           </button>
         </form>
 
-        {/* Кнопка Атрибутов */}
         <button
           type="button"
           onClick={handleToggleAttributes}
@@ -285,34 +261,21 @@ export function MonacoPropertiesEditor({
         </button>
       </div>
 
-      {/* Окно редактора Monaco */}
+      {/* Окно Monaco */}
       {openTarget && (
         <div className="w-full flex flex-col rounded-lg border border-indigo-500/60 bg-zinc-950 overflow-hidden shadow-xl animate-in fade-in duration-150">
           <div className="flex items-center justify-between px-3 py-1.5 bg-indigo-950/70 border-b border-indigo-900/60 select-none">
-            <div className="flex items-center gap-2">
-              {openTarget !== "__attributes__" ? (
-                <>
-                  <span className="text-[11px] font-mono text-zinc-300">
-                    CSS правила для класса:
-                  </span>
-                  <code className="text-[12px] font-mono font-bold text-indigo-200 bg-indigo-900/90 px-2 py-0.5 rounded border border-indigo-600">
-                    .{openTarget}
-                  </code>
-                </>
-              ) : (
-                <span className="text-[11px] font-mono text-indigo-200 font-bold">
-                  HTML-атрибуты для &lt;{nodeTag}&gt; (JSON: id, href, src,
-                  data-*, etc.)
-                </span>
-              )}
-            </div>
+            <span className="text-[12px] font-mono font-bold text-indigo-200">
+              {openTarget !== "__attributes__"
+                ? `CSS для .${openTarget}`
+                : `Атрибуты <${nodeTag}> (JSON)`}
+            </span>
 
             <div className="flex items-center gap-2">
               {openTarget !== "__attributes__" && (
                 <button
                   type="button"
                   onClick={handleDeleteCurrentClassCss}
-                  title="Очистить CSS этого класса"
                   className="text-[10px] font-mono text-zinc-400 hover:text-red-400 px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 transition cursor-pointer"
                 >
                   ✕ Очистить

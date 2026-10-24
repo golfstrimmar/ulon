@@ -1,59 +1,74 @@
 /**
  * @file cssCompiler.ts
- * @description Компиляция и парсинг стандартного классического CSS (.class и .class:hover).
+ * @description Чистая компиляция без скрытых оберток.
  */
 
 /**
- * Очищает CSS от старых ошибочных матрешек (.ttt { .ttt { ... } })
+ * Автоматически лечит любые вложенные матрешки (.ttt { .ttt { ... } })
+ * и превращает их в плоские правила (.ttt { ... } и .ttt:hover { ... })
  */
-function sanitizeDoubleNesting(className: string, cssText: string): string {
-  let cleaned = (cssText || "").trim();
+export function repairCss(className: string, rawCss: string): string {
+  let css = (rawCss || "").trim();
   const cls = className.replace(/^\./, "");
+  if (!css) return `.${cls} {\n  \n}`;
 
-  // Если текст начинается с .cls { и внутри снова есть .cls {
-  const doubleWrapRegex = new RegExp(
-    `^\\.${cls}\\s*\\{\\s*(\\.(?:${cls})[\\s\\S]*)\\}\\s*$`,
-  );
-  const match = doubleWrapRegex.exec(cleaned);
-  if (match && match[1]) {
-    cleaned = match[1].trim();
+  // Вытаскиваем &:hover или :hover в отдельное нормальное правило .cls:hover
+  const hoverMatch = /&?:hover\s*\{([^}]+)\}/.exec(css);
+  let hoverBody = "";
+  if (hoverMatch) {
+    hoverBody = hoverMatch[1].trim();
+    // Удаляем кусок с ховером из основного тела
+    css = css.replace(hoverMatch[0], "").trim();
   }
 
-  return cleaned;
+  // Срезаем все внешние дублирующиеся .cls { и закрывающие }
+  const cleanDeclarations = css
+    .replace(new RegExp(`\\.${cls}\\s*\\{`, "g"), "")
+    .replace(/\}/g, "")
+    .trim();
+
+  const baseRule = `.${cls} {\n  ${cleanDeclarations
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .join("\n  ")}\n}`;
+
+  if (hoverBody) {
+    const hoverRule = `.${cls}:hover {\n  ${hoverBody
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .join("\n  ")}\n}`;
+    return `${baseRule}\n\n${hoverRule}`;
+  }
+
+  return baseRule;
 }
 
 /**
- * Собирает CSS для вставки в <style>.
- * Если стиль уже написан как нормальное правило со скобками (.ttt { ... } .ttt:hover { ... }) —
- * отдает его КАК ЕСТЬ, без слепых оберток!
+ * Просто склеивает готовые CSS-правила классов для вставки в <style>.
+ * НИКАКИХ скрытых оборачиваний!
  */
 export function compileClassesCss(
   classesCss: Record<string, string> = {},
 ): string {
   const result: string[] = [];
 
-  for (const [rawCls, rawCss] of Object.entries(classesCss)) {
-    const cleanCls = rawCls.trim().replace(/^\./, "");
-    if (!cleanCls || !rawCss) continue;
+  for (const [cls, rawCss] of Object.entries(classesCss)) {
+    const cleanCls = cls.trim().replace(/^\./, "");
+    if (!cleanCls || !rawCss?.trim()) continue;
 
-    let body = sanitizeDoubleNesting(cleanCls, rawCss.trim());
-    if (!body) continue;
-
-    // Если код уже содержит селекторы и скобки (например .ttt { ... } или .ttt:hover { ... })
-    if (body.includes("{") && body.includes("}")) {
-      result.push(body);
-    } else {
-      // Это просто плоский список свойств (color: red; font-size: 20px;) -> только тогда оборачиваем
-      result.push(`.${cleanCls} {\n  ${body}\n}`);
-    }
+    // Лечим от матрешек и отдаем чистый CSS
+    const cleanRule = repairCss(cleanCls, rawCss);
+    result.push(cleanRule);
   }
 
   return result.join("\n\n");
 }
 
 /**
- * Парсит полный CSS обратно в словарь.
- * Группирует .ttt, .ttt:hover, .ttt:active, .ttt::before друг под другом без вложений.
+ * Парсит полный CSS из модалки обратно в словарь классов.
+ * Склеивает .ttt и .ttt:hover вместе в ключ "ttt".
  */
 export function parseClassesCss(fullCss: string): Record<string, string> {
   const result: Record<string, string> = {};
@@ -85,44 +100,20 @@ export function parseClassesCss(fullCss: string): Record<string, string> {
 
     if (!rawSelector) continue;
 
-    // СЛУЧАЙ 1: @media
-    if (rawSelector.startsWith("@media")) {
-      const classMatches = body.matchAll(/\.([a-zA-Z0-9_-]+)/g);
-      const foundClasses = new Set<string>();
-      for (const m of classMatches) {
-        if (m[1]) foundClasses.add(m[1]);
-      }
-
-      const mediaBlock = `${rawSelector} {\n  ${body}\n}`;
-      for (const cls of foundClasses) {
-        result[cls] = result[cls]
-          ? `${result[cls]}\n\n${mediaBlock}`
-          : mediaBlock;
-      }
-      continue;
-    }
-
-    // СЛУЧАЙ 2: Стандартные правила (.ttt, .ttt:hover, .ttt::before)
+    // Ищем имя класса (например ".ttt:hover" -> "ttt")
     const match = /\.([a-zA-Z0-9_-]+)/.exec(rawSelector);
     if (match && match[1]) {
       const className = match[1];
       const cleanSelector = rawSelector.replace(/\/\*[\s\S]*?\*\//g, "").trim();
 
-      // Стандартный плоский блок CSS
-      const fullRule = `${cleanSelector} {\n  ${body}\n}`;
+      const rule = `${cleanSelector} {\n  ${body}\n}`;
 
       if (result[className]) {
-        // Дописываем правило рядом, а не внутрь!
-        result[className] = `${result[className]}\n\n${fullRule}`;
+        result[className] = `${result[className]}\n\n${rule}`;
       } else {
-        result[className] = fullRule;
+        result[className] = rule;
       }
     }
-  }
-
-  // Финальная чистка от случайных матрешек
-  for (const [cls, css] of Object.entries(result)) {
-    result[cls] = sanitizeDoubleNesting(cls, css);
   }
 
   return result;
