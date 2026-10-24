@@ -1140,7 +1140,7 @@ export function CanvasArea() {
 
         {/* Редактор ноды */}
         <div
-          className={`fixed shadow-[0_-6px_18px_rgba(0,255,255,0.55)] bottom-0 right-0  w-[calc(100vw-210px)] z-40 transition-transform duration-300 ease-in-out ${clickedKey ? "translate-y-0" : "translate-y-full"}`}
+          className={`fixed shadow-[0_-6px_18px_rgba(32,75,110,0.7)] bottom-0 right-0  w-[calc(100vw-210px)] z-40 transition-transform duration-300 ease-in-out ${clickedKey ? "translate-y-0" : "translate-y-full"}`}
         >
           {clickedKey && selectedNode && (
             <div className="relative bg-zinc-800 border-t border-zinc-700 rounded-t-sm shadow-[0_-8px_32px_rgba(0,0,0,0.6)] backdrop-blur-md">
