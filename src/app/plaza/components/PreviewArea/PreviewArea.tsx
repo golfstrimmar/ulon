@@ -26,33 +26,35 @@ export function PreviewArea() {
     handleRemoveFont,
     handleSetDefaultFont,
   } = usePreviewArea();
+
   const [iframeHeight, setIframeHeight] = useState(140);
 
   const handleLoad = useCallback(() => {
     const iframe = iframeRef.current;
-    if (!iframe?.contentDocument) return;
-
-    const doc = iframe.contentDocument;
+    const win = iframe?.contentWindow;
+    const doc = iframe?.contentDocument;
+    if (!win || !doc) return;
 
     const update = () => {
-      const height = Math.max(
-        doc.body?.scrollHeight ?? 0,
-        doc.documentElement?.scrollHeight ?? 0,
-      );
-      setIframeHeight(Math.max(height, 140));
+      const h = doc.body?.scrollHeight ?? 0;
+      if (h > 0) setIframeHeight(h);
     };
 
     update();
 
     const observer = new ResizeObserver(update);
     if (doc.body) observer.observe(doc.body);
-    if (doc.documentElement) observer.observe(doc.documentElement);
 
-    // очистка при следующей загрузке / размонтировании
-    iframe.addEventListener("load", () => observer.disconnect(), {
-      once: true,
-    });
-  }, []);
+    // страховка: контент может догрузиться (шрифты, картинки)
+    const t1 = setTimeout(update, 100);
+    const t2 = setTimeout(update, 500);
+
+    return () => {
+      observer.disconnect();
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [iframeRef]);
   return (
     <div className="w-full flex flex-col border border-zinc-800 rounded-xl overflow-hidden bg-zinc-900 shadow-xl">
       {/* Верхний тулбар */}
@@ -237,7 +239,7 @@ export function PreviewArea() {
                 srcDoc={srcDoc}
                 title="iframe Prev"
                 sandbox="allow-scripts allow-same-origin allow-modals allow-forms"
-                className="w-full h-full border-0 bg-white"
+                className="w-full  border-0 bg-white"
                 onLoad={handleLoad}
                 style={{ height: iframeHeight }}
               />
