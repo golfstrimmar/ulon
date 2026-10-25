@@ -19,7 +19,7 @@ import {
   updateNodeByKey,
 } from "@/lib/htmlTree";
 import { ROOT_TAGS, ELEMENT_FOLDERS } from "./elementsManifest";
-import { MonacoPropertiesEditor } from "../MonacoPropertiesEditor/MonacoPropertiesEditor";
+import { MonacoPropertiesEditor } from "@/app/plaza/components/MonacoPropertiesEditor/MonacoPropertiesEditor";
 import { motion, AnimatePresence } from "framer-motion";
 import { updateScriptInGlobalBundle } from "@/lib/jsCompiler";
 import { saveGlobalScss, saveGlobalJs } from "@/lib/htmlStorage";

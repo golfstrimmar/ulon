@@ -1,8 +1,14 @@
 "use client";
 import React, { useState } from "react";
 import { usePreviewArea } from "@/app/plaza/components/PreviewArea/hooks/usePreviewArea";
-import ModalJS from "@/app/plaza/components/PreviewArea/components/ModalJS";
 import { saveGlobalJs } from "@/lib/htmlStorage";
+import dynamic from "next/dynamic";
+const ModalJS = dynamic(
+  () => import("@/app/plaza/components/PreviewArea/components/ModalJS"),
+  {
+    ssr: false,
+  },
+);
 //  ─────🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹──────
 export default function ButtonJS() {
   const { scriptsCount } = usePreviewArea();

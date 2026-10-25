@@ -7,7 +7,6 @@ import {
   getGlobalScss,
   getScriptsJs,
   getFontsSettings,
-  saveFontsSettings,
 } from "@/lib/htmlStorage";
 import { compileScssToCss } from "@/lib/scssCompiler";
 import {
@@ -192,15 +191,30 @@ export function usePreviewArea() {
       window.removeEventListener("plaza-scripts-updated", handleScriptsUpdate);
   }, []);
 
+  const openModalFonts = () => {
+    setIsFontsPanelOpen((prev) => {
+      const next = !prev;
+      window.dispatchEvent(
+        new CustomEvent("preview-fontspanel", {
+          detail: next,
+        }),
+      );
+      return next;
+    });
+  };
+
   const handleAddFont = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!newFontInput.trim()) return;
 
-    const result = addFont(fontEntries, newFontInput, defaultFont);
+    const result = await addFont(fontEntries, newFontInput, defaultFont);
+
     setFontEntries(result.fonts);
     fontEntriesRef.current = result.fonts;
+
     setDefaultFont(result.defaultFont);
     defaultFontRef.current = result.defaultFont;
+
     setNewFontInput("");
 
     updatePreviewDoc(
@@ -208,14 +222,10 @@ export function usePreviewArea() {
       result.fonts,
       result.defaultFont,
     );
-    await saveFontsSettings({
-      fonts: result.fonts,
-      defaultFont: result.defaultFont,
-    });
   };
 
   const handleRemoveFont = async (fontToRemove: string) => {
-    const result = removeFont(fontEntries, fontToRemove, defaultFont);
+    const result = await removeFont(fontEntries, fontToRemove, defaultFont);
     setFontEntries(result.fonts);
     fontEntriesRef.current = result.fonts;
     setDefaultFont(result.defaultFont);
@@ -226,19 +236,18 @@ export function usePreviewArea() {
       result.fonts,
       result.defaultFont,
     );
-    await saveFontsSettings({
-      fonts: result.fonts,
-      defaultFont: result.defaultFont,
-    });
   };
 
   const handleSetDefaultFont = async (fontName: string) => {
-    const nextDefault = toggleDefaultFont(fontEntries, defaultFont, fontName);
+    const nextDefault = await toggleDefaultFont(
+      fontEntries,
+      defaultFont,
+      fontName,
+    );
     setDefaultFont(nextDefault);
     defaultFontRef.current = nextDefault;
 
     updatePreviewDoc(currentBodyHtmlRef.current, fontEntries, nextDefault);
-    await saveFontsSettings({ fonts: fontEntries, defaultFont: nextDefault });
   };
 
   const detectedFamilies = extractFontFamilies(fontEntries);
@@ -255,6 +264,7 @@ export function usePreviewArea() {
     setIsCollapsed,
     isFontsPanelOpen,
     setIsFontsPanelOpen,
+    openModalFonts,
     newFontInput,
     setNewFontInput,
     fontEntries,

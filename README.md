@@ -61,10 +61,48 @@ window.addEventListener("plaza-styles-updated", handleExternalStyles);
 return () =>
   window.removeEventListener("plaza-styles-updated", handleExternalStyles);
   
+  
+---просто вызвали с хука функцию ---
+import { usePreviewArea } from "@/app/plaza/components/PreviewArea/hooks/usePreviewArea";
+const { openModalFonts } = usePreviewArea();
+onClick={() => openModalFonts()}
+
+---на хуке просто уходит в шину и все. ---   
+const [isFontsPanelOpen, setIsFontsPanelOpen] = useState<boolean>(false);
+const openModalFonts = () => {
+    setIsFontsPanelOpen((prev) => {
+      const next = !prev;
+      window.dispatchEvent(
+        new CustomEvent("preview-fontspanel", {
+          detail: next,
+        }),
+      );
+      return next;
+    });
+  };
+
+return { openModalFonts };
+}
+---на приемнике событие з шины поменяет состояние --- 
+const [isFontsPanelOpen, setIsFontsPanelOpen] = useState<boolean>(false);
+ useEffect(() => {
+    const handleFontsPanel = (event: Event) => {
+      const customEvent = event as CustomEvent<boolean>;
+      setIsFontsPanelOpen(customEvent.detail);
+    };
+
+    window.addEventListener("preview-fontspanel", handleFontsPanel);
+
+    return () => {
+      window.removeEventListener("preview-fontspanel", handleFontsPanel);
+    };
+  }, []);
+
+<!---------------------------------------->
 plaza-tree-updated
 plaza-styles-updated 
 plaza-scripts-updated
-
+preview-fontspanel
 <!--==============hook======// Сохранение SCSS в IndexedDB=======// Сохранение JS в IndexedDB====================-->
   import { saveGlobalScss, saveGlobalJs } from "@/lib/htmlStorage";
   const updateAndPersistScss = async (nextScss: string) => {

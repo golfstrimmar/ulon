@@ -1,12 +1,12 @@
-// Отвечает за: структуры данных, парсинг ссылок шрифтов, сборку HTML-строки, изоляцию скриптов,
-// сохранение шрифтов и скриптов в хранилище и чистые бизнес-правила мутаций. Не зависит от React.
-
 import type { HtmlNode } from "@/types/HtmlNode";
 import { treeToHtml } from "@/lib/htmlTree";
 import { compileClassesCss } from "@/lib/cssCompiler";
 import { prepareScriptsForExecution } from "@/lib/jsCompiler";
+
+import { getFontsSettings, saveFontsSettings } from "@/lib/htmlStorage";
+
 /* ==========================================================================
-   1. СХЕМЫ ДАННЫХ (Data Contracts)
+   1. СХЕМЫ ДАННЫХ
    ========================================================================== */
 
 export interface PreviewSettings {
@@ -31,40 +31,33 @@ export interface FontMutationResult {
 }
 
 /* ==========================================================================
-   2. КОНСТАНТЫ ХРАНИЛИЩА (Storage Keys)
+   2. КОНСТАНТЫ
    ========================================================================== */
 
 export const DB_KEY = "plaza_tree";
-export const FONTS_STORAGE_KEY = "plaza_preview_fonts";
-export const DEFAULT_FONT_STORAGE_KEY = "plaza_preview_default_font";
-export const SCRIPTS_STORAGE_KEY = "plaza_scripts_js";
 
 /* ==========================================================================
-   3. ПАРСИНГ И ТРАНСФОРМАЦИЯ ДАННЫХ (Domain Functions)
+   3. ПАРСИНГ И ТРАНСФОРМАЦИЯ
    ========================================================================== */
 
-/**
- * Преобразует дерево DOM-узлов в HTML разметку
- */
 export function renderTree(nodes: HtmlNode[]): string {
   return nodes.map((n) => treeToHtml(n, 0)).join("\n");
 }
 
-/**
- * Извлекает названия семейств шрифтов из Google Fonts ссылок
- */
 export function extractFontFamilies(entries: string[]): string[] {
   const families: Set<string> = new Set();
   const regex = /family=([^&:'"\s\)]+)/g;
 
   for (const entry of entries) {
     let match: RegExpExecArray | null;
+
     while ((match = regex.exec(entry)) !== null) {
       if (match[1]) {
         const rawName = match[1].split(":")[0];
         const cleanName = decodeURIComponent(
           rawName.replace(/\+/g, " ").trim(),
         );
+
         if (cleanName) {
           families.add(cleanName);
         }
@@ -75,9 +68,6 @@ export function extractFontFamilies(entries: string[]): string[] {
   return Array.from(families);
 }
 
-/**
- * Нормализует строку подключения шрифта к валидному HTML-тегу (<link> или <style>)
- */
 export function parseFontHeaderTag(entry: string): string {
   const trimmed = entry.trim();
   if (!trimmed) return "";
@@ -92,9 +82,11 @@ export function parseFontHeaderTag(entry: string): string {
 
   if (trimmed.includes("@import")) {
     const urlMatch = /url\(['"]?([^'"\)]+)['"]?\)/.exec(trimmed);
+
     if (urlMatch && urlMatch[1]) {
       return `<link rel="stylesheet" href="${urlMatch[1]}">`;
     }
+
     return trimmed.startsWith("<style")
       ? trimmed
       : `<style>\n  ${trimmed}\n</style>`;
@@ -107,9 +99,6 @@ export function parseFontHeaderTag(entry: string): string {
   return `<link rel="stylesheet" href="${trimmed}">`;
 }
 
-/**
- * Изолирует пользовательские JS-скрипты в безопасные IIFE-контейнеры
- */
 export function compileScriptsBundle(
   scriptsJs: Record<string, string> = {},
 ): string {
@@ -140,9 +129,6 @@ export function compileScriptsBundle(
   return chunks.join("\n\n");
 }
 
-/**
- * Главный билдер документа: собирает HTML-строку для iframe
- */
 export function buildDocument({
   bodyHtml,
   fontEntries = [],
@@ -159,17 +145,17 @@ export function buildDocument({
 
   const detectedFamilies = extractFontFamilies(fontEntries);
 
-  // Стили (SCSS -> CSS)
   const compiledClassesStyles = globalCss || "";
 
-  // Скрипты (JS бандл с безопасной изоляцией IIFE)
   const rawJs =
     globalJs || scriptsJs.__bundle__ || Object.values(scriptsJs).join("\n\n");
+
   const compiledBundleScripts = prepareScriptsForExecution(rawJs);
 
   const helperClasses = detectedFamilies
     .map((name) => {
       const slug = name.toLowerCase().replace(/\s+/g, "-");
+
       return `
      .${slug}, .font-${slug} {
        font-family: '${name}', sans-serif !important;
@@ -227,9 +213,6 @@ export function buildDocument({
      compiledClassesStyles
        ? `<!-- Скомпилированный SCSS в чистый CSS -->
    <style id="compiled-classes-styles">
- /* ==========================================================================
-    Скомпилированные стили (SCSS -> CSS)
-    ========================================================================== */
  ${compiledClassesStyles}
    </style>`
        : ""
@@ -251,76 +234,39 @@ export function buildDocument({
 }
 
 /* ==========================================================================
-   4. РАБОТА С ХРАНИЛИЩЕМ (Data Access / LocalStorage)
+   4. РАБОТА С INDEXEDDB
    ========================================================================== */
 
-export function loadPreviewSettings(): PreviewSettings {
+export async function loadPreviewSettings(): Promise<PreviewSettings> {
   const result: PreviewSettings = {
     fonts: [],
     defaultFont: "",
     scriptsJs: {},
   };
 
-  if (typeof window === "undefined") return result;
-
   try {
-    const savedFonts = localStorage.getItem(FONTS_STORAGE_KEY);
-    if (savedFonts) {
-      const parsed = JSON.parse(savedFonts);
-      if (Array.isArray(parsed)) result.fonts = parsed;
-    }
-  } catch (e) {
-    console.error("[previewModel] Failed to read fonts from localStorage:", e);
-  }
+    const fontsSettings = await getFontsSettings();
 
-  try {
-    const savedDefault = localStorage.getItem(DEFAULT_FONT_STORAGE_KEY);
-    if (savedDefault) result.defaultFont = savedDefault;
-  } catch (e) {
-    console.error(
-      "[previewModel] Failed to read default font from localStorage:",
-      e,
-    );
-  }
-
-  try {
-    const savedJs = localStorage.getItem(SCRIPTS_STORAGE_KEY);
-    if (savedJs) {
-      const parsed = JSON.parse(savedJs);
-      if (parsed && typeof parsed === "object") result.scriptsJs = parsed;
-    }
-  } catch (e) {
-    console.error(
-      "[previewModel] Failed to read scripts JS from localStorage:",
-      e,
-    );
+    result.fonts = fontsSettings.fonts || [];
+    result.defaultFont = fontsSettings.defaultFont || "";
+  } catch (error) {
+    console.error("[previewModel] Failed to load fonts settings:", error);
   }
 
   return result;
 }
 
-export function saveFontsSettings(fonts: string[], defaultFont: string): void {
-  try {
-    localStorage.setItem(FONTS_STORAGE_KEY, JSON.stringify(fonts));
-    localStorage.setItem(DEFAULT_FONT_STORAGE_KEY, defaultFont);
-  } catch (err) {
-    console.error("[previewModel] Failed to save fonts to localStorage:", err);
-  }
-}
-
 /* ==========================================================================
-   5. БИЗНЕС-ПРАВИЛА И МУТАЦИИ (Business Rules)
+   5. БИЗНЕС-ПРАВИЛА И МУТАЦИИ
    ========================================================================== */
 
-/**
- * Правило: добавить новый шрифт и назначить его дефолтным, если список был пуст
- */
-export function addFont(
+export async function addFont(
   fonts: string[],
   newFontInput: string,
   currentDefaultFont: string,
-): FontMutationResult {
+): Promise<FontMutationResult> {
   const trimmed = newFontInput.trim();
+
   if (!trimmed || fonts.includes(trimmed)) {
     return { fonts, defaultFont: currentDefaultFont };
   }
@@ -329,11 +275,15 @@ export function addFont(
   const detected = extractFontFamilies(nextFonts);
 
   let nextDefault = currentDefaultFont;
+
   if (!nextDefault && detected.length > 0) {
     nextDefault = detected[0];
   }
 
-  saveFontsSettings(nextFonts, nextDefault);
+  await saveFontsSettings({
+    fonts: nextFonts,
+    defaultFont: nextDefault,
+  });
 
   return {
     fonts: nextFonts,
@@ -341,23 +291,24 @@ export function addFont(
   };
 }
 
-/**
- * Правило: удалить шрифт. Если удален дефолтный — переключить на оставшийся
- */
-export function removeFont(
+export async function removeFont(
   fonts: string[],
   fontToRemove: string,
   currentDefaultFont: string,
-): FontMutationResult {
-  const nextFonts = fonts.filter((f) => f !== fontToRemove);
+): Promise<FontMutationResult> {
+  const nextFonts = fonts.filter((font) => font !== fontToRemove);
   const detected = extractFontFamilies(nextFonts);
 
   let nextDefault = currentDefaultFont;
+
   if (!detected.includes(currentDefaultFont)) {
     nextDefault = detected.length > 0 ? detected[0] : "";
   }
 
-  saveFontsSettings(nextFonts, nextDefault);
+  await saveFontsSettings({
+    fonts: nextFonts,
+    defaultFont: nextDefault,
+  });
 
   return {
     fonts: nextFonts,
@@ -365,15 +316,17 @@ export function removeFont(
   };
 }
 
-/**
- * Правило: переключить дефолтный шрифт (toggle)
- */
-export function toggleDefaultFont(
+export async function toggleDefaultFont(
   fonts: string[],
   currentDefaultFont: string,
   targetFont: string,
-): string {
+): Promise<string> {
   const nextDefault = currentDefaultFont === targetFont ? "" : targetFont;
-  saveFontsSettings(fonts, nextDefault);
+
+  await saveFontsSettings({
+    fonts,
+    defaultFont: nextDefault,
+  });
+
   return nextDefault;
 }

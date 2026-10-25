@@ -7,8 +7,14 @@ import React, {
   useRef,
 } from "react";
 import { usePreviewArea } from "@/app/plaza/components/PreviewArea/hooks/usePreviewArea";
-import ModalCss from "@/app/plaza/components/PreviewArea/components/ModalCss";
 import { saveGlobalScss } from "@/lib/htmlStorage";
+import dynamic from "next/dynamic";
+const ModalCss = dynamic(
+  () => import("@/app/plaza/components/PreviewArea/components/ModalCss"),
+  {
+    ssr: false,
+  },
+);
 //  ─────🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹──────
 export default function ButtonCss() {
   const { cssCount } = usePreviewArea();
