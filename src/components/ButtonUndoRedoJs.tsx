@@ -61,7 +61,7 @@ export default function ButtonUndoRedoJs() {
     <div className="flex items-center gap-1.5 bg-zinc-900/90 px-2 py-0.5 rounded-md border border-zinc-700/70">
       <button
         type="button"
-        onClick={handleUndoJs}
+        onMouseEnter={handleUndoJs}
         disabled={!canUndoJs}
         title="Undo JS change"
         className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer flex items-center gap-0.5"
@@ -70,7 +70,7 @@ export default function ButtonUndoRedoJs() {
       </button>
       <button
         type="button"
-        onClick={handleRedoJs}
+        onMouseEnter={handleRedoJs}
         disabled={!canRedoJs}
         title="Redo JS change"
         className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer flex items-center gap-0.5"
