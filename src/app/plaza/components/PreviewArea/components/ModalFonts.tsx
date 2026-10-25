@@ -98,11 +98,11 @@ export default function ModalFonts() {
                       }`}
                       title={
                         isDef
-                          ? "Активен как шрифт всего сайта"
-                          : "Сделать шрифтом всего сайта"
+                          ? "Active as the font of the entire website"
+                          : "Make the font of the entire website"
                       }
                     >
-                      {isDef ? "✓ По умолчанию" : "Сделать по умолчанию"}
+                      {isDef ? "✓ Default" : "Make Default"}
                     </button>
                   </div>
                 );

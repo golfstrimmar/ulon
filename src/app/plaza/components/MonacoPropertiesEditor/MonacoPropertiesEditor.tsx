@@ -1,12 +1,24 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import Editor, { type OnMount } from "@monaco-editor/react";
+import dynamic from "next/dynamic";
+import type { OnMount } from "@monaco-editor/react";
 import {
   extractClassSnippet,
   updateClassInGlobalScss,
 } from "@/lib/scssCompiler";
 import { motion, AnimatePresence } from "framer-motion";
+
+// 🔹 Динамический импорт самого Monaco Editor (подгрузится только по клику на класс/атрибуты)
+const Editor = dynamic(() => import("@monaco-editor/react"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[160px] w-full flex items-center justify-center bg-zinc-950 text-xs font-mono text-zinc-500">
+      <span className="animate-pulse">Loading editor...</span>
+    </div>
+  ),
+});
+
 interface MonacoPropertiesEditorProps {
   nodeKey?: string;
   nodeTag?: string;
@@ -17,7 +29,6 @@ interface MonacoPropertiesEditorProps {
   onSaveAttributes?: (
     attributes: Record<string, string>,
   ) => Promise<void> | void;
-  onAddClassToNode?: (className: string) => void;
 }
 
 function ensureSelectorWrapper(className: string, code: string): string {
@@ -44,7 +55,6 @@ export function MonacoPropertiesEditor({
   attributesValue = {},
   onSaveGlobalScss,
   onSaveAttributes,
-  // onAddClassToNode,
 }: MonacoPropertiesEditorProps) {
   const [openTarget, setOpenTarget] = useState<string | null>(null);
   const [currentText, setCurrentText] = useState<string>("");
@@ -52,12 +62,10 @@ export function MonacoPropertiesEditor({
   currentTextRef.current = currentText;
 
   const isDirtyRef = useRef<boolean>(false);
-  const [newClassInput, setNewClassInput] = useState<string>("");
 
   const globalScssRef = useRef<string>(globalScss);
   globalScssRef.current = globalScss;
 
-  // ОПЕРАТИВНОЕ ОБНОВЛЕНИЕ: следит за globalScss и openTarget
   useEffect(() => {
     if (!openTarget) {
       setCurrentText("");
@@ -66,7 +74,6 @@ export function MonacoPropertiesEditor({
       return;
     }
 
-    // Если пользователь прямо сейчас в процессе набора — не сбиваем его
     if (isDirtyRef.current) return;
 
     if (openTarget === "__attributes__") {
@@ -76,7 +83,6 @@ export function MonacoPropertiesEditor({
         currentTextRef.current = formatted;
       }
     } else {
-      // Моментально вытягиваем свежий вариант из глобального SCSS
       const freshSnippet = extractClassSnippet(globalScss, openTarget);
       if (freshSnippet !== currentTextRef.current) {
         setCurrentText(freshSnippet);
@@ -85,7 +91,6 @@ export function MonacoPropertiesEditor({
     }
   }, [globalScss, openTarget, attributesValue]);
 
-  // Сохранение вызывается ТОЛЬКО по событию (blur, закрытие, Ctrl+S)
   const saveCurrentOpenTarget = (targetToSave: string | null = openTarget) => {
     if (!targetToSave || !isDirtyRef.current) return;
 
@@ -154,31 +159,6 @@ export function MonacoPropertiesEditor({
     setOpenTarget("__attributes__");
   };
 
-  // const handleAddNewClass = (e?: React.FormEvent) => {
-  //   if (e) e.preventDefault();
-  //   const clean = newClassInput.trim().replace(/^\./, "");
-  //   if (!clean) return;
-
-  //   if (openTarget) {
-  //     saveCurrentOpenTarget(openTarget);
-  //   }
-
-  //   if (onAddClassToNode) {
-  //     onAddClassToNode(clean);
-  //   }
-
-  //   // Если такой класс уже есть в globalScss — берем его, если нет — создаем заготовку
-  //   const existing = extractClassSnippet(globalScssRef.current, clean);
-  //   const template =
-  //     existing !== `.${clean} {\n  \n}` ? existing : `.${clean} {\n  \n}`;
-
-  //   setCurrentText(template);
-  //   currentTextRef.current = template;
-  //   isDirtyRef.current = true;
-  //   setOpenTarget(clean);
-  //   setNewClassInput("");
-  // };
-
   const handleDeleteCurrentClassCss = () => {
     if (!openTarget || openTarget === "__attributes__") return;
     const targetToDelete = openTarget;
@@ -202,7 +182,6 @@ export function MonacoPropertiesEditor({
     setOpenTarget(null);
   };
 
-  // Слушаем потерю фокуса и Ctrl+S в Monaco
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     editor.onDidBlurEditorText(() => {
       saveCurrentOpenTarget();
@@ -220,7 +199,7 @@ export function MonacoPropertiesEditor({
   return (
     <div className="w-full flex flex-col gap-2">
       <div className="flex flex-wrap justify-between items-center gap-1.5 p-2 rounded-lg bg-zinc-950/80 border border-zinc-800">
-        {/*-----Classes-----*/}
+        {/* Classes section */}
         <div className="flex items-center gap-1.5">
           <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-semibold mr-1 shrink-0">
             Classes:
@@ -236,7 +215,7 @@ export function MonacoPropertiesEditor({
                   key={cls}
                   type="button"
                   onClick={() => handleToggleClass(cls)}
-                  title={`Редактировать SCSS для .${cls}`}
+                  title={`Edit SCSS for .${cls}`}
                   className={`px-2 py-0.5 rounded text-[11px] font-mono border transition cursor-pointer flex items-center gap-1.5 ${
                     isOpen
                       ? "bg-indigo-600 border-indigo-400 text-white font-bold shadow"
@@ -258,26 +237,8 @@ export function MonacoPropertiesEditor({
             </span>
           )}
         </div>
-        {/*<form
-          onSubmit={handleAddNewClass}
-          className="flex items-center gap-1 ml-auto shrink-0"
-        >
-          <input
-            type="text"
-            value={newClassInput}
-            onChange={(e) => setNewClassInput(e.target.value)}
-            placeholder="+ класс"
-            className="w-24 px-2 py-0.5 text-[11px] font-mono rounded bg-zinc-900 border border-zinc-700 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-indigo-500"
-          />
-          <button
-            type="submit"
-            disabled={!newClassInput.trim()}
-            className="px-2 py-0.5 text-[11px] font-mono font-bold rounded bg-zinc-800 hover:bg-indigo-600 hover:text-white text-zinc-300 border border-zinc-700 transition cursor-pointer disabled:opacity-40"
-          >
-            +
-          </button>
-        </form>*/}
-        {/*-----Attributes----*/}
+
+        {/* Attributes button */}
         <button
           type="button"
           onClick={handleToggleAttributes}
@@ -295,6 +256,7 @@ export function MonacoPropertiesEditor({
           )}
         </button>
       </div>
+
       <AnimatePresence>
         {openTarget && (
           <motion.div
@@ -308,7 +270,7 @@ export function MonacoPropertiesEditor({
               <span className="text-[12px] font-mono font-bold text-indigo-200">
                 {openTarget !== "__attributes__"
                   ? `SCSS: .${openTarget}`
-                  : `Атрибуты <${nodeTag}> (JSON)`}
+                  : `Attributes <${nodeTag}> (JSON)`}
               </span>
 
               <div className="flex items-center gap-2">
