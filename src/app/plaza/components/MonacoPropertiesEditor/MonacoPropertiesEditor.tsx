@@ -3,6 +3,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import type { OnMount } from "@monaco-editor/react";
+import ModalCustomStyles from "@/app/plaza/components/CanvasArea/components/ModalCustomStyles";
+
 import {
   extractClassSnippet,
   updateClassInGlobalScss,
@@ -193,6 +195,116 @@ export function MonacoPropertiesEditor({
     });
   };
 
+  // 🔹 УДАЛЕНИЕ ВЗАИМОИСКЛЮЧАЮЩИХ CSS СВОЙСТВ
+  const cleanConflictingProperties = (
+    existingCss: string,
+    newSnippet: string,
+  ): string => {
+    // 1. Извлекаем имена свойств, которые приходят в новом сниппете (например: "display", "justify-content")
+    const newPropertyNames: string[] = [];
+    const propRegex = /([a-zA-Z0-9_-]+)\s*:/g;
+    let match: RegExpExecArray | null;
+
+    while ((match = propRegex.exec(newSnippet)) !== null) {
+      newPropertyNames.push(match[1].toLowerCase());
+    }
+    // Если ставим общий gap: — чистим частные row-gap и column-gap
+    if (newPropertyNames.includes("gap")) {
+      newPropertyNames.push("row-gap", "column-gap");
+    }
+    // Если ставим частный row-gap или column-gap — удаляем общий gap
+    if (
+      newPropertyNames.includes("row-gap") ||
+      newPropertyNames.includes("column-gap")
+    ) {
+      newPropertyNames.push("gap");
+    }
+    // Если добавляем Grid — подчищаем связанные свойства Flex (flex-direction, align-items и т.д.)
+    if (newSnippet.includes("display: grid")) {
+      newPropertyNames.push("flex-direction", "flex-wrap");
+    }
+
+    // Если добавляем Flex — подчищаем свойства Grid
+    if (newSnippet.includes("display: flex")) {
+      newPropertyNames.push(
+        "grid-template-columns",
+        "grid-template-rows",
+        "grid-auto-flow",
+      );
+    }
+
+    // 2. Построчно фильтруем существующий CSS, удаляя старые конфликтующие строки
+    let lines = existingCss.split("\n");
+
+    lines = lines.filter((line) => {
+      const trimmed = line.trim();
+      // Не трогаем скобки и селекторы
+      if (
+        !trimmed ||
+        trimmed.startsWith(".") ||
+        trimmed.startsWith("&") ||
+        trimmed === "}"
+      ) {
+        return true;
+      }
+
+      const colonIndex = trimmed.indexOf(":");
+      if (colonIndex !== -1) {
+        const propName = trimmed.slice(0, colonIndex).trim().toLowerCase();
+        // Если это свойство перезаписывается новым пресетом — выкидываем старую строку
+        if (newPropertyNames.includes(propName)) {
+          return false;
+        }
+      }
+      return true;
+    });
+
+    return lines.join("\n");
+  };
+
+  // 🔹 ВСТАВКА СНИППЕТА С АВТОМАТИЧЕСКИМ РАЗРЕШЕНИЕМ КОНФЛИКТОВ
+  const handleApplySnippet = (snippetCss: string) => {
+    if (!openTarget || openTarget === "__attributes__") return;
+
+    let text = currentTextRef.current.trim();
+
+    // 1. Сначала вычищаем все конфликтующие свойства из текущего кода
+    if (text) {
+      text = cleanConflictingProperties(text, snippetCss);
+    }
+
+    // 2. Вставляем новый пресет
+    if (
+      !text ||
+      text === `.${openTarget} {\n  \n}` ||
+      text === `.${openTarget} {}`
+    ) {
+      text = `.${openTarget} {\n  ${snippetCss}\n}`;
+    } else if (text.endsWith("}")) {
+      const lastBraceIndex = text.lastIndexOf("}");
+      const before = text.slice(0, lastBraceIndex).trimEnd();
+      text = `${before}\n  ${snippetCss.split("\n").join("\n  ")}\n}`;
+    } else {
+      text = `${text}\n  ${snippetCss}`;
+    }
+
+    // 3. Синхронизируем состояние Monaco
+    setCurrentText(text);
+    currentTextRef.current = text;
+    isDirtyRef.current = false;
+
+    // 4. Оборачиваем и пишем в общий бандл
+    const preparedCode = ensureSelectorWrapper(openTarget, text);
+    const nextScss = updateClassInGlobalScss(
+      globalScssRef.current,
+      openTarget,
+      preparedCode,
+    );
+    globalScssRef.current = nextScss;
+
+    // 5. Сохраняем в IndexedDB и пишем в историю Undo
+    onSaveGlobalScss(nextScss);
+  };
   const attrsCount = useMemo(() => {
     return Object.keys(attributesValue || {}).length;
   }, [attributesValue]);
@@ -215,7 +327,7 @@ export function MonacoPropertiesEditor({
                 <button
                   key={cls}
                   type="button"
-                  onClick={() => handleToggleClass(cls)}
+                  onMouseEnter={() => handleToggleClass(cls)}
                   title={`Edit SCSS for .${cls}`}
                   className={`px-2 py-0.5 rounded text-[11px] font-mono border transition cursor-pointer flex items-center gap-1.5 ${
                     isOpen
@@ -274,6 +386,12 @@ export function MonacoPropertiesEditor({
                   : `Attributes <${nodeTag}> (JSON)`}
               </span>
               <ButtonUndoRedoScss />
+              {openTarget !== "__attributes__" && (
+                <ModalCustomStyles
+                  currentClass={openTarget}
+                  onApplySnippet={handleApplySnippet}
+                />
+              )}
               <div className="flex items-center gap-2">
                 {openTarget !== "__attributes__" && (
                   <button

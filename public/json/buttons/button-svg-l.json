@@ -3,7 +3,7 @@
     "tag": "button",
     "text": "",
     "class": "button-svg-l",
-    "style": "width: 40px;height: 40px;cursor: pointer;border-radius: 50%;border: none;background: color-mix(in srgb, var(--accent) 13%, transparent);backdrop-filter: blur(8px);color: var(--slate-400);outline: 2px solid transparent;outline-offset: 2px;transition: all 0.2s ease;&::after {  font-size: 16px;  font-weight: bold;}&:hover {  background: var(--accent);  outline-color: var(--acent);  color: var(--teal-400);}&:active {  background: var(--teal-300);  outline-color: var(--acent);  color: var(--teal-200);}",
+    "style": "width: 40px;height: 40px;display: flex;justify-content: center; align-items: center; cursor: pointer;border-radius: 50%;border: none;background: color-mix(in srgb, var(--accent) 13%, transparent);backdrop-filter: blur(8px);color: var(--slate-400);outline: 2px solid transparent;outline-offset: 2px;transition: all 0.2s ease;&::after {  font-size: 16px;  font-weight: bold;}&:hover {  background: var(--accent);  outline-color: var(--acent);  color: var(--teal-400);}&:active {  background: var(--teal-300);  outline-color: var(--acent);  color: var(--teal-200);}",
     "children": [
       {
         "tag": "svg",

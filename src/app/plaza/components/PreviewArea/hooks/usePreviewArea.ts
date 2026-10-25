@@ -29,23 +29,20 @@ export function usePreviewArea() {
   const [isFontsPanelOpen, setIsFontsPanelOpen] = useState<boolean>(false);
   const [newFontInput, setNewFontInput] = useState<string>("");
 
-  const [fontEntries, setFontEntries] = useState<string[]>([]);
   const fontEntriesRef = useRef<string[]>([]);
-  fontEntriesRef.current = fontEntries;
+  const [fontEntries, setFontEntries] = useState<string[]>([]);
 
-  const [defaultFont, setDefaultFont] = useState<string>("");
   const defaultFontRef = useRef<string>("");
-  defaultFontRef.current = defaultFont;
+  const [defaultFont, setDefaultFont] = useState<string>("");
 
-  const [compiledCss, setCompiledCss] = useState<string>("");
   const compiledCssRef = useRef<string>("");
-  compiledCssRef.current = compiledCss;
+  const [compiledCss, setCompiledCss] = useState<string>("");
 
-  const [scriptsJs, setScriptsJs] = useState<Record<string, string>>({});
   const scriptsJsRef = useRef<Record<string, string>>({});
-  scriptsJsRef.current = scriptsJs;
+  const [scriptsJs, setScriptsJs] = useState<Record<string, string>>({});
 
-  const updatePreviewDoc = (
+  // Полная пересборка srcDoc (вызывается ТОЛЬКО при старте или смене шрифтов)
+  const rebuildEntireIframe = (
     bodyHtml: string,
     fonts = fontEntriesRef.current,
     defFont = defaultFontRef.current,
@@ -123,16 +120,32 @@ export function usePreviewArea() {
   }, []);
 
   /* ==========================================================================
-     2. РЕАКЦИЯ НА СОБЫТИЯ ШИНЫ
+     2. РЕАКЦИЯ НА СОБЫТИЯ ШИНЫ (БЕЗ МОРГАНИЯ)
      ========================================================================== */
 
-  // Изменение дерева HTML
+  // 🔹 Изменение дерева HTML: если HTML не изменился — НЕ ТРОГАЕМ IFRAME!
   useEffect(() => {
     const handleTreeUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<HtmlNode[]>;
       const nodes = customEvent.detail;
-      const html = nodes && nodes.length > 0 ? renderTree(nodes) : "";
-      updatePreviewDoc(html);
+      const nextHtml = nodes && nodes.length > 0 ? renderTree(nodes) : "";
+
+      // 🛡️ ЗАЩИТА ОТ МОРГАНИЯ: если разметка та же самая — не перезагружаем!
+      if (nextHtml === currentBodyHtmlRef.current) {
+        return;
+      }
+
+      currentBodyHtmlRef.current = nextHtml;
+      setIsEmpty(!nextHtml.trim());
+
+      // Если iframe уже есть — обновляем только body без вспышки
+      const iframeDoc = iframeRef.current?.contentDocument;
+      if (iframeDoc && iframeDoc.body) {
+        iframeDoc.body.innerHTML = nextHtml;
+        return;
+      }
+
+      rebuildEntireIframe(nextHtml);
     };
 
     window.addEventListener("plaza-tree-updated", handleTreeUpdate);
@@ -140,7 +153,7 @@ export function usePreviewArea() {
       window.removeEventListener("plaza-tree-updated", handleTreeUpdate);
   }, []);
 
-  // Изменение глобального SCSS
+  // 🔹 Изменение SCSS: инжектим CSS напрямую в DOM iframe БЕЗ ПЕРЕЗАГРУЗКИ SRCDOC!
   useEffect(() => {
     const handleStylesUpdate = async (e: Event) => {
       const customEvent = e as CustomEvent<string | Record<string, string>>;
@@ -155,12 +168,31 @@ export function usePreviewArea() {
       setCompiledCss(css);
       compiledCssRef.current = css;
 
-      updatePreviewDoc(
+      const iframeDoc = iframeRef.current?.contentDocument;
+      if (iframeDoc) {
+        let styleTag = iframeDoc.getElementById(
+          "compiled-classes-styles",
+        ) as HTMLStyleElement | null;
+        if (!styleTag) {
+          styleTag = iframeDoc.createElement("style");
+          styleTag.id = "compiled-classes-styles";
+          iframeDoc.head.appendChild(styleTag);
+        }
+
+        // Мгновенное обновление CSS текста
+        styleTag.textContent = css;
+
+        // Удаляем временный live-стиль бесшовно
+        iframeDoc.getElementById("__plaza_live_quick_style__")?.remove();
+        document.getElementById("__plaza_live_quick_style__")?.remove();
+        return;
+      }
+
+      rebuildEntireIframe(
         currentBodyHtmlRef.current,
-        fontEntriesRef.current,
-        defaultFontRef.current,
+        undefined,
+        undefined,
         css,
-        scriptsJsRef.current,
       );
     };
 
@@ -169,7 +201,7 @@ export function usePreviewArea() {
       window.removeEventListener("plaza-styles-updated", handleStylesUpdate);
   }, []);
 
-  // В блоке 2. РЕАКЦИЯ НА СОБЫТИЯ ШИНЫ в usePreviewArea.ts:
+  // Изменение скриптов JS
   useEffect(() => {
     const handleScriptsUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<string | Record<string, string>>;
@@ -185,11 +217,13 @@ export function usePreviewArea() {
 
       setScriptsJs(nextScripts);
       scriptsJsRef.current = nextScripts;
-      updatePreviewDoc(
+
+      // Скрипты требуют перезапуска песочницы
+      rebuildEntireIframe(
         currentBodyHtmlRef.current,
-        fontEntriesRef.current,
-        defaultFontRef.current,
-        compiledCssRef.current,
+        undefined,
+        undefined,
+        undefined,
         nextScripts,
       );
     };
@@ -199,7 +233,7 @@ export function usePreviewArea() {
       window.removeEventListener("plaza-scripts-updated", handleScriptsUpdate);
   }, []);
 
-  // 🔹🔹 ДОБАВЛЕНО: Реакция на изменение шрифтов по всему приложению 🔹🔹
+  // Изменение шрифтов
   useEffect(() => {
     const handleFontsSync = (e: Event) => {
       const customEvent = e as CustomEvent<{
@@ -214,14 +248,7 @@ export function usePreviewArea() {
       setDefaultFont(nextDef);
       defaultFontRef.current = nextDef;
 
-      // Моментально пересобираем документ в PreviewArea
-      updatePreviewDoc(
-        currentBodyHtmlRef.current,
-        fonts,
-        nextDef,
-        compiledCssRef.current,
-        scriptsJsRef.current,
-      );
+      rebuildEntireIframe(currentBodyHtmlRef.current, fonts, nextDef);
     };
 
     window.addEventListener("plaza-fonts-updated", handleFontsSync);
@@ -233,7 +260,6 @@ export function usePreviewArea() {
      3. МЕТОДЫ УПРАВЛЕНИЯ
      ========================================================================== */
 
-  // Хелпер оповещения шины
   const broadcastFonts = (fonts: string[], defFont: string) => {
     window.dispatchEvent(
       new CustomEvent("plaza-fonts-updated", {
@@ -246,9 +272,7 @@ export function usePreviewArea() {
     setIsFontsPanelOpen((prev) => {
       const next = !prev;
       window.dispatchEvent(
-        new CustomEvent("preview-fontspanel", {
-          detail: next,
-        }),
+        new CustomEvent("preview-fontspanel", { detail: next }),
       );
       return next;
     });
@@ -259,16 +283,12 @@ export function usePreviewArea() {
     if (!newFontInput.trim()) return;
 
     const result = await addFont(fontEntries, newFontInput, defaultFont);
-
     setFontEntries(result.fonts);
     fontEntriesRef.current = result.fonts;
-
     setDefaultFont(result.defaultFont);
     defaultFontRef.current = result.defaultFont;
-
     setNewFontInput("");
 
-    // Оповещаем другие инстансы (включая PreviewArea)
     broadcastFonts(result.fonts, result.defaultFont);
   };
 
@@ -279,7 +299,6 @@ export function usePreviewArea() {
     setDefaultFont(result.defaultFont);
     defaultFontRef.current = result.defaultFont;
 
-    // Оповещаем другие инстансы
     broadcastFonts(result.fonts, result.defaultFont);
   };
 
@@ -292,7 +311,6 @@ export function usePreviewArea() {
     setDefaultFont(nextDefault);
     defaultFontRef.current = nextDefault;
 
-    // Оповещаем другие инстансы
     broadcastFonts(fontEntries, nextDefault);
   };
 

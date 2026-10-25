@@ -44,6 +44,26 @@ export default function ModalNodeProperties({
   onAddClassToNode,
   updateAndPersistScss,
 }: ModalNodePropertiesProps) {
+  const TextsDefault = [
+    {
+      key: "Lorem 5",
+      value: "Lorem",
+    },
+    {
+      key: "Lorem 10",
+      value: "Lorem ipsum",
+    },
+    {
+      key: "Lorem 15",
+      value: "Lorem ipsum dolor",
+    },
+    {
+      key: "Lorem 20",
+      value:
+        "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Iusto  consequatur minus quam, nisi perferendis, vel quaerat commodi  deleniti molestias laboriosam saepe, eius quisquam dignissimos  laborum vero repellat dolorem. Autem, ab!",
+    },
+  ];
+
   return (
     <AnimatePresence>
       {clickedKey && selectedNode && (
@@ -58,7 +78,7 @@ export default function ModalNodeProperties({
             {/* Кнопка закрытия модалки */}
             <button
               type="button"
-              onClick={(e) => {
+              onMouseEnter={(e) => {
                 e.stopPropagation();
                 onClose();
               }}
@@ -128,9 +148,24 @@ export default function ModalNodeProperties({
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 block">
-                    Text
-                  </label>
+                  <div className="flex items-center gap-2 mb-1">
+                    <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 block">
+                      Text
+                    </label>
+                    {TextsDefault.map((item, index) => (
+                      <button
+                        key={index}
+
+                        onClick={async () => {
+                          setEditText(item.value); // 1. Сразу обновляем поле в UI
+                          await onSaveNodeField("text", item.value); // 2. Сохраняем в ноду
+                        }}
+                        className="btn grey-btn"
+                      >
+                        {item.key}
+                      </button>
+                    ))}
+                  </div>
                   <textarea
                     value={editText}
                     onChange={(e) => setEditText(e.target.value)}
