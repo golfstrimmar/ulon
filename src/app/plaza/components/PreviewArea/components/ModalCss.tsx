@@ -4,12 +4,13 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Editor from "@monaco-editor/react";
 import { getGlobalScss, saveGlobalScss } from "@/lib/htmlStorage";
-
+import Spinner from "@/components/Spinner";
+import ButtonClose from "@/components/ButtonClose";
 interface ModalCssProps {
   openModalCss: boolean;
   setopenModalCss: (open: boolean) => void;
 }
-
+//  ─────🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹──────
 export default function ModalCss({
   openModalCss,
   setopenModalCss,
@@ -39,7 +40,7 @@ export default function ModalCss({
       );
 
       setIsSaved(true);
-      setTimeout(() => setIsSaved(false), 2000);
+      setTimeout(() => setIsSaved(false), 800);
     } catch (err) {
       console.error("[ModalCss] Failed to save SCSS to IndexedDB:", err);
     } finally {
@@ -68,10 +69,7 @@ export default function ModalCss({
           <div className="flex items-center justify-between pb-3 border-b border-zinc-800 mb-3">
             <div className="flex items-center gap-3">
               <span className="text-sm font-mono font-bold text-zinc-200">
-                Глобальный SCSS Редактор (styles.scss)
-              </span>
-              <span className="text-xs text-indigo-400 font-mono">
-                (Поддержка вложенности, переменных $var, &:hover)
+                SCSS Editor
               </span>
             </div>
 
@@ -80,22 +78,16 @@ export default function ModalCss({
                 type="button"
                 onClick={handleSave}
                 disabled={isSaving}
-                className={`px-3 py-1.5 rounded text-xs font-mono font-semibold transition-all cursor-pointer flex items-center gap-1.5 border ${
+                className={`min-w-[118px] px-3 py-1.5 rounded text-xs font-mono font-semibold transition-all cursor-pointer flex justify-center items-center gap-1.5 border ${
                   isSaved
                     ? "bg-emerald-600/20 border-emerald-500 text-emerald-300"
                     : "bg-indigo-600 hover:bg-indigo-500 border-indigo-400 text-white shadow-lg"
                 }`}
               >
-                {isSaved ? "✓ Сохранено в базу" : "Сохранить (Ctrl+S)"}
+                {isSaved ? <Spinner size={15} /> : "Save (Ctrl+S)"}
               </button>
 
-              <button
-                type="button"
-                onClick={() => setopenModalCss(false)}
-                className="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-red-600 border border-zinc-700 text-white text-sm font-bold flex items-center justify-center transition-all cursor-pointer"
-              >
-                ✕
-              </button>
+              <ButtonClose setClose={setopenModalCss} />
             </div>
           </div>
 
@@ -108,7 +100,7 @@ export default function ModalCss({
               onChange={(value) => setScssCode(value || "")}
               onMount={handleEditorDidMount}
               options={{
-                fontSize: 13,
+                fontSize: 14,
                 fontFamily: "monospace",
                 minimap: { enabled: true },
                 scrollBeyondLastLine: false,
@@ -117,6 +109,7 @@ export default function ModalCss({
                 formatOnPaste: true,
                 lineNumbers: "on",
                 wordWrap: "on",
+                padding: { top: 10, bottom: 10 },
               }}
             />
           </div>

@@ -6,7 +6,7 @@ import {
   extractClassSnippet,
   updateClassInGlobalScss,
 } from "@/lib/scssCompiler";
-
+import { motion, AnimatePresence } from "framer-motion";
 interface MonacoPropertiesEditorProps {
   nodeKey?: string;
   nodeTag?: string;
@@ -44,7 +44,7 @@ export function MonacoPropertiesEditor({
   attributesValue = {},
   onSaveGlobalScss,
   onSaveAttributes,
-  onAddClassToNode,
+  // onAddClassToNode,
 }: MonacoPropertiesEditorProps) {
   const [openTarget, setOpenTarget] = useState<string | null>(null);
   const [currentText, setCurrentText] = useState<string>("");
@@ -154,30 +154,30 @@ export function MonacoPropertiesEditor({
     setOpenTarget("__attributes__");
   };
 
-  const handleAddNewClass = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    const clean = newClassInput.trim().replace(/^\./, "");
-    if (!clean) return;
+  // const handleAddNewClass = (e?: React.FormEvent) => {
+  //   if (e) e.preventDefault();
+  //   const clean = newClassInput.trim().replace(/^\./, "");
+  //   if (!clean) return;
 
-    if (openTarget) {
-      saveCurrentOpenTarget(openTarget);
-    }
+  //   if (openTarget) {
+  //     saveCurrentOpenTarget(openTarget);
+  //   }
 
-    if (onAddClassToNode) {
-      onAddClassToNode(clean);
-    }
+  //   if (onAddClassToNode) {
+  //     onAddClassToNode(clean);
+  //   }
 
-    // Если такой класс уже есть в globalScss — берем его, если нет — создаем заготовку
-    const existing = extractClassSnippet(globalScssRef.current, clean);
-    const template =
-      existing !== `.${clean} {\n  \n}` ? existing : `.${clean} {\n  \n}`;
+  //   // Если такой класс уже есть в globalScss — берем его, если нет — создаем заготовку
+  //   const existing = extractClassSnippet(globalScssRef.current, clean);
+  //   const template =
+  //     existing !== `.${clean} {\n  \n}` ? existing : `.${clean} {\n  \n}`;
 
-    setCurrentText(template);
-    currentTextRef.current = template;
-    isDirtyRef.current = true;
-    setOpenTarget(clean);
-    setNewClassInput("");
-  };
+  //   setCurrentText(template);
+  //   currentTextRef.current = template;
+  //   isDirtyRef.current = true;
+  //   setOpenTarget(clean);
+  //   setNewClassInput("");
+  // };
 
   const handleDeleteCurrentClassCss = () => {
     if (!openTarget || openTarget === "__attributes__") return;
@@ -219,44 +219,46 @@ export function MonacoPropertiesEditor({
 
   return (
     <div className="w-full flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-lg bg-zinc-950/80 border border-zinc-800">
-        <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-semibold mr-1 shrink-0">
-          Классы:
-        </span>
-
-        {nodeClasses.length > 0 ? (
-          nodeClasses.map((cls) => {
-            const isOpen = openTarget === cls;
-            const hasSnippet = globalScss.includes(`.${cls}`);
-
-            return (
-              <button
-                key={cls}
-                type="button"
-                onClick={() => handleToggleClass(cls)}
-                title={`Редактировать SCSS для .${cls}`}
-                className={`px-2 py-0.5 rounded text-[11px] font-mono border transition cursor-pointer flex items-center gap-1.5 ${
-                  isOpen
-                    ? "bg-indigo-600 border-indigo-400 text-white font-bold shadow"
-                    : hasSnippet
-                      ? "bg-zinc-900 border-zinc-700 text-emerald-400 hover:bg-zinc-800"
-                      : "bg-zinc-900 border-zinc-750 text-zinc-300 hover:bg-zinc-800"
-                }`}
-              >
-                <span>.{cls}</span>
-                {hasSnippet && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                )}
-              </button>
-            );
-          })
-        ) : (
-          <span className="text-[11px] font-mono text-zinc-500 italic">
-            Нет классов
+      <div className="flex flex-wrap justify-between items-center gap-1.5 p-2 rounded-lg bg-zinc-950/80 border border-zinc-800">
+        {/*-----Classes-----*/}
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-semibold mr-1 shrink-0">
+            Classes:
           </span>
-        )}
 
-        <form
+          {nodeClasses.length > 0 ? (
+            nodeClasses.map((cls) => {
+              const isOpen = openTarget === cls;
+              const hasSnippet = globalScss.includes(`.${cls}`);
+
+              return (
+                <button
+                  key={cls}
+                  type="button"
+                  onClick={() => handleToggleClass(cls)}
+                  title={`Редактировать SCSS для .${cls}`}
+                  className={`px-2 py-0.5 rounded text-[11px] font-mono border transition cursor-pointer flex items-center gap-1.5 ${
+                    isOpen
+                      ? "bg-indigo-600 border-indigo-400 text-white font-bold shadow"
+                      : hasSnippet
+                        ? "bg-zinc-900 border-zinc-700 text-emerald-400 hover:bg-zinc-800"
+                        : "bg-zinc-900 border-zinc-750 text-zinc-300 hover:bg-zinc-800"
+                  }`}
+                >
+                  <span>.{cls}</span>
+                  {hasSnippet && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  )}
+                </button>
+              );
+            })
+          ) : (
+            <span className="text-[11px] font-mono text-zinc-500 italic">
+              No classes
+            </span>
+          )}
+        </div>
+        {/*<form
           onSubmit={handleAddNewClass}
           className="flex items-center gap-1 ml-auto shrink-0"
         >
@@ -274,8 +276,8 @@ export function MonacoPropertiesEditor({
           >
             +
           </button>
-        </form>
-
+        </form>*/}
+        {/*-----Attributes----*/}
         <button
           type="button"
           onClick={handleToggleAttributes}
@@ -285,7 +287,7 @@ export function MonacoPropertiesEditor({
               : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
           }`}
         >
-          <span>⚙️ Атрибуты</span>
+          <span>⚙️ Attributes</span>
           {attrsCount > 0 && (
             <span className="px-1 py-0.1 bg-indigo-950 border border-indigo-700/80 text-indigo-300 rounded-full text-[9px]">
               {attrsCount}
@@ -293,66 +295,73 @@ export function MonacoPropertiesEditor({
           )}
         </button>
       </div>
+      <AnimatePresence>
+        {openTarget && (
+          <motion.div
+            initial={{ height: 0, opacity: 0, y: 0 }}
+            animate={{ height: "auto", opacity: 1, y: 0 }}
+            exit={{ height: 0, opacity: 0, y: 0 }}
+            transition={{ duration: 0.1, ease: "easeInOut" }}
+            className="w-full flex flex-col rounded-lg border border-indigo-500/60 bg-zinc-950 overflow-hidden shadow-xl"
+          >
+            <div className="flex items-center justify-between px-3 py-1.5 bg-indigo-950/70 border-b border-indigo-900/60 select-none">
+              <span className="text-[12px] font-mono font-bold text-indigo-200">
+                {openTarget !== "__attributes__"
+                  ? `SCSS: .${openTarget}`
+                  : `Атрибуты <${nodeTag}> (JSON)`}
+              </span>
 
-      {openTarget && (
-        <div className="w-full flex flex-col rounded-lg border border-indigo-500/60 bg-zinc-950 overflow-hidden shadow-xl">
-          <div className="flex items-center justify-between px-3 py-1.5 bg-indigo-950/70 border-b border-indigo-900/60 select-none">
-            <span className="text-[12px] font-mono font-bold text-indigo-200">
-              {openTarget !== "__attributes__"
-                ? `SCSS: .${openTarget}`
-                : `Атрибуты <${nodeTag}> (JSON)`}
-            </span>
+              <div className="flex items-center gap-2">
+                {openTarget !== "__attributes__" && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteCurrentClassCss}
+                    className="text-[10px] font-mono text-zinc-400 hover:text-red-400 px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 transition cursor-pointer"
+                  >
+                    ✕ Clear
+                  </button>
+                )}
 
-            <div className="flex items-center gap-2">
-              {openTarget !== "__attributes__" && (
                 <button
                   type="button"
-                  onClick={handleDeleteCurrentClassCss}
-                  className="text-[10px] font-mono text-zinc-400 hover:text-red-400 px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 transition cursor-pointer"
+                  onClick={handleCloseEditor}
+                  className="text-[10px] font-mono font-bold text-white px-2.5 py-0.5 rounded bg-indigo-600 hover:bg-indigo-500 shadow transition cursor-pointer"
                 >
-                  ✕ Очистить
+                  ✓ Save / Close
                 </button>
-              )}
-
-              <button
-                type="button"
-                onClick={handleCloseEditor}
-                className="text-[10px] font-mono font-bold text-white px-2.5 py-0.5 rounded bg-indigo-600 hover:bg-indigo-500 shadow transition cursor-pointer"
-              >
-                ✓ Сохранить / Закрыть
-              </button>
+              </div>
             </div>
-          </div>
 
-          <div className="h-[160px] w-full relative">
-            <Editor
-              key={openTarget}
-              height="160px"
-              theme="vs-dark"
-              language={openTarget === "__attributes__" ? "json" : "scss"}
-              value={currentText}
-              onChange={(val) => {
-                const text = val || "";
-                setCurrentText(text);
-                currentTextRef.current = text;
-                isDirtyRef.current = true;
-              }}
-              onMount={handleEditorDidMount}
-              options={{
-                readOnly: false,
-                minimap: { enabled: false },
-                fontSize: 12,
-                fontFamily: "var(--font-mono), monospace",
-                lineNumbers: "on",
-                scrollBeyondLastLine: false,
-                automaticLayout: true,
-                wordWrap: "on",
-                tabSize: 2,
-              }}
-            />
-          </div>
-        </div>
-      )}
+            <div className="h-[160px] w-full relative">
+              <Editor
+                key={openTarget}
+                height="160px"
+                theme="vs-dark"
+                language={openTarget === "__attributes__" ? "json" : "scss"}
+                value={currentText}
+                onChange={(val) => {
+                  const text = val || "";
+                  setCurrentText(text);
+                  currentTextRef.current = text;
+                  isDirtyRef.current = true;
+                }}
+                onMount={handleEditorDidMount}
+                options={{
+                  readOnly: false,
+                  minimap: { enabled: false },
+                  fontSize: 12,
+                  fontFamily: "var(--font-mono), monospace",
+                  lineNumbers: "on",
+                  scrollBeyondLastLine: false,
+                  automaticLayout: true,
+                  wordWrap: "on",
+                  tabSize: 2,
+                }}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

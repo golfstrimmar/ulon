@@ -8,30 +8,23 @@ import React, {
 } from "react";
 import { usePreviewArea } from "@/app/plaza/components/PreviewArea/hooks/usePreviewArea";
 import ModalCss from "@/app/plaza/components/PreviewArea/components/ModalCss";
-
+import { saveGlobalScss } from "@/lib/htmlStorage";
 //  ─────🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹──────
 export default function ButtonCss() {
-  const {
-    iframeRef,
-    srcDoc,
-    isEmpty,
-    isCollapsed,
-    setIsCollapsed,
-    isFontsPanelOpen,
-    setIsFontsPanelOpen,
-    newFontInput,
-    setNewFontInput,
-    fontEntries,
-    defaultFont,
-    detectedFamilies,
-    cssCount,
-    scriptsCount,
-    handleAddFont,
-    handleRemoveFont,
-    handleSetDefaultFont,
-  } = usePreviewArea();
+  const { cssCount } = usePreviewArea();
   const [openModalCss, setopenModalCss] = useState<boolean>(false);
-
+  const clearScss = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await saveGlobalScss("");
+      // Оповещаем все компоненты
+      window.dispatchEvent(
+        new CustomEvent("plaza-styles-updated", { detail: "" }),
+      );
+    } catch (err) {
+      console.error("[ModalCss] Failed to save SCSS to IndexedDB:", err);
+    }
+  };
   return (
     <>
       <button
@@ -59,6 +52,14 @@ export default function ButtonCss() {
         >
           {cssCount}
         </span>
+        {cssCount > 0 && (
+          <i
+            onClick={(e) => clearScss(e)}
+            className=" text-red-500 h-4 rounded-lg bg-zinc-500 hover:bg-red-600 hover:text-white border border-zinc-700  text-[10px] font-bold flex flex-col justify-center transition-all cursor-pointer px-1  duration-200"
+          >
+            CLEAR
+          </i>
+        )}
       </button>
       <ModalCss openModalCss={openModalCss} setopenModalCss={setopenModalCss} />
     </>

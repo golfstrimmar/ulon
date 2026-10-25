@@ -8,8 +8,8 @@ import {
   deleteHtmlJson,
   getGlobalScss,
   saveGlobalScss,
-  getScriptsJs,
-  saveScriptsJs,
+  getGlobalJs,
+  saveGlobalJs,
 } from "@/lib/htmlStorage";
 import {
   generateNodeKey,
@@ -23,23 +23,61 @@ import {
 import { ROOT_TAGS, ELEMENT_FOLDERS } from "./elementsManifest";
 import { MonacoPropertiesEditor } from "../MonacoPropertiesEditor/MonacoPropertiesEditor";
 import { motion, AnimatePresence } from "framer-motion";
-
+import { updateScriptInGlobalBundle } from "@/lib/jsCompiler";
 const DB_KEY = "plaza_tree";
 
 function sanitizeCssBody(css: string): string {
   return css.replace(/\}\s*;/g, "}").trim();
 }
 
-function extractInlineStylesToClasses(nodes: HtmlNode[]): {
+/**
+ * ИЗВЛЕКАЕТ И СТИЛИ, И СКРИПТЫ ИЗ НОД
+ * Любой node.style, node.script, node.js или <script> вытаскивается,
+ * а очищенные ноды отдаются в разметку.
+ */
+function extractStylesAndScriptsFromNodes(nodes: HtmlNode[]): {
   cleanNodes: HtmlNode[];
   extractedScss: string;
+  extractedScripts: { name: string; code: string }[];
 } {
   const extractedRules: string[] = [];
+  const extractedScripts: { name: string; code: string }[] = [];
 
-  function processNode(node: HtmlNode): HtmlNode {
+  function processNode(node: HtmlNode): HtmlNode | null {
     const key = node._key || generateNodeKey();
+    const tag = (node.tag || "div").toLowerCase();
     let classList = (node.class || "").split(/\s+/).filter(Boolean);
+    const targetName = classList[0] || `${tag}-${key.slice(-5)}`;
 
+    // 1. Если это тег <script>
+    if (tag === "script") {
+      const code = (node.text || "").trim();
+      if (code) {
+        // Проверяем, есть ли в первой строке аннотация /* @component: .my-name */
+        const componentMatch = /\/\*\s*@component:\s*\.?([a-zA-Z0-9_-]+)/.exec(
+          code,
+        );
+        const scriptName = componentMatch ? componentMatch[1] : targetName;
+
+        extractedScripts.push({ name: scriptName, code });
+      }
+      return null;
+    }
+
+    // 2. Если в ноде есть script или js
+    const anyNode = node as any;
+    const directScript = anyNode.script || anyNode.js;
+    if (typeof directScript === "string" && directScript.trim()) {
+      const code = directScript.trim();
+      const componentMatch = /\/\*\s*@component:\s*\.?([a-zA-Z0-9_-]+)/.exec(
+        code,
+      );
+      const scriptName = componentMatch ? componentMatch[1] : targetName;
+
+      extractedScripts.push({ name: scriptName, code });
+    }
+
+    // 3. Если есть инлайн стили — вытаскиваем в SCSS
     if (node.style && node.style.trim()) {
       const cleanBody = sanitizeCssBody(node.style);
 
@@ -49,33 +87,40 @@ function extractInlineStylesToClasses(nodes: HtmlNode[]): {
       );
 
       if (!targetClass) {
-        const tagPrefix = (node.tag || "box")
-          .toLowerCase()
-          .replace(/[^a-z0-9]/g, "");
-        targetClass = `${tagPrefix}-${key.slice(-5)}`;
+        targetClass = `${tag.replace(/[^a-z0-9]/g, "")}-${key.slice(-5)}`;
         classList.push(targetClass);
       }
 
       extractedRules.push(`.${targetClass} {\n  ${cleanBody}\n}`);
     }
 
-    const processedChildren = Array.isArray(node.children)
-      ? node.children.map(processNode)
-      : node.children || [];
+    // Рекурсивно обходим дочерние элементы
+    let processedChildren: HtmlNode[] = [];
+    if (Array.isArray(node.children)) {
+      processedChildren = node.children
+        .map(processNode)
+        .filter(Boolean) as HtmlNode[];
+    }
 
-    const cleaned: HtmlNode = {
+    const cleaned: any = {
       ...node,
       _key: key,
       class: classList.length > 0 ? classList.join(" ") : undefined,
       children: processedChildren,
     };
     delete cleaned.style;
+    delete cleaned.script;
+    delete cleaned.js;
 
     return cleaned;
   }
 
-  const cleanNodes = nodes.map(processNode);
-  return { cleanNodes, extractedScss: extractedRules.join("\n\n") };
+  const cleanNodes = nodes.map(processNode).filter(Boolean) as HtmlNode[];
+  return {
+    cleanNodes,
+    extractedScss: extractedRules.join("\n\n"),
+    extractedScripts,
+  };
 }
 
 function isRowContainer(node: HtmlNode): boolean {
@@ -458,97 +503,100 @@ export function CanvasArea() {
   const hasDraggedRef = useRef<boolean>(false);
   const clickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Единое состояние SCSS-бандла
+  // ГЛОБАЛЬНЫЙ SCSS
   const [globalScss, setGlobalScss] = useState<string>("");
   const globalScssRef = useRef<string>("");
   globalScssRef.current = globalScss;
 
-  const [scriptsJs, setScriptsJs] = useState<Record<string, string>>({});
-  const scriptsJsRef = useRef<Record<string, string>>({});
-  scriptsJsRef.current = scriptsJs;
+  // ГЛОБАЛЬНЫЙ JS БАНДЛ
+  const [globalJs, setGlobalJs] = useState<string>("");
+  const globalJsRef = useRef<string>("");
+  globalJsRef.current = globalJs;
 
-  // Сохранение глобального SCSS-бандла в IndexedDB
+  // Сохранение SCSS в IndexedDB
   const updateAndPersistScss = async (nextScss: string) => {
     setGlobalScss(nextScss);
     globalScssRef.current = nextScss;
     try {
       await saveGlobalScss(nextScss);
     } catch (e) {
-      console.error("[CanvasArea] Error saving global SCSS to DB:", e);
+      console.error("[CanvasArea] Error saving SCSS to DB:", e);
     }
     window.dispatchEvent(
       new CustomEvent("plaza-styles-updated", { detail: nextScss }),
     );
   };
 
-  // Сохранение скриптов в IndexedDB
-  const updateAndPersistScriptsJs = async (
-    nextScripts: Record<string, string>,
-  ) => {
-    setScriptsJs(nextScripts);
-    scriptsJsRef.current = nextScripts;
+  // Сохранение JS в IndexedDB
+  const updateAndPersistJs = async (nextJs: string) => {
+    setGlobalJs(nextJs);
+    globalJsRef.current = nextJs;
     try {
-      await saveScriptsJs(nextScripts);
+      await saveGlobalJs(nextJs);
     } catch (e) {
-      console.error("[CanvasArea] Error saving scripts JS to DB:", e);
+      console.error("[CanvasArea] Error saving JS to DB:", e);
     }
     window.dispatchEvent(
-      new CustomEvent("plaza-scripts-updated", { detail: nextScripts }),
+      new CustomEvent("plaza-scripts-updated", { detail: nextJs }),
     );
   };
 
-  // Первоначальная загрузка строго из IndexedDB
+  /* ==========================================================================
+     ПЕРВОНАЧАЛЬНАЯ ЗАГРУЗКА ИЗ INDEXEDDB: СОБИРАЕМ ВСЁ
+     ========================================================================== */
   useEffect(() => {
     (async () => {
-      let initialScss = "";
-
       try {
-        const [dbScss, dbScripts, data] = await Promise.all([
-          getGlobalScss(),
-          getScriptsJs(),
-          getHtmlJson(DB_KEY),
+        const [dbScss, dbJs, data] = await Promise.all([
+          getGlobalScss().catch(() => ""),
+          getGlobalJs().catch(() => ""),
+          getHtmlJson(DB_KEY).catch(() => null),
         ]);
 
-        if (typeof dbScss === "string") {
-          initialScss = dbScss;
-        }
-
-        if (dbScripts && typeof dbScripts === "object") {
-          setScriptsJs(dbScripts);
-          scriptsJsRef.current = dbScripts;
-        }
+        let currentScss = dbScss || "";
+        let currentJs = dbJs || "";
 
         if (data) {
           const list = Array.isArray(data) ? data : [data];
-          const { cleanNodes, extractedScss } =
-            extractInlineStylesToClasses(list);
+          // Вытаскиваем и стили, и скрипты из нод при загрузке
+          const { cleanNodes, extractedScss, extractedScripts } =
+            extractStylesAndScriptsFromNodes(list);
 
-          let mergedScss = initialScss;
           if (extractedScss) {
-            mergedScss = initialScss
-              ? `${initialScss}\n\n${extractedScss}`
+            currentScss = currentScss
+              ? `${currentScss}\n\n${extractedScss}`
               : extractedScss;
+          }
+
+          if (extractedScripts.length > 0) {
+            for (const s of extractedScripts) {
+              currentJs = updateScriptInGlobalBundle(currentJs, s.name, s.code);
+            }
           }
 
           setCurrentJson(cleanNodes);
           currentJsonRef.current = cleanNodes;
-          await updateAndPersistScss(mergedScss);
 
-          if (extractedScss) {
-            await saveHtmlJson(DB_KEY, cleanNodes);
-          }
+          await Promise.all([
+            updateAndPersistScss(currentScss),
+            updateAndPersistJs(currentJs),
+            saveHtmlJson(DB_KEY, cleanNodes),
+          ]);
         } else {
           setCurrentJson([]);
           currentJsonRef.current = [];
-          await updateAndPersistScss(initialScss);
+          await Promise.all([
+            updateAndPersistScss(currentScss),
+            updateAndPersistJs(currentJs),
+          ]);
         }
       } catch (err) {
-        console.error("[CanvasArea] IndexedDB mount load error:", err);
+        console.error("[CanvasArea] Mount load error:", err);
       }
     })();
   }, []);
 
-  // Слушаем обновления стилей от ModalCss и других внешних панелей
+  // Слушаем внешние стили (ModalCss)
   useEffect(() => {
     const handleExternalStyles = (e: Event) => {
       const customEvent = e as CustomEvent<string | Record<string, string>>;
@@ -563,58 +611,36 @@ export function CanvasArea() {
     };
 
     window.addEventListener("plaza-styles-updated", handleExternalStyles);
-    return () => {
+    return () =>
       window.removeEventListener("plaza-styles-updated", handleExternalStyles);
-    };
   }, []);
 
-  // Слушаем обновления скриптов от внешних модалок
+  // Слушаем внешние скрипты (ModalJs)
   useEffect(() => {
     const handleExternalScripts = (e: Event) => {
-      const customEvent = e as CustomEvent<Record<string, string>>;
-      const nextScripts = customEvent.detail || {};
-      setScriptsJs(nextScripts);
-      scriptsJsRef.current = nextScripts;
+      const customEvent = e as CustomEvent<string>;
+      const nextJs =
+        typeof customEvent.detail === "string" ? customEvent.detail : "";
+      setGlobalJs(nextJs);
+      globalJsRef.current = nextJs;
     };
 
     window.addEventListener("plaza-scripts-updated", handleExternalScripts);
-    return () => {
+    return () =>
       window.removeEventListener(
         "plaza-scripts-updated",
         handleExternalScripts,
       );
-    };
   }, []);
 
+  // СОХРАНЕНИЕ СКРИПТА НОДЫ: СРАЗУ ВШИВАЕТСЯ В БАНДЛ И В БАЗУ
   const handleSaveScriptJs = async (targetName: string, jsCode: string) => {
-    const clean = targetName.trim().replace(/^\./, "");
-    if (!clean) return;
-
-    const trimmed = (jsCode || "").trim();
-    const next = { ...scriptsJsRef.current };
-
-    if (!trimmed) {
-      delete next[clean];
-    } else {
-      next[clean] = trimmed;
-    }
-
-    await updateAndPersistScriptsJs(next);
-  };
-
-  const handleDeleteScriptJs = async (targetName: string) => {
-    const clean = targetName.trim().replace(/^\./, "");
-    if (!clean) return;
-
-    const next = { ...scriptsJsRef.current };
-    delete next[clean];
-    await updateAndPersistScriptsJs(next);
-  };
-
-  const handleSaveFullJs = async (fullJs: string) => {
-    const trimmed = fullJs.trim();
-    const next: Record<string, string> = trimmed ? { __bundle__: trimmed } : {};
-    await updateAndPersistScriptsJs(next);
+    const nextBundle = updateScriptInGlobalBundle(
+      globalJsRef.current,
+      targetName,
+      jsCode,
+    );
+    await updateAndPersistJs(nextBundle);
   };
 
   const handleAddClassToNode = async (newCls: string) => {
@@ -709,6 +735,9 @@ export function CanvasArea() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleUndo, handleRedo]);
 
+  /* ==========================================================================
+     ДОБАВЛЕНИЕ ЭЛЕМЕНТА ИЗ ПАНЕЛИ: СРАЗУ ЗАБИРАЕМ ЕГО СКРИПТЫ И СТИЛИ В БАЗУ
+     ========================================================================== */
   const handleAppendFromPath = async (path: string) => {
     try {
       const res = await fetch(path);
@@ -716,8 +745,11 @@ export function CanvasArea() {
       const raw = await res.json();
       const nodes: HtmlNode[] = Array.isArray(raw) ? raw : [raw];
 
-      const { cleanNodes, extractedScss } = extractInlineStylesToClasses(nodes);
+      // Вытаскиваем и стили, и скрипты
+      const { cleanNodes, extractedScss, extractedScripts } =
+        extractStylesAndScriptsFromNodes(nodes);
 
+      // Сразу обновляем SCSS бандл в базе
       if (extractedScss) {
         const nextScss = globalScssRef.current
           ? `${globalScssRef.current}\n\n${extractedScss}`
@@ -725,6 +757,16 @@ export function CanvasArea() {
         await updateAndPersistScss(nextScss);
       }
 
+      // СРАЗУ ОБНОВЛЯЕМ JS БАНДЛ В БАЗЕ
+      if (extractedScripts.length > 0) {
+        let bundle = globalJsRef.current;
+        for (const s of extractedScripts) {
+          bundle = updateScriptInGlobalBundle(bundle, s.name, s.code);
+        }
+        await updateAndPersistJs(bundle);
+      }
+
+      // Сохраняем разметку
       const next = [...currentJsonRef.current, ...cleanNodes];
       await persist(next);
     } catch (e) {
@@ -975,7 +1017,7 @@ export function CanvasArea() {
       <aside className="w-48 shrink-0 bg-zinc-900 border border-zinc-800 rounded-sm p-1 flex flex-col justify-between shadow-xl select-none overflow-hidden">
         <div className="space-y-2.5 flex-1 overflow-y-auto pr-1 min-h-0 custom-scrollbar">
           {currentJson.length > 0 && (
-            <div className="">
+            <div>
               <button type="button" onClick={handleClear} className="red-btn">
                 Clear
               </button>
@@ -1003,52 +1045,50 @@ export function CanvasArea() {
           </div>
 
           <div className="space-y-1">
-            <div className="space-y-1">
-              {ELEMENT_FOLDERS.map((folder) => {
-                const isOpen = openFolders.has(folder.name);
-                return (
-                  <div key={folder.name} className="space-y-1">
-                    <button
-                      type="button"
-                      onClick={() => toggleFolder(folder.name)}
-                      className="admin-btn !justify-between"
-                    >
-                      <span className="flex items-center gap-1.5 truncate">
-                        <span>{isOpen ? "📂" : "📁"}</span>
-                        <span className="font-mono">{folder.name}</span>
-                      </span>
-                      <span className="text-[12px] text-zinc-500 font-mono">
-                        {isOpen ? "−" : "+"}
-                      </span>
-                    </button>
-                    <AnimatePresence>
-                      {isOpen && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0, y: 0 }}
-                          animate={{ height: "auto", opacity: 1, y: 0 }}
-                          exit={{ height: 0, opacity: 0, y: 0 }}
-                          transition={{ duration: 0.2, ease: "easeInOut" }}
-                          className="pl-3 py-0.5 space-y-1 border-l border-zinc-800/80"
-                        >
-                          <div className="flex flex-col gap-1">
-                            {folder.items.map((item) => (
-                              <button
-                                type="button"
-                                key={item.path}
-                                onClick={() => handleAppendFromPath(item.path)}
-                                className="admin-btn"
-                              >
-                                {item.name}
-                              </button>
-                            ))}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                );
-              })}
-            </div>
+            {ELEMENT_FOLDERS.map((folder) => {
+              const isOpen = openFolders.has(folder.name);
+              return (
+                <div key={folder.name} className="space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => toggleFolder(folder.name)}
+                    className="admin-btn !justify-between"
+                  >
+                    <span className="flex items-center gap-1.5 truncate">
+                      <span>{isOpen ? "📂" : "📁"}</span>
+                      <span className="font-mono">{folder.name}</span>
+                    </span>
+                    <span className="text-[12px] text-zinc-500 font-mono">
+                      {isOpen ? "−" : "+"}
+                    </span>
+                  </button>
+                  <AnimatePresence>
+                    {isOpen && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0, y: 0 }}
+                        animate={{ height: "auto", opacity: 1, y: 0 }}
+                        exit={{ height: 0, opacity: 0, y: 0 }}
+                        transition={{ duration: 0.2, ease: "easeInOut" }}
+                        className="pl-3 py-0.5 space-y-1 border-l border-zinc-800/80"
+                      >
+                        <div className="flex flex-col gap-1">
+                          {folder.items.map((item) => (
+                            <button
+                              type="button"
+                              key={item.path}
+                              onClick={() => handleAppendFromPath(item.path)}
+                              className="admin-btn"
+                            >
+                              {item.name}
+                            </button>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
           </div>
 
           <div className="space-y-1 pt-1.5 border-t border-zinc-800">
@@ -1120,127 +1160,135 @@ export function CanvasArea() {
         </div>
 
         {/* Редактор ноды */}
-        <div
-          className={`fixed shadow-[0_-6px_18px_rgba(32,75,110,0.7)] bottom-0 right-0 w-[calc(100vw-210px)] z-40 transition-transform duration-300 ease-in-out ${
-            clickedKey ? "translate-y-0" : "translate-y-full"
-          }`}
-        >
+        <AnimatePresence>
           {clickedKey && selectedNode && (
-            <div className="relative bg-zinc-800 border-t border-zinc-700 rounded-t-sm shadow-[0_-8px_32px_rgba(0,0,0,0.6)] backdrop-blur-md">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setClickedKey(null);
-                }}
-                className="absolute top-1 left-2 z-50 w-10 h-4.5 rounded-lg bg-red-600 hover:bg-red-500 border-2 border-red-400 text-white text-sm font-bold flex items-center justify-center shadow transition-all cursor-pointer"
-              >
-                ✕
-              </button>
+            <motion.div
+              initial={{ height: 0, opacity: 0, y: 0 }}
+              animate={{ height: "auto", opacity: 1, y: 0 }}
+              exit={{ height: 0, opacity: 0, y: 0 }}
+              transition={{ duration: 0.1, ease: "easeInOut" }}
+              className={`fixed shadow-[0_-6px_18px_rgba(32,75,110,0.7)] bottom-0 right-0 w-[calc(100vw-210px)] z-40 transition-transform duration-300 ease-in-out ${
+                clickedKey ? "translate-y-0" : "translate-y-full"
+              }`}
+            >
+              <div className="relative bg-zinc-800 border-t border-zinc-700 rounded-t-sm shadow-[0_-8px_32px_rgba(0,0,0,0.6)] backdrop-blur-md">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setClickedKey(null);
+                  }}
+                  className="absolute top-1 left-2 z-50 w-10 h-4.5 rounded-lg bg-red-600 hover:bg-red-500 border-2 border-red-400 text-white text-sm font-bold flex items-center justify-center shadow transition-all cursor-pointer"
+                >
+                  ✕
+                </button>
 
-              <div className="p-1 mt-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] pl-15 font-mono text-zinc-500 uppercase tracking-widest">
-                    Editing
-                  </span>
-                  <span className="text-[11px] font-mono text-emerald-300 truncate max-w-[200px]">
-                    &lt;{selectedNode.tag || "div"}&gt;
-                    {selectedNode.class
-                      ? ` .${selectedNode.class.split(" ")[0]}`
-                      : ""}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2 mt-2">
-                  <label className="text-[10px] tracking-widest text-zinc-400 block">
-                    Tag
-                  </label>
-                  <div className="flex flex-wrap gap-1">
-                    {COMMON_TAGS.map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={async () => {
-                          setEditTag(t);
-                          await handleSaveNodeField("tag", t);
-                        }}
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border transition-all cursor-pointer ${
-                          editTag === t
-                            ? "bg-indigo-600 border-indigo-400 text-white shadow"
-                            : "bg-zinc-800 border-zinc-600 text-zinc-300 hover:border-indigo-500 hover:text-indigo-300"
-                        }`}
-                      >
-                        {t}
-                      </button>
-                    ))}
+                <div className="p-1 mt-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] pl-15 font-mono text-zinc-500 uppercase tracking-widest">
+                      Editing
+                    </span>
+                    <span className="text-[11px] font-mono text-emerald-300 truncate max-w-[200px]">
+                      &lt;{selectedNode.tag || "div"}&gt;
+                      {selectedNode.class
+                        ? ` .${selectedNode.class.split(" ")[0]}`
+                        : ""}
+                    </span>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-[1fr_2fr] gap-2 items-start mt-2">
-                  <div>
+                  <div className="flex items-center gap-2 mt-2">
                     <label className="text-[10px] tracking-widest text-zinc-400 block">
-                      Classes
+                      Tag
                     </label>
-                    <input
-                      type="text"
-                      value={editClass}
-                      onChange={(e) => setEditClass(e.target.value)}
-                      onBlur={async (e) => {
-                        await handleSaveNodeField("class", e.target.value);
-                      }}
-                      placeholder="flex items-center gap-2..."
-                      className="w-full px-2.5 py-1 rounded-lg bg-zinc-800 border border-zinc-600 text-green-300 text-[14px] placeholder-zinc-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition"
-                    />
+                    <div className="flex flex-wrap gap-1">
+                      {COMMON_TAGS.map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={async () => {
+                            setEditTag(t);
+                            await handleSaveNodeField("tag", t);
+                          }}
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border transition-all cursor-pointer ${
+                            editTag === t
+                              ? "bg-indigo-600 border-indigo-400 text-white shadow"
+                              : "bg-zinc-800 border-zinc-600 text-zinc-300 hover:border-indigo-500 hover:text-indigo-300"
+                          }`}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 block">
-                      Text
-                    </label>
-                    <textarea
-                      value={editText}
-                      onChange={(e) => setEditText(e.target.value)}
-                      onBlur={async (e) => {
-                        await handleSaveNodeField("text", e.target.value);
-                      }}
-                      rows={3}
-                      placeholder="Текстовое содержимое..."
-                      className="w-full px-2.5 py-1.5 rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-100 text-[12px] font-mono placeholder-zinc-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition resize-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t border-zinc-800">
-                  {(() => {
-                    const classSource =
-                      editClass !== undefined && editClass !== null
-                        ? editClass
-                        : selectedNode.class || "";
-                    const nodeClasses = classSource
-                      .split(/\s+/)
-                      .map((c) => c.trim().replace(/^\./, ""))
-                      .filter(Boolean);
-
-                    return (
-                      <MonacoPropertiesEditor
-                        nodeKey={selectedNode._key || ""}
-                        nodeTag={selectedNode.tag || "div"}
-                        nodeClasses={nodeClasses}
-                        globalScss={globalScss}
-                        attributesValue={selectedNode.attributes}
-                        onSaveGlobalScss={updateAndPersistScss}
-                        onSaveAttributes={async (newAttrs) => {
-                          await handleSaveNodeField("attributes", newAttrs);
+                  <div className="grid grid-cols-[1fr_2fr] gap-2 items-start mt-2">
+                    <div>
+                      <label className="text-[10px] tracking-widest text-zinc-400 block">
+                        Classes
+                      </label>
+                      <input
+                        type="text"
+                        value={editClass}
+                        onChange={(e) => setEditClass(e.target.value)}
+                        onBlur={async (e) => {
+                          await handleSaveNodeField("class", e.target.value);
                         }}
-                        onAddClassToNode={handleAddClassToNode}
+                        placeholder="flex items-center gap-2..."
+                        className="w-full px-2.5 py-1 rounded-lg bg-zinc-800 border border-zinc-600 text-green-300 text-[14px] placeholder-zinc-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition"
                       />
-                    );
-                  })()}
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 block">
+                        Text
+                      </label>
+                      <textarea
+                        value={editText}
+                        onChange={(e) => setEditText(e.target.value)}
+                        onBlur={async (e) => {
+                          await handleSaveNodeField("text", e.target.value);
+                        }}
+                        rows={3}
+                        placeholder="Text content..."
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-100 text-[12px] font-mono placeholder-zinc-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition resize-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-zinc-800">
+                    {(() => {
+                      const classSource =
+                        editClass !== undefined && editClass !== null
+                          ? editClass
+                          : selectedNode.class || "";
+                      const nodeClasses = classSource
+                        .split(/\s+/)
+                        .map((c) => c.trim().replace(/^\./, ""))
+                        .filter(Boolean);
+
+                      return (
+                        <MonacoPropertiesEditor
+                          nodeKey={selectedNode._key || ""}
+                          nodeTag={selectedNode.tag || "div"}
+                          nodeClasses={nodeClasses}
+                          globalScss={globalScss}
+                          globalJs={globalJs}
+                          attributesValue={selectedNode.attributes}
+                          onSaveGlobalScss={updateAndPersistScss}
+                          onSaveScriptJs={handleSaveScriptJs}
+                          onSaveAttributes={async (newAttrs) => {
+                            await handleSaveNodeField("attributes", newAttrs);
+                          }}
+                          onAddClassToNode={handleAddClassToNode}
+                        />
+                      );
+                    })()}
+                  </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
           )}
-        </div>
+        </AnimatePresence>
       </div>
 
       {/* 👻 ПРИЗРАК ПЕРЕТАСКИВАЕМОГО УЗЛА (следует за курсором) */}

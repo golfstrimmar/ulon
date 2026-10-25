@@ -4,7 +4,7 @@
 import type { HtmlNode } from "@/types/HtmlNode";
 import { treeToHtml } from "@/lib/htmlTree";
 import { compileClassesCss } from "@/lib/cssCompiler";
-
+import { prepareScriptsForExecution } from "@/lib/jsCompiler";
 /* ==========================================================================
    1. СХЕМЫ ДАННЫХ (Data Contracts)
    ========================================================================== */
@@ -19,8 +19,9 @@ export interface BuildDocumentParams {
   bodyHtml: string;
   fontEntries?: string[];
   defaultFont?: string;
-  globalCss?: string; // <--- Скомпилированный CSS из SCSS бандла
-  classesCss?: Record<string, string>; // резерв
+  globalCss?: string;
+  globalJs?: string;
+  classesCss?: Record<string, string>;
   scriptsJs?: Record<string, string>;
 }
 
@@ -147,6 +148,7 @@ export function buildDocument({
   fontEntries = [],
   defaultFont = "",
   globalCss = "",
+  globalJs = "",
   classesCss = {},
   scriptsJs = {},
 }: BuildDocumentParams): string {
@@ -156,9 +158,14 @@ export function buildDocument({
     .join("\n  ");
 
   const detectedFamilies = extractFontFamilies(fontEntries);
-  // Используем скомпилированный SCSS напрямую
+
+  // Стили (SCSS -> CSS)
   const compiledClassesStyles = globalCss || "";
-  const compiledBundleScripts = compileScriptsBundle(scriptsJs);
+
+  // Скрипты (JS бандл с безопасной изоляцией IIFE)
+  const rawJs =
+    globalJs || scriptsJs.__bundle__ || Object.values(scriptsJs).join("\n\n");
+  const compiledBundleScripts = prepareScriptsForExecution(rawJs);
 
   const helperClasses = detectedFamilies
     .map((name) => {
@@ -235,12 +242,7 @@ export function buildDocument({
    compiledBundleScripts
      ? `<!-- Итоговый бандл скриптов (JS) -->
  <script id="compiled-bundle-scripts">
- document.addEventListener("DOMContentLoaded", () => {
  ${compiledBundleScripts}
- });
- if (document.readyState === "complete" || document.readyState === "interactive") {
- ${compiledBundleScripts}
- }
  </script>`
      : ""
  }

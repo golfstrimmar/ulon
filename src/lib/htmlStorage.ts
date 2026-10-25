@@ -1,7 +1,7 @@
 /**
  * @file htmlStorage.ts
  * @description Единый изолированный слой IndexedDB.
- * Хранилище HTML-деревьев, глобального SCSS-бандла, JS-скриптов и настроек.
+ * Хранилище HTML-деревьев, глобального SCSS-бандла, единого JS-бандла и настроек.
  */
 
 import { HtmlNode } from "@/types/HtmlNode";
@@ -13,7 +13,7 @@ const DB_VERSION = 1;
 export const STORES = {
   HTML_TREES: "html_trees", // Деревья разметки (HtmlNode)
   CLASSES_CSS: "classes_css", // Хранилище SCSS/CSS бандла
-  SCRIPTS_JS: "scripts_js", // Словарь пользовательских JS-скриптов
+  SCRIPTS_JS: "scripts_js", // Хранилище глобального JS-бандла
   PREVIEW_SETTINGS: "settings", // Настройки шрифтов
 } as const;
 
@@ -132,9 +132,6 @@ export async function deleteHtmlJson(id: string): Promise<void> {
 const SCSS_KEY = "active_global_scss";
 const OLD_CLASSES_KEY = "active_classes";
 
-/**
- * Сохраняет единый глобальный SCSS-бандл (styles.scss)
- */
 export async function saveGlobalScss(scss: string): Promise<void> {
   const db = await openDatabase();
   return new Promise((resolve, reject) => {
@@ -149,10 +146,6 @@ export async function saveGlobalScss(scss: string): Promise<void> {
   });
 }
 
-/**
- * Получает единый глобальный SCSS-бандл.
- * При первом запуске автоматически конвертирует старые разрозненные классы, если они были.
- */
 export async function getGlobalScss(): Promise<string> {
   const db = await openDatabase();
   return new Promise((resolve, reject) => {
@@ -166,7 +159,7 @@ export async function getGlobalScss(): Promise<string> {
         return resolve(req.result.scss);
       }
 
-      // Бесшовная миграция: если ранее сохранялись стили объектом
+      // Бесшовная миграция
       const oldReq = store.get(OLD_CLASSES_KEY);
       oldReq.onsuccess = () => {
         const oldStyles = oldReq.result?.styles;
@@ -192,7 +185,6 @@ export async function getGlobalScss(): Promise<string> {
   });
 }
 
-// Алиасы для плавной совместимости (чтобы ничего не падало до полного рефакторинга)
 export async function saveClassesCss(
   styles: Record<string, string>,
 ): Promise<void> {
@@ -211,39 +203,111 @@ export async function getClassesCss(): Promise<Record<string, string>> {
 }
 
 /* ============================================================================
-   3. SCRIPTS JS (Изолированная таблица скриптов)
+   3. GLOBAL JS BUNDLE (Единый глобальный файл JavaScript)
    ============================================================================ */
 
-const SCRIPTS_KEY = "active_scripts";
+const JS_KEY = "active_global_js";
 
-export async function saveScriptsJs(
-  scripts: Record<string, string>,
-): Promise<void> {
+/**
+ * Сохраняет единый глобальный JS-бандл (scripts.js)
+ */
+export async function saveGlobalJs(js: string): Promise<void> {
   const db = await openDatabase();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORES.SCRIPTS_JS, "readwrite");
     const store = tx.objectStore(STORES.SCRIPTS_JS);
-    const req = store.put({ id: SCRIPTS_KEY, scripts });
+    const req = store.put({ id: JS_KEY, js: js || "" });
 
     req.onsuccess = () => resolve();
     req.onerror = () =>
-      reject(req.error || new Error("Failed to save scripts JS"));
+      reject(req.error || new Error("Failed to save global JS"));
     tx.oncomplete = () => db.close();
   });
 }
 
-export async function getScriptsJs(): Promise<Record<string, string>> {
+/**
+ * Получает единый глобальный JS-бандл.
+ * При первом запуске автоматически мигрирует старый словарь скриптов в единую строку.
+ */
+/**
+ * Получает единый глобальный JS-бандл.
+ * Сканирует ВСЮ таблицу scripts_js в IndexedDB, собирает все скрипты нод
+ * и возвращает готовый единый монолитный бандл.
+ */
+export async function getGlobalJs(): Promise<string> {
   const db = await openDatabase();
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const tx = db.transaction(STORES.SCRIPTS_JS, "readonly");
     const store = tx.objectStore(STORES.SCRIPTS_JS);
-    const req = store.get(SCRIPTS_KEY);
 
-    req.onsuccess = () => resolve(req.result?.scripts || {});
-    req.onerror = () =>
-      reject(req.error || new Error("Failed to get scripts JS"));
+    // Достаем абсолютно ВСЕ записи из таблицы scripts_js
+    const req = store.getAll();
+
+    req.onsuccess = () => {
+      const records = req.result || [];
+      if (records.length === 0) return resolve("");
+
+      const collectedScripts: string[] = [];
+      const seenCodes = new Set<string>();
+
+      for (const record of records) {
+        if (!record) continue;
+
+        // 1. Если это строка бандла
+        if (typeof record.js === "string" && record.js.trim()) {
+          const trimmed = record.js.trim();
+          if (!seenCodes.has(trimmed)) {
+            seenCodes.add(trimmed);
+            collectedScripts.push(trimmed);
+          }
+        }
+
+        // 2. Если это словарь { target1: "код", target2: "код" }
+        if (record.scripts && typeof record.scripts === "object") {
+          // Если внутри уже был готовый бандл
+          if (
+            record.scripts.__bundle__ &&
+            typeof record.scripts.__bundle__ === "string"
+          ) {
+            const trimmed = record.scripts.__bundle__.trim();
+            if (trimmed && !seenCodes.has(trimmed)) {
+              seenCodes.add(trimmed);
+              collectedScripts.push(trimmed);
+            }
+          } else {
+            // Собираем каждый именованный скрипт ноды
+            for (const [target, code] of Object.entries(record.scripts)) {
+              if (code && typeof code === "string" && (code as string).trim()) {
+                const trimmed = (code as string).trim();
+                const snippet = `/* --- [script:${target}] --- */\n${trimmed}\n/* --- [end:${target}] --- */`;
+                if (!seenCodes.has(trimmed)) {
+                  seenCodes.add(trimmed);
+                  collectedScripts.push(snippet);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      resolve(collectedScripts.join("\n\n"));
+    };
+
+    req.onerror = () => resolve("");
     tx.oncomplete = () => db.close();
   });
+}
+// Алиасы для обратной совместимости
+export async function saveScriptsJs(
+  scripts: Record<string, string>,
+): Promise<void> {
+  const bundle = scripts.__bundle__ || Object.values(scripts).join("\n\n");
+  return saveGlobalJs(bundle);
+}
+
+export async function getScriptsJs(): Promise<Record<string, string>> {
+  const js = await getGlobalJs();
+  return { __bundle__: js };
 }
 
 /* ============================================================================

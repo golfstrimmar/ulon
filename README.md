@@ -50,3 +50,6 @@ import { motion, AnimatePresence } from "framer-motion";
                        </motion.div>
                       )}
 </AnimatePresence>
+<!--===============================================-->
+1. стили дублируются в файле стилей. надо устранить.  D:\WEB\ulon\src\app\plaza\components\PreviewArea\components\ModalCss.tsx
+2. на базу уходит некорректный js  D:\WEB\ulon\src\app\plaza\components\PreviewArea\components\ModalJS.tsx

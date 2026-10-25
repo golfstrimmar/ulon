@@ -1,9 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { usePreviewArea } from "@/app/plaza/components/PreviewArea/hooks/usePreviewArea";
 import { motion, AnimatePresence } from "framer-motion";
 import ButtonCss from "@/app/plaza/components/PreviewArea/components/ButtonCss";
+import ButtonJS from "@/app/plaza/components/PreviewArea/components/ButtonJS";
 
 export function PreviewArea() {
   const {
@@ -25,7 +26,33 @@ export function PreviewArea() {
     handleRemoveFont,
     handleSetDefaultFont,
   } = usePreviewArea();
+  const [iframeHeight, setIframeHeight] = useState(140);
 
+  const handleLoad = useCallback(() => {
+    const iframe = iframeRef.current;
+    if (!iframe?.contentDocument) return;
+
+    const doc = iframe.contentDocument;
+
+    const update = () => {
+      const height = Math.max(
+        doc.body?.scrollHeight ?? 0,
+        doc.documentElement?.scrollHeight ?? 0,
+      );
+      setIframeHeight(Math.max(height, 140));
+    };
+
+    update();
+
+    const observer = new ResizeObserver(update);
+    if (doc.body) observer.observe(doc.body);
+    if (doc.documentElement) observer.observe(doc.documentElement);
+
+    // очистка при следующей загрузке / размонтировании
+    iframe.addEventListener("load", () => observer.disconnect(), {
+      once: true,
+    });
+  }, []);
   return (
     <div className="w-full flex flex-col border border-zinc-800 rounded-xl overflow-hidden bg-zinc-900 shadow-xl">
       {/* Верхний тулбар */}
@@ -40,31 +67,8 @@ export function PreviewArea() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Индикатор стилей CSS */}
           <ButtonCss />
-
-          {/* Индикатор скриптов JS */}
-          <div
-            title="Итоговый бандл JS-скриптов, подключенный в конец <body> iframe"
-            className={`text-[10px] font-mono px-2 py-0.5 rounded border transition flex items-center gap-1.5 ${
-              scriptsCount > 0
-                ? "bg-amber-950/70 border-amber-500/60 text-amber-300"
-                : "bg-zinc-800 border-zinc-700 text-zinc-500"
-            }`}
-          >
-            <span>⚡</span>
-            <span className="hidden sm:inline">JS:</span>
-            <span
-              className={`font-bold rounded-full px-1 text-[9px] ${
-                scriptsCount > 0
-                  ? "bg-amber-600 text-white"
-                  : "bg-zinc-700 text-zinc-400"
-              }`}
-            >
-              {scriptsCount}
-            </span>
-          </div>
-
+          <ButtonJS />
           {/* Кнопка открытия панели шрифтов */}
           <button
             type="button"
@@ -214,8 +218,8 @@ export function PreviewArea() {
             initial={{ height: 0, opacity: 0, y: 0 }}
             animate={{ height: "auto", opacity: 1, y: 0 }}
             exit={{ height: 0, opacity: 0, y: 0 }}
-            transition={{ duration: 0.1, ease: "easeInOut" }}
-            className="relative w-full bg-white min-h-[140px]"
+            transition={{ duration: 0.15, ease: "easeInOut" }}
+            className="relative w-full bg-white  min-h-[140px]"
           >
             {isEmpty ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-300 gap-2 bg-white">
@@ -234,6 +238,8 @@ export function PreviewArea() {
                 title="iframe Prev"
                 sandbox="allow-scripts allow-same-origin allow-modals allow-forms"
                 className="w-full h-full border-0 bg-white"
+                onLoad={handleLoad}
+                style={{ height: iframeHeight }}
               />
             )}
           </motion.div>
