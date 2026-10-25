@@ -41,28 +41,50 @@ export function PreviewArea() {
 
   const handleLoad = useCallback(() => {
     const iframe = iframeRef.current;
-    const win = iframe?.contentWindow;
     const doc = iframe?.contentDocument;
-    if (!win || !doc) return;
+    if (!doc) return;
 
+    // Честный расчет высоты документа со всеми маржинами
     const update = () => {
-      const h = doc.body?.scrollHeight ?? 0;
-      if (h > 0) setIframeHeight(h);
+      if (!doc.body || !doc.documentElement) return;
+
+      const bodyHeight = doc.body.scrollHeight;
+      const htmlHeight = doc.documentElement.scrollHeight;
+      const htmlOffset = doc.documentElement.offsetHeight;
+
+      // Берем максимальную честную высоту
+      const h = Math.max(bodyHeight, htmlHeight, htmlOffset);
+
+      // Минимальная высота превью (например, 140px)
+      if (h > 0) {
+        setIframeHeight(Math.max(140, h));
+      }
     };
 
     update();
 
+    // 🔹 Следим за изменениями размера и body, и html!
     const observer = new ResizeObserver(update);
     if (doc.body) observer.observe(doc.body);
+    if (doc.documentElement) observer.observe(doc.documentElement);
 
-    // страховка: контент может догрузиться (шрифты, картинки)
+    // 🔹 Слушаем живые стили (ползунки gap, margin, padding), чтобы высота росла на лету!
+    const handleLiveStyle = () => {
+      requestAnimationFrame(update);
+    };
+
+    window.addEventListener("plaza-styles-updated", handleLiveStyle);
+    window.addEventListener("plaza-live-style", handleLiveStyle);
+
     const t1 = setTimeout(update, 100);
-    const t2 = setTimeout(update, 500);
+    const t2 = setTimeout(update, 400);
 
     return () => {
       observer.disconnect();
       clearTimeout(t1);
       clearTimeout(t2);
+      window.removeEventListener("plaza-styles-updated", handleLiveStyle);
+      window.removeEventListener("plaza-live-style", handleLiveStyle);
     };
   }, [iframeRef]);
   return (
@@ -127,7 +149,7 @@ export function PreviewArea() {
                 srcDoc={srcDoc}
                 title="iframe Prev"
                 sandbox="allow-scripts allow-same-origin allow-modals allow-forms"
-                className="w-full  border-0 bg-white"
+                className="w-full border-0 bg-white block overflow-hidden"
                 onLoad={handleLoad}
                 style={{ height: iframeHeight }}
               />

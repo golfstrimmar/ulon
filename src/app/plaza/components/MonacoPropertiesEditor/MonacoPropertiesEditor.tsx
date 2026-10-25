@@ -208,6 +208,37 @@ export function MonacoPropertiesEditor({
     while ((match = propRegex.exec(newSnippet)) !== null) {
       newPropertyNames.push(match[1].toLowerCase());
     }
+    // В cleanConflictingProperties внутри MonacoPropertiesEditor.tsx:
+
+    // Если ставим общий padding: — чистим частные padding-top, right, bottom, left
+    if (newPropertyNames.includes("padding")) {
+      newPropertyNames.push(
+        "padding-top",
+        "padding-right",
+        "padding-bottom",
+        "padding-left",
+      );
+    }
+
+    // Если ставим общий margin: — чистим частные margin-top, right, bottom, left
+    if (newPropertyNames.includes("margin")) {
+      newPropertyNames.push(
+        "margin-top",
+        "margin-right",
+        "margin-bottom",
+        "margin-left",
+      );
+    }
+
+    // Если ставим частный padding-top/right/... — удаляем общий padding
+    if (newPropertyNames.some((p) => p.startsWith("padding-"))) {
+      newPropertyNames.push("padding");
+    }
+
+    // Если ставим частный margin-top/right/... — удаляем общий margin
+    if (newPropertyNames.some((p) => p.startsWith("margin-"))) {
+      newPropertyNames.push("margin");
+    }
     // Если ставим общий gap: — чистим частные row-gap и column-gap
     if (newPropertyNames.includes("gap")) {
       newPropertyNames.push("row-gap", "column-gap");
@@ -389,6 +420,7 @@ export function MonacoPropertiesEditor({
               {openTarget !== "__attributes__" && (
                 <ModalCustomStyles
                   currentClass={openTarget}
+                  currentScssText={currentText}
                   onApplySnippet={handleApplySnippet}
                 />
               )}
