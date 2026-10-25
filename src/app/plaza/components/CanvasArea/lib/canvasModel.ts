@@ -82,7 +82,54 @@ export function isRowContainer(node: HtmlNode): boolean {
 }
 
 /**
- * Извлекает инлайн-стили и скрипты из нод дерева, возвращая очищенные ноды
+ * Парсер, разбивающий SCSS на блоки верхнего уровня с учётом любой вложенности ({... { ... } ...})
+ */
+// function splitScssIntoTopLevelRules(
+//   scss: string,
+// ): { selector: string; fullRule: string }[] {
+//   const rules: { selector: string; fullRule: string }[] = [];
+//   let depth = 0;
+//   let currentSelector = "";
+//   let currentBlockStart = -1;
+//   let insideSelector = true;
+
+//   for (let i = 0; i < scss.length; i++) {
+//     const char = scss[i];
+
+//     if (char === "{") {
+//       if (depth === 0) {
+//         currentBlockStart = i;
+//         insideSelector = false;
+//       }
+//       depth++;
+//     } else if (char === "}") {
+//       depth--;
+//       if (depth === 0 && currentBlockStart !== -1) {
+//         const fullRule = scss
+//           .slice(currentBlockStart - currentSelector.length, i + 1)
+//           .trim();
+//         const cleanSelector = currentSelector.trim();
+//         if (cleanSelector) {
+//           rules.push({ selector: cleanSelector, fullRule });
+//         }
+//         currentSelector = "";
+//         currentBlockStart = -1;
+//         insideSelector = true;
+//       }
+//     } else if (insideSelector && depth === 0) {
+//       currentSelector += char;
+//     }
+//   }
+
+//   return rules;
+// }
+
+/**
+ * 🔹 ИЗВЛЕЧЕНИЕ СТИЛЕЙ И СКРИПТОВ
+ * Гарантирует, что стили ВСЕГДА завернуты в селектор класса, даже если у ноды не было класса!
+ */
+/**
+ * 1. ИЗВЛЕКАЕМ СТИЛИ: ЖЕСТКО ПРИВЯЗЫВАЕМ СТИЛЬ К КЛАССУ ЭЛЕМЕНТА
  */
 export function extractStylesAndScriptsFromNodes(nodes: HtmlNode[]): {
   cleanNodes: HtmlNode[];
@@ -96,15 +143,17 @@ export function extractStylesAndScriptsFromNodes(nodes: HtmlNode[]): {
     const key = node._key || generateNodeKey();
     const tag = (node.tag || "div").toLowerCase();
     let classList = (node.class || "").split(/\s+/).filter(Boolean);
-    const targetName = classList[0] || `${tag}-${key.slice(-5)}`;
 
+    // 1. Скрипты
     if (tag === "script") {
       const code = (node.text || "").trim();
       if (code) {
         const componentMatch = /\/\*\s*@component:\s*\.?([a-zA-Z0-9_-]+)/.exec(
           code,
         );
-        const scriptName = componentMatch ? componentMatch[1] : targetName;
+        const scriptName = componentMatch
+          ? componentMatch[1]
+          : classList[0] || `${tag}-script`;
         extractedScripts.push({ name: scriptName, code });
       }
       return null;
@@ -117,24 +166,37 @@ export function extractStylesAndScriptsFromNodes(nodes: HtmlNode[]): {
       const componentMatch = /\/\*\s*@component:\s*\.?([a-zA-Z0-9_-]+)/.exec(
         code,
       );
-      const scriptName = componentMatch ? componentMatch[1] : targetName;
+      const scriptName = componentMatch
+        ? componentMatch[1]
+        : classList[0] || `${tag}-script`;
       extractedScripts.push({ name: scriptName, code });
     }
 
+    // 2. Стили — ВСЕГДА В ОБЕРТКЕ СВОЕГО КЛАССА
     if (node.style && node.style.trim()) {
-      const cleanBody = sanitizeCssBody(node.style);
+      const cleanBody = node.style.trim();
+
+      // Берем первый нормальный класс элемента (не утилиты типа flex/grid)
       let targetClass = classList.find(
         (c) =>
           !c.includes(":") && !c.startsWith("flex") && !c.startsWith("grid"),
       );
 
+      // Если класса вообще не было, даем по тегу
       if (!targetClass) {
-        targetClass = `${tag.replace(/[^a-z0-9]/g, "")}-${key.slice(-5)}`;
+        targetClass = `${tag}-custom`;
         classList.push(targetClass);
       }
-      extractedRules.push(`.${targetClass} {\n  ${cleanBody}\n}`);
+
+      // Если в JSON стиль случайно уже был завернут в .класс { ... }, не оборачиваем второй раз
+      if (cleanBody.startsWith(`.${targetClass}`)) {
+        extractedRules.push(cleanBody);
+      } else {
+        extractedRules.push(`.${targetClass} {\n  ${cleanBody}\n}`);
+      }
     }
 
+    // Рекурсия по дочерним
     let processedChildren: HtmlNode[] = [];
     if (Array.isArray(node.children)) {
       processedChildren = node.children
@@ -156,9 +218,58 @@ export function extractStylesAndScriptsFromNodes(nodes: HtmlNode[]): {
   }
 
   const cleanNodes = nodes.map(processNode).filter(Boolean) as HtmlNode[];
+
   return {
     cleanNodes,
     extractedScss: extractedRules.join("\n\n"),
     extractedScripts,
   };
+}
+
+/**
+ * 2. ДУБОВАЯ ПРОВЕРКА ПО КЛАССАМ:
+ * Пришел класс — смотрим, есть ли уже такой в файле.
+ * Есть — пропускаем. Нет — дописываем в конец.
+ */
+export function mergeScssWithoutDuplicates(
+  currentScss: string,
+  incomingScss: string,
+): string {
+  if (!incomingScss.trim()) return currentScss;
+  if (!currentScss.trim()) return incomingScss.trim();
+
+  // Разбиваем входящий блок по правилам (каждое начинается с точки: .имя-класса {)
+  const incomingRules = incomingScss
+    .split(/\n(?=\.[a-zA-Z0-9_-]+\s*\{)/g)
+    .map((r) => r.trim())
+    .filter(Boolean);
+
+  let result = currentScss;
+
+  for (const rule of incomingRules) {
+    // Извлекаем имя класса из правила, например: .field-t
+    const match = rule.match(/^\.([a-zA-Z0-9_-]+)/);
+    if (match) {
+      const className = match[1];
+
+      // Проверяем: есть ли уже .className { в текущем файле стилей
+      const regex = new RegExp(`\\.${className}\\s*\\{`);
+      if (!regex.test(result)) {
+        // Такого класса еще нет — дописываем!
+        result = `${result.trim()}\n\n${rule}`;
+      } else {
+        // Класс уже есть — пропускаем дубль!
+        console.log(
+          `[SCSS] Класс .${className} уже есть в файле, дубль пропущен.`,
+        );
+      }
+    } else {
+      // На крайний случай: если правило не с точки, но его еще нет в тексте
+      if (!result.includes(rule)) {
+        result = `${result.trim()}\n\n${rule}`;
+      }
+    }
+  }
+
+  return result.trim();
 }

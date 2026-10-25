@@ -24,6 +24,7 @@ import {
   DB_KEY,
   DropTarget,
   extractStylesAndScriptsFromNodes,
+  mergeScssWithoutDuplicates,
 } from "../lib/canvasModel";
 import { styleHistory } from "@/lib/styleHistory";
 
@@ -474,24 +475,35 @@ export function useCanvasArea() {
       if (!res.ok) return;
       const raw = await res.json();
       const nodes: HtmlNode[] = Array.isArray(raw) ? raw : [raw];
+
       const { cleanNodes, extractedScss, extractedScripts } =
         extractStylesAndScriptsFromNodes(nodes);
 
+      // 🔹 1. СЛИЯНИЕ SCSS БЕЗ ДУБЛИРОВАНИЯ КЛАССОВ:
       if (extractedScss) {
-        const nextScss = globalScssRef.current
-          ? `${globalScssRef.current}\n\n${extractedScss}`
-          : extractedScss;
-        await updateAndPersistScss(nextScss);
+        const nextScss = mergeScssWithoutDuplicates(
+          globalScssRef.current,
+          extractedScss,
+        );
+
+        // Сохраняем и пишем в историю, ТОЛЬКО если добавились новые классы
+        if (nextScss !== globalScssRef.current) {
+          await updateAndPersistScss(nextScss);
+        }
       }
 
+      // 🔹 2. СЛИЯНИЕ СКРИПТОВ (по имени компонента/класса):
       if (extractedScripts.length > 0) {
         let bundle = globalJsRef.current;
         for (const s of extractedScripts) {
           bundle = updateScriptInGlobalBundle(bundle, s.name, s.code);
         }
-        await updateAndPersistJs(bundle);
+        if (bundle !== globalJsRef.current) {
+          await updateAndPersistJs(bundle);
+        }
       }
 
+      // 🔹 3. ДОБАВЛЕНИЕ НОДЫ В ДЕРЕВО:
       const next = [...currentJsonRef.current, ...cleanNodes];
       await persist(next);
     } catch (e) {
