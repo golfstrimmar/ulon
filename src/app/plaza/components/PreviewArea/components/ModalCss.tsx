@@ -4,13 +4,15 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Editor from "@monaco-editor/react";
 import { getGlobalScss, saveGlobalScss } from "@/lib/htmlStorage";
+import { styleHistory } from "@/lib/styleHistory";
 import Spinner from "@/components/Spinner";
 import ButtonClose from "@/components/ButtonClose";
+
 interface ModalCssProps {
   openModalCss: boolean;
   setopenModalCss: (open: boolean) => void;
 }
-//  ─────🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹──────
+
 export default function ModalCss({
   openModalCss,
   setopenModalCss,
@@ -18,25 +20,52 @@ export default function ModalCss({
   const [scssCode, setScssCode] = useState<string>("");
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isSaved, setIsSaved] = useState<boolean>(false);
+
+  const [canUndo, setCanUndo] = useState<boolean>(false);
+  const [canRedo, setCanRedo] = useState<boolean>(false);
   const editorRef = useRef<any>(null);
 
+  // Загрузка начального кода и подписка на состояние истории
   useEffect(() => {
     if (openModalCss) {
       getGlobalScss().then((code) => {
-        setScssCode(code || "");
+        const val = code || "";
+        setScssCode(val);
         setIsSaved(false);
+        setCanUndo(styleHistory.canUndo());
+        setCanRedo(styleHistory.canRedo());
       });
     }
+
+    const handleHistoryUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<{
+        canUndo: boolean;
+        canRedo: boolean;
+      }>;
+      if (customEvent.detail) {
+        setCanUndo(customEvent.detail.canUndo);
+        setCanRedo(customEvent.detail.canRedo);
+      }
+    };
+
+    window.addEventListener("plaza-style-history-changed", handleHistoryUpdate);
+    return () => {
+      window.removeEventListener(
+        "plaza-style-history-changed",
+        handleHistoryUpdate,
+      );
+    };
   }, [openModalCss]);
 
-  const handleSave = async () => {
+  // Сохранение (Save)
+  const handleSave = async (codeToSave = scssCode) => {
     try {
       setIsSaving(true);
-      await saveGlobalScss(scssCode);
+      styleHistory.record(codeToSave); // 🔹 Фиксируем шаг в истории
+      await saveGlobalScss(codeToSave);
 
-      // Оповещаем все компоненты
       window.dispatchEvent(
-        new CustomEvent("plaza-styles-updated", { detail: scssCode }),
+        new CustomEvent("plaza-styles-updated", { detail: codeToSave }),
       );
 
       setIsSaved(true);
@@ -45,6 +74,30 @@ export default function ModalCss({
       console.error("[ModalCss] Failed to save SCSS to IndexedDB:", err);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // 🔹 Откат назад (Undo)
+  const handleUndo = async () => {
+    const prevScss = styleHistory.undo();
+    if (prevScss !== null) {
+      setScssCode(prevScss);
+      await saveGlobalScss(prevScss);
+      window.dispatchEvent(
+        new CustomEvent("plaza-styles-updated", { detail: prevScss }),
+      );
+    }
+  };
+
+  // 🔹 Возврат вперед (Redo)
+  const handleRedo = async () => {
+    const nextScss = styleHistory.redo();
+    if (nextScss !== null) {
+      setScssCode(nextScss);
+      await saveGlobalScss(nextScss);
+      window.dispatchEvent(
+        new CustomEvent("plaza-styles-updated", { detail: nextScss }),
+      );
     }
   };
 
@@ -71,12 +124,34 @@ export default function ModalCss({
               <span className="text-sm font-mono font-bold text-zinc-200">
                 SCSS Editor
               </span>
+
+              {/* 🔹 Кнопки Undo / Redo для сохраненных ревизий стилей */}
+              <div className="flex items-center gap-1 pl-2 border-l border-zinc-800">
+                <button
+                  type="button"
+                  onClick={handleUndo}
+                  disabled={!canUndo}
+                  title="Undo saved revision"
+                  className="px-2 py-1 rounded bg-zinc-900 border border-zinc-750 text-xs font-mono text-zinc-300 hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer flex items-center gap-1"
+                >
+                  <span>↶</span> Undo
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRedo}
+                  disabled={!canRedo}
+                  title="Redo saved revision"
+                  className="px-2 py-1 rounded bg-zinc-900 border border-zinc-750 text-xs font-mono text-zinc-300 hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer flex items-center gap-1"
+                >
+                  <span>↷</span> Redo
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={handleSave}
+                onClick={() => handleSave()}
                 disabled={isSaving}
                 className={`min-w-[118px] px-3 py-1.5 rounded text-xs font-mono font-semibold transition-all cursor-pointer flex justify-center items-center gap-1.5 border ${
                   isSaved

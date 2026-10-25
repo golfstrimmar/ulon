@@ -8,6 +8,7 @@ import {
   updateClassInGlobalScss,
 } from "@/lib/scssCompiler";
 import { motion, AnimatePresence } from "framer-motion";
+import ButtonUndoRedoScss from "@/components/ButtonUndoRedoScss";
 
 // 🔹 Динамический импорт самого Monaco Editor (подгрузится только по клику на класс/атрибуты)
 const Editor = dynamic(() => import("@monaco-editor/react"), {
@@ -272,7 +273,7 @@ export function MonacoPropertiesEditor({
                   ? `SCSS: .${openTarget}`
                   : `Attributes <${nodeTag}> (JSON)`}
               </span>
-
+              <ButtonUndoRedoScss />
               <div className="flex items-center gap-2">
                 {openTarget !== "__attributes__" && (
                   <button

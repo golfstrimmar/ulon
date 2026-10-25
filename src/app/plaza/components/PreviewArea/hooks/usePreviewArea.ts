@@ -169,11 +169,20 @@ export function usePreviewArea() {
       window.removeEventListener("plaza-styles-updated", handleStylesUpdate);
   }, []);
 
-  // Изменение скриптов JS
+  // В блоке 2. РЕАКЦИЯ НА СОБЫТИЯ ШИНЫ в usePreviewArea.ts:
   useEffect(() => {
     const handleScriptsUpdate = (e: Event) => {
-      const customEvent = e as CustomEvent<Record<string, string>>;
-      const nextScripts = customEvent.detail || {};
+      const customEvent = e as CustomEvent<string | Record<string, string>>;
+      let nextScripts: Record<string, string> = {};
+
+      if (typeof customEvent.detail === "string") {
+        nextScripts = customEvent.detail
+          ? { __bundle__: customEvent.detail }
+          : {};
+      } else if (customEvent.detail && typeof customEvent.detail === "object") {
+        nextScripts = customEvent.detail;
+      }
+
       setScriptsJs(nextScripts);
       scriptsJsRef.current = nextScripts;
       updatePreviewDoc(

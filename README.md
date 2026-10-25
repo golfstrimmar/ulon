@@ -104,6 +104,7 @@ plaza-styles-updated
 plaza-scripts-updated
 plaza-fonts-updated
 preview-fontspanel
+plaza-style-history-changed
 <!--==============hook======// Сохранение SCSS в IndexedDB=======// Сохранение JS в IndexedDB====================-->
   import { saveGlobalScss, saveGlobalJs } from "@/lib/htmlStorage";
   const updateAndPersistScss = async (nextScss: string) => {

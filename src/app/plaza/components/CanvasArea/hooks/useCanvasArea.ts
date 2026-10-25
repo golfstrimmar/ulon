@@ -25,6 +25,9 @@ import {
   DropTarget,
   extractStylesAndScriptsFromNodes,
 } from "../lib/canvasModel";
+import { styleHistory } from "@/lib/styleHistory";
+
+//  ─────🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹──────
 
 export function useCanvasArea() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -32,7 +35,7 @@ export function useCanvasArea() {
   const currentJsonRef = useRef<HtmlNode[]>([]);
   currentJsonRef.current = currentJson;
 
-  // История (Undo / Redo)
+  // История дерева HTML (Undo / Redo)
   const historyRef = useRef<HtmlNode[][]>([]);
   const futureRef = useRef<HtmlNode[][]>([]);
   const [canUndo, setCanUndo] = useState(false);
@@ -101,15 +104,19 @@ export function useCanvasArea() {
     selectedNode?.text,
   ]);
 
-  // Сохранение SCSS
+  // Сохранение стилей в БД и запись в историю
   const updateAndPersistScss = async (nextScss: string) => {
     try {
+      styleHistory.record(nextScss); // 🔹 Сохраняем ревизию в историю
       await saveGlobalScss(nextScss);
+      setGlobalScss(nextScss);
+      globalScssRef.current = nextScss;
+
       window.dispatchEvent(
         new CustomEvent("plaza-styles-updated", { detail: nextScss }),
       );
     } catch (e) {
-      console.error("[useCanvasArea] Error saving SCSS:", e);
+      console.error("[useCanvasArea] Error saving SCSS to DB:", e);
     }
   };
 
@@ -125,7 +132,7 @@ export function useCanvasArea() {
     }
   };
 
-  // Сохранение разметки дерева
+  // Сохранение разметки дерева (с историей дерева)
   const persist = async (next: HtmlNode[], recordHistory = true) => {
     if (recordHistory) {
       const snapshot = JSON.parse(JSON.stringify(currentJsonRef.current));
@@ -152,7 +159,7 @@ export function useCanvasArea() {
     }
   };
 
-  // Undo / Redo
+  // Undo / Redo для дерева нод
   const handleUndo = useCallback(async () => {
     if (historyRef.current.length === 0) return;
     const previousState = historyRef.current[historyRef.current.length - 1];
@@ -179,7 +186,7 @@ export function useCanvasArea() {
     await persist(nextState, false);
   }, []);
 
-  // Горячие клавиши
+  // Горячие клавиши для холста
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
@@ -206,7 +213,7 @@ export function useCanvasArea() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleUndo, handleRedo]);
 
-  // Загрузка при монтировании
+  // Загрузка при монтировании (ОДИН ЕДИНСТВЕННЫЙ БЛОК)
   useEffect(() => {
     (async () => {
       try {
@@ -239,19 +246,29 @@ export function useCanvasArea() {
           setCurrentJson(cleanNodes);
           currentJsonRef.current = cleanNodes;
 
+          // 🔹 Инициализируем историю стилей финальным исходником
+          styleHistory.init(currentScss);
+
           await Promise.all([
-            updateAndPersistScss(currentScss),
-            updateAndPersistJs(currentJs),
+            saveGlobalScss(currentScss),
+            saveGlobalJs(currentJs),
             saveHtmlJson(DB_KEY, cleanNodes),
           ]);
         } else {
           setCurrentJson([]);
           currentJsonRef.current = [];
+          styleHistory.init(currentScss);
+
           await Promise.all([
-            updateAndPersistScss(currentScss),
-            updateAndPersistJs(currentJs),
+            saveGlobalScss(currentScss),
+            saveGlobalJs(currentJs),
           ]);
         }
+
+        setGlobalScss(currentScss);
+        globalScssRef.current = currentScss;
+        setGlobalJs(currentJs);
+        globalJsRef.current = currentJs;
       } catch (err) {
         console.error("[useCanvasArea] Mount error:", err);
       }
@@ -450,7 +467,7 @@ export function useCanvasArea() {
     };
   }, []);
 
-  // Обработчики действий пользователя
+  // Добавление компонента из боковой панели (с добавлением его стилей в историю)
   const handleAppendFromPath = async (path: string) => {
     try {
       const res = await fetch(path);

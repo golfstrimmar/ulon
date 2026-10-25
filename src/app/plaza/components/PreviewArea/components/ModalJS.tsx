@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Editor from "@monaco-editor/react";
 import { getGlobalJs, saveGlobalJs } from "@/lib/htmlStorage";
+import { scriptsHistory } from "@/lib/scriptsHistory";
+import ButtonUndoRedoJs from "@/components/ButtonUndoRedoJs";
 
 interface ModalJsProps {
   openModalJs: boolean;
@@ -16,23 +18,45 @@ export default function ModalJs({ openModalJs, setOpenModalJs }: ModalJsProps) {
   const [isSaved, setIsSaved] = useState<boolean>(false);
   const editorRef = useRef<any>(null);
 
-  // Загружаем бандл напрямую из базы
+  // 1. Загружаем бандл при открытии модалки
   useEffect(() => {
     if (openModalJs) {
       getGlobalJs().then((bundle) => {
-        setJsCode(bundle || "");
+        const val = bundle || "";
+        setJsCode(val);
         setIsSaved(false);
       });
     }
   }, [openModalJs]);
 
-  // Сохраняем бандл в IndexedDB
+  // 2. 🔹 Слушаем внешние откаты Undo / Redo и обновляем текст в Monaco
+  useEffect(() => {
+    const handleSync = (e: Event) => {
+      const customEvent = e as CustomEvent<string | Record<string, string>>;
+      let updatedCode = "";
+      if (typeof customEvent.detail === "string") {
+        updatedCode = customEvent.detail;
+      } else if (customEvent.detail && typeof customEvent.detail === "object") {
+        updatedCode =
+          (customEvent.detail as any).__bundle__ ||
+          Object.values(customEvent.detail).join("\n\n");
+      }
+      setJsCode(updatedCode);
+    };
+
+    window.addEventListener("plaza-scripts-updated", handleSync);
+    return () =>
+      window.removeEventListener("plaza-scripts-updated", handleSync);
+  }, []);
+
+  // 3. 🔹 Сохраняем в базу И в историю
   const handleSave = async () => {
     try {
       setIsSaving(true);
+      scriptsHistory.record(jsCode); // <-- ВОТ ЗДЕСЬ ПИШЕМ В ИСТОРИЮ!
       await saveGlobalJs(jsCode);
 
-      // Оповещаем все компоненты и превью
+      // Оповещаем всё приложение
       window.dispatchEvent(
         new CustomEvent("plaza-scripts-updated", { detail: jsCode }),
       );
@@ -66,9 +90,12 @@ export default function ModalJs({ openModalJs, setOpenModalJs }: ModalJsProps) {
         >
           {/* Шапка модалки */}
           <div className="flex items-center justify-between pb-3 border-b border-zinc-800 mb-3">
-            <span className="text-sm font-mono font-bold text-amber-300 flex items-center gap-1.5">
-              <span>⚡</span> JavaScript Бандл (scripts.js)
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-mono font-bold text-amber-300 flex items-center gap-1.5">
+                <span>⚡</span> JavaScript Bundle (scripts.js)
+              </span>
+              <ButtonUndoRedoJs />
+            </div>
 
             <div className="flex items-center gap-2">
               <button
@@ -81,7 +108,7 @@ export default function ModalJs({ openModalJs, setOpenModalJs }: ModalJsProps) {
                     : "bg-amber-600 hover:bg-amber-500 border-amber-400 text-white shadow-lg"
                 }`}
               >
-                {isSaved ? "✓ Сохранено в базу" : "Сохранить (Ctrl+S)"}
+                {isSaved ? "✓ Saved" : "Save (Ctrl+S)"}
               </button>
 
               <button

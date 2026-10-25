@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { HtmlNode } from "@/types/HtmlNode";
 import { COMMON_TAGS } from "../lib/canvasModel";
@@ -55,6 +55,7 @@ export default function ModalNodeProperties({
           className="fixed shadow-[0_-6px_18px_rgba(32,75,110,0.7)] bottom-0 right-0 w-[calc(100vw-210px)] z-40"
         >
           <div className="relative bg-zinc-800 border-t border-zinc-700 rounded-t-sm shadow-[0_-8px_32px_rgba(0,0,0,0.6)] backdrop-blur-md">
+            {/* Кнопка закрытия модалки */}
             <button
               type="button"
               onClick={(e) => {
@@ -67,18 +68,22 @@ export default function ModalNodeProperties({
             </button>
 
             <div className="p-1 mt-1">
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] pl-15 font-mono text-zinc-500 uppercase tracking-widest">
-                  Editing
-                </span>
-                <span className="text-[11px] font-mono text-emerald-300 truncate max-w-[200px]">
-                  &lt;{selectedNode.tag || "div"}&gt;
-                  {selectedNode.class
-                    ? ` .${selectedNode.class.split(" ")[0]}`
-                    : ""}
-                </span>
+              <div className="flex items-center justify-between pl-14 pr-2">
+                {/* Информация об элементе */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-mono text-zinc-500 uppercase tracking-widest">
+                    Editing
+                  </span>
+                  <span className="text-[11px] font-mono text-emerald-300 truncate max-w-[200px]">
+                    &lt;{selectedNode.tag || "div"}&gt;
+                    {selectedNode.class
+                      ? ` .${selectedNode.class.split(" ")[0]}`
+                      : ""}
+                  </span>
+                </div>
               </div>
 
+              {/* Выбор тега */}
               <div className="flex items-center gap-2 mt-2">
                 <label className="text-[10px] tracking-widest text-zinc-400 block">
                   Tag
@@ -104,6 +109,7 @@ export default function ModalNodeProperties({
                 </div>
               </div>
 
+              {/* Инпуты: Классы и Текст */}
               <div className="grid grid-cols-[1fr_2fr] gap-2 items-start mt-2">
                 <div>
                   <label className="text-[10px] tracking-widest text-zinc-400 block">
@@ -138,6 +144,7 @@ export default function ModalNodeProperties({
                 </div>
               </div>
 
+              {/* Редактор классов и стилей ноды */}
               <div className="pt-2 border-t border-zinc-800">
                 {(() => {
                   const classSource =

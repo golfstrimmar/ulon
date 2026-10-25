@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { usePreviewArea } from "@/app/plaza/components/PreviewArea/hooks/usePreviewArea";
 import { saveGlobalJs } from "@/lib/htmlStorage";
 import dynamic from "next/dynamic";
+
 const ModalJS = dynamic(
   () => import("@/app/plaza/components/PreviewArea/components/ModalJS"),
   {
