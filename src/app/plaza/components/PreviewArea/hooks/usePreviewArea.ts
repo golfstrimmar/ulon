@@ -89,7 +89,6 @@ export function usePreviewArea() {
         setScriptsJs(loadedScripts);
         scriptsJsRef.current = loadedScripts;
 
-        // Компилируем SCSS в чистый CSS
         const css = await compileScssToCss(dbScss || "");
         setCompiledCss(css);
         compiledCssRef.current = css;
@@ -141,7 +140,7 @@ export function usePreviewArea() {
       window.removeEventListener("plaza-tree-updated", handleTreeUpdate);
   }, []);
 
-  // Изменение глобального SCSS: компилируем и обновляем iframe
+  // Изменение глобального SCSS
   useEffect(() => {
     const handleStylesUpdate = async (e: Event) => {
       const customEvent = e as CustomEvent<string | Record<string, string>>;
@@ -191,6 +190,49 @@ export function usePreviewArea() {
       window.removeEventListener("plaza-scripts-updated", handleScriptsUpdate);
   }, []);
 
+  // 🔹🔹 ДОБАВЛЕНО: Реакция на изменение шрифтов по всему приложению 🔹🔹
+  useEffect(() => {
+    const handleFontsSync = (e: Event) => {
+      const customEvent = e as CustomEvent<{
+        fonts: string[];
+        defaultFont: string;
+      }>;
+      if (!customEvent.detail) return;
+      const { fonts, defaultFont: nextDef } = customEvent.detail;
+
+      setFontEntries(fonts);
+      fontEntriesRef.current = fonts;
+      setDefaultFont(nextDef);
+      defaultFontRef.current = nextDef;
+
+      // Моментально пересобираем документ в PreviewArea
+      updatePreviewDoc(
+        currentBodyHtmlRef.current,
+        fonts,
+        nextDef,
+        compiledCssRef.current,
+        scriptsJsRef.current,
+      );
+    };
+
+    window.addEventListener("plaza-fonts-updated", handleFontsSync);
+    return () =>
+      window.removeEventListener("plaza-fonts-updated", handleFontsSync);
+  }, []);
+
+  /* ==========================================================================
+     3. МЕТОДЫ УПРАВЛЕНИЯ
+     ========================================================================== */
+
+  // Хелпер оповещения шины
+  const broadcastFonts = (fonts: string[], defFont: string) => {
+    window.dispatchEvent(
+      new CustomEvent("plaza-fonts-updated", {
+        detail: { fonts, defaultFont: defFont },
+      }),
+    );
+  };
+
   const openModalFonts = () => {
     setIsFontsPanelOpen((prev) => {
       const next = !prev;
@@ -217,11 +259,8 @@ export function usePreviewArea() {
 
     setNewFontInput("");
 
-    updatePreviewDoc(
-      currentBodyHtmlRef.current,
-      result.fonts,
-      result.defaultFont,
-    );
+    // Оповещаем другие инстансы (включая PreviewArea)
+    broadcastFonts(result.fonts, result.defaultFont);
   };
 
   const handleRemoveFont = async (fontToRemove: string) => {
@@ -231,11 +270,8 @@ export function usePreviewArea() {
     setDefaultFont(result.defaultFont);
     defaultFontRef.current = result.defaultFont;
 
-    updatePreviewDoc(
-      currentBodyHtmlRef.current,
-      result.fonts,
-      result.defaultFont,
-    );
+    // Оповещаем другие инстансы
+    broadcastFonts(result.fonts, result.defaultFont);
   };
 
   const handleSetDefaultFont = async (fontName: string) => {
@@ -247,7 +283,8 @@ export function usePreviewArea() {
     setDefaultFont(nextDefault);
     defaultFontRef.current = nextDefault;
 
-    updatePreviewDoc(currentBodyHtmlRef.current, fontEntries, nextDefault);
+    // Оповещаем другие инстансы
+    broadcastFonts(fontEntries, nextDefault);
   };
 
   const detectedFamilies = extractFontFamilies(fontEntries);

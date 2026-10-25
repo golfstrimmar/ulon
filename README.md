@@ -102,6 +102,7 @@ const [isFontsPanelOpen, setIsFontsPanelOpen] = useState<boolean>(false);
 plaza-tree-updated
 plaza-styles-updated 
 plaza-scripts-updated
+plaza-fonts-updated
 preview-fontspanel
 <!--==============hook======// Сохранение SCSS в IndexedDB=======// Сохранение JS в IndexedDB====================-->
   import { saveGlobalScss, saveGlobalJs } from "@/lib/htmlStorage";
