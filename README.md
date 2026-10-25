@@ -51,5 +51,43 @@ import { motion, AnimatePresence } from "framer-motion";
                       )}
 </AnimatePresence>
 <!--===============================================-->
+window.dispatchEvent(
+  new CustomEvent("plaza-tree-updated", { detail: next }),
+);
+window.dispatchEvent(
+  new CustomEvent("plaza-styles-updated", { detail: nextScss }),
+);
+window.addEventListener("plaza-styles-updated", handleExternalStyles);
+return () =>
+  window.removeEventListener("plaza-styles-updated", handleExternalStyles);
+  
+plaza-tree-updated
+plaza-styles-updated 
+plaza-scripts-updated
+
+<!--==============hook======// Сохранение SCSS в IndexedDB=======// Сохранение JS в IndexedDB====================-->
+  import { saveGlobalScss, saveGlobalJs } from "@/lib/htmlStorage";
+  const updateAndPersistScss = async (nextScss: string) => {
+    try {
+      await saveGlobalScss(nextScss);
+      window.dispatchEvent(
+        new CustomEvent("plaza-styles-updated", { detail: nextScss }),
+      );
+    } catch (e) {
+      console.error("[CanvasArea] Error saving SCSS to DB:", e);
+    }
+  };
+
+  const updateAndPersistJs = async (nextJs: string) => {
+    try {
+      await saveGlobalJs(nextJs);
+      window.dispatchEvent(
+        new CustomEvent("plaza-scripts-updated", { detail: nextJs }),
+      );
+    } catch (e) {
+      console.error("[CanvasArea] Error saving JS to DB:", e);
+    }
+  };
+<!--===============================================-->
 1. стили дублируются в файле стилей. надо устранить.  D:\WEB\ulon\src\app\plaza\components\PreviewArea\components\ModalCss.tsx
 2. на базу уходит некорректный js  D:\WEB\ulon\src\app\plaza\components\PreviewArea\components\ModalJS.tsx

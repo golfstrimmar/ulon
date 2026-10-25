@@ -55,7 +55,7 @@ export default function ButtonCss() {
         {cssCount > 0 && (
           <i
             onClick={(e) => clearScss(e)}
-            className=" text-red-500 h-4 rounded-lg bg-zinc-500 hover:bg-red-600 hover:text-white border border-zinc-700  text-[10px] font-bold flex flex-col justify-center transition-all cursor-pointer px-1  duration-200"
+            className=" text-red-500 hover:text-white h-4 rounded-lg bg-zinc-500 hover:bg-red-600  border border-zinc-700  text-[12px]  flex flex-col justify-center transition-all cursor-pointer px-1.5  text-center duration-200"
           >
             CLEAR
           </i>

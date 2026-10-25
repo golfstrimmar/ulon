@@ -36,18 +36,21 @@ export default function ButtonJS() {
         <span>⚡</span>
         <span className="hidden sm:inline">JS:</span>
         <span
-          className={`font-bold rounded-full px-1 text-[9px] ${
+          className={`font-bold center rounded-full w-6 text-[10px]
+          ${
             scriptsCount > 0
               ? "bg-amber-600 text-white"
               : "bg-zinc-700 text-zinc-400"
-          }`}
+          }
+
+        `}
         >
           {scriptsCount}
-        </span>{" "}
+        </span>
         {scriptsCount > 0 && (
           <i
             onClick={(e) => clearJs(e)}
-            className=" text-red-500 h-4 rounded-lg bg-zinc-500 hover:bg-red-600 hover:text-white border border-zinc-700  text-[10px] font-bold flex flex-col justify-center transition-all cursor-pointer px-1  duration-200"
+            className=" text-red-500 hover:text-white h-4 rounded-lg bg-zinc-500 hover:bg-red-600  border border-zinc-700  text-[12px]  flex flex-col justify-center transition-all cursor-pointer px-1.5  text-center duration-200"
           >
             CLEAR
           </i>

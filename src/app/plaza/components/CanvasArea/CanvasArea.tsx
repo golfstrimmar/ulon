@@ -7,9 +7,7 @@ import {
   saveHtmlJson,
   deleteHtmlJson,
   getGlobalScss,
-  saveGlobalScss,
   getGlobalJs,
-  saveGlobalJs,
 } from "@/lib/htmlStorage";
 import {
   generateNodeKey,
@@ -24,6 +22,7 @@ import { ROOT_TAGS, ELEMENT_FOLDERS } from "./elementsManifest";
 import { MonacoPropertiesEditor } from "../MonacoPropertiesEditor/MonacoPropertiesEditor";
 import { motion, AnimatePresence } from "framer-motion";
 import { updateScriptInGlobalBundle } from "@/lib/jsCompiler";
+import { saveGlobalScss, saveGlobalJs } from "@/lib/htmlStorage";
 const DB_KEY = "plaza_tree";
 
 function sanitizeCssBody(css: string): string {
@@ -442,7 +441,7 @@ function NodeCard({
     </div>
   );
 }
-
+//  ─────🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹──────
 export function CanvasArea() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [currentJson, setCurrentJson] = useState<HtmlNode[]>([]);
@@ -462,7 +461,6 @@ export function CanvasArea() {
   const [editTag, setEditTag] = useState<string>("div");
   const [editClass, setEditClass] = useState<string>("");
   const [editText, setEditText] = useState<string>("");
-
   let selectedNode: HtmlNode | null = null;
   if (clickedKey) {
     for (const r of currentJson) {
@@ -515,30 +513,26 @@ export function CanvasArea() {
 
   // Сохранение SCSS в IndexedDB
   const updateAndPersistScss = async (nextScss: string) => {
-    setGlobalScss(nextScss);
-    globalScssRef.current = nextScss;
     try {
       await saveGlobalScss(nextScss);
+      window.dispatchEvent(
+        new CustomEvent("plaza-styles-updated", { detail: nextScss }),
+      );
     } catch (e) {
       console.error("[CanvasArea] Error saving SCSS to DB:", e);
     }
-    window.dispatchEvent(
-      new CustomEvent("plaza-styles-updated", { detail: nextScss }),
-    );
   };
 
   // Сохранение JS в IndexedDB
   const updateAndPersistJs = async (nextJs: string) => {
-    setGlobalJs(nextJs);
-    globalJsRef.current = nextJs;
     try {
       await saveGlobalJs(nextJs);
+      window.dispatchEvent(
+        new CustomEvent("plaza-scripts-updated", { detail: nextJs }),
+      );
     } catch (e) {
       console.error("[CanvasArea] Error saving JS to DB:", e);
     }
-    window.dispatchEvent(
-      new CustomEvent("plaza-scripts-updated", { detail: nextJs }),
-    );
   };
 
   /* ==========================================================================
