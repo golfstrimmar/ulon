@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { HtmlNode } from "@/types/HtmlNode";
 import { COMMON_TAGS } from "../lib/canvasModel";
@@ -155,10 +155,9 @@ export default function ModalNodeProperties({
                     {TextsDefault.map((item, index) => (
                       <button
                         key={index}
-
                         onClick={async () => {
-                          setEditText(item.value); // 1. Сразу обновляем поле в UI
-                          await onSaveNodeField("text", item.value); // 2. Сохраняем в ноду
+                          setEditText(item.value);
+                          await onSaveNodeField("text", item.value);
                         }}
                         className="btn grey-btn"
                       >
@@ -193,7 +192,8 @@ export default function ModalNodeProperties({
 
                   return (
                     <MonacoPropertiesEditor
-                      nodeKey={selectedNode._key || ""}
+                      key={selectedNode._key || clickedKey || "editor"}
+                      nodeKey={selectedNode._key || clickedKey || ""}
                       nodeTag={selectedNode.tag || "div"}
                       nodeClasses={nodeClasses}
                       globalScss={globalScss}

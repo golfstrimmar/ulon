@@ -14,15 +14,35 @@ const STYLE_PRESETS: { category: string; items: StylePreset[] }[] = [
   {
     category: "Layout",
     items: [
-      { name: "Flex", css: "display: flex;\nflex-direction: row;" },
-      { name: "Flex col", css: "display: flex;\nflex-direction: column;" },
       {
-        name: "Center",
-        css: "display: flex;\nalign-items: center;\njustify-content: center;",
+        name: "inline-block",
+        css: "display: inline-block;",
       },
       {
-        name: "Between",
-        css: "display: flex;\nalign-items: center;\njustify-content: space-between;",
+        name: "block",
+        css: "display: block;",
+      },
+      { name: "Flex row", css: "display: flex;\nflex-direction: row;" },
+      {
+        name: "Flex row reverse",
+        css: "display: flex;\nflex-direction: row-reverse;",
+      },
+      { name: "Flex col", css: "display: flex;\nflex-direction: column;" },
+      {
+        name: "justify center",
+        css: "justify-content: center;",
+      },
+      {
+        name: "justify between",
+        css: "justify-content: space-between;",
+      },
+      {
+        name: "items center",
+        css: "align-items: center;",
+      },
+      {
+        name: "items end",
+        css: "align-items: flex-end;",
       },
       {
         name: "Grid 2 Cols",
@@ -66,12 +86,13 @@ const STYLE_PRESETS: { category: string; items: StylePreset[] }[] = [
   },
 ];
 
-type SpacingType = "padding" | "margin";
+type SpacingType = "padding" | "margin" | "border-radius";
 type SpacingSide = "all" | "top" | "right" | "bottom" | "left";
+type TypoProp = "font-size" | "line-height" | "letter-spacing";
 
 interface ModalCustomStylesProps {
   currentClass: string | null;
-  currentScssText?: string; // 🔹 Передаем текущий текст класса из Monaco
+  currentScssText?: string;
   onApplySnippet: (snippetCss: string) => void;
 }
 
@@ -93,29 +114,50 @@ export default function ModalCustomStyles({
   const [spacingSide, setSpacingSide] = useState<SpacingSide>("all");
   const [spacingVal, setSpacingVal] = useState<number>(0);
 
+  // 🔹 Состояние для Типографики (Font-Size, Line-Height, Letter-Spacing)
+  const [typoProp, setTypoProp] = useState<TypoProp>("font-size");
+  const [typoVal, setTypoVal] = useState<number>(16);
+
   const isDraggingRef = useRef(false);
 
   // 🔹 Парсер: вытаскивает реальное число свойства из текста класса
   const extractNumericProp = useCallback(
     (propName: string, scssText: string): number => {
-      const regex = new RegExp(`${propName}\\s*:\\s*([0-9]+)px`, "i");
+      const regex = new RegExp(
+        `${propName}\\s*:\\s*(-?[0-9]+(?:\\.[0-9]+)?)px`,
+        "i",
+      );
       const match = scssText.match(regex);
-      return match ? parseInt(match[1], 10) : 0;
+      return match ? parseFloat(match[1]) : 0;
     },
     [],
   );
 
-  // Вычисление точного CSS-свойства
   const getComputedSpacingProp = (type: SpacingType, side: SpacingSide) => {
     return side === "all" ? type : `${type}-${side}`;
   };
 
-  // 🔹 Синхронизация значений при открытии или смене класса
+  // 🔹 Лимиты для типографики
+  const getTypoLimits = (prop: TypoProp) => {
+    switch (prop) {
+      case "font-size":
+        return { min: 8, max: 96, step: 1, defaultVal: 16 };
+      case "line-height":
+        return { min: 8, max: 120, step: 1, defaultVal: 24 };
+      case "letter-spacing":
+        return { min: -2, max: 20, step: 0.5, defaultVal: 0 };
+    }
+  };
+
+  // 🔹 Синхронизация значений при открытии модалки или смене класса
   useEffect(() => {
     if (!isOpen || !currentScssText) return;
     const prop = getComputedSpacingProp(spacingType, spacingSide);
     setSpacingVal(extractNumericProp(prop, currentScssText));
     setGapVal(extractNumericProp(gapMode, currentScssText));
+
+    const existingTypo = extractNumericProp(typoProp, currentScssText);
+    setTypoVal(existingTypo || getTypoLimits(typoProp).defaultVal);
   }, [
     isOpen,
     currentClass,
@@ -123,6 +165,7 @@ export default function ModalCustomStyles({
     spacingType,
     spacingSide,
     gapMode,
+    typoProp,
     extractNumericProp,
   ]);
 
@@ -166,23 +209,19 @@ export default function ModalCustomStyles({
   }, [removeLiveStyle]);
 
   /* ==========================================================================
-     ПЕРЕКЛЮЧЕНИЕ СТОРОН И ТИПОВ (СБРОС СТЕКА БЕЗ АВТО-ЗАПИСИ)
+     ПЕРЕКЛЮЧЕНИЕ СТОРОН И ТИПОВ БЕЗ ПЕРЕБРОСА СТАРОГО ЗНАЧЕНИЯ
      ========================================================================== */
   const handleSelectSide = (newSide: SpacingSide) => {
-    removeLiveStyle(); // 1. Чистим живой стиль в iframe
-    setSpacingSide(newSide); // 2. Меняем сторону
-
-    // 3. Считываем значение для этой конкретной стороны из SCSS (или 0)
+    removeLiveStyle();
+    setSpacingSide(newSide);
     const prop = getComputedSpacingProp(spacingType, newSide);
     const existingVal = extractNumericProp(prop, currentScssText);
     setSpacingVal(existingVal);
-    // ❌ Больше НЕ вызываем onApplySnippet! Значение применится только при движении ползунка!
   };
 
   const handleSelectType = (newType: SpacingType) => {
     removeLiveStyle();
     setSpacingType(newType);
-
     const prop = getComputedSpacingProp(newType, spacingSide);
     const existingVal = extractNumericProp(prop, currentScssText);
     setSpacingVal(existingVal);
@@ -195,8 +234,15 @@ export default function ModalCustomStyles({
     setGapVal(existingVal);
   };
 
+  const handleSelectTypoProp = (newProp: TypoProp) => {
+    removeLiveStyle();
+    setTypoProp(newProp);
+    const existingVal = extractNumericProp(newProp, currentScssText);
+    setTypoVal(existingVal || getTypoLimits(newProp).defaultVal);
+  };
+
   /* ==========================================================================
-     SLIDERS HANDLERS
+     SLIDERS HANDLERS (0 ms Live + Single Commit)
      ========================================================================== */
   const handleSpacingSliderInput = (newVal: number) => {
     isDraggingRef.current = true;
@@ -226,7 +272,22 @@ export default function ModalCustomStyles({
     onApplySnippet(`${gapMode}: ${gapVal}px;`);
   };
 
+  const handleTypoSliderInput = (newVal: number) => {
+    isDraggingRef.current = true;
+    setTypoVal(newVal);
+    if (currentClass) {
+      applyLiveStyle(currentClass, typoProp, newVal);
+    }
+  };
+
+  const handleTypoSliderCommit = () => {
+    isDraggingRef.current = false;
+    onApplySnippet(`${typoProp}: ${typoVal}px;`);
+  };
+
   if (!currentClass) return null;
+
+  const currentTypoLimits = getTypoLimits(typoProp);
 
   return (
     <div className="relative inline-block">
@@ -252,7 +313,7 @@ export default function ModalCustomStyles({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="fixed right-0 bottom-full mb-1 z-50 w-80 max-h-[520px] bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl p-2.5 flex flex-col gap-2.5 backdrop-blur-md select-none"
+            className="fixed right-0 bottom-full mb-1 z-50 w-[400px]  bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl p-2.5 flex flex-col gap-2.5 backdrop-blur-md select-none"
           >
             {/* Шапка */}
             <div className="flex items-center justify-between pb-1 border-b border-zinc-800">
@@ -268,10 +329,9 @@ export default function ModalCustomStyles({
               </button>
             </div>
 
-            <div className="overflow-y-auto custom-scrollbar flex flex-col gap-2.5 pr-0.5 max-h-[460px]">
+            <div className="overflow-y-auto custom-scrollbar flex flex-col gap-2.5 pr-0.5 ">
               {/* 🔹 БЛОК 1: PADDING & MARGIN (ПО КРУГУ) */}
               <div className="bg-zinc-950/80 border border-zinc-800 rounded-md p-2 flex flex-col gap-2 shadow-inner">
-                {/* Выбор типа: Padding или Margin */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1 bg-zinc-900 p-0.5 rounded border border-zinc-800">
                     <button
@@ -296,6 +356,17 @@ export default function ModalCustomStyles({
                     >
                       Margin
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectType("border-radius")}
+                      className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition cursor-pointer ${
+                        spacingType === "border-radius"
+                          ? "bg-amber-600 text-white shadow"
+                          : "text-zinc-400 hover:text-zinc-200"
+                      }`}
+                    >
+                      border-radius
+                    </button>
                   </div>
 
                   <span
@@ -309,7 +380,7 @@ export default function ModalCustomStyles({
                   </span>
                 </div>
 
-                {/* Выбор стороны: All, Top, Right, Bottom, Left */}
+                {/* Выбор стороны */}
                 <div className="grid grid-cols-5 gap-1">
                   {(
                     [
@@ -337,7 +408,7 @@ export default function ModalCustomStyles({
                   ))}
                 </div>
 
-                {/* Ползунок для Padding / Margin */}
+                {/* Ползунок Padding / Margin */}
                 <div className="flex items-center gap-2 pt-0.5">
                   <input
                     type="range"
@@ -367,7 +438,68 @@ export default function ModalCustomStyles({
                 </div>
               </div>
 
-              {/* 🔹 БЛОК 2: GAP SPACING */}
+              {/* 🔹 БЛОК 2: TYPOGRAPHY (FONT-SIZE, LINE-HEIGHT, LETTER-SPACING) */}
+              <div className="bg-zinc-950/80 border border-zinc-800 rounded-md p-2 flex flex-col gap-2 shadow-inner">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono uppercase text-zinc-400 font-semibold tracking-wider">
+                    Typography:
+                  </span>
+                  <span className="text-[11px] font-mono text-purple-400 font-bold bg-zinc-800 px-1.5 py-0.2 rounded border border-zinc-700">
+                    {typoVal}px
+                  </span>
+                </div>
+
+                {/* Переключатель свойств текста */}
+                <div className="grid grid-cols-3 gap-1">
+                  {(
+                    [
+                      { id: "font-size", label: "Size" },
+                      { id: "line-height", label: "Line H" },
+                      { id: "letter-spacing", label: "Letter" },
+                    ] as const
+                  ).map((btn) => (
+                    <button
+                      key={btn.id}
+                      type="button"
+                      onClick={() => handleSelectTypoProp(btn.id)}
+                      className={`px-1 py-0.5 rounded text-[10px] font-mono font-bold border transition cursor-pointer text-center ${
+                        typoProp === btn.id
+                          ? "bg-purple-600 border-purple-400 text-white shadow-sm"
+                          : "bg-zinc-850 border-zinc-750 text-zinc-300 hover:bg-zinc-800"
+                      }`}
+                    >
+                      {btn.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Ползунок Typography */}
+                <div className="flex items-center gap-2 pt-0.5">
+                  <input
+                    type="range"
+                    min={currentTypoLimits.min}
+                    max={currentTypoLimits.max}
+                    step={currentTypoLimits.step}
+                    value={typoVal}
+                    onPointerDown={() => {
+                      isDraggingRef.current = true;
+                    }}
+                    onInput={(e) => {
+                      handleTypoSliderInput(
+                        Number((e.target as HTMLInputElement).value),
+                      );
+                    }}
+                    onChange={(e) => {
+                      handleTypoSliderInput(Number(e.target.value));
+                    }}
+                    onPointerUp={handleTypoSliderCommit}
+                    onPointerCancel={handleTypoSliderCommit}
+                    className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                  />
+                </div>
+              </div>
+
+              {/* 🔹 БЛОК 3: GAP SPACING */}
               <div className="bg-zinc-950/80 border border-zinc-800 rounded-md p-2 flex flex-col gap-2 shadow-inner">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-mono uppercase text-zinc-400 font-semibold tracking-wider">
@@ -393,7 +525,7 @@ export default function ModalCustomStyles({
                       onClick={() => handleSelectGapMode(btn.id)}
                       className={`px-1 py-0.5 rounded text-[10px] font-mono font-bold border transition cursor-pointer text-center ${
                         gapMode === btn.id
-                          ? "bg-indigo-600 border-indigo-400 text-white"
+                          ? "bg-indigo-600 border-indigo-400 text-white shadow-sm"
                           : "bg-zinc-850 border-zinc-750 text-zinc-300 hover:bg-zinc-800"
                       }`}
                     >
@@ -428,7 +560,7 @@ export default function ModalCustomStyles({
                 </div>
               </div>
 
-              {/* 🔹 БЛОК 3: СПИСОК ОСТАЛЬНЫХ ПРЕСЕТОВ */}
+              {/* 🔹 БЛОК 4: СПИСОК ОСТАЛЬНЫХ ПРЕСЕТОВ */}
               <div className="flex flex-col gap-2">
                 {STYLE_PRESETS.map((group) => (
                   <div key={group.category} className="flex flex-col gap-1">

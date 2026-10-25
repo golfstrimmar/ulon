@@ -7,13 +7,14 @@ import ButtonCss from "@/app/plaza/components/PreviewArea/components/ButtonCss";
 import ButtonJS from "@/app/plaza/components/PreviewArea/components/ButtonJS";
 import ButtonFonts from "@/app/plaza/components/PreviewArea/components/ButtonFonts";
 import dynamic from "next/dynamic";
+
 const ModalFonts = dynamic(
   () => import("@/app/plaza/components/PreviewArea/components/ModalFonts"),
   {
     ssr: false,
   },
 );
-//  ─────🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹──────
+
 export function PreviewArea() {
   const {
     iframeRef,
@@ -32,61 +33,111 @@ export function PreviewArea() {
     handleRemoveFont,
     handleSetDefaultFont,
   } = usePreviewArea();
-  const [iframeHeight, setIframeHeight] = useState(140);
 
-  // useEffect(() => {
-  //   if (!srcDoc) return;
-  //   alert(srcDoc);
-  // }, [srcDoc]);
+  const [iframeHeight, setIframeHeight] = useState(140);
 
   const handleLoad = useCallback(() => {
     const iframe = iframeRef.current;
     const doc = iframe?.contentDocument;
     if (!doc) return;
 
-    // Честный расчет высоты документа со всеми маржинами
     const update = () => {
       if (!doc.body || !doc.documentElement) return;
+      const win = doc.defaultView;
+      if (!win) return;
 
-      const bodyHeight = doc.body.scrollHeight;
-      const htmlHeight = doc.documentElement.scrollHeight;
-      const htmlOffset = doc.documentElement.offsetHeight;
+      // Исключаем невидимые системные теги
+      const children = Array.from(doc.body.children).filter(
+        (el) =>
+          !["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE"].includes(el.tagName),
+      );
 
-      // Берем максимальную честную высоту
-      const h = Math.max(bodyHeight, htmlHeight, htmlOffset);
+      let maxBottom = 0;
 
-      // Минимальная высота превью (например, 140px)
-      if (h > 0) {
-        setIframeHeight(Math.max(140, h));
+      if (children.length > 0) {
+        const scrollY = win.scrollY || doc.documentElement.scrollTop || 0;
+
+        children.forEach((child) => {
+          const style = win.getComputedStyle(child);
+          // Пропускаем скрытые элементы
+          if (style.display === "none" || style.visibility === "hidden") return;
+
+          // getBoundingClientRect() дает точные координаты с учетом трансформаций и дробей
+          const rect = child.getBoundingClientRect();
+          const marginBottom = parseFloat(style.marginBottom) || 0;
+
+          // Реальная нижняя точка элемента относительно самого верха документа
+          const bottom = rect.bottom + scrollY + marginBottom;
+
+          if (bottom > maxBottom) {
+            maxBottom = bottom;
+          }
+        });
+      } else {
+        // Запасной расчет, если прямых детей нет (например, текст прямо в body)
+        maxBottom = doc.body.getBoundingClientRect().height;
       }
+
+      // Учитываем padding-bottom самого body
+      const bodyPaddingBottom =
+        parseFloat(win.getComputedStyle(doc.body).paddingBottom) || 0;
+
+      // Итоговая высота: максимум из вычислений, минимум 140px + 16px запас
+      const finalHeight = Math.max(
+        140,
+        Math.ceil(maxBottom + bodyPaddingBottom + 16),
+      );
+
+      setIframeHeight((prev) => (prev !== finalHeight ? finalHeight : prev));
     };
 
+    // 1. Первичный вызов
     update();
 
-    // 🔹 Следим за изменениями размера и body, и html!
-    const observer = new ResizeObserver(update);
-    if (doc.body) observer.observe(doc.body);
-    if (doc.documentElement) observer.observe(doc.documentElement);
-
-    // 🔹 Слушаем живые стили (ползунки gap, margin, padding), чтобы высота росла на лету!
-    const handleLiveStyle = () => {
+    // 2. ResizeObserver на весь body и html (отслеживает любые растяжения/сжатия)
+    const resizeObserver = new ResizeObserver(() => {
       requestAnimationFrame(update);
-    };
+    });
+    resizeObserver.observe(doc.body);
+    resizeObserver.observe(doc.documentElement);
 
+    // 3. Отслеживание добавления/удаления элементов (DOM Mutations)
+    const mutationObserver = new MutationObserver(() => {
+      requestAnimationFrame(update);
+    });
+    mutationObserver.observe(doc.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+    });
+
+    // 4. Ожидание картинок (картинки часто меняют высоту ПОСЛЕ события onLoad iframe)
+    const images = doc.querySelectorAll("img");
+    images.forEach((img) => {
+      if (!img.complete) {
+        img.addEventListener("load", update, { once: true });
+        img.addEventListener("error", update, { once: true });
+      }
+    });
+
+    // 5. Ожидание кастомных шрифтов
+    if (doc.fonts) {
+      doc.fonts.ready.then(update).catch(() => {});
+    }
+
+    // 6. Ваши кастомные события стилей
+    const handleLiveStyle = () => requestAnimationFrame(update);
     window.addEventListener("plaza-styles-updated", handleLiveStyle);
     window.addEventListener("plaza-live-style", handleLiveStyle);
 
-    const t1 = setTimeout(update, 100);
-    const t2 = setTimeout(update, 400);
-
     return () => {
-      observer.disconnect();
-      clearTimeout(t1);
-      clearTimeout(t2);
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
       window.removeEventListener("plaza-styles-updated", handleLiveStyle);
       window.removeEventListener("plaza-live-style", handleLiveStyle);
     };
   }, [iframeRef]);
+
   return (
     <div className="w-full flex flex-col border border-zinc-800 rounded-xl overflow-hidden bg-zinc-900 shadow-xl">
       {/* Верхний тулбар */}
@@ -123,6 +174,7 @@ export function PreviewArea() {
         </div>
       </div>
       <ModalFonts />
+
       {/* Экран Iframe */}
       <AnimatePresence>
         {!isCollapsed && (
@@ -131,7 +183,7 @@ export function PreviewArea() {
             animate={{ height: "auto", opacity: 1, y: 0 }}
             exit={{ height: 0, opacity: 0, y: 0 }}
             transition={{ duration: 0.15, ease: "easeInOut" }}
-            className="relative w-full bg-white  min-h-[140px]"
+            className="relative w-full bg-white min-h-[140px] "
           >
             {isEmpty ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-300 gap-2 bg-white">
@@ -149,7 +201,7 @@ export function PreviewArea() {
                 srcDoc={srcDoc}
                 title="iframe Prev"
                 sandbox="allow-scripts allow-same-origin allow-modals allow-forms"
-                className="w-full border-0 bg-white block overflow-hidden"
+                className="w-full border-0 bg-white block "
                 onLoad={handleLoad}
                 style={{ height: iframeHeight }}
               />

@@ -27,8 +27,11 @@ interface MonacoPropertiesEditorProps {
   nodeTag?: string;
   nodeClasses: string[];
   globalScss: string;
+  globalJs?: string;
   attributesValue?: Record<string, string>;
   onSaveGlobalScss: (nextScss: string) => Promise<void> | void;
+  onSaveScriptJs?: (targetName: string, jsCode: string) => Promise<void>;
+  onAddClassToNode?: (newCls: string) => Promise<void>;
   onSaveAttributes?: (
     attributes: Record<string, string>,
   ) => Promise<void> | void;
@@ -52,6 +55,7 @@ function ensureSelectorWrapper(className: string, code: string): string {
 }
 
 export function MonacoPropertiesEditor({
+  nodeKey = "",
   nodeTag = "div",
   nodeClasses = [],
   globalScss = "",
@@ -69,30 +73,7 @@ export function MonacoPropertiesEditor({
   const globalScssRef = useRef<string>(globalScss);
   globalScssRef.current = globalScss;
 
-  useEffect(() => {
-    if (!openTarget) {
-      setCurrentText("");
-      currentTextRef.current = "";
-      isDirtyRef.current = false;
-      return;
-    }
-
-    if (isDirtyRef.current) return;
-
-    if (openTarget === "__attributes__") {
-      const formatted = JSON.stringify(attributesValue || {}, null, 2);
-      if (formatted !== currentTextRef.current) {
-        setCurrentText(formatted);
-        currentTextRef.current = formatted;
-      }
-    } else {
-      const freshSnippet = extractClassSnippet(globalScss, openTarget);
-      if (freshSnippet !== currentTextRef.current) {
-        setCurrentText(freshSnippet);
-        currentTextRef.current = freshSnippet;
-      }
-    }
-  }, [globalScss, openTarget, attributesValue]);
+  const prevNodeKeyRef = useRef<string>(nodeKey);
 
   const saveCurrentOpenTarget = (targetToSave: string | null = openTarget) => {
     if (!targetToSave || !isDirtyRef.current) return;
@@ -122,6 +103,57 @@ export function MonacoPropertiesEditor({
 
     isDirtyRef.current = false;
   };
+
+  // 🔹 Сброс и сохранение при смене выбранной ноды
+  useEffect(() => {
+    if (prevNodeKeyRef.current !== nodeKey) {
+      if (isDirtyRef.current && openTarget) {
+        saveCurrentOpenTarget(openTarget);
+      }
+      setOpenTarget(null);
+      setCurrentText("");
+      currentTextRef.current = "";
+      isDirtyRef.current = false;
+      prevNodeKeyRef.current = nodeKey;
+    }
+  }, [nodeKey, openTarget]);
+
+  // 🔹 Закрытие редактора, если текущий открытый класс стёрли из инпута Classes
+  useEffect(() => {
+    if (openTarget && openTarget !== "__attributes__") {
+      if (!nodeClasses.includes(openTarget)) {
+        setOpenTarget(null);
+        setCurrentText("");
+        currentTextRef.current = "";
+        isDirtyRef.current = false;
+      }
+    }
+  }, [nodeClasses, openTarget]);
+
+  useEffect(() => {
+    if (!openTarget) {
+      setCurrentText("");
+      currentTextRef.current = "";
+      isDirtyRef.current = false;
+      return;
+    }
+
+    if (isDirtyRef.current) return;
+
+    if (openTarget === "__attributes__") {
+      const formatted = JSON.stringify(attributesValue || {}, null, 2);
+      if (formatted !== currentTextRef.current) {
+        setCurrentText(formatted);
+        currentTextRef.current = formatted;
+      }
+    } else {
+      const freshSnippet = extractClassSnippet(globalScss, openTarget);
+      if (freshSnippet !== currentTextRef.current) {
+        setCurrentText(freshSnippet);
+        currentTextRef.current = freshSnippet;
+      }
+    }
+  }, [globalScss, openTarget, attributesValue]);
 
   const handleToggleClass = (cls: string) => {
     const clean = cls.trim().replace(/^\./, "");
@@ -200,7 +232,6 @@ export function MonacoPropertiesEditor({
     existingCss: string,
     newSnippet: string,
   ): string => {
-    // 1. Извлекаем имена свойств, которые приходят в новом сниппете (например: "display", "justify-content")
     const newPropertyNames: string[] = [];
     const propRegex = /([a-zA-Z0-9_-]+)\s*:/g;
     let match: RegExpExecArray | null;
@@ -208,9 +239,7 @@ export function MonacoPropertiesEditor({
     while ((match = propRegex.exec(newSnippet)) !== null) {
       newPropertyNames.push(match[1].toLowerCase());
     }
-    // В cleanConflictingProperties внутри MonacoPropertiesEditor.tsx:
 
-    // Если ставим общий padding: — чистим частные padding-top, right, bottom, left
     if (newPropertyNames.includes("padding")) {
       newPropertyNames.push(
         "padding-top",
@@ -220,7 +249,6 @@ export function MonacoPropertiesEditor({
       );
     }
 
-    // Если ставим общий margin: — чистим частные margin-top, right, bottom, left
     if (newPropertyNames.includes("margin")) {
       newPropertyNames.push(
         "margin-top",
@@ -230,32 +258,29 @@ export function MonacoPropertiesEditor({
       );
     }
 
-    // Если ставим частный padding-top/right/... — удаляем общий padding
     if (newPropertyNames.some((p) => p.startsWith("padding-"))) {
       newPropertyNames.push("padding");
     }
 
-    // Если ставим частный margin-top/right/... — удаляем общий margin
     if (newPropertyNames.some((p) => p.startsWith("margin-"))) {
       newPropertyNames.push("margin");
     }
-    // Если ставим общий gap: — чистим частные row-gap и column-gap
+
     if (newPropertyNames.includes("gap")) {
       newPropertyNames.push("row-gap", "column-gap");
     }
-    // Если ставим частный row-gap или column-gap — удаляем общий gap
+
     if (
       newPropertyNames.includes("row-gap") ||
       newPropertyNames.includes("column-gap")
     ) {
       newPropertyNames.push("gap");
     }
-    // Если добавляем Grid — подчищаем связанные свойства Flex (flex-direction, align-items и т.д.)
+
     if (newSnippet.includes("display: grid")) {
       newPropertyNames.push("flex-direction", "flex-wrap");
     }
 
-    // Если добавляем Flex — подчищаем свойства Grid
     if (newSnippet.includes("display: flex")) {
       newPropertyNames.push(
         "grid-template-columns",
@@ -264,12 +289,10 @@ export function MonacoPropertiesEditor({
       );
     }
 
-    // 2. Построчно фильтруем существующий CSS, удаляя старые конфликтующие строки
     let lines = existingCss.split("\n");
 
     lines = lines.filter((line) => {
       const trimmed = line.trim();
-      // Не трогаем скобки и селекторы
       if (
         !trimmed ||
         trimmed.startsWith(".") ||
@@ -282,7 +305,6 @@ export function MonacoPropertiesEditor({
       const colonIndex = trimmed.indexOf(":");
       if (colonIndex !== -1) {
         const propName = trimmed.slice(0, colonIndex).trim().toLowerCase();
-        // Если это свойство перезаписывается новым пресетом — выкидываем старую строку
         if (newPropertyNames.includes(propName)) {
           return false;
         }
@@ -299,12 +321,10 @@ export function MonacoPropertiesEditor({
 
     let text = currentTextRef.current.trim();
 
-    // 1. Сначала вычищаем все конфликтующие свойства из текущего кода
     if (text) {
       text = cleanConflictingProperties(text, snippetCss);
     }
 
-    // 2. Вставляем новый пресет
     if (
       !text ||
       text === `.${openTarget} {\n  \n}` ||
@@ -319,12 +339,10 @@ export function MonacoPropertiesEditor({
       text = `${text}\n  ${snippetCss}`;
     }
 
-    // 3. Синхронизируем состояние Monaco
     setCurrentText(text);
     currentTextRef.current = text;
     isDirtyRef.current = false;
 
-    // 4. Оборачиваем и пишем в общий бандл
     const preparedCode = ensureSelectorWrapper(openTarget, text);
     const nextScss = updateClassInGlobalScss(
       globalScssRef.current,
@@ -333,9 +351,9 @@ export function MonacoPropertiesEditor({
     );
     globalScssRef.current = nextScss;
 
-    // 5. Сохраняем в IndexedDB и пишем в историю Undo
     onSaveGlobalScss(nextScss);
   };
+
   const attrsCount = useMemo(() => {
     return Object.keys(attributesValue || {}).length;
   }, [attributesValue]);
