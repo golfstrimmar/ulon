@@ -273,3 +273,58 @@ export function mergeScssWithoutDuplicates(
 
   return result.trim();
 }
+/**
+ * 🔹 НАДЕЖНЫЙ МЕРДЖ СКРИПТОВ БЕЗ МУСОРА И ДУБЛИКАТОВ
+ * Ищет блок /* @component: name * / ... /* @end: name * /
+ * - Если блока нет — добавляет в конец.
+ * - Если блок есть и код тот же — пропускает.
+ * - Если код изменился — заменяет только его тело.
+ */
+export function mergeScriptsWithoutDuplicates(
+  currentBundle: string,
+  incomingScripts: { name: string; code: string }[],
+): string {
+  if (!incomingScripts || incomingScripts.length === 0) return currentBundle;
+
+  let result = (currentBundle || "").trim();
+
+  for (const script of incomingScripts) {
+    const name = script.name.trim();
+    // Очищаем пришедший код от старых внешних меток, если они уже были
+    let cleanCode = script.code
+      .replace(/\/\*\s*@component:\s*.*?\*\//g, "")
+      .replace(/\/\*\s*@end:\s*.*?\*\//g, "")
+      .trim();
+
+    if (!cleanCode) continue;
+
+    // Регулярка для поиска существующего блока этого компонента
+    const blockRegex = new RegExp(
+      `\\/\\*\\s*@component:\\s*${name}\\s*\\*\\/[\\s\\S]*?\\/\\*\\s*@end:\\s*${name}\\s*\\*\\/`,
+      "g",
+    );
+
+    const formattedBlock = `/* @component: ${name} */\n${cleanCode}\n/* @end: ${name} */`;
+
+    if (blockRegex.test(result)) {
+      // Блок с таким именем уже есть!
+      // Сравниваем: если код внутри точно такой же — ничего не трогаем (пропускаем дубль)
+      const existingMatch = result.match(blockRegex);
+      if (existingMatch && existingMatch[0].trim() === formattedBlock.trim()) {
+        console.log(
+          `[JS Bundle] Скрипт "${name}" уже существует без изменений, дубль пропущен.`,
+        );
+      } else {
+        // Код изменился — аккуратно обновляем именно этот блок
+        result = result.replace(blockRegex, formattedBlock);
+        console.log(`[JS Bundle] Скрипт "${name}" обновлен.`);
+      }
+    } else {
+      // Такого скрипта еще нет вообще — дописываем в конец бандла
+      result = result ? `${result}\n\n${formattedBlock}` : formattedBlock;
+      console.log(`[JS Bundle] Скрипт "${name}" добавлен в бандл.`);
+    }
+  }
+
+  return result.trim();
+}

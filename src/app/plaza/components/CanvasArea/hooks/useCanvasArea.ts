@@ -19,14 +19,15 @@ import {
   deleteNodeFromArray,
   updateNodeByKey,
 } from "@/lib/htmlTree";
-import { updateScriptInGlobalBundle } from "@/lib/jsCompiler";
 import {
   DB_KEY,
   DropTarget,
   extractStylesAndScriptsFromNodes,
   mergeScssWithoutDuplicates,
+  mergeScriptsWithoutDuplicates,
 } from "../lib/canvasModel";
 import { styleHistory } from "@/lib/styleHistory";
+import { scriptsHistory } from "@/lib/scriptsHistory";
 
 //  ─────🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹──────
 
@@ -108,7 +109,7 @@ export function useCanvasArea() {
   // Сохранение стилей в БД и запись в историю
   const updateAndPersistScss = async (nextScss: string) => {
     try {
-      styleHistory.record(nextScss); // 🔹 Сохраняем ревизию в историю
+      styleHistory.record(nextScss);
       await saveGlobalScss(nextScss);
       setGlobalScss(nextScss);
       globalScssRef.current = nextScss;
@@ -121,10 +122,14 @@ export function useCanvasArea() {
     }
   };
 
-  // Сохранение JS
+  // Сохранение JS в БД и запись в историю
   const updateAndPersistJs = async (nextJs: string) => {
     try {
+      scriptsHistory.record(nextJs); // 🔹 Обязательно пишем в историю скриптов
       await saveGlobalJs(nextJs);
+      setGlobalJs(nextJs);
+      globalJsRef.current = nextJs;
+
       window.dispatchEvent(
         new CustomEvent("plaza-scripts-updated", { detail: nextJs }),
       );
@@ -214,7 +219,7 @@ export function useCanvasArea() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleUndo, handleRedo]);
 
-  // Загрузка при монтировании (ОДИН ЕДИНСТВЕННЫЙ БЛОК)
+  // Загрузка при монтировании (инициализация баз и истории)
   useEffect(() => {
     (async () => {
       try {
@@ -233,22 +238,25 @@ export function useCanvasArea() {
             extractStylesAndScriptsFromNodes(list);
 
           if (extractedScss) {
-            currentScss = currentScss
-              ? `${currentScss}\n\n${extractedScss}`
-              : extractedScss;
+            currentScss = mergeScssWithoutDuplicates(
+              currentScss,
+              extractedScss,
+            );
           }
 
           if (extractedScripts.length > 0) {
-            for (const s of extractedScripts) {
-              currentJs = updateScriptInGlobalBundle(currentJs, s.name, s.code);
-            }
+            currentJs = mergeScriptsWithoutDuplicates(
+              currentJs,
+              extractedScripts,
+            );
           }
 
           setCurrentJson(cleanNodes);
           currentJsonRef.current = cleanNodes;
 
-          // 🔹 Инициализируем историю стилей финальным исходником
+          // 🔹 Стартовая инициализация менеджеров истории
           styleHistory.init(currentScss);
+          scriptsHistory.init(currentJs);
 
           await Promise.all([
             saveGlobalScss(currentScss),
@@ -259,6 +267,7 @@ export function useCanvasArea() {
           setCurrentJson([]);
           currentJsonRef.current = [];
           styleHistory.init(currentScss);
+          scriptsHistory.init(currentJs);
 
           await Promise.all([
             saveGlobalScss(currentScss),
@@ -291,9 +300,15 @@ export function useCanvasArea() {
     };
 
     const handleScripts = (e: Event) => {
-      const customEvent = e as CustomEvent<string>;
-      const nextJs =
-        typeof customEvent.detail === "string" ? customEvent.detail : "";
+      const customEvent = e as CustomEvent<string | Record<string, string>>;
+      let nextJs = "";
+      if (typeof customEvent.detail === "string") {
+        nextJs = customEvent.detail;
+      } else if (customEvent.detail && typeof customEvent.detail === "object") {
+        nextJs =
+          (customEvent.detail as any).__bundle__ ||
+          Object.values(customEvent.detail).join("\n\n");
+      }
       setGlobalJs(nextJs);
       globalJsRef.current = nextJs;
     };
@@ -468,7 +483,7 @@ export function useCanvasArea() {
     };
   }, []);
 
-  // Добавление компонента из боковой панели (с добавлением его стилей в историю)
+  // Добавление компонента из боковой панели (с умным слиянием стилей и скриптов)
   const handleAppendFromPath = async (path: string) => {
     try {
       const res = await fetch(path);
@@ -479,31 +494,29 @@ export function useCanvasArea() {
       const { cleanNodes, extractedScss, extractedScripts } =
         extractStylesAndScriptsFromNodes(nodes);
 
-      // 🔹 1. СЛИЯНИЕ SCSS БЕЗ ДУБЛИРОВАНИЯ КЛАССОВ:
+      // 🔹 1. МЕРДЖ SCSS (без дублей)
       if (extractedScss) {
         const nextScss = mergeScssWithoutDuplicates(
           globalScssRef.current,
           extractedScss,
         );
-
-        // Сохраняем и пишем в историю, ТОЛЬКО если добавились новые классы
         if (nextScss !== globalScssRef.current) {
           await updateAndPersistScss(nextScss);
         }
       }
 
-      // 🔹 2. СЛИЯНИЕ СКРИПТОВ (по имени компонента/класса):
+      // 🔹 2. МЕРДЖ JS (без дублей, без затирания и без мусора)
       if (extractedScripts.length > 0) {
-        let bundle = globalJsRef.current;
-        for (const s of extractedScripts) {
-          bundle = updateScriptInGlobalBundle(bundle, s.name, s.code);
-        }
-        if (bundle !== globalJsRef.current) {
-          await updateAndPersistJs(bundle);
+        const nextBundle = mergeScriptsWithoutDuplicates(
+          globalJsRef.current,
+          extractedScripts,
+        );
+        if (nextBundle !== globalJsRef.current) {
+          await updateAndPersistJs(nextBundle);
         }
       }
 
-      // 🔹 3. ДОБАВЛЕНИЕ НОДЫ В ДЕРЕВО:
+      // 🔹 3. Добавление ноды в разметку
       const next = [...currentJsonRef.current, ...cleanNodes];
       await persist(next);
     } catch (e) {
@@ -578,11 +591,9 @@ export function useCanvasArea() {
   };
 
   const handleSaveScriptJs = async (targetName: string, jsCode: string) => {
-    const nextBundle = updateScriptInGlobalBundle(
-      globalJsRef.current,
-      targetName,
-      jsCode,
-    );
+    const nextBundle = mergeScriptsWithoutDuplicates(globalJsRef.current, [
+      { name: targetName, code: jsCode },
+    ]);
     await updateAndPersistJs(nextBundle);
   };
 
