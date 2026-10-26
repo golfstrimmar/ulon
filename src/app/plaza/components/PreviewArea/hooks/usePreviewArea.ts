@@ -65,58 +65,71 @@ export function usePreviewArea() {
   /* ==========================================================================
      1. ПЕРВОНАЧАЛЬНАЯ ЗАГРУЗКА ИЗ INDEXEDDB ПРИ СТАРТЕ
      ========================================================================== */
-  useEffect(() => {
-    async function initPreview() {
-      try {
-        const [rawTree, dbScss, dbScripts, dbFonts] = await Promise.all([
-          getHtmlJson(DB_KEY),
-          getGlobalScss().catch(() => ""),
-          getScriptsJs().catch(() => ({})),
-          getFontsSettings().catch(() => ({ fonts: [], defaultFont: "" })),
-        ]);
+  async function initPreview() {
+    try {
+      const [rawTree, dbScss, dbScripts, dbFonts] = await Promise.all([
+        getHtmlJson(DB_KEY),
+        getGlobalScss().catch(() => ""),
+        getScriptsJs().catch(() => ({})),
+        getFontsSettings().catch(() => ({ fonts: [], defaultFont: "" })),
+      ]);
 
-        const loadedScripts = dbScripts || {};
-        const loadedFonts = dbFonts?.fonts || [];
-        const loadedDefaultFont = dbFonts?.defaultFont || "";
+      const loadedScripts = dbScripts || {};
+      const loadedFonts = dbFonts?.fonts || [];
+      const loadedDefaultFont = dbFonts?.defaultFont || "";
 
-        setFontEntries(loadedFonts);
-        fontEntriesRef.current = loadedFonts;
-        setDefaultFont(loadedDefaultFont);
-        defaultFontRef.current = loadedDefaultFont;
-        setScriptsJs(loadedScripts);
-        scriptsJsRef.current = loadedScripts;
+      setFontEntries(loadedFonts);
+      fontEntriesRef.current = loadedFonts;
+      setDefaultFont(loadedDefaultFont);
+      defaultFontRef.current = loadedDefaultFont;
+      setScriptsJs(loadedScripts);
+      scriptsJsRef.current = loadedScripts;
 
-        const css = await compileScssToCss(dbScss || "");
-        setCompiledCss(css);
-        compiledCssRef.current = css;
+      const css = await compileScssToCss(dbScss || "");
+      setCompiledCss(css);
+      compiledCssRef.current = css;
 
-        let initialHtml = "";
-        if (rawTree) {
-          const nodes: HtmlNode[] = Array.isArray(rawTree)
-            ? rawTree
-            : [rawTree];
-          if (nodes.length > 0) {
-            initialHtml = renderTree(nodes);
-          }
+      let initialHtml = "";
+      if (rawTree) {
+        const nodes: HtmlNode[] = Array.isArray(rawTree) ? rawTree : [rawTree];
+        if (nodes.length > 0) {
+          initialHtml = renderTree(nodes);
         }
-
-        currentBodyHtmlRef.current = initialHtml;
-        setIsEmpty(!initialHtml.trim());
-        setSrcDoc(
-          buildDocument({
-            bodyHtml: initialHtml,
-            fontEntries: loadedFonts,
-            defaultFont: loadedDefaultFont,
-            globalCss: css,
-            scriptsJs: loadedScripts,
-          }),
-        );
-      } catch (err) {
-        console.error("[usePreviewArea] IndexedDB init preview error:", err);
       }
-    }
 
+      currentBodyHtmlRef.current = initialHtml;
+      setIsEmpty(!initialHtml.trim());
+      setSrcDoc(
+        buildDocument({
+          bodyHtml: initialHtml,
+          fontEntries: loadedFonts,
+          defaultFont: loadedDefaultFont,
+          globalCss: css,
+          scriptsJs: loadedScripts,
+        }),
+      );
+    } catch (err) {
+      console.error("[usePreviewArea] IndexedDB init preview error:", err);
+    }
+  }
+
+  useEffect(() => {
     initPreview();
+  }, []);
+
+  /* ==========================================================================
+     2. РЕАКЦИЯ НА СОБЫТИЯ ШИНЫ ПРИ ИЗМЕНЕНИИ БАЗЫ
+     ========================================================================== */
+  useEffect(() => {
+    const PreviewFromDB = (event: Event) => {
+      const customEvent = event as CustomEvent<boolean>;
+      initPreview();
+    };
+
+    window.addEventListener("plaza-tree-updated", PreviewFromDB);
+    return () => {
+      window.removeEventListener("plaza-tree-updated", PreviewFromDB);
+    };
   }, []);
 
   /* ==========================================================================
@@ -257,7 +270,7 @@ export function usePreviewArea() {
   }, []);
 
   /* ==========================================================================
-     3. МЕТОДЫ УПРАВЛЕНИЯ
+     3. МЕТОДЫ УПРАВЛЕНИЯ ШРИФТАМИ
      ========================================================================== */
 
   const broadcastFonts = (fonts: string[], defFont: string) => {

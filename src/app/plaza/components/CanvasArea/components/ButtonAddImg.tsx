@@ -11,7 +11,7 @@ import ModalAddImg from "@/app/plaza/components/CanvasArea/components/ModalAddIm
 
 //  ─────🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹──────
 export default function ButtonAddImg() {
-  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [isOpen, setIsOpen] = useState<boolean>(true);
 
   return (
     <>

@@ -275,68 +275,66 @@ export function useCanvasArea() {
   }, [handleUndo, handleRedo]);
 
   // Загрузка при монтировании
-  useEffect(() => {
-    (async () => {
-      try {
-        const [dbScss, dbJs, data] = await Promise.all([
-          getGlobalScss().catch(() => ""),
-          getGlobalJs().catch(() => ""),
-          getHtmlJson(DB_KEY).catch(() => null),
-        ]);
+  const jsonDownload = async () => {
+    try {
+      const [dbScss, dbJs, data] = await Promise.all([
+        getGlobalScss().catch(() => ""),
+        getGlobalJs().catch(() => ""),
+        getHtmlJson(DB_KEY).catch(() => null),
+      ]);
 
-        let currentScss = dbScss || "";
-        let currentJs = dbJs || "";
+      let currentScss = dbScss || "";
+      let currentJs = dbJs || "";
 
-        if (data) {
-          const list = Array.isArray(data) ? data : [data];
-          const { cleanNodes, extractedScss, extractedScripts } =
-            extractStylesAndScriptsFromNodes(list);
+      if (data) {
+        const list = Array.isArray(data) ? data : [data];
+        const { cleanNodes, extractedScss, extractedScripts } =
+          extractStylesAndScriptsFromNodes(list);
 
-          if (extractedScss) {
-            currentScss = mergeScssWithoutDuplicates(
-              currentScss,
-              extractedScss,
-            );
-          }
-
-          if (extractedScripts.length > 0) {
-            currentJs = mergeScriptsWithoutDuplicates(
-              currentJs,
-              extractedScripts,
-            );
-          }
-
-          setCurrentJson(cleanNodes);
-          currentJsonRef.current = cleanNodes;
-
-          styleHistory.init(currentScss);
-          scriptsHistory.init(currentJs);
-
-          await Promise.all([
-            saveGlobalScss(currentScss),
-            saveGlobalJs(currentJs),
-            saveHtmlJson(DB_KEY, cleanNodes),
-          ]);
-        } else {
-          setCurrentJson([]);
-          currentJsonRef.current = [];
-          styleHistory.init(currentScss);
-          scriptsHistory.init(currentJs);
-
-          await Promise.all([
-            saveGlobalScss(currentScss),
-            saveGlobalJs(currentJs),
-          ]);
+        if (extractedScss) {
+          currentScss = mergeScssWithoutDuplicates(currentScss, extractedScss);
         }
 
-        setGlobalScss(currentScss);
-        globalScssRef.current = currentScss;
-        setGlobalJs(currentJs);
-        globalJsRef.current = currentJs;
-      } catch (err) {
-        console.error("[useCanvasArea] Mount error:", err);
+        if (extractedScripts.length > 0) {
+          currentJs = mergeScriptsWithoutDuplicates(
+            currentJs,
+            extractedScripts,
+          );
+        }
+
+        setCurrentJson(cleanNodes);
+        currentJsonRef.current = cleanNodes;
+
+        styleHistory.init(currentScss);
+        scriptsHistory.init(currentJs);
+
+        await Promise.all([
+          saveGlobalScss(currentScss),
+          saveGlobalJs(currentJs),
+          saveHtmlJson(DB_KEY, cleanNodes),
+        ]);
+      } else {
+        setCurrentJson([]);
+        currentJsonRef.current = [];
+        styleHistory.init(currentScss);
+        scriptsHistory.init(currentJs);
+
+        await Promise.all([
+          saveGlobalScss(currentScss),
+          saveGlobalJs(currentJs),
+        ]);
       }
-    })();
+
+      setGlobalScss(currentScss);
+      globalScssRef.current = currentScss;
+      setGlobalJs(currentJs);
+      globalJsRef.current = currentJs;
+    } catch (err) {
+      console.error("[useCanvasArea] Mount error:", err);
+    }
+  };
+  useEffect(() => {
+    jsonDownload();
   }, []);
 
   // Слушатели шины событий
@@ -366,7 +364,7 @@ export function useCanvasArea() {
       setGlobalJs(nextJs);
       globalJsRef.current = nextJs;
     };
-
+    window.addEventListener("plaza-tree-updated", jsonDownload);
     window.addEventListener("plaza-styles-updated", handleStyles);
     window.addEventListener("plaza-scripts-updated", handleScripts);
     return () => {
