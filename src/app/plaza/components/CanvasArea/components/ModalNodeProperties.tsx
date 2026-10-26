@@ -55,16 +55,16 @@ export default function ModalNodeProperties({
     },
   ];
 
-  // 🔹 ОТПРАВЛЯЕМ СОБЫТИЕ ПОДСВЕТКИ В PREVIEW ПРИ ВЫБОРЕ НОДЫ
+  // 🔹 Отправляем подсветку ТОЛЬКО при смене выбранной ноды (clickedKey)
   useEffect(() => {
     if (clickedKey && selectedNode) {
       window.dispatchEvent(
         new CustomEvent("plaza-node-selected", {
           detail: {
             key: clickedKey,
-            tag: selectedNode.tag || editTag,
-            className: editClass || selectedNode.class || "",
-            text: editText || selectedNode.text || "",
+            tag: selectedNode.tag,
+            className: selectedNode.class || "",
+            text: selectedNode.text || "",
           },
         }),
       );
@@ -73,7 +73,7 @@ export default function ModalNodeProperties({
     return () => {
       window.dispatchEvent(new CustomEvent("plaza-node-deselected"));
     };
-  }, [clickedKey, selectedNode, editClass, editTag, editText]);
+  }, [clickedKey]); // 👈 Только clickedKey! Никаких editClass и editText здесь быть не должно
 
   return (
     <AnimatePresence>
@@ -89,7 +89,7 @@ export default function ModalNodeProperties({
             {/* Кнопка закрытия модалки */}
             <button
               type="button"
-              onClick={() => {
+              onMouseEnter={() => {
                 window.dispatchEvent(new CustomEvent("plaza-node-deselected"));
                 onClose();
               }}

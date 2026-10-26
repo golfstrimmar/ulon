@@ -29,8 +29,6 @@ import {
 import { styleHistory } from "@/lib/styleHistory";
 import { scriptsHistory } from "@/lib/scriptsHistory";
 
-//  ─────🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹──────
-
 export function useCanvasArea() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [currentJson, setCurrentJson] = useState<HtmlNode[]>([]);
@@ -48,6 +46,8 @@ export function useCanvasArea() {
   const [collapsedKeys, setCollapsedKeys] = useState<Set<string>>(new Set());
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
   const [clickedKey, setClickedKey] = useState<string | null>(null);
+  const clickedKeyRef = useRef<string | null>(null);
+  clickedKeyRef.current = clickedKey;
 
   // Редактирование ноды
   const [editTag, setEditTag] = useState<string>("div");
@@ -91,6 +91,61 @@ export function useCanvasArea() {
     }
   }
 
+  // 🔹 Слушаем клики из PreviewArea (iframe)
+  useEffect(() => {
+    const handleSelectFromPreview = (e: any) => {
+      const { key, className, tag, text } = e.detail || {};
+
+      const findNode = (list: HtmlNode[]): HtmlNode | null => {
+        for (const node of list) {
+          if (key && node._key === key) return node;
+
+          if (className && node.class) {
+            const firstClass = className
+              .trim()
+              .split(/\s+/)[0]
+              ?.replace(/^\./, "");
+            if (firstClass && node.class.split(/\s+/).includes(firstClass)) {
+              return node;
+            }
+          }
+
+          if (
+            text &&
+            node.text?.trim() === text.trim() &&
+            (!tag || node.tag === tag)
+          ) {
+            return node;
+          }
+
+          if (node.children && node.children.length > 0) {
+            const found = findNode(node.children);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+
+      const targetNode = findNode(currentJsonRef.current);
+
+      if (targetNode) {
+        // 🛑 Если эта нода УЖЕ открыта — ничего не сбрасываем и не перетираем!
+        if (targetNode._key === clickedKeyRef.current) return;
+
+        setClickedKey(targetNode._key);
+      }
+    };
+
+    window.addEventListener("plaza-node-selected", handleSelectFromPreview);
+
+    return () => {
+      window.removeEventListener(
+        "plaza-node-selected",
+        handleSelectFromPreview,
+      );
+    };
+  }, []);
+
   // Синхронизация полей редактора при смене выбранной ноды
   useEffect(() => {
     if (selectedNode) {
@@ -98,13 +153,7 @@ export function useCanvasArea() {
       setEditClass(selectedNode.class || "");
       setEditText(selectedNode.text || "");
     }
-  }, [
-    clickedKey,
-    selectedNode?._key,
-    selectedNode?.tag,
-    selectedNode?.class,
-    selectedNode?.text,
-  ]);
+  }, [clickedKey, selectedNode?._key]);
 
   // Сохранение стилей в БД и запись в историю
   const updateAndPersistScss = async (nextScss: string) => {
@@ -125,7 +174,7 @@ export function useCanvasArea() {
   // Сохранение JS в БД и запись в историю
   const updateAndPersistJs = async (nextJs: string) => {
     try {
-      scriptsHistory.record(nextJs); // 🔹 Обязательно пишем в историю скриптов
+      scriptsHistory.record(nextJs);
       await saveGlobalJs(nextJs);
       setGlobalJs(nextJs);
       globalJsRef.current = nextJs;
@@ -219,7 +268,7 @@ export function useCanvasArea() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleUndo, handleRedo]);
 
-  // Загрузка при монтировании (инициализация баз и истории)
+  // Загрузка при монтировании
   useEffect(() => {
     (async () => {
       try {
@@ -254,7 +303,6 @@ export function useCanvasArea() {
           setCurrentJson(cleanNodes);
           currentJsonRef.current = cleanNodes;
 
-          // 🔹 Стартовая инициализация менеджеров истории
           styleHistory.init(currentScss);
           scriptsHistory.init(currentJs);
 
@@ -321,7 +369,7 @@ export function useCanvasArea() {
     };
   }, []);
 
-  // Drag-and-Drop обработка мыши
+  // Drag-and-Drop
   useEffect(() => {
     const handlePointerMove = (e: PointerEvent) => {
       if (potentialDragKeyRef.current && dragStartPosRef.current) {
@@ -483,7 +531,6 @@ export function useCanvasArea() {
     };
   }, []);
 
-  // Добавление компонента из боковой панели (с умным слиянием стилей и скриптов)
   const handleAppendFromPath = async (path: string) => {
     try {
       const res = await fetch(path);
@@ -494,7 +541,6 @@ export function useCanvasArea() {
       const { cleanNodes, extractedScss, extractedScripts } =
         extractStylesAndScriptsFromNodes(nodes);
 
-      // 🔹 1. МЕРДЖ SCSS (без дублей)
       if (extractedScss) {
         const nextScss = mergeScssWithoutDuplicates(
           globalScssRef.current,
@@ -505,7 +551,6 @@ export function useCanvasArea() {
         }
       }
 
-      // 🔹 2. МЕРДЖ JS (без дублей, без затирания и без мусора)
       if (extractedScripts.length > 0) {
         const nextBundle = mergeScriptsWithoutDuplicates(
           globalJsRef.current,
@@ -516,7 +561,6 @@ export function useCanvasArea() {
         }
       }
 
-      // 🔹 3. Добавление ноды в разметку
       const next = [...currentJsonRef.current, ...cleanNodes];
       await persist(next);
     } catch (e) {

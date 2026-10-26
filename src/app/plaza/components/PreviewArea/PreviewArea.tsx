@@ -17,10 +17,9 @@ const ModalFonts = dynamic(
 const HIGHLIGHT_STYLE_ID = "plaza-highlight-style";
 const HIGHLIGHT_CSS = `
   .plaza-node-selected {
-    outline: 2px solid rgba(239, 68, 68, 0.95) !important;
+    outline: 4px solid rgba(239, 68, 68, 0.95) !important;
     outline-offset: -2px !important;
     box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.3) !important;
-    background-color: rgba(239, 68, 68, 0.12) !important;
     transition: outline 0.1s ease, box-shadow 0.1s ease !important;
   }
 `;
@@ -170,22 +169,28 @@ export function PreviewArea() {
       e.preventDefault();
       e.stopPropagation();
 
+      // Ищем элемент с ключом или ближайшего родителя-ноду
+      const nodeEl =
+        target.closest<HTMLElement>("[data-node-key], [data-key], [id]") ||
+        target;
+
       const key =
-        target.getAttribute("data-node-key") ||
-        target.getAttribute("data-key") ||
-        target.id ||
+        nodeEl.getAttribute("data-node-key") ||
+        nodeEl.getAttribute("data-key") ||
+        nodeEl.id ||
         null;
 
       const payload: SelectionPayload = {
         key,
-        tag: target.tagName.toLowerCase(),
-        className: target.className || "",
-        text: target.textContent?.trim() || "",
+        tag: nodeEl.tagName.toLowerCase(),
+        className: nodeEl.className || "",
+        text: nodeEl.textContent?.trim() || "",
       };
 
       setActiveSelection(payload);
       applyHighlight(payload);
 
+      // Оповещаем CanvasArea, чтобы открылась модалка
       window.dispatchEvent(
         new CustomEvent("plaza-node-selected", { detail: payload }),
       );
