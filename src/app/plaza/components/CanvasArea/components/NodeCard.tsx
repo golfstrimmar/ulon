@@ -1,12 +1,14 @@
 import React from "react";
 import type { HtmlNode } from "@/types/HtmlNode";
-import { DropGap } from "./DropGap";
+import { DropGap } from "@/app/plaza/components/CanvasArea/components/DropGap";
 import {
   isRowContainer,
+  DropTarget,
+} from "@/app/plaza/components/CanvasArea/models/canvasModel";
+import {
   DEPTH_BG,
   DEPTH_BORDER,
-  DropTarget,
-} from "../lib/canvasModel";
+} from "@/app/plaza/components/CanvasArea/constants/theme";
 
 interface NodeCardProps {
   node: HtmlNode;
@@ -142,7 +144,7 @@ export function NodeCard({
           )}
 
           <span
-            className={`px-1.5 py-0.5 rounded text-[12px] tracking-tight border uppercase shrink-0 leading-none ${tagBadgeClass}`}
+            className={`px-1.5 py-0.5 rounded text-[12px] tracking-tight border  shrink-0 leading-none ${tagBadgeClass}`}
           >
             {node.tag || "div"}
           </span>

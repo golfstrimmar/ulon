@@ -3,7 +3,10 @@
 import React, { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { HtmlNode } from "@/types/HtmlNode";
-import { COMMON_TAGS } from "../lib/canvasModel";
+import {
+  COMMON_TAGS,
+  TEXT_DEFAULT,
+} from "@/app/plaza/components/CanvasArea/constants/theme";
 import { MonacoPropertiesEditor } from "@/app/plaza/components/MonacoPropertiesEditor/MonacoPropertiesEditor";
 
 interface ModalNodePropertiesProps {
@@ -44,17 +47,6 @@ export default function ModalNodeProperties({
   onAddClassToNode,
   updateAndPersistScss,
 }: ModalNodePropertiesProps) {
-  const TextsDefault = [
-    { key: "Lorem 5", value: "Lorem" },
-    { key: "Lorem 10", value: "Lorem ipsum" },
-    { key: "Lorem 15", value: "Lorem ipsum dolor" },
-    {
-      key: "Lorem 20",
-      value:
-        "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Iusto consequatur minus quam, nisi perferendis, vel quaerat commodi deleniti molestias laboriosam saepe, eius quisquam dignissimos laborum vero repellat dolorem. Autem, ab!",
-    },
-  ];
-
   // 🔹 Отправляем подсветку ТОЛЬКО при смене выбранной ноды (clickedKey)
   useEffect(() => {
     if (clickedKey && selectedNode) {
@@ -162,7 +154,7 @@ export default function ModalNodeProperties({
                     <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 block">
                       Text
                     </label>
-                    {TextsDefault.map((item, index) => (
+                    {TEXT_DEFAULT.map((item, index) => (
                       <button
                         key={index}
                         onClick={async () => {

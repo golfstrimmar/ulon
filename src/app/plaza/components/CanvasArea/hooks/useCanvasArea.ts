@@ -20,12 +20,13 @@ import {
   updateNodeByKey,
 } from "@/lib/htmlTree";
 import {
-  DB_KEY,
   DropTarget,
   extractStylesAndScriptsFromNodes,
   mergeScssWithoutDuplicates,
   mergeScriptsWithoutDuplicates,
-} from "../lib/canvasModel";
+} from "@/app/plaza/components/CanvasArea/models/canvasModel";
+import { DB_KEY } from "@/app/plaza/components/CanvasArea/constants/theme";
+
 import { styleHistory } from "@/lib/styleHistory";
 import { scriptsHistory } from "@/lib/scriptsHistory";
 

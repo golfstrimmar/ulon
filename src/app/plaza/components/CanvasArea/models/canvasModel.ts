@@ -1,56 +1,18 @@
+// ---Критерий 1: Независимость от интерфейса (UI-Agnostic)
+// Тест: «Сможет ли этот код работать в терминале (Node.js) или на бэкенде без браузера, React/Vue и CSS?»
+// Ваши функции extractStylesAndScriptsFromNodes и mergeScriptsWithoutDuplicates этот тест проходят. Им плевать, как нарисован интерфейс (кнопками, холстом или терминалом). Они оперируют только данными дерева.
+// ---Критерий 2: Владение правилами предметной области (Business / Domain Logic)
+// Модель — это не просто структура базы данных (DTO), это правила работы вашего приложения:
+// Как объединять стили?
+// Как валидировать узел дерева?
+// Что считается строчным контейнером?
+// ---Критерий 3: Управление состоянием (State & Data Lifecycle)
+// К модели относятся:
+// Типы данных сущностей (HtmlNode, схемы).
+// Мутации и вычисления над этими данными.
+// Методы сохранения/чтения (репозитории, API, LocalStorage с DB_KEY).
 import type { HtmlNode } from "@/types/HtmlNode";
 import { generateNodeKey } from "@/lib/htmlTree";
-
-export const DB_KEY = "plaza_tree";
-
-export const DEPTH_BG = [
-  "rgba(18, 18, 24, 0.96)",
-  "rgba(26, 26, 34, 0.96)",
-  "rgba(34, 34, 44, 0.96)",
-  "rgba(42, 42, 54, 0.96)",
-  "rgba(50, 50, 64, 0.96)",
-];
-
-export const DEPTH_BORDER = [
-  "rgba(63, 63, 70, 0.8)",
-  "rgba(82, 82, 91, 0.85)",
-  "rgba(113, 113, 122, 0.9)",
-  "rgba(161, 161, 170, 0.9)",
-  "rgba(212, 212, 216, 0.9)",
-];
-
-export const COMMON_TAGS = [
-  "div",
-  "p",
-  "span",
-  "button",
-  "a",
-  "h1",
-  "h2",
-  "h3",
-  "h4",
-  "h5",
-  "h6",
-  "section",
-  "header",
-  "footer",
-  "main",
-  "nav",
-  "aside",
-  "article",
-  "ul",
-  "ol",
-  "li",
-  "input",
-  "form",
-  "label",
-  "img",
-];
-
-export interface DropTarget {
-  key: string;
-  position: "self" | "before" | "after" | "inside";
-}
 
 export function sanitizeCssBody(css: string): string {
   return css.replace(/\}\s*;/g, "}").trim();
@@ -80,49 +42,6 @@ export function isRowContainer(node: HtmlNode): boolean {
 
   return raw.includes("flex");
 }
-
-/**
- * Парсер, разбивающий SCSS на блоки верхнего уровня с учётом любой вложенности ({... { ... } ...})
- */
-// function splitScssIntoTopLevelRules(
-//   scss: string,
-// ): { selector: string; fullRule: string }[] {
-//   const rules: { selector: string; fullRule: string }[] = [];
-//   let depth = 0;
-//   let currentSelector = "";
-//   let currentBlockStart = -1;
-//   let insideSelector = true;
-
-//   for (let i = 0; i < scss.length; i++) {
-//     const char = scss[i];
-
-//     if (char === "{") {
-//       if (depth === 0) {
-//         currentBlockStart = i;
-//         insideSelector = false;
-//       }
-//       depth++;
-//     } else if (char === "}") {
-//       depth--;
-//       if (depth === 0 && currentBlockStart !== -1) {
-//         const fullRule = scss
-//           .slice(currentBlockStart - currentSelector.length, i + 1)
-//           .trim();
-//         const cleanSelector = currentSelector.trim();
-//         if (cleanSelector) {
-//           rules.push({ selector: cleanSelector, fullRule });
-//         }
-//         currentSelector = "";
-//         currentBlockStart = -1;
-//         insideSelector = true;
-//       }
-//     } else if (insideSelector && depth === 0) {
-//       currentSelector += char;
-//     }
-//   }
-
-//   return rules;
-// }
 
 /**
  * 🔹 ИЗВЛЕЧЕНИЕ СТИЛЕЙ И СКРИПТОВ

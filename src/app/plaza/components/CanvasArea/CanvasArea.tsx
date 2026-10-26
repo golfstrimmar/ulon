@@ -3,10 +3,13 @@
 import React from "react";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
-import { ROOT_TAGS, ELEMENT_FOLDERS } from "./elementsManifest";
-import { useCanvasArea } from "./hooks/useCanvasArea";
-import { NodeCard } from "./components/NodeCard";
-import { DropGap } from "./components/DropGap";
+import {
+  ROOT_TAGS,
+  ELEMENT_FOLDERS,
+} from "@/app/plaza/components/CanvasArea/elementsManifest";
+import { useCanvasArea } from "@/app/plaza/components/CanvasArea/hooks/useCanvasArea";
+import { NodeCard } from "@/app/plaza/components/CanvasArea/components/NodeCard";
+import { DropGap } from "@/app/plaza/components/CanvasArea/components/DropGap";
 
 // Динамический импорт модалки без SSR
 const ModalNodeProperties = dynamic(

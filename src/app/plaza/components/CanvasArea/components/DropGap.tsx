@@ -1,6 +1,9 @@
 import React from "react";
-import { DropTarget } from "../lib/canvasModel";
 
+export interface DropTarget {
+  key: string;
+  position: "self" | "before" | "after" | "inside";
+}
 export function DropGap({
   targetKey,
   position,
