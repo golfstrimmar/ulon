@@ -56,6 +56,8 @@ export function CanvasArea() {
     handleAddClassToNode,
     updateAndPersistScss,
     isCollapsible,
+    collapsedAll,
+    isAllCollapsed,
   } = useCanvasArea();
 
   return (
@@ -79,17 +81,31 @@ export function CanvasArea() {
                 type="button"
                 onClick={handleUndo}
                 disabled={!canUndo}
-                className="grey-btn"
+                className="grey-btn btn"
               >
                 <span>↶</span> Undo
               </button>
-              {isCollapsible && <button className="grey-btn">↕</button>}
+              {isCollapsible && (
+                <button
+                  onClick={() => collapsedAll()}
+                  className={`grey-btn btn flex flex-col !gap-0 !p-0 ${
+                    isAllCollapsed
+                      ? "opacity-40 cursor-not-allowed"
+                      : "opacity-100 cursor-pointer"
+                  }`}
+
+                  disabled={isAllCollapsed}
+                >
+                  <i className="text-[8px] ">↓</i>
+                  <i className="text-[8px] ">↑</i>
+                </button>
+              )}
 
               <button
                 type="button"
                 onClick={handleRedo}
                 disabled={!canRedo}
-                className="grey-btn"
+                className="grey-btn btn"
               >
                 <span>↷</span> Redo
               </button>

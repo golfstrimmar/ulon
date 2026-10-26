@@ -681,6 +681,41 @@ export function useCanvasArea() {
     );
   }
   const isCollapsible = canCollapse(currentJson);
+  /**
+   * 🔹 Рекурсивно собирает ключи (_key) всех узлов, имеющих потомков
+   */
+  function getAllCollapsibleKeys(
+    nodes: HtmlNode[] | null | undefined,
+  ): string[] {
+    if (!nodes || !Array.isArray(nodes)) return [];
+
+    const keys: string[] = [];
+
+    function traverse(list: HtmlNode[]) {
+      for (const node of list) {
+        if (Array.isArray(node.children) && node.children.length > 0) {
+          if (node._key) {
+            keys.push(node._key);
+          }
+          // Идем вглубь дерева
+          traverse(node.children);
+        }
+      }
+    }
+
+    traverse(nodes);
+    return keys;
+  }
+  const allCollapsibleKeys = getAllCollapsibleKeys(currentJson);
+  // ✅ Сворачиваем ключи
+  const collapsedAll = () => {
+    setCollapsedKeys(new Set(allCollapsibleKeys));
+  };
+
+  const isAllCollapsed =
+    allCollapsibleKeys.length === 0 ||
+    allCollapsibleKeys.every((key) => collapsedKeys.has(key));
+
   return {
     containerRef,
     currentJson,
@@ -719,5 +754,7 @@ export function useCanvasArea() {
     handleAddClassToNode,
     updateAndPersistScss,
     isCollapsible,
+    collapsedAll,
+    isAllCollapsed,
   };
 }
