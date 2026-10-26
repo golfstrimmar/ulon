@@ -10,7 +10,7 @@ import {
 import { useCanvasArea } from "@/app/plaza/components/CanvasArea/hooks/useCanvasArea";
 import { NodeCard } from "@/app/plaza/components/CanvasArea/components/NodeCard";
 import { DropGap } from "@/app/plaza/components/CanvasArea/components/DropGap";
-
+import ButtonAddImg from "@/app/plaza/components/CanvasArea/components/ButtonAddImg";
 // Динамический импорт модалки без SSR
 const ModalNodeProperties = dynamic(
   () => import("./components/ModalNodeProperties"),
@@ -112,6 +112,7 @@ export function CanvasArea() {
             </div>
           </div>
 
+          <ButtonAddImg />
           <div className="space-y-1">
             {ELEMENT_FOLDERS.map((folder) => {
               const isOpen = openFolders.has(folder.name);
