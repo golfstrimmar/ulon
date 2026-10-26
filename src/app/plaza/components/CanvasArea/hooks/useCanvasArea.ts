@@ -20,7 +20,6 @@ import {
   updateNodeByKey,
 } from "@/lib/htmlTree";
 import {
-  DropTarget,
   extractStylesAndScriptsFromNodes,
   mergeScssWithoutDuplicates,
   mergeScriptsWithoutDuplicates,
@@ -30,6 +29,12 @@ import { DB_KEY } from "@/app/plaza/components/CanvasArea/constants/theme";
 import { styleHistory } from "@/lib/styleHistory";
 import { scriptsHistory } from "@/lib/scriptsHistory";
 
+export interface DropTarget {
+  key: string;
+  position: "self" | "before" | "after" | "inside";
+}
+
+// =================================
 export function useCanvasArea() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [currentJson, setCurrentJson] = useState<HtmlNode[]>([]);
@@ -666,7 +671,16 @@ export function useCanvasArea() {
       }
     }
   }
-
+  // Если у любого из корневых узлов есть дети — дерево имеет вложенность!
+  function canCollapse(nodes: HtmlNode[] | null | undefined): boolean {
+    if (!nodes || !Array.isArray(nodes) || nodes.length === 0) {
+      return false;
+    }
+    return nodes.some(
+      (node) => Array.isArray(node.children) && node.children.length > 0,
+    );
+  }
+  const isCollapsible = canCollapse(currentJson);
   return {
     containerRef,
     currentJson,
@@ -704,5 +718,6 @@ export function useCanvasArea() {
     handleSaveScriptJs,
     handleAddClassToNode,
     updateAndPersistScss,
+    isCollapsible,
   };
 }

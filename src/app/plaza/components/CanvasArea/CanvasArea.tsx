@@ -55,6 +55,7 @@ export function CanvasArea() {
     handleSaveScriptJs,
     handleAddClassToNode,
     updateAndPersistScss,
+    isCollapsible,
   } = useCanvasArea();
 
   return (
@@ -71,7 +72,9 @@ export function CanvasArea() {
           )}
 
           <div className="space-y-1 border-b border-zinc-800 pb-2">
-            <div className="grid grid-cols-2 gap-1">
+            <div
+              className={`grid gap-1 ${isCollapsible ? "grid-cols-[2fr_1fr_2fr]" : "grid-cols-[2fr_2fr]"}`}
+            >
               <button
                 type="button"
                 onClick={handleUndo}
@@ -80,6 +83,8 @@ export function CanvasArea() {
               >
                 <span>↶</span> Undo
               </button>
+              {isCollapsible && <button className="grey-btn">↕</button>}
+
               <button
                 type="button"
                 onClick={handleRedo}

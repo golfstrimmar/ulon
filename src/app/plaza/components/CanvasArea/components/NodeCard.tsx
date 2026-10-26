@@ -1,10 +1,7 @@
 import React from "react";
 import type { HtmlNode } from "@/types/HtmlNode";
 import { DropGap } from "@/app/plaza/components/CanvasArea/components/DropGap";
-import {
-  isRowContainer,
-  DropTarget,
-} from "@/app/plaza/components/CanvasArea/models/canvasModel";
+import { isRowContainer } from "@/app/plaza/components/CanvasArea/models/canvasModel";
 import {
   DEPTH_BG,
   DEPTH_BORDER,
@@ -25,7 +22,10 @@ interface NodeCardProps {
   onToggleCollapse: (key: string) => void;
   onHoverNode: (key: string | null) => void;
 }
-
+export interface DropTarget {
+  key: string;
+  position: "self" | "before" | "after" | "inside";
+}
 export function NodeCard({
   node,
   depth,
