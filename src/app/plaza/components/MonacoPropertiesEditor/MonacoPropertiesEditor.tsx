@@ -12,7 +12,6 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import ButtonUndoRedoScss from "@/components/ButtonUndoRedoScss";
 
-// 🔹 Динамический импорт самого Monaco Editor (подгрузится только по клику на класс/атрибуты)
 const Editor = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
   loading: () => (
@@ -227,7 +226,6 @@ export function MonacoPropertiesEditor({
     });
   };
 
-  // 🔹 УДАЛЕНИЕ ВЗАИМОИСКЛЮЧАЮЩИХ CSS СВОЙСТВ
   const cleanConflictingProperties = (
     existingCss: string,
     newSnippet: string,
@@ -315,7 +313,6 @@ export function MonacoPropertiesEditor({
     return lines.join("\n");
   };
 
-  // 🔹 ВСТАВКА СНИППЕТА С АВТОМАТИЧЕСКИМ РАЗРЕШЕНИЕМ КОНФЛИКТОВ
   const handleApplySnippet = (snippetCss: string) => {
     if (!openTarget || openTarget === "__attributes__") return;
 
@@ -361,7 +358,6 @@ export function MonacoPropertiesEditor({
   return (
     <div className="w-full flex flex-col gap-2">
       <div className="flex flex-wrap justify-between items-center gap-1.5 p-2 rounded-lg bg-zinc-950/80 border border-zinc-800">
-        {/* Classes section */}
         <div className="flex items-center gap-1.5">
           <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-semibold mr-1 shrink-0">
             Classes:
@@ -400,7 +396,6 @@ export function MonacoPropertiesEditor({
           )}
         </div>
 
-        {/* Attributes button */}
         <button
           type="button"
           onClick={handleToggleAttributes}

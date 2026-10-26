@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { HtmlNode } from "@/types/HtmlNode";
 import { COMMON_TAGS } from "../lib/canvasModel";
@@ -45,24 +45,35 @@ export default function ModalNodeProperties({
   updateAndPersistScss,
 }: ModalNodePropertiesProps) {
   const TextsDefault = [
-    {
-      key: "Lorem 5",
-      value: "Lorem",
-    },
-    {
-      key: "Lorem 10",
-      value: "Lorem ipsum",
-    },
-    {
-      key: "Lorem 15",
-      value: "Lorem ipsum dolor",
-    },
+    { key: "Lorem 5", value: "Lorem" },
+    { key: "Lorem 10", value: "Lorem ipsum" },
+    { key: "Lorem 15", value: "Lorem ipsum dolor" },
     {
       key: "Lorem 20",
       value:
-        "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Iusto  consequatur minus quam, nisi perferendis, vel quaerat commodi  deleniti molestias laboriosam saepe, eius quisquam dignissimos  laborum vero repellat dolorem. Autem, ab!",
+        "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Iusto consequatur minus quam, nisi perferendis, vel quaerat commodi deleniti molestias laboriosam saepe, eius quisquam dignissimos laborum vero repellat dolorem. Autem, ab!",
     },
   ];
+
+  // 🔹 ОТПРАВЛЯЕМ СОБЫТИЕ ПОДСВЕТКИ В PREVIEW ПРИ ВЫБОРЕ НОДЫ
+  useEffect(() => {
+    if (clickedKey && selectedNode) {
+      window.dispatchEvent(
+        new CustomEvent("plaza-node-selected", {
+          detail: {
+            key: clickedKey,
+            tag: selectedNode.tag || editTag,
+            className: editClass || selectedNode.class || "",
+            text: editText || selectedNode.text || "",
+          },
+        }),
+      );
+    }
+
+    return () => {
+      window.dispatchEvent(new CustomEvent("plaza-node-deselected"));
+    };
+  }, [clickedKey, selectedNode, editClass, editTag, editText]);
 
   return (
     <AnimatePresence>
@@ -78,8 +89,8 @@ export default function ModalNodeProperties({
             {/* Кнопка закрытия модалки */}
             <button
               type="button"
-              onMouseEnter={(e) => {
-                e.stopPropagation();
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent("plaza-node-deselected"));
                 onClose();
               }}
               className="absolute top-1 left-2 z-50 w-10 h-4.5 rounded-lg bg-red-600 hover:bg-red-500 border-2 border-red-400 text-white text-sm font-bold flex items-center justify-center shadow transition-all cursor-pointer"
@@ -89,7 +100,6 @@ export default function ModalNodeProperties({
 
             <div className="p-1 mt-1">
               <div className="flex items-center justify-between pl-14 pr-2">
-                {/* Информация об элементе */}
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] font-mono text-zinc-500 uppercase tracking-widest">
                     Editing
