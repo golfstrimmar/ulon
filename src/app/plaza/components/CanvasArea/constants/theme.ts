@@ -13,7 +13,9 @@ export const DEPTH_BORDER = [
   "rgba(161, 161, 170, 0.9)",
   "rgba(212, 212, 216, 0.9)",
 ];
+
 export const DB_KEY = "plaza_tree";
+
 export const TEXT_DEFAULT = [
   { key: "Lorem 5", value: "Lorem" },
   { key: "Lorem 10", value: "Lorem ipsum" },
@@ -62,76 +64,50 @@ interface StylePreset {
 
 export const STYLE_PRESETS: { category: string; items: StylePreset[] }[] = [
   {
-    category: "Layout",
+    category: "Text Align & Transform",
     items: [
-      {
-        name: "inline-block",
-        css: "display: inline-block;",
-      },
-      {
-        name: "block",
-        css: "display: block;",
-      },
-      { name: "Flex row", css: "display: flex;\nflex-direction: row;" },
-      {
-        name: "Flex row reverse",
-        css: "display: flex;\nflex-direction: row-reverse;",
-      },
-      { name: "Flex col", css: "display: flex;\nflex-direction: column;" },
-      {
-        name: "justify center",
-        css: "justify-content: center;",
-      },
-      {
-        name: "justify between",
-        css: "justify-content: space-between;",
-      },
-      {
-        name: "items center",
-        css: "align-items: center;",
-      },
-      {
-        name: "items end",
-        css: "align-items: flex-end;",
-      },
-      {
-        name: "Grid 2 Cols",
-        css: "display: grid;\ngrid-template-columns: repeat(2, 1fr);",
-      },
-    ],
-  },
-  {
-    category: "Visuals",
-    items: [
-      {
-        name: "Soft Shadow",
-        css: "box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.25);",
-      },
-      {
-        name: "Glow Blue",
-        css: "box-shadow: 0 0 15px rgba(56, 189, 248, 0.5);",
-      },
-      {
-        name: "Glassmorphism",
-        css: "background: rgba(255, 255, 255, 0.05);\nbackdrop-filter: blur(10px);\nborder: 1px solid rgba(255, 255, 255, 0.1);",
-      },
-    ],
-  },
-  {
-    category: "Effects",
-    items: [
-      {
-        name: "Hover Scale",
-        css: "transition: transform 0.2s ease;\n&:hover {\n  transform: scale(1.04);\n}",
-      },
-      {
-        name: "Gradient BG",
-        css: "background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);\ncolor: #ffffff;",
-      },
+      { name: "0 auto", css: "margin: 0 auto;" },
+      { name: "Align Center", css: "text-align: center;" },
+      { name: "Align Left", css: "text-align: left;" },
+      { name: "Align Right", css: "text-align: right;" },
+      { name: "UPPERCASE", css: "text-transform: uppercase;" },
+      { name: "lowercase", css: "text-transform: lowercase;" },
+      { name: "Normal Case", css: "text-transform: none;" },
+      { name: "nowrap", css: "white-space: nowrap;" },
+      { name: "wrap", css: "white-space: normal;" },
+      { name: "Underline", css: "text-decoration: underline;" },
+      { name: "Line-through", css: "text-decoration: line-through;" },
+      { name: "No Decoration", css: "text-decoration: none;" },
       {
         name: "Truncate text",
         css: "overflow: hidden;\ntext-overflow: ellipsis;\nwhite-space: nowrap;",
       },
+
+      { name: "Overflow Hidden", css: "overflow: hidden;" },
+      { name: "Overflow Auto", css: "overflow: auto;" },
+      { name: "Overflow Visible", css: "overflow: visible;" },
+      { name: "Overflow Scroll", css: "overflow: scroll;" },
+      // { name: "Opacity 1", css: "opacity: 1;" },
+      // { name: "Opacity 0", css: "opacity: 0;" },
+      { name: "Visible", css: "visibility: visible;" },
+      { name: "Hidden", css: "visibility: hidden;" },
     ],
   },
+  // {
+  //   category: "Visuals",
+  //   items: [
+  //     {
+  //       name: "Soft Shadow",
+  //       css: "box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.25);",
+  //     },
+  //     {
+  //       name: "Glow Blue",
+  //       css: "box-shadow: 0 0 15px rgba(56, 189, 248, 0.5);",
+  //     },
+  //     {
+  //       name: "Glassmorphism",
+  //       css: "background: rgba(255, 255, 255, 0.05);\nbackdrop-filter: blur(10px);\nborder: 1px solid rgba(255, 255, 255, 0.1);",
+  //     },
+  //   ],
+  // },
 ];

@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import type { OnMount } from "@monaco-editor/react";
-import ModalCustomStyles from "@/app/plaza/components/CanvasArea/components/ModalCustomStyles";
+import ModalCustomStyles from "@/app/plaza/components/CanvasArea/components/ModalCustomStyles/ModalCustomStyles";
 
 import {
   extractClassSnippet,
@@ -420,23 +420,24 @@ export function MonacoPropertiesEditor({
             initial={{ height: 0, opacity: 0, y: 0 }}
             animate={{ height: "auto", opacity: 1, y: 0 }}
             exit={{ height: 0, opacity: 0, y: 0 }}
-            transition={{ duration: 0.1, ease: "easeInOut" }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
             className="w-full flex flex-col rounded-lg border border-indigo-500/60 bg-zinc-950 overflow-hidden shadow-xl"
           >
             <div className="flex items-center justify-between px-3 py-1.5 bg-indigo-950/70 border-b border-indigo-900/60 select-none">
-              <span className="text-[12px] font-mono font-bold text-indigo-200">
+              {/*{openTarget !== "__attributes__" && (*/}
+              <ModalCustomStyles
+                currentClass={openTarget}
+                currentScssText={currentText}
+                onApplySnippet={handleApplySnippet}
+              />
+              {/*)}*/}
+              {/*<span className="text-[12px] font-mono font-bold text-indigo-200">
                 {openTarget !== "__attributes__"
                   ? `SCSS: .${openTarget}`
                   : `Attributes <${nodeTag}> (JSON)`}
-              </span>
+              </span>*/}
               <ButtonUndoRedoScss />
-              {openTarget !== "__attributes__" && (
-                <ModalCustomStyles
-                  currentClass={openTarget}
-                  currentScssText={currentText}
-                  onApplySnippet={handleApplySnippet}
-                />
-              )}
+
               <div className="flex items-center gap-2">
                 {openTarget !== "__attributes__" && (
                   <button
