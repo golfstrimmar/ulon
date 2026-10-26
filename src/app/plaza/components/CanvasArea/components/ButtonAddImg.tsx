@@ -1,26 +1,24 @@
 "use client";
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-  useLayoutEffect,
-  useRef,
-} from "react";
-
+import React, { useState } from "react";
 import ModalAddImg from "@/app/plaza/components/CanvasArea/components/ModalAddImg";
+import ModalAddSvg from "@/app/plaza/components/CanvasArea/components/ModalAddSvg";
 
 //  ─────🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹──────
 export default function ButtonAddImg() {
-  const [isOpen, setIsOpen] = useState<boolean>(true);
+  const [isOpenImg, setIsOpenImg] = useState<boolean>(false);
+  const [isOpenSvg, setIsOpenSvg] = useState<boolean>(false);
 
   return (
     <>
-      <ModalAddImg isOpen={isOpen} setIsOpen={setIsOpen} />
-      <div className="grid grid-cols-2 items-center  gap-2">
-        <button className={`grey-btn btn `} onClick={() => setIsOpen(!isOpen)}>
+      <ModalAddImg isOpen={isOpenImg} setIsOpen={setIsOpenImg} />
+      <ModalAddSvg isOpen={isOpenSvg} setIsOpen={setIsOpenSvg} />
+      <div className="grid grid-cols-2 items-center gap-2">
+        <button className="grey-btn btn" onClick={() => setIsOpenImg(true)}>
           🖼️ Add Img
         </button>
-        <button className={`grey-btn btn `}>🧩 Add SVG</button>
+        <button className="grey-btn btn" onClick={() => setIsOpenSvg(true)}>
+          🧩 Add SVG
+        </button>
       </div>
     </>
   );
