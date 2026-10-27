@@ -34,7 +34,7 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
+<!--===============================================-->
 import { motion, AnimatePresence } from "framer-motion";
 <AnimatePresence></AnimatePresence>
                       {isOpen && (
@@ -128,6 +128,14 @@ plaza-style-history-changed
       console.error("[CanvasArea] Error saving JS to DB:", e);
     }
   };
-<!--===============================================-->
-1. стили дублируются в файле стилей. надо устранить.  D:\WEB\ulon\src\app\plaza\components\PreviewArea\components\ModalCss.tsx
-2. на базу уходит некорректный js  D:\WEB\ulon\src\app\plaza\components\PreviewArea\components\ModalJS.tsx
+<!--========================блокирует прокрутку боди на модалкаах=======================-->
+useEffect(() => {
+    if (openModalJson) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [openModalJson]);

@@ -29,7 +29,7 @@ export default function ModalCustomStyles({
       <button
         type="button"
         onMouseEnter={() => setIsOpen((prev) => !prev)}
-        className={`px-6 py-0.5 rounded text-[10px] font-mono font-bold border transition cursor-pointer flex items-center gap-1 ${
+        className={`px-26 py-0.5 rounded text-[10px] font-mono font-bold border transition cursor-pointer flex items-center gap-1 ${
           isOpen
             ? "bg-indigo-600 border-indigo-400 text-white shadow"
             : "bg-zinc-900 border-zinc-700 text-indigo-300 hover:bg-zinc-800 hover:border-indigo-500"

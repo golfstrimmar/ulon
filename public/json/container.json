@@ -3,7 +3,7 @@
     "tag": "div",
     "text": "",
     "class": "container",
-    "style": "",
+    "style": "max-width: 1790px; margin: 0 auto; width: calc(100vw - 40px);",
     "children": []
   }
 ]

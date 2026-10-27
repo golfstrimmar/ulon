@@ -384,6 +384,7 @@ export function useCanvasArea() {
           setDraggedKey(potentialDragKeyRef.current);
           potentialDragKeyRef.current = null;
           hasDraggedRef.current = true;
+          document.body.style.cursor = "default";
         }
       }
 

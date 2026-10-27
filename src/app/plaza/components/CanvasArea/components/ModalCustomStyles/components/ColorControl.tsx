@@ -25,7 +25,26 @@ export function ColorControl({
   const [tokens, setTokens] = useState<ColorToken[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
-
+  const colorTargets = [
+    {
+      id: "color" as const,
+      label: "Text",
+      activeClass: "bg-sky-500/50 text-white shadow-rose-500/30",
+      dotActiveClass: "bg-sky-400",
+    },
+    {
+      id: "background" as const,
+      label: "Bg",
+      activeClass: "bg-indigo-500/50 text-white shadow-purple-500/30",
+      dotActiveClass: "bg-indigo-400",
+    },
+    {
+      id: "border" as const,
+      label: "Border",
+      activeClass: "bg-amber-500/50 text-white shadow-amber-500/30",
+      dotActiveClass: "bg-amber-400",
+    },
+  ];
   // 🔹 Раздельный учет цвета для текста, фона и рамки
   const [activeColors, setActiveColors] = useState<{
     color: string | null;
@@ -183,55 +202,25 @@ export function ColorControl({
       {/* Шапка: Выбор режима */}
       <div className="flex items-center justify-between">
         <span className="text-[10px] font-mono uppercase text-zinc-400 font-semibold tracking-wider">
-          Tokens palette:
+          Colors:
         </span>
 
         {/* Переключатель Text / Background / Border */}
         <div className="flex items-center gap-1 bg-zinc-900 p-0.5 rounded border border-zinc-800">
-          <button
-            type="button"
-            onClick={() => setTarget("color")}
-            className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition cursor-pointer flex items-center gap-1 ${
-              target === "color"
-                ? "bg-rose-600 text-white shadow"
-                : "text-zinc-400 hover:text-zinc-200"
-            }`}
-          >
-            <span>Text</span>
-            {activeColors.color && (
-              <span className="w-1.5 h-1.5 rounded-full bg-white" />
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setTarget("background")}
-            className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition cursor-pointer flex items-center gap-1 ${
-              target === "background"
-                ? "bg-purple-600 text-white shadow"
-                : "text-zinc-400 hover:text-zinc-200"
-            }`}
-          >
-            <span>Bg</span>
-            {activeColors.background && (
-              <span className="w-1.5 h-1.5 rounded-full bg-white" />
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setTarget("border")}
-            className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition cursor-pointer flex items-center gap-1 ${
-              target === "border"
-                ? "bg-amber-600 text-white shadow"
-                : "text-zinc-400 hover:text-zinc-200"
-            }`}
-          >
-            <span>Border</span>
-            {activeColors.border && (
-              <span className="w-1.5 h-1.5 rounded-full bg-white" />
-            )}
-          </button>
+          {colorTargets.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTarget(t.id)}
+              className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                target === t.id
+                  ? `${t.activeClass} shadow`
+                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+              }`}
+            >
+              <span>{t.label}</span>
+            </button>
+          ))}
         </div>
       </div>
 

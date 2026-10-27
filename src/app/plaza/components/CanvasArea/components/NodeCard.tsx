@@ -118,7 +118,7 @@ export function NodeCard({
         e.stopPropagation();
         onDoubleClickNode(key);
       }}
-      className={`relative rounded-md select-none border transition-all box-border min-h-[30px] flex flex-col cursor-grab active:cursor-grabbing ${
+      className={`relative rounded-md select-none border transition-all box-border min-h-[30px] flex flex-col  active:cursor-grabbing ${
         isDragged ? "opacity-35 border-dashed" : "opacity-100"
       } ${parentIsRow ? "flex-1 min-w-[120px]" : "w-full"}`}
       style={{
@@ -151,7 +151,7 @@ export function NodeCard({
 
           {hasClass && (
             <span
-              className="text-[12px] font-mono text-green-300 truncate max-w-[200px] leading-none"
+              className="text-[12px] font-mono text-green-300  leading-none"
               title={classStr}
             >
               {classStr}

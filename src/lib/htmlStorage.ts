@@ -355,3 +355,93 @@ export async function getFontsSettings(): Promise<FontsSettingsData> {
     tx.oncomplete = () => db.close();
   });
 }
+
+/* ============================================================================
+   5. PIXEL PERFECT OVERLAY SETTINGS (Подложка под превью)
+   ============================================================================ */
+
+const OVERLAY_KEY = "pixel_perfect_overlay";
+
+export interface PixelPerfectSettingsData {
+  image: string; // base64 DataURL
+  fileName?: string;
+  imageWidth?: number;
+  imageHeight?: number;
+  previewOpacity: number; // 0..100 (прозрачность верстки)
+  overlayOpacity?: number; // 0..100 (прозрачность подложки)
+  offsetX: number;
+  offsetY: number;
+  isVisible: boolean;
+  align: "left" | "center";
+  fitHeight?: boolean;
+}
+
+export async function savePixelPerfectSettings(
+  data: PixelPerfectSettingsData,
+): Promise<void> {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.PREVIEW_SETTINGS, "readwrite");
+    const store = tx.objectStore(STORES.PREVIEW_SETTINGS);
+    const req = store.put({ id: OVERLAY_KEY, ...data });
+
+    req.onsuccess = () => resolve();
+    req.onerror = () =>
+      reject(req.error || new Error("Failed to save pixel perfect settings"));
+    tx.oncomplete = () => db.close();
+  });
+}
+
+export async function getPixelPerfectSettings(): Promise<PixelPerfectSettingsData | null> {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.PREVIEW_SETTINGS, "readonly");
+    const store = tx.objectStore(STORES.PREVIEW_SETTINGS);
+    const req = store.get(OVERLAY_KEY);
+
+    req.onsuccess = () => {
+      if (req.result && req.result.image) {
+        resolve({
+          image: req.result.image,
+          fileName: req.result.fileName || "",
+          imageWidth: req.result.imageWidth || 0,
+          imageHeight: req.result.imageHeight || 0,
+          previewOpacity:
+            typeof req.result.previewOpacity === "number"
+              ? req.result.previewOpacity
+              : 50,
+          overlayOpacity:
+            typeof req.result.overlayOpacity === "number"
+              ? req.result.overlayOpacity
+              : 100,
+          offsetX: req.result.offsetX || 0,
+          offsetY: req.result.offsetY || 0,
+          isVisible:
+            req.result.isVisible !== undefined ? req.result.isVisible : true,
+          align: req.result.align || "left",
+          fitHeight:
+            req.result.fitHeight !== undefined ? req.result.fitHeight : true,
+        });
+      } else {
+        resolve(null);
+      }
+    };
+    req.onerror = () =>
+      reject(req.error || new Error("Failed to get pixel perfect settings"));
+    tx.oncomplete = () => db.close();
+  });
+}
+
+export async function clearPixelPerfectSettings(): Promise<void> {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.PREVIEW_SETTINGS, "readwrite");
+    const store = tx.objectStore(STORES.PREVIEW_SETTINGS);
+    const req = store.delete(OVERLAY_KEY);
+
+    req.onsuccess = () => resolve();
+    req.onerror = () =>
+      reject(req.error || new Error("Failed to clear pixel perfect settings"));
+    tx.oncomplete = () => db.close();
+  });
+}
