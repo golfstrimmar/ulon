@@ -1,0 +1,9 @@
+[
+  {
+    "tag": "script",
+    "text": "/* @component: tabs */\ndocument.addEventListener('click', function (e) {\n  const btn = e.target.closest('.tabs__btn');\n\n  if (btn) {\n    const tabsContainer = btn.closest('.tabs');\n    const allBtns = tabsContainer.querySelectorAll('.tabs__btn');\n    const allPanes = tabsContainer.querySelectorAll('.tabs__pane');\n    const index = Array.from(allBtns).indexOf(btn);\n\n    allBtns.forEach(b => {\n      if (b !== btn) {\n        b.classList.remove('_is-active');\n      }\n    });\n\n    const isNowActive = btn.classList.toggle('_is-active');\n\n    allPanes.forEach(p => p.classList.remove('_is-active'));\n\n    if (isNowActive && allPanes[index]) {\n      allPanes[index].classList.add('_is-active');\n    }\n\n  } else if (!e.target.closest('.tabs')) {\n    document.querySelectorAll('.tabs__btn, .tabs__pane').forEach(el => {\n      el.classList.remove('_is-active');\n    });\n  }\n});\n/* @end: tabs */",
+    "class": "",
+    "style": "",
+    "children": []
+  }
+]

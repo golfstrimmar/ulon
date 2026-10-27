@@ -139,3 +139,6 @@ useEffect(() => {
       document.body.style.overflow = "unset";
     };
   }, [openModalJson]);
+<!--========================образец модалки и кнопки к нейц=======================-->
+D:\WEB\ulon\src\app\plaza\components\PreviewArea\components\ButtonJson.tsx
+D:\WEB\ulon\src\app\plaza\components\PreviewArea\components\ModalJsonHtml.tsx

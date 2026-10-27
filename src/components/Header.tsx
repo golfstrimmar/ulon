@@ -6,13 +6,15 @@ export async function Header() {
   const session = await auth();
 
   return (
-    <header className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur px-6 py-4 flex items-center justify-between">
+    <header className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur px-6 py-2 flex items-center justify-between">
       <div className="flex items-center gap-6">
         <Link
           href="/"
           className="flex items-center gap-2 hover:opacity-80 transition"
         >
-          <span className="font-bold text-xl tracking-tight text-white">Ulon</span>
+          <span className="font-bold text-xl tracking-tight text-white">
+            Ulon
+          </span>
         </Link>
         <Link
           href="/plaza"
@@ -39,7 +41,9 @@ export async function Header() {
                 />
               ) : (
                 <div className="w-7 h-7 rounded-full bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 font-bold text-xs flex items-center justify-center">
-                  {(session.user.name || session.user.email || "U")[0].toUpperCase()}
+                  {(session.user.name ||
+                    session.user.email ||
+                    "U")[0].toUpperCase()}
                 </div>
               )}
               <span className="text-sm font-medium text-zinc-200 group-hover:text-white transition max-w-[160px] truncate">

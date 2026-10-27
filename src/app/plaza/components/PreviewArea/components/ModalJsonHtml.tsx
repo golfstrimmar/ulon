@@ -29,7 +29,6 @@ export default function ModalJsonHtml({
     };
   }, [openModalJson]);
 
-  // ====>====>====>====>====>====>====>====>====>====>====>====>====>====>====>
   useEffect(() => {
     const run = async () => {
       try {
@@ -42,98 +41,7 @@ export default function ModalJsonHtml({
 
     run();
   }, [openModalJson]);
-  ///  ───────────────────────────────────────────────────────
-
-  // const [isSaving, setIsSaving] = useState<boolean>(false);
-  // const [isSaved, setIsSaved] = useState<boolean>(false);
-
-  // const [canUndo, setCanUndo] = useState<boolean>(false);
-  // const [canRedo, setCanRedo] = useState<boolean>(false);
-  // const editorRef = useRef<any>(null);
-
-  // Загрузка начального кода и подписка на состояние истории
-  // useEffect(() => {
-  //   if (openModalCss) {
-  //     getGlobalScss().then((code) => {
-  //       const val = code || "";
-  //       setScssCode(val);
-  //       setIsSaved(false);
-  //       setCanUndo(styleHistory.canUndo());
-  //       setCanRedo(styleHistory.canRedo());
-  //     });
-  //   }
-
-  //   const handleHistoryUpdate = (e: Event) => {
-  //     const customEvent = e as CustomEvent<{
-  //       canUndo: boolean;
-  //       canRedo: boolean;
-  //     }>;
-  //     if (customEvent.detail) {
-  //       setCanUndo(customEvent.detail.canUndo);
-  //       setCanRedo(customEvent.detail.canRedo);
-  //     }
-  //   };
-
-  //   window.addEventListener("plaza-style-history-changed", handleHistoryUpdate);
-  //   return () => {
-  //     window.removeEventListener(
-  //       "plaza-style-history-changed",
-  //       handleHistoryUpdate,
-  //     );
-  //   };
-  // }, [openModalCss]);
-
-  // Сохранение (Save)
-  // const handleSave = async (codeToSave = scssCode) => {
-  //   try {
-  //     setIsSaving(true);
-  //     styleHistory.record(codeToSave); // 🔹 Фиксируем шаг в истории
-  //     await saveGlobalScss(codeToSave);
-
-  //     window.dispatchEvent(
-  //       new CustomEvent("plaza-styles-updated", { detail: codeToSave }),
-  //     );
-
-  //     setIsSaved(true);
-  //     setTimeout(() => setIsSaved(false), 800);
-  //   } catch (err) {
-  //     console.error("[ModalCss] Failed to save SCSS to IndexedDB:", err);
-  //   } finally {
-  //     setIsSaving(false);
-  //   }
-  // };
-
-  // // 🔹 Откат назад (Undo)
-  // const handleUndo = async () => {
-  //   const prevScss = styleHistory.undo();
-  //   if (prevScss !== null) {
-  //     setScssCode(prevScss);
-  //     await saveGlobalScss(prevScss);
-  //     window.dispatchEvent(
-  //       new CustomEvent("plaza-styles-updated", { detail: prevScss }),
-  //     );
-  //   }
-  // };
-
-  // // 🔹 Возврат вперед (Redo)
-  // const handleRedo = async () => {
-  //   const nextScss = styleHistory.redo();
-  //   if (nextScss !== null) {
-  //     setScssCode(nextScss);
-  //     await saveGlobalScss(nextScss);
-  //     window.dispatchEvent(
-  //       new CustomEvent("plaza-styles-updated", { detail: nextScss }),
-  //     );
-  //   }
-  // };
-
-  // const handleEditorDidMount = (editor: any, monaco: any) => {
-  //   editorRef.current = editor;
-  //   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-  //     handleSave();
-  //   });
-  // };
-
+  // ====>====>====>====>====>====>====>====>====>====>====>====>====>====>====>
   return (
     <AnimatePresence initial={false} mode="wait">
       {openModalJson && (

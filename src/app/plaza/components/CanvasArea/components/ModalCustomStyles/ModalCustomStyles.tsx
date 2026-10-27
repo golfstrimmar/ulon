@@ -76,10 +76,6 @@ export default function ModalCustomStyles({
                 onApplySnippet={onApplySnippet}
               />
 
-              <ColorControl
-                currentClass={currentClass}
-                onApplySnippet={onApplySnippet}
-              />
               {/* Блок Display */}
               <DisplayControl
                 currentClass={currentClass}
@@ -93,7 +89,11 @@ export default function ModalCustomStyles({
                 currentScssText={currentScssText}
                 onApplySnippet={onApplySnippet}
               />
-
+              <ColorControl
+                currentClass={currentClass}
+                currentScssText={currentScssText}
+                onApplySnippet={onApplySnippet}
+              />
               {/* Блок Transform (Translate) */}
               <TransformControl
                 currentClass={currentClass}

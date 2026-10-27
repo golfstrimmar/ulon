@@ -1,0 +1,68 @@
+[
+  {
+    "tag": "div",
+    "text": "",
+    "class": "tabs",
+    "style": "",
+    "children": [
+      {
+        "tag": "div",
+        "text": "",
+        "class": "tabs__nav",
+        "style": "",
+        "children": [
+          {
+            "tag": "button",
+            "text": "Tab 1",
+            "class": "tabs__btn _is-active",
+            "style": "",
+            "children": []
+          },
+          {
+            "tag": "button",
+            "text": "Tab 2",
+            "class": "tabs__btn",
+            "style": "",
+            "children": []
+          },
+          {
+            "tag": "button",
+            "text": "Tab 3",
+            "class": "tabs__btn",
+            "style": "",
+            "children": []
+          }
+        ]
+      },
+      {
+        "tag": "div",
+        "text": "",
+        "class": "tabs__content",
+        "style": "",
+        "children": [
+          {
+            "tag": "div",
+            "text": "Content of tab 1",
+            "class": "tabs__pane _is-active",
+            "style": "",
+            "children": []
+          },
+          {
+            "tag": "div",
+            "text": "Content of tab 2",
+            "class": "tabs__pane",
+            "style": "",
+            "children": []
+          },
+          {
+            "tag": "div",
+            "text": "Content of tab 3",
+            "class": "tabs__pane",
+            "style": "",
+            "children": []
+          }
+        ]
+      }
+    ]
+  }
+]

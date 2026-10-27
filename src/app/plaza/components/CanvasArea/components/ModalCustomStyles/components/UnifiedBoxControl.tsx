@@ -44,9 +44,9 @@ export function UnifiedBoxControl({
   currentScssText = "",
   onApplySnippet,
 }: Props) {
-  const [activeProp, setActiveProp] = useState<MasterProp>("padding");
+  const [activeProp, setActiveProp] = useState<MasterProp>("margin");
 
-  const [side, setSide] = useState<SpacingSide>("all");
+  const [side, setSide] = useState<SpacingSide>("top");
   const [gapMode, setGapMode] = useState<GapMode>("gap");
   const [specialVal, setSpecialVal] = useState<string | null>(null);
 

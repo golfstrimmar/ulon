@@ -124,7 +124,7 @@ export function useCanvasArea() {
             return node;
           }
 
-          if (node.children && node.children.length > 0) {
+          if (node.children && Array.isArray(node.children) && node.children.length > 0) {
             const found = findNode(node.children);
             if (found) return found;
           }
@@ -138,7 +138,7 @@ export function useCanvasArea() {
         // 🛑 Если эта нода УЖЕ открыта — ничего не сбрасываем и не перетираем!
         if (targetNode._key === clickedKeyRef.current) return;
 
-        setClickedKey(targetNode._key);
+        setClickedKey(targetNode._key ?? null);
       }
     };
 
