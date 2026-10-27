@@ -2,7 +2,13 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useLiveStyle } from "../hooks/useLiveStyle";
 
 type DisplayMode =
-  "flex" | "grid" | "block" | "inline-block" | "inline" | "none";
+  | "flex"
+  | "inline-flex"
+  | "grid"
+  | "block"
+  | "inline-block"
+  | "inline"
+  | "none";
 type PaneId = "flex" | "grid";
 
 interface Props {
@@ -15,6 +21,7 @@ interface Props {
 
 const DISPLAY_OPTIONS: { id: DisplayMode; label: string }[] = [
   { id: "flex", label: "flex" },
+  { id: "inline-flex", label: "inline-flex" },
   { id: "grid", label: "grid" },
   { id: "block", label: "block" },
   { id: "inline-block", label: "inline-block" },

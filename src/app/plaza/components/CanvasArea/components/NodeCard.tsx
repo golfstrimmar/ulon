@@ -22,10 +22,12 @@ interface NodeCardProps {
   onToggleCollapse: (key: string) => void;
   onHoverNode: (key: string | null) => void;
 }
+
 export interface DropTarget {
   key: string;
   position: "self" | "before" | "after" | "inside";
 }
+
 export function NodeCard({
   node,
   depth,
@@ -47,8 +49,9 @@ export function NodeCard({
   const isCollapsed = collapsedKeys.has(key);
 
   const isDragged = draggedKey === key;
-  const isHovered = hoveredKey === key;
   const isClicked = clickedKey === key;
+  // Ховер работает только если нода НЕ активна в данный момент
+  const isHovered = hoveredKey === key && !isClicked;
   const isDrop = dropTarget?.key === key;
   const dropPos = isDrop ? dropTarget?.position : null;
 
@@ -68,12 +71,15 @@ export function NodeCard({
     bgStyle = "rgba(56, 189, 248, 0.16)";
     shadowStyle = "0 0 10px rgba(56, 189, 248, 0.4)";
   } else if (isClicked) {
+    // Активная нода (Красный акцент под цвет в PreviewArea или индиго)
     borderStyle = "#818cf8";
     bgStyle = "rgba(99, 102, 241, 0.2)";
     shadowStyle = "0 0 10px rgba(129, 140, 248, 0.35)";
   } else if (isHovered && !draggedKey) {
-    borderStyle = "#a5b4fc";
-    bgStyle = "rgba(99, 102, 241, 0.1)";
+    // 🔹 Зеленоватый цвет при ховере
+    borderStyle = "#34d399";
+    bgStyle = "rgba(52, 211, 153, 0.12)";
+    shadowStyle = "0 0 8px rgba(52, 211, 153, 0.25)";
   }
 
   const tagLower = (node.tag || "div").toLowerCase();
@@ -98,11 +104,35 @@ export function NodeCard({
       data-is-row={parentIsRow ? "true" : "false"}
       onPointerEnter={(e) => {
         e.stopPropagation();
+
+        // ⚠️ На активной ноде ховер не нужен
+        if (isClicked) return;
+
         onHoverNode(key);
+        window.dispatchEvent(
+          new CustomEvent("plaza-node-hovered", {
+            detail: key,
+          }),
+        );
       }}
       onPointerLeave={(e) => {
         e.stopPropagation();
-        onHoverNode(null);
+
+        // Проверяем, куда ушел курсор: если в родительскую ноду — подсвечиваем её,
+        // если в пустое место — сбрасываем в null
+        const nextTarget = e.relatedTarget as HTMLElement | null;
+        const parentNode = nextTarget?.closest<HTMLElement>("[data-node-key]");
+        const parentKey = parentNode?.getAttribute("data-node-key") || null;
+
+        // Если родитель оказался активной нодой, то ховер на нём тоже не включаем
+        const targetKey = parentKey === clickedKey ? null : parentKey;
+
+        onHoverNode(targetKey);
+        window.dispatchEvent(
+          new CustomEvent("plaza-node-hovered", {
+            detail: targetKey,
+          }),
+        );
       }}
       onPointerDown={(e) => {
         if (e.button === 0) {
@@ -118,7 +148,7 @@ export function NodeCard({
         e.stopPropagation();
         onDoubleClickNode(key);
       }}
-      className={`relative rounded-md select-none border transition-all box-border min-h-[30px] flex flex-col  active:cursor-grabbing ${
+      className={`relative rounded-md select-none border transition-all box-border min-h-[30px] flex flex-col active:cursor-grabbing ${
         isDragged ? "opacity-35 border-dashed" : "opacity-100"
       } ${parentIsRow ? "flex-1 min-w-[120px]" : "w-full"}`}
       style={{
@@ -144,14 +174,14 @@ export function NodeCard({
           )}
 
           <span
-            className={`px-1.5 py-0.5 rounded text-[12px] tracking-tight border  shrink-0 leading-none ${tagBadgeClass}`}
+            className={`px-1.5 py-0.5 rounded text-[12px] tracking-tight border shrink-0 leading-none ${tagBadgeClass}`}
           >
             {node.tag || "div"}
           </span>
 
           {hasClass && (
             <span
-              className="text-[12px] font-mono text-green-300  leading-none"
+              className="text-[12px] font-mono text-green-300 leading-none"
               title={classStr}
             >
               {classStr}

@@ -24,14 +24,25 @@ const ModalPixelPerfect = dynamic(
   { ssr: false },
 );
 
-// 🔹 Красный полупрозрачный маркер (outline + glow + bg)
+// 🔹 Раздельные стили: Красный для активной ноды, Зеленый для ховера
 const HIGHLIGHT_STYLE_ID = "plaza-highlight-style";
 const HIGHLIGHT_CSS = `
+  /* Активная нода (Красная) - наивысший приоритет */
   .plaza-node-selected {
-    outline: 4px solid rgba(239, 68, 68, 0.95) !important;
-    outline-offset: -2px !important;
-    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.3) !important;
-    transition: outline 0.1s ease, box-shadow 0.1s ease !important;
+    outline: 3px solid rgba(239, 68, 68, 0.95) !important;
+    outline-offset: -1px !important;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.3) !important;
+    position: relative;
+    z-index: 50 !important;
+  }
+
+  /* Ховер-нода (Зеленоватая) - работает ТОЛЬКО если элемент НЕ выбран */
+  .plaza-node-hovered:not(.plaza-node-selected) {
+    outline: 2px dashed rgba(52, 211, 153, 0.9) !important;
+    outline-offset: -1px !important;
+    box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.25) !important;
+    position: relative;
+    z-index: 40 !important;
   }
 `;
 
@@ -79,22 +90,26 @@ export function PreviewArea() {
       ? Math.max(iframeHeight, overlayHeight + Math.max(0, offsetY))
       : iframeHeight;
 
-  // 🔹 Умный поиск элемента внутри iframe (по ключу или по классу/тегу/тексту)
+  // Вспомогательная функция для инъекции CSS в iframe
+  const ensureStylesInjected = (doc: Document) => {
+    if (!doc.getElementById(HIGHLIGHT_STYLE_ID)) {
+      const styleEl = doc.createElement("style");
+      styleEl.id = HIGHLIGHT_STYLE_ID;
+      styleEl.textContent = HIGHLIGHT_CSS;
+      (doc.head || doc.body).appendChild(styleEl);
+    }
+  };
+
+  // 🔹 Подсветка АКТИВНОГО элемента (Красный)
   const applyHighlight = useCallback(
     (payload: SelectionPayload | null) => {
       const iframe = iframeRef.current;
       const doc = iframe?.contentDocument;
       if (!doc || !doc.body) return;
 
-      // Внедряем CSS
-      if (!doc.getElementById(HIGHLIGHT_STYLE_ID)) {
-        const styleEl = doc.createElement("style");
-        styleEl.id = HIGHLIGHT_STYLE_ID;
-        styleEl.textContent = HIGHLIGHT_CSS;
-        (doc.head || doc.body).appendChild(styleEl);
-      }
+      ensureStylesInjected(doc);
 
-      // Снимаем подсветку со старых элементов
+      // Снимаем класс активности со старых элементов
       doc.querySelectorAll(".plaza-node-selected").forEach((el) => {
         el.classList.remove("plaza-node-selected");
       });
@@ -103,14 +118,12 @@ export function PreviewArea() {
 
       let targetEl: Element | null = null;
 
-      // 1. Пытаемся найти по ключу (если есть атрибуты data-node-key, data-key, id)
+      // 1. Поиск по data-node-key
       if (payload.key) {
-        targetEl = doc.querySelector(
-          `[data-node-key="${payload.key}"], [data-key="${payload.key}"], [id="${payload.key}"]`,
-        );
+        targetEl = doc.querySelector(`[data-node-key="${payload.key}"]`);
       }
 
-      // 2. Если по ключу не найдено — ищем по классам
+      // 2. Фолбэк по классу + тегу
       if (!targetEl && payload.className) {
         const classes = payload.className
           .trim()
@@ -119,14 +132,12 @@ export function PreviewArea() {
           .filter(Boolean);
 
         if (classes.length > 0) {
-          // Пробуем искать по первому/основному классу
           const selector = `${payload.tag || ""}.${classes[0]}`.trim();
           const candidates = Array.from(doc.querySelectorAll(selector));
 
           if (candidates.length === 1) {
             targetEl = candidates[0];
           } else if (candidates.length > 1) {
-            // Если кандидатов несколько, сверяем по тексту
             if (payload.text) {
               targetEl =
                 candidates.find((el) =>
@@ -139,17 +150,10 @@ export function PreviewArea() {
         }
       }
 
-      // 3. Если всё еще не найден, но есть тег и текст
-      if (!targetEl && payload.tag && payload.text) {
-        const candidates = Array.from(doc.querySelectorAll(payload.tag));
-        targetEl =
-          candidates.find(
-            (el) => el.textContent?.trim() === payload.text?.trim(),
-          ) || null;
-      }
-
-      // 4. Подсвечиваем найденный элемент
+      // 3. Активируем ноду
       if (targetEl) {
+        // Убираем ховер, если он был на этом элементе
+        targetEl.classList.remove("plaza-node-hovered");
         targetEl.classList.add("plaza-node-selected");
         targetEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }
@@ -157,7 +161,44 @@ export function PreviewArea() {
     [iframeRef],
   );
 
-  // 🔹 Слушаем глобальные события выбора/снятия ноды
+  // 🔹 Подсветка элемента по ХОВЕРУ (Зелёный)
+  useEffect(() => {
+    const handlePlazaNodeHovered = (event: Event) => {
+      const customEvent = event as CustomEvent<string | null>;
+      const key = customEvent.detail;
+      const iframe = iframeRef.current;
+      const doc = iframe?.contentDocument;
+      if (!doc || !doc.body) return;
+
+      ensureStylesInjected(doc);
+
+      // Очищаем предыдущий ховер со всех элементов
+      doc.querySelectorAll(".plaza-node-hovered").forEach((el) => {
+        el.classList.remove("plaza-node-hovered");
+      });
+
+      // Если ховер сброшен (null/empty) — выходим
+      if (!key) return;
+
+      // ⚠️ ВАЖНО: Если наведённый элемент совпадает с текущим активным — игнорируем ховер!
+      if (activeSelectionRef.current?.key === key) {
+        return;
+      }
+
+      const targetEl = doc.querySelector(`[data-node-key="${key}"]`);
+      if (targetEl && !targetEl.classList.contains("plaza-node-selected")) {
+        targetEl.classList.add("plaza-node-hovered");
+      }
+    };
+
+    window.addEventListener("plaza-node-hovered", handlePlazaNodeHovered);
+
+    return () => {
+      window.removeEventListener("plaza-node-hovered", handlePlazaNodeHovered);
+    };
+  }, [iframeRef]);
+
+  // 🔹 Слушаем глобальные события выбора/снятия активной ноды
   useEffect(() => {
     const handleNodeSelected = (e: CustomEvent<SelectionPayload>) => {
       const detail = e.detail;
@@ -195,7 +236,7 @@ export function PreviewArea() {
     const doc = iframe?.contentDocument;
     if (!doc) return;
 
-    // Сразу накладываем подсветку
+    // Сразу накладываем активную подсветку
     applyHighlight(activeSelectionRef.current);
 
     // Клик внутри самого iframe
@@ -207,16 +248,9 @@ export function PreviewArea() {
       e.preventDefault();
       e.stopPropagation();
 
-      // Ищем элемент с ключом или ближайшего родителя-ноду
-      const nodeEl =
-        target.closest<HTMLElement>("[data-node-key], [data-key], [id]") ||
-        target;
+      const nodeEl = target.closest<HTMLElement>("[data-node-key]") || target;
 
-      const key =
-        nodeEl.getAttribute("data-node-key") ||
-        nodeEl.getAttribute("data-key") ||
-        nodeEl.id ||
-        null;
+      const key = nodeEl.getAttribute("data-node-key") || null;
 
       const payload: SelectionPayload = {
         key,
@@ -224,6 +258,9 @@ export function PreviewArea() {
         className: nodeEl.className || "",
         text: nodeEl.textContent?.trim() || "",
       };
+
+      // Снимаем ховер при клике
+      nodeEl.classList.remove("plaza-node-hovered");
 
       setActiveSelection(payload);
       applyHighlight(payload);
@@ -324,8 +361,6 @@ export function PreviewArea() {
   return (
     <div className="w-full flex flex-col border border-zinc-800 rounded-xl overflow-hidden bg-zinc-900 shadow-xl">
       <div className="flex items-center justify-between px-2 py-1 border-b border-zinc-800 bg-zinc-900/80 shrink-0 gap-2 flex-wrap">
-        {/* 🔹 Селектор брейкпоинтов медиазапросов */}
-
         <div className="flex items-center justify-between gap-2 w-full">
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2">
@@ -367,7 +402,7 @@ export function PreviewArea() {
             type="button"
             onClick={() => setIsCollapsed((c) => !c)}
             title={isCollapsed ? "Развернуть" : "Свернуть"}
-            className="text-zinc-500 hover:text-zinc-200 px-2 rounded bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 transition cursor-pointer "
+            className="text-zinc-500 hover:text-zinc-200 px-2 rounded bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 transition cursor-pointer"
           >
             <img
               src="/chevron-down.svg"
@@ -395,7 +430,6 @@ export function PreviewArea() {
                 : "bg-zinc-950/90 p-2 sm:p-4 flex flex-col items-center"
             }`}
           >
-            {/* 🔹 Фрейм превью с заданной шириной брейкпоинта */}
             <div
               className={`relative bg-white transition-[width] duration-200 ease-out overflow-hidden ${
                 isFullWidth
@@ -408,9 +442,8 @@ export function PreviewArea() {
                 minHeight: effectiveHeight,
               }}
             >
-              {/* Верхняя информационная плашка при фиксированном брейкпоинте*/}
               {!isFullWidth && (
-                <div className="relative z-200 flex items-center justify-center px-3 py-1.5 bg-zinc-900 border-b border-zinc-700/80 text-xs  font-mono select-none flex-wrap gap-2 ">
+                <div className="relative z-200 flex items-center justify-center px-3 py-1.5 bg-zinc-900 border-b border-zinc-700/80 text-xs font-mono select-none flex-wrap gap-2">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm">{activeBreakpoint.icon}</span>
                     <span className="font-bold text-zinc-100 text-xs tracking-tight">
@@ -452,7 +485,6 @@ export function PreviewArea() {
                 </div>
               )}
 
-              {/* 🎯 Слой подложки Pixel Perfect под превью */}
               {hasImage && isOverlayActive && (
                 <div
                   className="absolute top-0 pointer-events-none select-none z-0"

@@ -97,6 +97,9 @@ export function treeToHtml(node: HtmlNode, indent = 0): string {
   const tag = (node.tag || "div").toLowerCase();
 
   const attrs: string[] = [];
+  if (node._key) {
+    attrs.push(`data-node-key="${node._key}"`);
+  }
   if (node.class && node.class.trim()) {
     attrs.push(`class="${node.class.trim()}"`);
   }
