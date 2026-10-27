@@ -91,6 +91,7 @@ export const STYLE_PRESETS: { category: string; items: StylePreset[] }[] = [
       // { name: "Opacity 0", css: "opacity: 0;" },
       { name: "Visible", css: "visibility: visible;" },
       { name: "Hidden", css: "visibility: hidden;" },
+      { name: "transition", css: "transition: all 0.2s easy-in-out;" },
     ],
   },
   // {
