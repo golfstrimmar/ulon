@@ -1,5 +1,11 @@
 "use client";
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ButtonClose from "@/components/ButtonClose";
 import { getHtmlJson, saveHtmlJson } from "@/lib/htmlStorage";
@@ -82,7 +88,9 @@ export default function ModalAddSvg({
   // Output format mode:
   // 'inline-wrapper': <i> -> <svg> -> <path>... (requested JSON node tree, but distortion-free)
   // 'image-datauri': <img> with vector data:image/svg+xml;base64,... (like ModalAddImg, zero DOM overhead, 100% native render)
-  const [outputMode, setOutputMode] = useState<"inline-wrapper" | "image-datauri">("inline-wrapper");
+  const [outputMode, setOutputMode] = useState<
+    "inline-wrapper" | "image-datauri"
+  >("inline-wrapper");
 
   // Raw SVG and parsed node
   const [rawSvgClean, setRawSvgClean] = useState<string>("");
@@ -101,7 +109,9 @@ export default function ModalAddSvg({
   // 'original' = 100% original fills, strokes, gradients untouched
   // 'currentcolor' = converts stroke/fill to currentColor
   // 'custom' = user picks a custom color
-  const [colorMode, setColorMode] = useState<"original" | "currentcolor" | "custom">("original");
+  const [colorMode, setColorMode] = useState<
+    "original" | "currentcolor" | "custom"
+  >("original");
   const [customColor, setCustomColor] = useState<string>("#3b82f6");
 
   // Tabs for inspector
@@ -191,11 +201,12 @@ export default function ModalAddSvg({
       const trimmed = el.textContent.trim();
       if (trimmed) text = trimmed;
     }
-
+    const rawClass = el.getAttribute("class") || "";
+    const cleanClass = rawClass.replace(/\bsvg-custom\b/g, "").trim();
     return {
       tag,
       text,
-      class: el.getAttribute("class") || "",
+      class: cleanClass,
       style: el.getAttribute("style") || "",
       attributes,
       children,
@@ -236,12 +247,16 @@ export default function ModalAddSvg({
       }
 
       // Extract viewBox and natural dimensions
-      const viewBoxStr = svgEl.getAttribute("viewBox") || svgEl.getAttribute("viewbox") || "";
+      const viewBoxStr =
+        svgEl.getAttribute("viewBox") || svgEl.getAttribute("viewbox") || "";
       let natW = 24;
       let natH = 24;
 
       if (viewBoxStr) {
-        const parts = viewBoxStr.trim().split(/[\s,]+/).map(Number);
+        const parts = viewBoxStr
+          .trim()
+          .split(/[\s,]+/)
+          .map(Number);
         if (parts.length === 4 && parts[2] > 0 && parts[3] > 0) {
           natW = parts[2];
           natH = parts[3];
@@ -291,7 +306,9 @@ export default function ModalAddSvg({
     const node: HtmlNode = JSON.parse(JSON.stringify(baseSvgNode));
 
     // Ensure svg scales inside wrapper without relying on broken nested CSS
-    const existingSvgStyle = node.style ? node.style.trim().replace(/;$/, "") + "; " : "";
+    const existingSvgStyle = node.style
+      ? node.style.trim().replace(/;$/, "") + "; "
+      : "";
     node.style = `${existingSvgStyle}width: 100%; height: 100%; display: block;`;
 
     if (colorMode === "currentcolor") {
@@ -358,7 +375,14 @@ export default function ModalAddSvg({
       _isNew: true,
     };
     return inlineNode;
-  }, [processedSvgNode, rawSvgClean, outputMode, targetWidth, targetHeight, wrapperClass]);
+  }, [
+    processedSvgNode,
+    rawSvgClean,
+    outputMode,
+    targetWidth,
+    targetHeight,
+    wrapperClass,
+  ]);
 
   const processFile = (file: File) => {
     if (
@@ -417,7 +441,9 @@ export default function ModalAddSvg({
         processSvgString(text);
       }
     } catch {
-      alert("Unable to read clipboard. Please paste manually into the textarea.");
+      alert(
+        "Unable to read clipboard. Please paste manually into the textarea.",
+      );
     }
   };
 
@@ -447,7 +473,9 @@ export default function ModalAddSvg({
     }
   };
 
-  const previewHtml = processedSvgNode ? treeToHtml(processedSvgNode) : rawSvgClean;
+  const previewHtml = processedSvgNode
+    ? treeToHtml(processedSvgNode)
+    : rawSvgClean;
 
   return (
     <AnimatePresence>
@@ -470,7 +498,8 @@ export default function ModalAddSvg({
               Add SVG Vector
             </h2>
             <p className="text-sm text-neutral-400 mt-1">
-              Zero-distortion vector SVG loader with aspect ratio locking & original color preservation
+              Zero-distortion vector SVG loader with aspect ratio locking &
+              original color preservation
             </p>
           </div>
 
@@ -731,7 +760,8 @@ export default function ModalAddSvg({
                           <span>🧩 Inline SVG (&lt;i&gt; + &lt;svg&gt;)</span>
                         </div>
                         <span className="text-[11px] text-neutral-400">
-                          Инлайн дерево нод. Доступ к классам, ховерам и путям в холсте.
+                          Инлайн дерево нод. Доступ к классам, ховерам и путям в
+                          холсте.
                         </span>
                       </button>
 
@@ -747,7 +777,8 @@ export default function ModalAddSvg({
                           <span>🖼️ Векторный &lt;img&gt; (Data-URI)</span>
                         </div>
                         <span className="text-[11px] text-neutral-400">
-                          Как в ModalAddImg. Абсолютно 0 искажений, компактная нода, нативный рендер.
+                          Как в ModalAddImg. Абсолютно 0 искажений, компактная
+                          нода, нативный рендер.
                         </span>
                       </button>
                     </div>
@@ -790,14 +821,18 @@ export default function ModalAddSvg({
                           <span>Размеры (Ширина × Высота):</span>
                           <div className="flex items-center gap-2">
                             <button
-                              onClick={() => setLockAspectRatio(!lockAspectRatio)}
+                              onClick={() =>
+                                setLockAspectRatio(!lockAspectRatio)
+                              }
                               className={`px-2 py-0.5 rounded text-[11px] border transition cursor-pointer flex items-center gap-1 ${
                                 lockAspectRatio
                                   ? "bg-blue-600/20 border-blue-500 text-blue-300 font-semibold"
                                   : "bg-neutral-800 border-neutral-700 text-neutral-400"
                               }`}
                             >
-                              {lockAspectRatio ? "🔒 Пропорции зафиксированы" : "🔓 Свободные размеры"}
+                              {lockAspectRatio
+                                ? "🔒 Пропорции зафиксированы"
+                                : "🔓 Свободные размеры"}
                             </button>
                             <span className="font-mono text-blue-400 font-semibold">
                               {targetWidth} × {targetHeight} px
@@ -810,7 +845,9 @@ export default function ModalAddSvg({
                           <div className="flex flex-col gap-1.5">
                             <div className="flex justify-between text-[11px] text-neutral-400">
                               <span>Высота (Height):</span>
-                              <span className="font-mono text-neutral-200">{targetHeight}px</span>
+                              <span className="font-mono text-neutral-200">
+                                {targetHeight}px
+                              </span>
                             </div>
                             <div className="flex items-center gap-2">
                               <input
@@ -819,7 +856,11 @@ export default function ModalAddSvg({
                                 max="120"
                                 step="1"
                                 value={targetHeight}
-                                onChange={(e) => handleHeightChange(parseInt(e.target.value, 10))}
+                                onChange={(e) =>
+                                  handleHeightChange(
+                                    parseInt(e.target.value, 10),
+                                  )
+                                }
                                 className="flex-1 h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
                               />
                               <input
@@ -827,7 +868,11 @@ export default function ModalAddSvg({
                                 min="8"
                                 max="512"
                                 value={targetHeight}
-                                onChange={(e) => handleHeightChange(parseInt(e.target.value, 10) || 16)}
+                                onChange={(e) =>
+                                  handleHeightChange(
+                                    parseInt(e.target.value, 10) || 16,
+                                  )
+                                }
                                 className="w-14 px-1.5 py-0.5 bg-neutral-800 border border-neutral-700 rounded text-xs font-mono text-neutral-200 text-center outline-none focus:border-blue-500"
                               />
                             </div>
@@ -837,7 +882,9 @@ export default function ModalAddSvg({
                           <div className="flex flex-col gap-1.5">
                             <div className="flex justify-between text-[11px] text-neutral-400">
                               <span>Ширина (Width):</span>
-                              <span className="font-mono text-neutral-200">{targetWidth}px</span>
+                              <span className="font-mono text-neutral-200">
+                                {targetWidth}px
+                              </span>
                             </div>
                             <div className="flex items-center gap-2">
                               <input
@@ -846,7 +893,11 @@ export default function ModalAddSvg({
                                 max="160"
                                 step="1"
                                 value={targetWidth}
-                                onChange={(e) => handleWidthChange(parseInt(e.target.value, 10))}
+                                onChange={(e) =>
+                                  handleWidthChange(
+                                    parseInt(e.target.value, 10),
+                                  )
+                                }
                                 className="flex-1 h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
                               />
                               <input
@@ -854,7 +905,11 @@ export default function ModalAddSvg({
                                 min="8"
                                 max="512"
                                 value={targetWidth}
-                                onChange={(e) => handleWidthChange(parseInt(e.target.value, 10) || 16)}
+                                onChange={(e) =>
+                                  handleWidthChange(
+                                    parseInt(e.target.value, 10) || 16,
+                                  )
+                                }
                                 className="w-14 px-1.5 py-0.5 bg-neutral-800 border border-neutral-700 rounded text-xs font-mono text-neutral-200 text-center outline-none focus:border-blue-500"
                               />
                             </div>
@@ -863,7 +918,9 @@ export default function ModalAddSvg({
 
                         {/* Preset buttons */}
                         <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                          <span className="text-[11px] text-neutral-500 mr-1">Быстрый размер:</span>
+                          <span className="text-[11px] text-neutral-500 mr-1">
+                            Быстрый размер:
+                          </span>
                           {PRESET_HEIGHTS.map((h) => (
                             <button
                               key={h}

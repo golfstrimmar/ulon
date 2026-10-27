@@ -95,26 +95,38 @@ export function extractStylesAndScriptsFromNodes(nodes: HtmlNode[]): {
     if (node.style && node.style.trim()) {
       const cleanBody = node.style.trim();
 
+      // Для svg и его дочерних элементов (path, g...) не генерируем искусственные классы
+      const isSvgElement = [
+        "svg",
+        "path",
+        "g",
+        "circle",
+        "rect",
+        "polygon",
+        "polyline",
+      ].includes(tag);
+
       // Берем первый нормальный класс элемента (не утилиты типа flex/grid)
       let targetClass = classList.find(
         (c) =>
           !c.includes(":") && !c.startsWith("flex") && !c.startsWith("grid"),
       );
 
-      // Если класса вообще не было, даем по тегу
-      if (!targetClass) {
+      // Если класса не было и это НЕ элемент SVG — даем имя по тегу (если нужно),
+      // а для SVG оставляем инлайн-стиль или пропускаем создание мусорного класса
+      if (!targetClass && !isSvgElement) {
         targetClass = `${tag}-custom`;
         classList.push(targetClass);
       }
 
-      // Если в JSON стиль случайно уже был завернут в .класс { ... }, не оборачиваем второй раз
-      if (cleanBody.startsWith(`.${targetClass}`)) {
-        extractedRules.push(cleanBody);
-      } else {
-        extractedRules.push(`.${targetClass} {\n  ${cleanBody}\n}`);
+      if (targetClass) {
+        if (cleanBody.startsWith(`.${targetClass}`)) {
+          extractedRules.push(cleanBody);
+        } else {
+          extractedRules.push(`.${targetClass} {\n  ${cleanBody}\n}`);
+        }
       }
     }
-
     // Рекурсия по дочерним
     let processedChildren: HtmlNode[] = [];
     if (Array.isArray(node.children)) {
