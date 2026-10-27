@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import type { HtmlNode } from "@/types/HtmlNode";
 import {
   COMMON_TAGS,
@@ -68,13 +67,9 @@ export default function ModalNodeProperties({
   }, [clickedKey]); // 👈 Только clickedKey! Никаких editClass и editText здесь быть не должно
 
   return (
-    <AnimatePresence>
+    <>
       {clickedKey && selectedNode && (
-        <motion.div
-          initial={{ height: 0, opacity: 0, y: 0 }}
-          animate={{ height: "auto", opacity: 1, y: 0 }}
-          exit={{ height: 0, opacity: 0, y: 0 }}
-          transition={{ duration: 0.1, ease: "easeInOut" }}
+        <div
           className="fixed shadow-[0_-6px_18px_rgba(32,75,110,0.7)] bottom-0 right-0 w-[calc(100vw-210px)] z-40"
         >
           <div className="relative bg-zinc-800 border-t border-zinc-700 rounded-t-sm shadow-[0_-8px_32px_rgba(0,0,0,0.6)] backdrop-blur-md">
@@ -213,8 +208,8 @@ export default function ModalNodeProperties({
               </div>
             </div>
           </div>
-        </motion.div>
+        </div>
       )}
-    </AnimatePresence>
+    </>
   );
 }

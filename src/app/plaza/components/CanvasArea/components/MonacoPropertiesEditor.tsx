@@ -62,8 +62,12 @@ export function MonacoPropertiesEditor({
   onSaveGlobalScss,
   onSaveAttributes,
 }: MonacoPropertiesEditorProps) {
-  const [openTarget, setOpenTarget] = useState<string | null>(null);
-  const [currentText, setCurrentText] = useState<string>("");
+  // Инициализируем сразу первым классом при монтировании
+  const firstCls = nodeClasses[0] ?? null;
+  const [openTarget, setOpenTarget] = useState<string | null>(firstCls);
+  const [currentText, setCurrentText] = useState<string>(() =>
+    firstCls ? extractClassSnippet(globalScss, firstCls) : ""
+  );
   const currentTextRef = useRef<string>("");
   currentTextRef.current = currentText;
 
@@ -103,28 +107,46 @@ export function MonacoPropertiesEditor({
     isDirtyRef.current = false;
   };
 
-  // 🔹 Сброс и сохранение при смене выбранной ноды
+  // 🔹 Сброс и авто-открытие первого класса при смене ноды
   useEffect(() => {
     if (prevNodeKeyRef.current !== nodeKey) {
       if (isDirtyRef.current && openTarget) {
         saveCurrentOpenTarget(openTarget);
       }
-      setOpenTarget(null);
-      setCurrentText("");
-      currentTextRef.current = "";
-      isDirtyRef.current = false;
       prevNodeKeyRef.current = nodeKey;
-    }
-  }, [nodeKey, openTarget]);
+      isDirtyRef.current = false;
 
-  // 🔹 Закрытие редактора, если текущий открытый класс стёрли из инпута Classes
-  useEffect(() => {
-    if (openTarget && openTarget !== "__attributes__") {
-      if (!nodeClasses.includes(openTarget)) {
+      // Авто-открываем первый класс если есть
+      if (nodeClasses.length > 0) {
+        const firstCls = nodeClasses[0];
+        const snippet = extractClassSnippet(globalScssRef.current, firstCls);
+        setCurrentText(snippet);
+        currentTextRef.current = snippet;
+        setOpenTarget(firstCls);
+      } else {
         setOpenTarget(null);
         setCurrentText("");
         currentTextRef.current = "";
+      }
+    }
+  }, [nodeKey]);
+
+  // 🔹 Если текущий класс пропал — переключаемся на первый доступный
+  useEffect(() => {
+    if (openTarget && openTarget !== "__attributes__") {
+      if (!nodeClasses.includes(openTarget)) {
         isDirtyRef.current = false;
+        if (nodeClasses.length > 0) {
+          const fallback = nodeClasses[0];
+          const snippet = extractClassSnippet(globalScssRef.current, fallback);
+          setCurrentText(snippet);
+          currentTextRef.current = snippet;
+          setOpenTarget(fallback);
+        } else {
+          setOpenTarget(null);
+          setCurrentText("");
+          currentTextRef.current = "";
+        }
       }
     }
   }, [nodeClasses, openTarget]);
@@ -414,13 +436,8 @@ export function MonacoPropertiesEditor({
         </button>
       </div>
 
-      <AnimatePresence>
-        {openTarget && (
-          <motion.div
-            initial={{ height: 0, opacity: 0, y: 0 }}
-            animate={{ height: "auto", opacity: 1, y: 0 }}
-            exit={{ height: 0, opacity: 0, y: 0 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
+      {openTarget && (
+          <div
             className="w-full flex flex-col rounded-lg border border-indigo-500/60 bg-zinc-950 overflow-hidden shadow-xl"
           >
             <div className="flex items-center justify-between px-3 py-1.5 bg-indigo-950/70 border-b border-indigo-900/60 select-none">
@@ -486,9 +503,8 @@ export function MonacoPropertiesEditor({
                 }}
               />
             </div>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
     </div>
   );
 }
