@@ -124,7 +124,11 @@ export function useCanvasArea() {
             return node;
           }
 
-          if (node.children && Array.isArray(node.children) && node.children.length > 0) {
+          if (
+            node.children &&
+            Array.isArray(node.children) &&
+            node.children.length > 0
+          ) {
             const found = findNode(node.children);
             if (found) return found;
           }
@@ -515,8 +519,72 @@ export function useCanvasArea() {
           );
           await persist(updated);
         } else {
+          let treeToUpdate = currentJsonRef.current;
+
+          // 1. Определяем, попадает ли нода внутрь какого-либо корневого блока
+          let targetRootNode: HtmlNode | null = null;
+
+          for (const root of treeToUpdate) {
+            // Если сбросили прямо внутрь корня
+            if (root._key === target.key && target.position === "inside") {
+              targetRootNode = root;
+              break;
+            }
+            // Если сбросили внутрь, до или после любого дочернего элемента этого корня
+            if (root._key !== target.key && findNodeByKey(root, target.key)) {
+              targetRootNode = root;
+              break;
+            }
+          }
+
+          const rootClass = targetRootNode?.class?.trim().split(/\s+/)[0];
+
+          if (rootClass) {
+            const bemPrefix = `${rootClass}__`;
+
+            // Рекурсивное добавление класса ноде И ВСЕМ её вложенным потомкам
+            const addClassRecursively = (node: HtmlNode): HtmlNode => {
+              const currentClasses = (node.class || "")
+                .split(/\s+/)
+                .filter(Boolean);
+
+              const updatedClassStr = currentClasses.includes(bemPrefix)
+                ? node.class || ""
+                : [...currentClasses, bemPrefix].join(" ");
+
+              const updatedChildren = Array.isArray(node.children)
+                ? node.children.map(addClassRecursively)
+                : node.children;
+
+              return {
+                ...node,
+                class: updatedClassStr,
+                children: updatedChildren,
+              };
+            };
+
+            // Обновляем сбрасываемую ноду (вместе со всеми её детьми) в дереве
+            const updateSubtreeInTree = (nodes: HtmlNode[]): HtmlNode[] => {
+              return nodes.map((node) => {
+                if (node._key === activeDragKey) {
+                  return addClassRecursively(node);
+                }
+                if (Array.isArray(node.children)) {
+                  return {
+                    ...node,
+                    children: updateSubtreeInTree(node.children),
+                  };
+                }
+                return node;
+              });
+            };
+
+            treeToUpdate = updateSubtreeInTree(treeToUpdate);
+          }
+
+          // 2. Перемещаем ноду в целевую позицию
           const updated = moveNodePosition(
-            currentJsonRef.current,
+            treeToUpdate,
             activeDragKey,
             target.key,
             target.position,
