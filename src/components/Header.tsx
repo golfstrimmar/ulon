@@ -17,6 +17,12 @@ export async function Header() {
           </span>
         </Link>
         <Link
+          href="/design"
+          className="text-xs uppercase font-mono font-bold tracking-wider px-2.5 py-1 rounded-md bg-zinc-800/80 hover:bg-zinc-800 border border-zinc-700/60 hover:border-indigo-500/50 text-indigo-300 hover:text-white transition"
+        >
+          Design
+        </Link>
+        <Link
           href="/plaza"
           className="text-xs uppercase font-mono font-bold tracking-wider px-2.5 py-1 rounded-md bg-zinc-800/80 hover:bg-zinc-800 border border-zinc-700/60 hover:border-indigo-500/50 text-indigo-300 hover:text-white transition"
         >

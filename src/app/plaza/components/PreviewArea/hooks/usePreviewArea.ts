@@ -8,6 +8,7 @@ import {
   getScriptsJs,
   getFontsSettings,
 } from "@/lib/htmlStorage";
+import { getColorVariables } from "@/lib/figmaColorStorage"; // 👈 1. ИМПОРТ ЦВЕТОВ ИЗ БАЗЫ
 import { compileScssToCss } from "@/lib/scssCompiler";
 import {
   DB_KEY,
@@ -41,6 +42,9 @@ export function usePreviewArea() {
   const scriptsJsRef = useRef<Record<string, string>>({});
   const [scriptsJs, setScriptsJs] = useState<Record<string, string>>({});
 
+  // 👈 2. ХРАНИЛИЩЕ ЦВЕТОВ В РЕФЕ ДЛЯ СБОРКИ
+  const colorVariablesRef = useRef<string[]>([]);
+
   // Полная пересборка srcDoc (вызывается ТОЛЬКО при старте или смене шрифтов)
   const rebuildEntireIframe = (
     bodyHtml: string,
@@ -48,6 +52,7 @@ export function usePreviewArea() {
     defFont = defaultFontRef.current,
     css = compiledCssRef.current,
     scripts = scriptsJsRef.current,
+    colors = colorVariablesRef.current,
   ) => {
     currentBodyHtmlRef.current = bodyHtml;
     setIsEmpty(!bodyHtml.trim());
@@ -58,6 +63,7 @@ export function usePreviewArea() {
         defaultFont: defFont,
         globalCss: css,
         scriptsJs: scripts,
+        colorVariables: colors, // 👈 3. ПЕРЕДАЕМ ЦВЕТА В СБОРКУ
       }),
     );
   };
@@ -67,16 +73,30 @@ export function usePreviewArea() {
      ========================================================================== */
   async function initPreview() {
     try {
-      const [rawTree, dbScss, dbScripts, dbFonts] = await Promise.all([
-        getHtmlJson(DB_KEY),
-        getGlobalScss().catch(() => ""),
-        getScriptsJs().catch(() => ({})),
-        getFontsSettings().catch(() => ({ fonts: [], defaultFont: "" })),
-      ]);
+      const [rawTree, dbScss, dbScripts, dbFonts, dbColors] = await Promise.all(
+        [
+          getHtmlJson(DB_KEY),
+          getGlobalScss().catch(() => ""),
+          getScriptsJs().catch(() => ({})),
+          getFontsSettings().catch(() => ({ fonts: [], defaultFont: "" })),
+          getColorVariables().catch(() => []), // 👈 4. ДОСТАЕМ ЦВЕТА ИЗ БАЗЫ
+        ],
+      );
 
       const loadedScripts = dbScripts || {};
       const loadedFonts = dbFonts?.fonts || [];
       const loadedDefaultFont = dbFonts?.defaultFont || "";
+
+      // 👈 5. ДОСТАЕМ ИМЕННО МАССИВ СТРОК ИЗ ОБЪЕКТА { id, variables: [...] }
+      const loadedColors: string[] = Array.isArray(dbColors)
+        ? dbColors
+        : dbColors &&
+            typeof dbColors === "object" &&
+            Array.isArray((dbColors as any).variables)
+          ? (dbColors as any).variables
+          : [];
+
+      colorVariablesRef.current = loadedColors;
 
       setFontEntries(loadedFonts);
       fontEntriesRef.current = loadedFonts;
@@ -106,6 +126,7 @@ export function usePreviewArea() {
           defaultFont: loadedDefaultFont,
           globalCss: css,
           scriptsJs: loadedScripts,
+          colorVariables: loadedColors, // 👈 6. ПЕРЕДАЕМ В ПЕРВЫЙ СТАРТ
         }),
       );
     } catch (err) {
@@ -122,7 +143,6 @@ export function usePreviewArea() {
      ========================================================================== */
   useEffect(() => {
     const PreviewFromDB = (event: Event) => {
-      const customEvent = event as CustomEvent<boolean>;
       initPreview();
     };
 
@@ -133,7 +153,7 @@ export function usePreviewArea() {
   }, []);
 
   /* ==========================================================================
-     2. РЕАКЦИЯ НА СОБЫТИЯ ШИНЫ (БЕЗ МОРГАНИЯ)
+     3. РЕАКЦИЯ НА СОБЫТИЯ ШИНЫ (БЕЗ МОРГАНИЯ)
      ========================================================================== */
 
   // 🔹 Изменение дерева HTML: если HTML не изменился — НЕ ТРОГАЕМ IFRAME!
@@ -143,7 +163,6 @@ export function usePreviewArea() {
       const nodes = customEvent.detail;
       const nextHtml = nodes && nodes.length > 0 ? renderTree(nodes) : "";
 
-      // 🛡️ ЗАЩИТА ОТ МОРГАНИЯ: если разметка та же самая — не перезагружаем!
       if (nextHtml === currentBodyHtmlRef.current) {
         return;
       }
@@ -151,7 +170,6 @@ export function usePreviewArea() {
       currentBodyHtmlRef.current = nextHtml;
       setIsEmpty(!nextHtml.trim());
 
-      // Если iframe уже есть — обновляем только body без вспышки
       const iframeDoc = iframeRef.current?.contentDocument;
       if (iframeDoc && iframeDoc.body) {
         iframeDoc.body.innerHTML = nextHtml;
@@ -166,7 +184,7 @@ export function usePreviewArea() {
       window.removeEventListener("plaza-tree-updated", handleTreeUpdate);
   }, []);
 
-  // 🔹 Изменение SCSS: инжектим CSS напрямую в DOM iframe БЕЗ ПЕРЕЗАГРУЗКИ SRCDOC!
+  // 🔹 Изменение SCSS: жесткая замена тега стиля для мгновенного обновления var()
   useEffect(() => {
     const handleStylesUpdate = async (e: Event) => {
       const customEvent = e as CustomEvent<string | Record<string, string>>;
@@ -177,25 +195,29 @@ export function usePreviewArea() {
         rawScss = Object.values(customEvent.detail).join("\n\n");
       }
 
-      const css = await compileScssToCss(rawScss);
+      // Подмешиваем переменные из базы, чтобы SCSS компилятор понимал и $color-1, и var(--color-1)
+      const colorDefs = colorVariablesRef.current.join("\n");
+      const scssWithColors = colorDefs ? `${colorDefs}\n${rawScss}` : rawScss;
+
+      const css = await compileScssToCss(scssWithColors);
       setCompiledCss(css);
       compiledCssRef.current = css;
 
       const iframeDoc = iframeRef.current?.contentDocument;
-      if (iframeDoc) {
-        let styleTag = iframeDoc.getElementById(
-          "compiled-classes-styles",
-        ) as HTMLStyleElement | null;
-        if (!styleTag) {
-          styleTag = iframeDoc.createElement("style");
-          styleTag.id = "compiled-classes-styles";
-          iframeDoc.head.appendChild(styleTag);
+      if (iframeDoc && iframeDoc.head) {
+        // Удаляем старый тег стилей начисто
+        const oldTag = iframeDoc.getElementById("compiled-classes-styles");
+        if (oldTag) {
+          oldTag.remove();
         }
 
-        // Мгновенное обновление CSS текста
-        styleTag.textContent = css;
+        // Создаем свежий тег — это заставляет браузер 100% пересчитать все var(--color-X)
+        const newStyleTag = iframeDoc.createElement("style");
+        newStyleTag.id = "compiled-classes-styles";
+        newStyleTag.textContent = css;
+        iframeDoc.head.appendChild(newStyleTag);
 
-        // Удаляем временный live-стиль бесшовно
+        // Чистим временные стили
         iframeDoc.getElementById("__plaza_live_quick_style__")?.remove();
         document.getElementById("__plaza_live_quick_style__")?.remove();
         return;
@@ -213,7 +235,6 @@ export function usePreviewArea() {
     return () =>
       window.removeEventListener("plaza-styles-updated", handleStylesUpdate);
   }, []);
-
   // Изменение скриптов JS
   useEffect(() => {
     const handleScriptsUpdate = (e: Event) => {
@@ -231,7 +252,6 @@ export function usePreviewArea() {
       setScriptsJs(nextScripts);
       scriptsJsRef.current = nextScripts;
 
-      // Скрипты требуют перезапуска песочницы
       rebuildEntireIframe(
         currentBodyHtmlRef.current,
         undefined,
@@ -270,7 +290,7 @@ export function usePreviewArea() {
   }, []);
 
   /* ==========================================================================
-     3. МЕТОДЫ УПРАВЛЕНИЯ ШРИФТАМИ
+     4. МЕТОДЫ УПРАВЛЕНИЯ ШРИФТАМИ
      ========================================================================== */
 
   const broadcastFonts = (fonts: string[], defFont: string) => {

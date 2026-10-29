@@ -542,6 +542,7 @@ export function PreviewArea() {
                 />
               )}
             </div>
+            {/*<pre className="relative  text-black text-[12px]">{srcDoc}</pre>*/}
           </motion.div>
         )}
       </AnimatePresence>

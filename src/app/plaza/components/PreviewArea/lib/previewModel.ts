@@ -2,8 +2,8 @@ import type { HtmlNode } from "@/types/HtmlNode";
 import { treeToHtml } from "@/lib/htmlTree";
 import { compileClassesCss } from "@/lib/cssCompiler";
 import { prepareScriptsForExecution } from "@/lib/jsCompiler";
-
 import { getFontsSettings, saveFontsSettings } from "@/lib/htmlStorage";
+import { getColorVariables } from "@/lib/figmaColorStorage";
 
 /* ==========================================================================
    1. СХЕМЫ ДАННЫХ
@@ -13,6 +13,7 @@ export interface PreviewSettings {
   fonts: string[];
   defaultFont: string;
   scriptsJs: Record<string, string>;
+  colorVariables: string[];
 }
 
 export interface BuildDocumentParams {
@@ -23,6 +24,7 @@ export interface BuildDocumentParams {
   globalJs?: string;
   classesCss?: Record<string, string>;
   scriptsJs?: Record<string, string>;
+  colorVariables?: string[];
 }
 
 export interface FontMutationResult {
@@ -99,6 +101,45 @@ export function parseFontHeaderTag(entry: string): string {
   return `<link rel="stylesheet" href="${trimmed}">`;
 }
 
+/**
+ * 🔹 Преобразует массив строк [$color-1: #162D5F;] в валидный блок :root { --color-1: #162D5F; }
+ */
+export function formatColorVariablesToCss(variables: any = []): string {
+  const targetArray: string[] = Array.isArray(variables)
+    ? variables
+    : Array.isArray(variables?.variables)
+      ? variables.variables
+      : [];
+
+  if (targetArray.length === 0) return "";
+
+  const lines = targetArray
+    .map((item) => {
+      if (!item || typeof item !== "string") return null;
+      const trimmed = item.trim().replace(/;$/, "");
+      if (!trimmed) return null;
+
+      // $color-1: #162D5F -> --color-1: #162D5F;
+      const match = trimmed.match(/^(\$[\w-]+|--[\w-]+)\s*:\s*([^;/]+)/);
+      if (match) {
+        const varName = match[1].replace(/^\$/, "--");
+        const val = match[2].trim();
+        return `     ${varName}: ${val};`;
+      }
+      return `     ${trimmed};`;
+    })
+    .filter(Boolean);
+
+  if (lines.length === 0) return "";
+
+  return `<!-- Переменные цветов из базы (Figma) -->
+   <style id="figma-color-tokens">
+     :root {
+${lines.join("\n")}
+     }
+   </style>`;
+}
+
 export function compileScriptsBundle(
   scriptsJs: Record<string, string> = {},
 ): string {
@@ -137,6 +178,7 @@ export function buildDocument({
   globalJs = "",
   classesCss = {},
   scriptsJs = {},
+  colorVariables = [],
 }: BuildDocumentParams): string {
   const fontsHtml = fontEntries
     .map(parseFontHeaderTag)
@@ -144,7 +186,6 @@ export function buildDocument({
     .join("\n  ");
 
   const detectedFamilies = extractFontFamilies(fontEntries);
-
   const compiledClassesStyles = globalCss || "";
 
   const rawJs =
@@ -155,7 +196,6 @@ export function buildDocument({
   const helperClasses = detectedFamilies
     .map((name) => {
       const slug = name.toLowerCase().replace(/\s+/g, "-");
-
       return `
      .${slug}, .font-${slug} {
        font-family: '${name}', sans-serif !important;
@@ -174,6 +214,9 @@ export function buildDocument({
     ? `font-family: '${defaultFont}', sans-serif !important;`
     : `font-family: Arial, Helvetica, sans-serif;`;
 
+  // Сливаем все переменные цветов в один тег <style>
+  const figmaColorsStyle = formatColorVariablesToCss(colorVariables);
+
   return `<!DOCTYPE html>
  <html lang="ru">
  <head>
@@ -181,10 +224,12 @@ export function buildDocument({
    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
    <link rel="preconnect" href="https://fonts.googleapis.com">
    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <script src="https://cdn.tailwindcss.com"></script>
+   <script src="https://cdn.tailwindcss.com"></script>
    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/golfstrimmar/ulon-design-tokens@latest/colors.css" />
    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/golfstrimmar/ulon-design-tokens@latest/typography.css" />
    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/golfstrimmar/ulon-design-tokens@latest/null.css"/>
+
+   ${figmaColorsStyle}
 
    ${fontsHtml}
 
@@ -241,20 +286,40 @@ export function buildDocument({
    4. РАБОТА С INDEXEDDB
    ========================================================================== */
 
+/**
+ * 🔹 Загрузка всех настроек для превью: шрифты + цвета из базы
+ */
 export async function loadPreviewSettings(): Promise<PreviewSettings> {
   const result: PreviewSettings = {
     fonts: [],
     defaultFont: "",
     scriptsJs: {},
+    colorVariables: [],
   };
 
   try {
     const fontsSettings = await getFontsSettings();
-
     result.fonts = fontsSettings.fonts || [];
     result.defaultFont = fontsSettings.defaultFont || "";
   } catch (error) {
     console.error("[previewModel] Failed to load fonts settings:", error);
+  }
+
+  // 🔹 Достаем массив variables из базы
+  try {
+    const rawData = await getColorVariables();
+    result.colorVariables = Array.isArray(rawData)
+      ? rawData
+      : rawData &&
+          typeof rawData === "object" &&
+          Array.isArray((rawData as any).variables)
+        ? (rawData as any).variables
+        : [];
+  } catch (error) {
+    console.error(
+      "[previewModel] Failed to load figma color variables:",
+      error,
+    );
   }
 
   return result;

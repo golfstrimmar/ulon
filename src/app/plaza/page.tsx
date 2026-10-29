@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-import { Header } from "@/components/Header";
 import { PreviewArea } from "./components/PreviewArea/PreviewArea";
 import { CanvasArea } from "./components/CanvasArea/CanvasArea";
 
@@ -13,36 +12,19 @@ export default function PlazaPage() {
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col">
       <Suspense
         fallback={
-          <header className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur px-6 py-4 flex items-center justify-between">
-            <span className="font-bold text-xl tracking-tight text-white">
-              Ulon
-            </span>
-            <div className="h-8 w-28 bg-zinc-800/50 rounded-full animate-pulse" />
-          </header>
+          <div className="w-full h-80 bg-zinc-900/50 rounded-xl animate-pulse" />
         }
       >
-        <Header />
+        <PreviewArea />
       </Suspense>
 
-      <main className="flex-1 py-2 flex flex-col gap-3 w-full mx-auto">
-        {/* Компонент интерактивного превью реального сайта */}
-        <Suspense
-          fallback={
-            <div className="w-full h-80 bg-zinc-900/50 rounded-xl animate-pulse" />
-          }
-        >
-          <PreviewArea />
-        </Suspense>
-
-        {/* Интерактивная область кирпичиков разметки */}
-        <Suspense
-          fallback={
-            <div className="w-full h-96 bg-zinc-900/50 rounded-2xl animate-pulse" />
-          }
-        >
-          <CanvasArea />
-        </Suspense>
-      </main>
+      <Suspense
+        fallback={
+          <div className="w-full h-96 bg-zinc-900/50 rounded-2xl animate-pulse" />
+        }
+      >
+        <CanvasArea />
+      </Suspense>
     </div>
   );
 }

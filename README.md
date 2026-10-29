@@ -142,3 +142,81 @@ useEffect(() => {
 <!--========================образец модалки и кнопки к нейц=======================-->
 D:\WEB\ulon\src\app\plaza\components\PreviewArea\components\ButtonJson.tsx
 D:\WEB\ulon\src\app\plaza\components\PreviewArea\components\ModalJsonHtml.tsx
+
+
+
+------------------
+
+// Helper function to extract CSS variable names and values
+function parseCssVariables(css: string) {
+  const regex = /(--[\w-]+)\s*:\s*([^;]+);/g;
+  const tokens: { name: string; value: string }[] = [];
+  let match;
+  while ((match = regex.exec(css)) !== null) {
+    tokens.push({ name: match[1], value: match[2].trim() });
+  }
+  return tokens;
+}
+ const rawUrl =
+    "https://raw.githubusercontent.com/golfstrimmar/ulon-design-tokens/main/colors.css";
+
+  let cssContent = "";
+  try {
+    const res = await fetch(rawUrl, {
+      next: { revalidate: 3600 }, // Cache for 1 hour
+    });
+
+    if (!res.ok) {
+      throw new Error(`Fetch error: ${res.statusText}`);
+    }
+
+    cssContent = await res.text();
+  } catch (error) {
+    return (
+      <div className="p-4 bg-red-950/40 border border-red-800 text-red-300 rounded-xl">
+        Failed to load tokens: {(error as Error).message}
+      </div>
+    );
+  }
+
+  const tokens = parseCssVariables(cssContent);
+ {/* Color Swatches Grid */}
+      {/*<section>
+        <h2 className="text-xl font-semibold mb-4 text-zinc-200">
+          Color Palette ({tokens.length} tokens)
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          {tokens.map((token) => (
+            <div
+              key={token.name}
+              className="bg-zinc-900 border border-zinc-800/80 rounded-lg p-2.5 flex flex-col gap-2 shadow-sm"
+            >
+              <div
+                className="w-full h-16 rounded border border-white/10 shadow-inner"
+                style={{ backgroundColor: token.value }}
+              />
+              <div className="flex flex-col">
+                <span
+                  className="font-mono text-xs text-zinc-300 truncate"
+                  title={token.name}
+                >
+                  {token.name}
+                </span>
+                <span className="font-mono text-[11px] text-zinc-500 uppercase">
+                  {token.value}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>*/}
+
+      {/* Raw CSS Code */}
+      {/*<section>
+        <h2 className="text-xl font-semibold mb-4 text-zinc-200">Source CSS</h2>
+        <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-4 overflow-x-auto">
+          <pre className="font-mono text-xs text-zinc-300 leading-relaxed">
+            <code>{cssContent}</code>
+          </pre>
+        </div>
+      </section>*/}
