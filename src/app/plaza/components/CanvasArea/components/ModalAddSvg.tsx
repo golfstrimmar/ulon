@@ -29,7 +29,6 @@ interface SvgMetadata {
   sizeFormatted: string;
 }
 
-// Casing fixes for SVG XML tags and attributes
 const SVG_TAG_CASING: Record<string, string> = {
   clippath: "clipPath",
   lineargradient: "linearGradient",
@@ -80,41 +79,29 @@ export default function ModalAddSvg({
   setIsOpen,
   onSaveNode,
 }: ModalAddSvgProps) {
-  // Input mode: 'upload' | 'paste'
   const [activeTab, setActiveTab] = useState<"upload" | "paste">("upload");
   const [rawSvgInput, setRawSvgInput] = useState<string>("");
   const [parseError, setParseError] = useState<string | null>(null);
 
-  // Output format mode:
-  // 'inline-wrapper': <i> -> <svg> -> <path>... (requested JSON node tree, but distortion-free)
-  // 'image-datauri': <img> with vector data:image/svg+xml;base64,... (like ModalAddImg, zero DOM overhead, 100% native render)
   const [outputMode, setOutputMode] = useState<
     "inline-wrapper" | "image-datauri"
   >("inline-wrapper");
 
-  // Raw SVG and parsed node
   const [rawSvgClean, setRawSvgClean] = useState<string>("");
   const [baseSvgNode, setBaseSvgNode] = useState<HtmlNode | null>(null);
   const [meta, setMeta] = useState<SvgMetadata | null>(null);
 
-  // Dimensions & Aspect ratio
   const [targetHeight, setTargetHeight] = useState<number>(22);
   const [targetWidth, setTargetWidth] = useState<number>(22);
   const [lockAspectRatio, setLockAspectRatio] = useState<boolean>(true);
 
-  // Wrapper config
   const [wrapperClass, setWrapperClass] = useState<string>("svg-wrapper");
 
-  // Color preservation / override
-  // 'original' = 100% original fills, strokes, gradients untouched
-  // 'currentcolor' = converts stroke/fill to currentColor
-  // 'custom' = user picks a custom color
   const [colorMode, setColorMode] = useState<
     "original" | "currentcolor" | "custom"
   >("original");
   const [customColor, setCustomColor] = useState<string>("#3b82f6");
 
-  // Tabs for inspector
   const [previewTab, setPreviewTab] = useState<"visual" | "json">("visual");
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
@@ -129,7 +116,6 @@ export default function ModalAddSvg({
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
   };
 
-  // Convert SVG string to Base64 safely
   const svgToBase64 = (svgStr: string): string => {
     try {
       const clean = svgStr.trim();
@@ -144,7 +130,6 @@ export default function ModalAddSvg({
     }
   };
 
-  // Lock body scroll
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
@@ -157,7 +142,6 @@ export default function ModalAddSvg({
     };
   }, [isOpen]);
 
-  // Dimension helpers
   const handleHeightChange = (newH: number) => {
     const h = Math.max(8, newH);
     setTargetHeight(h);
@@ -174,7 +158,6 @@ export default function ModalAddSvg({
     }
   };
 
-  // Convert DOM Element to HtmlNode with exact case preservation
   const domToHtmlNode = (el: Element): HtmlNode => {
     const rawTag = el.tagName;
     const lowerTag = rawTag.toLowerCase();
@@ -217,7 +200,6 @@ export default function ModalAddSvg({
     };
   };
 
-  // Parse SVG string
   const processSvgString = useCallback((raw: string) => {
     setParseError(null);
     const trimmed = raw.trim();
@@ -241,12 +223,10 @@ export default function ModalAddSvg({
         return;
       }
 
-      // Ensure xmlns
       if (!svgEl.getAttribute("xmlns")) {
         svgEl.setAttribute("xmlns", "http://www.w3.org/2000/svg");
       }
 
-      // Extract viewBox and natural dimensions
       const viewBoxStr =
         svgEl.getAttribute("viewBox") || svgEl.getAttribute("viewbox") || "";
       let natW = 24;
@@ -298,22 +278,17 @@ export default function ModalAddSvg({
     }
   }, []);
 
-  // Compute final SVG Node with color rules applied only if requested
   const processedSvgNode = useMemo<HtmlNode | null>(() => {
     if (!baseSvgNode) return null;
 
-    // Deep clone to safely adjust attributes
     const node: HtmlNode = JSON.parse(JSON.stringify(baseSvgNode));
 
-    // Ensure svg scales inside wrapper without relying on broken nested CSS
-    const existingSvgStyle = node.style
-      ? node.style.trim().replace(/;$/, "") + "; "
-      : "";
-    node.style = `${existingSvgStyle}width: 100%; height: 100%; display: block;`;
+    node.attributes = node.attributes || {};
+    node.attributes["width"] = "100%";
+    node.attributes["height"] = "100%";
+    node.style = "width: 100%; height: 100%; display: block;";
 
     if (colorMode === "currentcolor") {
-      // If SVG has fill, adjust to currentColor; if stroke, adjust stroke
-      node.attributes = node.attributes || {};
       if (node.attributes["stroke"] && node.attributes["stroke"] !== "none") {
         node.attributes["stroke"] = "currentColor";
       }
@@ -321,7 +296,6 @@ export default function ModalAddSvg({
         node.attributes["fill"] = "currentColor";
       }
     } else if (colorMode === "custom") {
-      node.attributes = node.attributes || {};
       if (node.attributes["stroke"] && node.attributes["stroke"] !== "none") {
         node.attributes["stroke"] = customColor;
       }
@@ -333,17 +307,12 @@ export default function ModalAddSvg({
     return node;
   }, [baseSvgNode, colorMode, customColor]);
 
-  // Compute complete root HtmlNode depending on output mode
   const finalRootNode = useMemo<HtmlNode | null>(() => {
     if (!processedSvgNode && !rawSvgClean) return null;
 
-    const key =
-      typeof crypto !== "undefined" && crypto.randomUUID
-        ? crypto.randomUUID()
-        : Date.now().toString();
+    const key = `svg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
     if (outputMode === "image-datauri") {
-      // <img> approach with Data-URI Base64: 100% native render, 0 distortions, compact node
       const dataUri = svgToBase64(rawSvgClean);
       const imgNode: HtmlNode = {
         tag: "img",
@@ -356,13 +325,12 @@ export default function ModalAddSvg({
         },
         children: [],
         _key: key,
-        _isNew: true,
       };
       return imgNode;
     }
 
-    // Default inline wrapper mode (<i> -> <svg> -> <path>...)
-    const wrapperStyle = `transition: all 0.2s ease-in-out; display: inline-block; line-height: 0; vertical-align: middle; width: ${targetWidth}px; height: ${targetHeight}px; svg { width: 100%; height: 100%; display: inline-block; }`;
+    // Чистый, валидный inline CSS без селекторов внутри style
+    const wrapperStyle = `display: inline-block; line-height: 0; vertical-align: middle; width: ${targetWidth}px; height: ${targetHeight}px;`;
 
     const inlineNode: HtmlNode = {
       tag: "i",
@@ -372,7 +340,6 @@ export default function ModalAddSvg({
       attributes: {},
       children: [processedSvgNode!],
       _key: key,
-      _isNew: true,
     };
     return inlineNode;
   }, [
@@ -447,7 +414,7 @@ export default function ModalAddSvg({
     }
   };
 
-  // Save to IndexedDB
+  // Сохранение и рассылка события дереву
   const handleSave = async () => {
     if (!finalRootNode) return;
 
@@ -463,7 +430,9 @@ export default function ModalAddSvg({
       await saveHtmlJson(DB_KEY, nextList);
 
       window.dispatchEvent(
-        new CustomEvent("plaza-tree-updated", { detail: nextList }),
+        new CustomEvent("plaza-tree-updated", {
+          detail: { nodes: nextList, source: "modal-add-svg" },
+        }),
       );
 
       if (onSaveNode) onSaveNode(finalRootNode);
@@ -487,12 +456,10 @@ export default function ModalAddSvg({
           transition={{ duration: 0.2, ease: "easeInOut" }}
           className="fixed inset-0 w-screen h-screen bg-black/98 z-50 overflow-y-auto no-scrollbar flex flex-col items-center justify-between p-6 sm:p-10"
         >
-          {/* Close button */}
           <div className="absolute top-6 right-8 z-10">
             <ButtonClose setClose={setIsOpen} />
           </div>
 
-          {/* Header */}
           <div className="w-full text-center mt-2">
             <h2 className="text-2xl font-bold text-neutral-100 tracking-wide">
               Add SVG Vector
@@ -503,7 +470,6 @@ export default function ModalAddSvg({
             </p>
           </div>
 
-          {/* Main workspace */}
           <div className="w-full max-w-4xl my-auto flex flex-col items-center py-4">
             <input
               type="file"
@@ -514,7 +480,6 @@ export default function ModalAddSvg({
             />
 
             {!baseSvgNode ? (
-              /* Input Tabs / Dropzone Area */
               <div className="w-full max-w-2xl flex flex-col gap-4">
                 <div className="flex items-center justify-center gap-2 p-1 bg-neutral-900 border border-neutral-800 rounded-xl self-center">
                   <button
@@ -632,11 +597,8 @@ export default function ModalAddSvg({
                 )}
               </div>
             ) : (
-              /* Preview & Controls Area */
               <div className="w-full flex flex-col items-center gap-5">
-                {/* SVG Live Preview Card */}
                 <div className="relative w-full max-w-2xl bg-neutral-950 border border-neutral-800 rounded-2xl p-6 overflow-hidden shadow-2xl flex flex-col items-center justify-center min-h-[220px]">
-                  {/* Top-Right Action Controls */}
                   <div className="absolute top-4 right-4 flex items-center gap-2">
                     <button
                       onClick={handleCopySvg}
@@ -652,9 +614,7 @@ export default function ModalAddSvg({
                     </button>
                   </div>
 
-                  {/* Dual Preview */}
                   <div className="flex items-center gap-12 py-4">
-                    {/* Real 1:1 Scale */}
                     <div className="flex flex-col items-center gap-2">
                       <span className="text-[11px] text-neutral-500 uppercase tracking-wider font-medium">
                         Real Scale ({targetWidth} × {targetHeight} px)
@@ -687,7 +647,6 @@ export default function ModalAddSvg({
                       </div>
                     </div>
 
-                    {/* Zoomed Inspection Preview */}
                     <div className="flex flex-col items-center gap-2">
                       <span className="text-[11px] text-neutral-500 uppercase tracking-wider font-medium">
                         Zoomed View (100% Vector Quality)
@@ -707,7 +666,6 @@ export default function ModalAddSvg({
                   </div>
                 </div>
 
-                {/* Metadata & Badges */}
                 {meta && (
                   <div className="flex flex-wrap items-center justify-center gap-2">
                     <div className="flex items-center gap-1.5 px-3 py-1 bg-neutral-900 border border-neutral-700/80 rounded-lg text-xs font-medium text-neutral-300">
@@ -740,9 +698,7 @@ export default function ModalAddSvg({
                   </div>
                 )}
 
-                {/* Output Mode & Settings */}
                 <div className="w-full max-w-2xl bg-neutral-900/60 border border-neutral-800 rounded-xl p-4 flex flex-col gap-4">
-                  {/* Output Mode Switcher: Inline SVG vs Image Data-URI */}
                   <div className="flex flex-col gap-2 pb-3 border-b border-neutral-800">
                     <span className="text-xs uppercase font-bold text-neutral-400 tracking-wider">
                       Способ сохранения (Output Mode):
@@ -784,7 +740,6 @@ export default function ModalAddSvg({
                     </div>
                   </div>
 
-                  {/* Settings / JSON tabs */}
                   <div className="flex items-center justify-between border-b border-neutral-800/80 pb-2">
                     <span className="text-xs uppercase font-bold text-neutral-400 tracking-wider">
                       Параметры и стили
@@ -815,7 +770,6 @@ export default function ModalAddSvg({
 
                   {previewTab === "visual" ? (
                     <>
-                      {/* Dimensions with Aspect Ratio Lock */}
                       <div className="flex flex-col gap-3">
                         <div className="flex items-center justify-between text-xs text-neutral-300">
                           <span>Размеры (Ширина × Высота):</span>
@@ -841,7 +795,6 @@ export default function ModalAddSvg({
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
-                          {/* Height */}
                           <div className="flex flex-col gap-1.5">
                             <div className="flex justify-between text-[11px] text-neutral-400">
                               <span>Высота (Height):</span>
@@ -878,7 +831,6 @@ export default function ModalAddSvg({
                             </div>
                           </div>
 
-                          {/* Width */}
                           <div className="flex flex-col gap-1.5">
                             <div className="flex justify-between text-[11px] text-neutral-400">
                               <span>Ширина (Width):</span>
@@ -916,7 +868,6 @@ export default function ModalAddSvg({
                           </div>
                         </div>
 
-                        {/* Preset buttons */}
                         <div className="flex flex-wrap items-center gap-1.5 pt-1">
                           <span className="text-[11px] text-neutral-500 mr-1">
                             Быстрый размер:
@@ -937,7 +888,6 @@ export default function ModalAddSvg({
                         </div>
                       </div>
 
-                      {/* Color Preservation / Mode */}
                       <div className="flex flex-col gap-2 pt-2 border-t border-neutral-800/80">
                         <span className="text-xs text-neutral-300 font-medium">
                           Цветовая палитра:
@@ -1004,7 +954,6 @@ export default function ModalAddSvg({
                         )}
                       </div>
 
-                      {/* Wrapper CSS class for inline mode */}
                       {outputMode === "inline-wrapper" && (
                         <div className="flex flex-col gap-1 pt-2 border-t border-neutral-800/80">
                           <label className="text-xs text-neutral-400">
@@ -1020,7 +969,6 @@ export default function ModalAddSvg({
                       )}
                     </>
                   ) : (
-                    /* JSON Inspector */
                     <div className="flex flex-col gap-2">
                       <div className="max-h-[260px] overflow-y-auto no-scrollbar bg-neutral-950 p-3 rounded-lg border border-neutral-800">
                         <pre className="text-[11px] font-mono text-emerald-400 whitespace-pre-wrap break-all select-all">
@@ -1038,7 +986,6 @@ export default function ModalAddSvg({
             )}
           </div>
 
-          {/* Action buttons footer */}
           <div className="w-full max-w-4xl flex items-center justify-end gap-3 pt-4 border-t border-neutral-800">
             <button
               onClick={() => setIsOpen(false)}

@@ -20,7 +20,37 @@ const ModalNodeProperties = dynamic(
 
 const getNodeKey = (node: any): string => node?._key || node?.id || "";
 
-/** Удаляет указанные ключи из дерева */
+/** Рекурсивно находит узел в дереве */
+function findNodeInTree(nodes: any[], key: string): any | null {
+  if (!Array.isArray(nodes)) return null;
+  for (const n of nodes) {
+    if (getNodeKey(n) === key) return n;
+    if (Array.isArray(n.children)) {
+      const f = findNodeInTree(n.children, key);
+      if (f) return f;
+    }
+  }
+  return null;
+}
+
+/** Рекурсивно собирает ключ самого узла и ВСЕХ его потомков на любую глубину */
+function collectAllDescendantKeys(node: any): string[] {
+  if (!node) return [];
+  const keys: string[] = [];
+  function walk(n: any) {
+    const k = getNodeKey(n);
+    if (k) keys.push(k);
+    if (Array.isArray(n?.children)) {
+      for (const child of n.children) {
+        walk(child);
+      }
+    }
+  }
+  walk(node);
+  return keys;
+}
+
+/** Удаляет указанные ключи из дерева на любую глубину */
 function removeNodesByKeys(nodes: any[], keys: Set<string>): any[] {
   if (!Array.isArray(nodes)) return [];
   return nodes
@@ -119,7 +149,7 @@ export function CanvasArea() {
     return extractNodesByKeys(currentJson, rightKeys);
   }, [currentJson, rightKeys, isSplit]);
 
-  // Отслеживаем перетаскивание между левой и правой колонками
+  // Отслеживаем перетаскивание между левой и правой колонками с полной поддержкой всех уровней вложенности
   useEffect(() => {
     if (!isSplit) return;
 
@@ -145,21 +175,30 @@ export function CanvasArea() {
       const overRight = isInside(rightEl);
       const overLeft = isInside(leftEl);
 
-      // Бросили в правую колонку -> переходит вправо
+      // Находим перетаскиваемый узел и собираем ключи ВСЕХ его потомков без ограничений по глубине
+      const targetSubtree =
+        draggedNodeRef.current || findNodeInTree(currentJson, activeKey);
+      const allSubtreeKeys = targetSubtree
+        ? collectAllDescendantKeys(targetSubtree)
+        : [activeKey];
+
+      // Бросили в правую колонку -> переходит вправо целиком со ВСЕМИ потомками
       if (overRight) {
         setRightKeys((prev) => {
-          if (prev.has(activeKey)) return prev;
           const next = new Set(prev);
-          next.add(activeKey);
+          for (const k of allSubtreeKeys) {
+            next.add(k);
+          }
           return next;
         });
       }
-      // Бросили в левую колонку -> возвращается влево
+      // Бросили в левую колонку -> возвращается влево целиком со ВСЕМИ потомками
       else if (overLeft) {
         setRightKeys((prev) => {
-          if (!prev.has(activeKey)) return prev;
           const next = new Set(prev);
-          next.delete(activeKey);
+          for (const k of allSubtreeKeys) {
+            next.delete(k);
+          }
           return next;
         });
       }
@@ -169,7 +208,7 @@ export function CanvasArea() {
     return () => {
       window.removeEventListener("pointerup", handlePointerUp, true);
     };
-  }, [isSplit]);
+  }, [isSplit, currentJson]);
 
   const toggleSplitMode = () => {
     if (isSplit) {

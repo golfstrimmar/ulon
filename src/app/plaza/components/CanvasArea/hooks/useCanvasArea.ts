@@ -241,7 +241,9 @@ export function useCanvasArea() {
         await deleteHtmlJson(DB_KEY);
       }
       window.dispatchEvent(
-        new CustomEvent("plaza-tree-updated", { detail: next }),
+        new CustomEvent("plaza-tree-updated", {
+          detail: { nodes: next, source: "canvas-area" },
+        }),
       );
     } catch (e) {
       console.error("[useCanvasArea] Persist error:", e);
@@ -394,9 +396,29 @@ export function useCanvasArea() {
       globalJsRef.current = nextJs;
     };
 
+    // Принимаем внешние добавления (от ModalAddSvg, ModalAddImg и т.д.)
+    const handleTreeUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      // Игнорируем собственные вызовы persist из CanvasArea
+      if (customEvent.detail?.source === "canvas-area") return;
+
+      const nodes = Array.isArray(customEvent.detail)
+        ? customEvent.detail
+        : customEvent.detail?.nodes;
+
+      if (Array.isArray(nodes)) {
+        setCurrentJson(nodes);
+        currentJsonRef.current = nodes;
+      } else {
+        jsonDownload();
+      }
+    };
+
+    window.addEventListener("plaza-tree-updated", handleTreeUpdated);
     window.addEventListener("plaza-styles-updated", handleStyles);
     window.addEventListener("plaza-scripts-updated", handleScripts);
     return () => {
+      window.removeEventListener("plaza-tree-updated", handleTreeUpdated);
       window.removeEventListener("plaza-styles-updated", handleStyles);
       window.removeEventListener("plaza-scripts-updated", handleScripts);
     };
@@ -544,84 +566,9 @@ export function useCanvasArea() {
           );
           await persist(updated);
         } else {
-          let treeToUpdate = currentJsonRef.current;
-
-          // 1. Находим целевой корневой блок, куда сбрасывается нода
-          let targetRootNode: HtmlNode | null = null;
-
-          for (const root of treeToUpdate) {
-            if (root._key === target.key && target.position === "inside") {
-              targetRootNode = root;
-              break;
-            }
-            if (root._key !== target.key && findNodeByKey(root, target.key)) {
-              targetRootNode = root;
-              break;
-            }
-          }
-
-          // 2. Проверяем: находилась ли нода УЖЕ внутри этого целевого корня?
-          const isAlreadyInsideTargetRoot = targetRootNode
-            ? targetRootNode._key === activeDragKey ||
-              Boolean(findNodeByKey(targetRootNode, activeDragKey))
-            : false;
-
-          const rootClass = targetRootNode?.class
-            ?.trim()
-            .split(/\s+/)[0]
-            ?.replace(/^\./, "");
-
-          // 3. Добавляем БЭМ-класс ТОЛЬКО ОДИН РАЗ:
-          // если есть целевой класс и нода действительно пришла снаружи в этот блок
-          if (rootClass && !isAlreadyInsideTargetRoot) {
-            const bemPrefix = `${rootClass}__`;
-
-            const addClassRecursively = (node: HtmlNode): HtmlNode => {
-              const currentClasses = (node.class || "")
-                .split(/\s+/)
-                .filter(Boolean);
-
-              // Если уже есть этот БЭМ-класс или любой класс, начинающийся с bemPrefix (например, "section__title") — не трогаем!
-              const alreadyHasBem = currentClasses.some(
-                (cls) => cls === bemPrefix || cls.startsWith(bemPrefix),
-              );
-
-              const updatedClassStr = alreadyHasBem
-                ? node.class || ""
-                : [...currentClasses, bemPrefix].join(" ");
-
-              const updatedChildren = Array.isArray(node.children)
-                ? node.children.map(addClassRecursively)
-                : node.children;
-
-              return {
-                ...node,
-                class: updatedClassStr,
-                children: updatedChildren,
-              };
-            };
-
-            const updateSubtreeInTree = (nodes: HtmlNode[]): HtmlNode[] => {
-              return nodes.map((node) => {
-                if (node._key === activeDragKey) {
-                  return addClassRecursively(node);
-                }
-                if (Array.isArray(node.children)) {
-                  return {
-                    ...node,
-                    children: updateSubtreeInTree(node.children),
-                  };
-                }
-                return node;
-              });
-            };
-
-            treeToUpdate = updateSubtreeInTree(treeToUpdate);
-          }
-
-          // 4. Перемещаем ноду в целевую позицию
+          // Чистое перемещение ноды в целевую позицию без модификации её классов
           const updated = moveNodePosition(
-            treeToUpdate,
+            currentJsonRef.current,
             activeDragKey,
             target.key,
             target.position,

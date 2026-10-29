@@ -2,20 +2,9 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ButtonClose from "@/components/ButtonClose";
-import { saveHtmlJson } from "@/lib/htmlStorage";
+import { getHtmlJson, saveHtmlJson } from "@/lib/htmlStorage";
 import { DB_KEY } from "@/app/plaza/components/CanvasArea/constants/theme";
-
-// HtmlNode type definition
-export type HtmlNode = {
-  tag: string;
-  text?: string;
-  class: string;
-  style: string;
-  attributes?: Record<string, string>;
-  _key?: string;
-  _isNew?: boolean;
-  children: HtmlNode[] | string;
-};
+import type { HtmlNode } from "@/types/HtmlNode";
 
 interface ImageMetadata {
   format: string;
@@ -311,7 +300,7 @@ export default function ModalAddImg({
         canvas.height,
       );
 
-      const croppedBase64 = canvas.toDataURL("image/png"); // Сохраняем промежуточное в lossless PNG
+      const croppedBase64 = canvas.toDataURL("image/png");
       const bytes = getBase64Size(croppedBase64);
 
       setOriginalBase64(croppedBase64);
@@ -349,45 +338,59 @@ export default function ModalAddImg({
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Build HtmlNode structure and save
+  // ✅ Корректное добавление ноды к существующему дереву
   const handleSave = async () => {
     if (!activeBase64) return;
+
+    const key = `img_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
     const newNode: HtmlNode = {
       tag: "img",
       text: "",
-      class: "",
-      style: "",
+      class: "img-fluid",
+      style:
+        "max-width: 100%; height: auto; display: inline-block; vertical-align: middle;",
       children: [],
       attributes: {
         alt: altText.trim() || "image",
         src: activeBase64,
+        ...(activeMeta
+          ? {
+              width: activeMeta.width.toString(),
+              height: activeMeta.height.toString(),
+            }
+          : {}),
       },
-      _key:
-        typeof crypto !== "undefined" && crypto.randomUUID
-          ? crypto.randomUUID()
-          : Date.now().toString(),
-      _isNew: true,
+      _key: key,
     };
 
-    const AddNewNode = async () => {
-      try {
-        await saveHtmlJson(DB_KEY, newNode);
+    try {
+      // 1. Читаем текущее дерево из базы данных
+      const existing = await getHtmlJson(DB_KEY).catch(() => null);
+      const currentList: HtmlNode[] = existing
+        ? Array.isArray(existing)
+          ? existing
+          : [existing]
+        : [];
 
-        window.dispatchEvent(
-          new CustomEvent("plaza-tree-updated", { detail: newNode }),
-        );
-      } catch (e) {
-        console.error("[useCanvasArea] Persist error:", e);
-      }
-    };
+      // 2. Добавляем новую ноду в конец списка, сохраняя все существующие
+      const nextList = [...currentList, newNode];
 
-    if (newNode) {
-      await AddNewNode();
+      // 3. Сохраняем полный обновленный массив
+      await saveHtmlJson(DB_KEY, nextList);
+
+      // 4. Оповещаем CanvasArea и PreviewArea
+      window.dispatchEvent(
+        new CustomEvent("plaza-tree-updated", {
+          detail: { nodes: nextList, source: "modal-add-img" },
+        }),
+      );
+
       if (onSaveNode) onSaveNode(newNode);
+      setIsOpen(false);
+    } catch (e) {
+      console.error("[ModalAddImg] Persist error:", e);
     }
-
-    setIsOpen(false);
   };
 
   const savedPercent =
@@ -413,7 +416,7 @@ export default function ModalAddImg({
           </div>
 
           {/* Header */}
-          <div className="w-full  text-center mt-2">
+          <div className="w-full text-center mt-2">
             <h2 className="text-2xl font-bold text-neutral-100 tracking-wide">
               {isCropping ? "Crop Image" : "Add Image"}
             </h2>
@@ -481,16 +484,16 @@ export default function ModalAddImg({
               /* Preview, Crop & Compression Area */
               <div className="w-full flex flex-col items-center gap-5">
                 {/* Image Container / Crop Canvas */}
-                <div className="relative  w-[95vw]  flex items-center justify-center bg-neutral-950/80 border border-neutral-800 rounded-2xl p-3 overflow-hidden shadow-2xl">
+                <div className="relative w-[95vw] flex items-center justify-center bg-neutral-950/80 border border-neutral-800 rounded-2xl p-3 overflow-hidden shadow-2xl">
                   <div
                     ref={cropContainerRef}
-                    className="relative inline-block  max-w-full select-none"
+                    className="relative inline-block max-w-full select-none"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={isCropping ? originalBase64! : activeBase64}
                       alt={altText}
-                      className=" max-w-full h-auto object-contain rounded-lg shadow-lg pointer-events-none"
+                      className="max-w-full h-auto object-contain rounded-lg shadow-lg pointer-events-none"
                     />
 
                     {/* Crop Overlay & Resizable Box */}
@@ -506,7 +509,6 @@ export default function ModalAddImg({
                         onPointerDown={(e) => handlePointerDown("move", e)}
                         className="absolute border-2 border-white cursor-move z-20 group"
                       >
-                        {/* Rule of thirds grid lines */}
                         <div className="w-full h-full grid grid-cols-3 grid-rows-3 pointer-events-none opacity-40">
                           <div className="border-r border-b border-white/60"></div>
                           <div className="border-r border-b border-white/60"></div>
@@ -514,12 +516,11 @@ export default function ModalAddImg({
                           <div className="border-r border-b border-white/60"></div>
                           <div className="border-r border-b border-white/60"></div>
                           <div className="border-b border-white/60"></div>
-                          <div className="border-r border-white/60"></div>
-                          <div className="border-r border-white/60"></div>
+                          <div className="border-r border-b border-white/60"></div>
+                          <div className="border-r border-b border-white/60"></div>
                           <div></div>
                         </div>
 
-                        {/* 4 Corner Resize Handles */}
                         <div
                           onPointerDown={(e) => handlePointerDown("nw", e)}
                           className="absolute -top-2 -left-2 w-4 h-4 bg-blue-500 border-2 border-white rounded-full cursor-nw-resize shadow-md"
@@ -540,7 +541,6 @@ export default function ModalAddImg({
                     )}
                   </div>
 
-                  {/* Top-Right Action Controls on Preview */}
                   <div className="absolute top-4 right-4 flex items-center gap-2">
                     {isCropping ? (
                       <>
@@ -600,7 +600,6 @@ export default function ModalAddImg({
                   </div>
                 </div>
 
-                {/* Metadata & Badges */}
                 {!isCropping && activeMeta && (
                   <div className="flex flex-wrap items-center justify-center gap-2">
                     <div className="flex items-center gap-1.5 px-3 py-1 bg-neutral-900 border border-neutral-700/80 rounded-lg text-xs font-medium text-neutral-300">
@@ -637,7 +636,6 @@ export default function ModalAddImg({
                   </div>
                 )}
 
-                {/* Optimization & Alt fields (dimmed/hidden during crop mode) */}
                 {!isCropping && (
                   <>
                     <div className="w-full max-w-2xl bg-neutral-900/60 border border-neutral-800 rounded-xl p-4 flex flex-col gap-4">
