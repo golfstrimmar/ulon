@@ -34,6 +34,19 @@ export interface DropTarget {
   position: "self" | "before" | "after" | "inside";
 }
 
+/**
+ * Рекурсивно гарантирует уникальные _key для всех добавляемых/дублируемых нод
+ */
+function ensureUniqueKeys(nodes: HtmlNode[]): HtmlNode[] {
+  return nodes.map((node) => ({
+    ...node,
+    _key: `${node.tag || "node"}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+    children: Array.isArray(node.children)
+      ? ensureUniqueKeys(node.children)
+      : node.children,
+  }));
+}
+
 // =================================
 export function useCanvasArea() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -100,18 +113,34 @@ export function useCanvasArea() {
   // 🔹 Слушаем клики из PreviewArea (iframe)
   useEffect(() => {
     const handleSelectFromPreview = (e: any) => {
+      // Игнорируем события от собственной модалки свойств
+      if (e.detail?.source === "modal-properties") return;
+
       const { key, className, tag, text } = e.detail || {};
 
-      const findNode = (list: HtmlNode[]): HtmlNode | null => {
-        for (const node of list) {
-          if (key && node._key === key) return node;
+      // 1. СТРОГИЙ поиск по ключу по всему дереву
+      if (key) {
+        for (const root of currentJsonRef.current) {
+          const found = findNodeByKey(root, key);
+          if (found) {
+            if (found._key !== clickedKeyRef.current) {
+              setClickedKey(found._key ?? null);
+            }
+            return;
+          }
+        }
+      }
 
+      // 2. Fallback: только если ключа не передано вовсе
+      const findNodeFallback = (list: HtmlNode[]): HtmlNode | null => {
+        for (const node of list) {
           if (className && node.class) {
-            const firstClass = className
-              .trim()
-              .split(/\s+/)[0]
-              ?.replace(/^\./, "");
-            if (firstClass && node.class.split(/\s+/).includes(firstClass)) {
+            const classes = node.class.split(/\s+/).filter(Boolean);
+            const targetClasses = className.trim().split(/\s+/).filter(Boolean);
+            const specificClass = targetClasses[
+              targetClasses.length - 1
+            ]?.replace(/^\./, "");
+            if (specificClass && classes.includes(specificClass)) {
               return node;
             }
           }
@@ -129,25 +158,20 @@ export function useCanvasArea() {
             Array.isArray(node.children) &&
             node.children.length > 0
           ) {
-            const found = findNode(node.children);
+            const found = findNodeFallback(node.children);
             if (found) return found;
           }
         }
         return null;
       };
 
-      const targetNode = findNode(currentJsonRef.current);
-
-      if (targetNode) {
-        // 🛑 Если эта нода УЖЕ открыта — ничего не сбрасываем и не перетираем!
-        if (targetNode._key === clickedKeyRef.current) return;
-
+      const targetNode = findNodeFallback(currentJsonRef.current);
+      if (targetNode && targetNode._key !== clickedKeyRef.current) {
         setClickedKey(targetNode._key ?? null);
       }
     };
 
     window.addEventListener("plaza-node-selected", handleSelectFromPreview);
-
     return () => {
       window.removeEventListener(
         "plaza-node-selected",
@@ -337,11 +361,12 @@ export function useCanvasArea() {
       console.error("[useCanvasArea] Mount error:", err);
     }
   };
+
   useEffect(() => {
     jsonDownload();
   }, []);
 
-  // Слушатели шины событий
+  // Слушатели внешней шины событий
   useEffect(() => {
     const handleStyles = (e: Event) => {
       const customEvent = e as CustomEvent<string | Record<string, string>>;
@@ -368,7 +393,7 @@ export function useCanvasArea() {
       setGlobalJs(nextJs);
       globalJsRef.current = nextJs;
     };
-    window.addEventListener("plaza-tree-updated", jsonDownload);
+
     window.addEventListener("plaza-styles-updated", handleStyles);
     window.addEventListener("plaza-scripts-updated", handleScripts);
     return () => {
@@ -521,34 +546,47 @@ export function useCanvasArea() {
         } else {
           let treeToUpdate = currentJsonRef.current;
 
-          // 1. Определяем, попадает ли нода внутрь какого-либо корневого блока
+          // 1. Находим целевой корневой блок, куда сбрасывается нода
           let targetRootNode: HtmlNode | null = null;
 
           for (const root of treeToUpdate) {
-            // Если сбросили прямо внутрь корня
             if (root._key === target.key && target.position === "inside") {
               targetRootNode = root;
               break;
             }
-            // Если сбросили внутрь, до или после любого дочернего элемента этого корня
             if (root._key !== target.key && findNodeByKey(root, target.key)) {
               targetRootNode = root;
               break;
             }
           }
 
-          const rootClass = targetRootNode?.class?.trim().split(/\s+/)[0];
+          // 2. Проверяем: находилась ли нода УЖЕ внутри этого целевого корня?
+          const isAlreadyInsideTargetRoot = targetRootNode
+            ? targetRootNode._key === activeDragKey ||
+              Boolean(findNodeByKey(targetRootNode, activeDragKey))
+            : false;
 
-          if (rootClass) {
+          const rootClass = targetRootNode?.class
+            ?.trim()
+            .split(/\s+/)[0]
+            ?.replace(/^\./, "");
+
+          // 3. Добавляем БЭМ-класс ТОЛЬКО ОДИН РАЗ:
+          // если есть целевой класс и нода действительно пришла снаружи в этот блок
+          if (rootClass && !isAlreadyInsideTargetRoot) {
             const bemPrefix = `${rootClass}__`;
 
-            // Рекурсивное добавление класса ноде И ВСЕМ её вложенным потомкам
             const addClassRecursively = (node: HtmlNode): HtmlNode => {
               const currentClasses = (node.class || "")
                 .split(/\s+/)
                 .filter(Boolean);
 
-              const updatedClassStr = currentClasses.includes(bemPrefix)
+              // Если уже есть этот БЭМ-класс или любой класс, начинающийся с bemPrefix (например, "section__title") — не трогаем!
+              const alreadyHasBem = currentClasses.some(
+                (cls) => cls === bemPrefix || cls.startsWith(bemPrefix),
+              );
+
+              const updatedClassStr = alreadyHasBem
                 ? node.class || ""
                 : [...currentClasses, bemPrefix].join(" ");
 
@@ -563,7 +601,6 @@ export function useCanvasArea() {
               };
             };
 
-            // Обновляем сбрасываемую ноду (вместе со всеми её детьми) в дереве
             const updateSubtreeInTree = (nodes: HtmlNode[]): HtmlNode[] => {
               return nodes.map((node) => {
                 if (node._key === activeDragKey) {
@@ -582,7 +619,7 @@ export function useCanvasArea() {
             treeToUpdate = updateSubtreeInTree(treeToUpdate);
           }
 
-          // 2. Перемещаем ноду в целевую позицию
+          // 4. Перемещаем ноду в целевую позицию
           const updated = moveNodePosition(
             treeToUpdate,
             activeDragKey,
@@ -634,7 +671,8 @@ export function useCanvasArea() {
         }
       }
 
-      const next = [...currentJsonRef.current, ...cleanNodes];
+      const nodesWithUniqueKeys = ensureUniqueKeys(cleanNodes);
+      const next = [...currentJsonRef.current, ...nodesWithUniqueKeys];
       await persist(next);
     } catch (e) {
       console.error(`Error adding from ${path}:`, e);
@@ -681,7 +719,7 @@ export function useCanvasArea() {
     clickTimeoutRef.current = setTimeout(() => {
       setClickedKey(key);
       clickTimeoutRef.current = null;
-    }, 200);
+    }, 300);
   };
 
   const handleDoubleClickNode = async (key: string) => {
@@ -738,7 +776,7 @@ export function useCanvasArea() {
       }
     }
   }
-  // Если у любого из корневых узлов есть дети — дерево имеет вложенность!
+
   function canCollapse(nodes: HtmlNode[] | null | undefined): boolean {
     if (!nodes || !Array.isArray(nodes) || nodes.length === 0) {
       return false;
@@ -748,33 +786,27 @@ export function useCanvasArea() {
     );
   }
   const isCollapsible = canCollapse(currentJson);
-  /**
-   * 🔹 Рекурсивно собирает ключи (_key) всех узлов, имеющих потомков
-   */
+
   function getAllCollapsibleKeys(
     nodes: HtmlNode[] | null | undefined,
   ): string[] {
     if (!nodes || !Array.isArray(nodes)) return [];
-
     const keys: string[] = [];
-
     function traverse(list: HtmlNode[]) {
       for (const node of list) {
         if (Array.isArray(node.children) && node.children.length > 0) {
           if (node._key) {
             keys.push(node._key);
           }
-          // Идем вглубь дерева
           traverse(node.children);
         }
       }
     }
-
     traverse(nodes);
     return keys;
   }
   const allCollapsibleKeys = getAllCollapsibleKeys(currentJson);
-  // ✅ Сворачиваем ключи
+
   const collapsedAll = () => {
     setCollapsedKeys(new Set(allCollapsibleKeys));
   };

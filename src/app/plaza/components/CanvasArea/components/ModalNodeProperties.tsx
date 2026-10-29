@@ -46,12 +46,13 @@ export default function ModalNodeProperties({
   onAddClassToNode,
   updateAndPersistScss,
 }: ModalNodePropertiesProps) {
-  // 🔹 Отправляем подсветку ТОЛЬКО при смене выбранной ноды (clickedKey)
+  // Отправляем подсветку для PreviewArea с флагом источника source: "modal-properties"
   useEffect(() => {
     if (clickedKey && selectedNode) {
       window.dispatchEvent(
         new CustomEvent("plaza-node-selected", {
           detail: {
+            source: "modal-properties",
             key: clickedKey,
             tag: selectedNode.tag,
             className: selectedNode.class || "",
@@ -64,14 +65,12 @@ export default function ModalNodeProperties({
     return () => {
       window.dispatchEvent(new CustomEvent("plaza-node-deselected"));
     };
-  }, [clickedKey]); // 👈 Только clickedKey! Никаких editClass и editText здесь быть не должно
+  }, [clickedKey]);
 
   return (
     <>
       {clickedKey && selectedNode && (
-        <div
-          className="fixed shadow-[0_-6px_18px_rgba(32,75,110,0.7)] bottom-0 right-0 w-[calc(100vw-210px)] z-40"
-        >
+        <div className="fixed shadow-[0_-6px_18px_rgba(32,75,110,0.7)] bottom-0 right-0 w-[calc(100vw-210px)] z-40">
           <div className="relative bg-zinc-800 border-t border-zinc-700 rounded-t-sm shadow-[0_-8px_32px_rgba(0,0,0,0.6)] backdrop-blur-md">
             {/* Кнопка закрытия модалки */}
             <button
