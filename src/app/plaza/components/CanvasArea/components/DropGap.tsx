@@ -14,14 +14,11 @@ function DropGapComponent({
   position,
   orientation = "horizontal",
 }: DropGapProps) {
-  // Точечный селектор Zustand: рендерится ТОЛЬКО тот DropGap, на который навели курсор!
+  // 🚀 Абсолютно бессмертный гэп: рендерится строго ОДИН целевой гэп при наведении мыши
   const isTarget = useCanvasStore(
     (s) =>
-      s.draggedKeys.length > 0 &&
-      s.dropTarget?.key === targetKey &&
-      s.dropTarget?.position === position,
+      s.dropTarget?.key === targetKey && s.dropTarget?.position === position,
   );
-  const isDragging = useCanvasStore((s) => s.draggedKeys.length > 0);
 
   const isVert = orientation === "vertical";
 
@@ -33,14 +30,6 @@ function DropGapComponent({
         isVert ? "w-2 h-full min-h-[30px] self-stretch" : "h-2 w-full"
       }`}
     >
-      {isDragging && (
-        <div
-          className={`absolute pointer-events-none z-20 ${
-            isVert ? "inset-y-0 -left-1 -right-1" : "inset-x-0 -top-1 -bottom-1"
-          }`}
-        />
-      )}
-
       {isTarget && (
         <div
           className={`absolute flex items-center pointer-events-none z-30 ${

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { memo } from "react";
+import React, { memo, useMemo } from "react";
 import { useCanvasStore } from "@/app/plaza/components/CanvasArea/store/useCanvasStore";
 import { findNodeByKey } from "@/lib/htmlTree";
 import type { HtmlNode } from "@/types/HtmlNode";
@@ -10,19 +10,23 @@ function CanvasDragGhostComponent() {
   const draggedKeys = useCanvasStore((s) => s.draggedKeys);
   const currentJson = useCanvasStore((s) => s.currentJson);
 
-  if (!dragMousePos || draggedKeys.length === 0) return null;
-
-  // Находим объекты перетаскиваемых нод для отображения призрака
-  const draggedNodes: HtmlNode[] = [];
-  for (const key of draggedKeys) {
-    for (const root of currentJson) {
-      const found = findNodeByKey(root, key);
-      if (found) {
-        draggedNodes.push(found);
-        break;
+  // 🚀 Мемоизация: ищет ноды ровно один раз на старте драга, а не на каждый пиксель мыши
+  const draggedNodes = useMemo(() => {
+    if (draggedKeys.length === 0) return [];
+    const result: HtmlNode[] = [];
+    for (const key of draggedKeys) {
+      for (const root of currentJson) {
+        const found = findNodeByKey(root, key);
+        if (found) {
+          result.push(found);
+          break;
+        }
       }
     }
-  }
+    return result;
+  }, [draggedKeys, currentJson]);
+
+  if (!dragMousePos || draggedKeys.length === 0) return null;
 
   const primaryNode = draggedNodes[0] || null;
   if (!primaryNode) return null;
@@ -31,8 +35,11 @@ function CanvasDragGhostComponent() {
     <div
       style={{
         position: "fixed",
-        left: dragMousePos.x + 14,
-        top: dragMousePos.y + 14,
+        top: 0,
+        left: 0,
+        // 🚀 GPU-ускорение: перемещение через translate3d без Reflow / Layout Thrashing
+        transform: `translate3d(${dragMousePos.x + 14}px, ${dragMousePos.y + 14}px, 0)`,
+        willChange: "transform",
         pointerEvents: "none",
         zIndex: 99999,
       }}
