@@ -12,7 +12,13 @@
 // Мутации и вычисления над этими данными.
 // Методы сохранения/чтения (репозитории, API, LocalStorage с DB_KEY).
 import type { HtmlNode } from "@/types/HtmlNode";
-import { generateNodeKey, findNodeByKey } from "@/lib/htmlTree";
+import {
+  generateNodeKey,
+  findNodeByKey,
+  removeNodeFromTree,
+  isDescendant,
+  duplicateNodeInTree,
+} from "@/lib/htmlTree";
 
 export function sanitizeCssBody(css: string): string {
   return css.replace(/\}\s*;/g, "}").trim();
@@ -357,7 +363,7 @@ export function mergeScssWithoutDuplicates(
 }
 
 /**
- * 🔹 НАДЕЖНЫЙ МЕРДЖ СКРИПТОВ БЕЗ МУСОРА И ДУБЛИКАТОВ
+ * 🔹 Объединение JS-скриптов с дедупликацией по имени компонента
  */
 export function mergeScriptsWithoutDuplicates(
   currentBundle: string,
@@ -369,6 +375,7 @@ export function mergeScriptsWithoutDuplicates(
 
   for (const script of incomingScripts) {
     const name = script.name.trim();
+    // Очищаем пришедший код от старых внешних меток, если они уже были
     let cleanCode = script.code
       .replace(/\/\*\s*@component:\s*.*?\*\//g, "")
       .replace(/\/\*\s*@end:\s*.*?\*\//g, "")
@@ -376,6 +383,7 @@ export function mergeScriptsWithoutDuplicates(
 
     if (!cleanCode) continue;
 
+    // Регулярка для поиска существующего блока этого компонента
     const blockRegex = new RegExp(
       `\\/\\*\\s*@component:\\s*${name}\\s*\\*\\/[\\s\\S]*?\\/\\*\\s*@end:\\s*${name}\\s*\\*\\/`,
       "g",
@@ -384,20 +392,177 @@ export function mergeScriptsWithoutDuplicates(
     const formattedBlock = `/* @component: ${name} */\n${cleanCode}\n/* @end: ${name} */`;
 
     if (blockRegex.test(result)) {
+      // Блок с таким именем уже есть!
+      // Сравниваем: если код внутри точно такой же — ничего не трогаем (пропускаем дубль)
       const existingMatch = result.match(blockRegex);
       if (existingMatch && existingMatch[0].trim() === formattedBlock.trim()) {
         console.log(
           `[JS Bundle] Скрипт "${name}" уже существует без изменений, дубль пропущен.`,
         );
       } else {
+        // Код изменился — аккуратно обновляем именно этот блок
         result = result.replace(blockRegex, formattedBlock);
         console.log(`[JS Bundle] Скрипт "${name}" обновлен.`);
       }
     } else {
+      // Такого скрипта еще нет вообще — дописываем в конец бандла
       result = result ? `${result}\n\n${formattedBlock}` : formattedBlock;
       console.log(`[JS Bundle] Скрипт "${name}" добавлен в бандл.`);
     }
   }
 
   return result.trim();
+}
+
+/**
+ * 🔹 Нормализует набор выделенных ключей:
+ * Если выделен родитель и его дочерний узел, дочерний узел отсекается,
+ * так как он уже является частью родителя.
+ * Возвращает массив ключей законченных (верхнеуровневых в выделении) нод
+ * в порядке следования в документе.
+ */
+export function normalizeSelectedKeys(
+  tree: HtmlNode[],
+  selectedKeys: Set<string>,
+): string[] {
+  if (!tree || selectedKeys.size === 0) return [];
+  const result: string[] = [];
+
+  function traverse(list: HtmlNode[]) {
+    for (const node of list) {
+      const key = getNodeKey(node);
+      if (key && selectedKeys.has(key)) {
+        result.push(key);
+      } else if (Array.isArray(node.children) && node.children.length > 0) {
+        traverse(node.children);
+      }
+    }
+  }
+
+  traverse(tree);
+  return result;
+}
+
+/**
+ * 🔹 Вставляет массив нод рядом с целевой нодой (до или после)
+ */
+export function insertNodesAdjacent(
+  nodes: HtmlNode[],
+  targetKey: string,
+  nodesToInsert: HtmlNode[],
+  position: "before" | "after",
+): HtmlNode[] {
+  const result: HtmlNode[] = [];
+  for (const node of nodes) {
+    if (node._key === targetKey) {
+      if (position === "before") {
+        result.push(...nodesToInsert);
+        result.push(node);
+      } else {
+        result.push(node);
+        result.push(...nodesToInsert);
+      }
+    } else {
+      if (Array.isArray(node.children)) {
+        result.push({
+          ...node,
+          children: insertNodesAdjacent(
+            node.children,
+            targetKey,
+            nodesToInsert,
+            position,
+          ),
+        });
+      } else {
+        result.push(node);
+      }
+    }
+  }
+  return result;
+}
+
+/**
+ * 🔹 Вставляет массив нод внутрь целевого контейнера
+ */
+export function insertNodesInside(
+  nodes: HtmlNode[],
+  targetKey: string,
+  nodesToInsert: HtmlNode[],
+): HtmlNode[] {
+  return nodes.map((node) => {
+    if (node._key === targetKey) {
+      return {
+        ...node,
+        children: [
+          ...(Array.isArray(node.children) ? node.children : []),
+          ...nodesToInsert,
+        ],
+      };
+    }
+    if (Array.isArray(node.children)) {
+      return {
+        ...node,
+        children: insertNodesInside(node.children, targetKey, nodesToInsert),
+      };
+    }
+    return node;
+  });
+}
+
+/**
+ * 🔹 Перемещает группу нод (законченные поддеревья) в целевую позицию
+ */
+export function moveNodesGroup(
+  tree: HtmlNode[],
+  sourceKeys: string[],
+  targetKey: string,
+  position: "before" | "after" | "inside",
+): HtmlNode[] {
+  if (!tree || sourceKeys.length === 0 || !targetKey) return tree;
+
+  // Нельзя бросать группу на саму себя
+  if (sourceKeys.includes(targetKey)) return tree;
+
+  // Нельзя сбрасывать внутрь любого из перемещаемых узлов или их потомков
+  for (const key of sourceKeys) {
+    const node = findNodeInTree(tree, key);
+    if (node && isDescendant(node, targetKey)) {
+      return tree;
+    }
+  }
+
+  // 1. Извлекаем все ноды группы из дерева
+  let currentTree = tree;
+  const nodesToMove: HtmlNode[] = [];
+
+  for (const key of sourceKeys) {
+    const { updatedNodes, removedNode } = removeNodeFromTree(currentTree, key);
+    if (removedNode) {
+      nodesToMove.push(removedNode);
+      currentTree = updatedNodes;
+    }
+  }
+
+  if (nodesToMove.length === 0) return tree;
+
+  // 2. Вставляем группу в целевую позицию
+  if (position === "inside") {
+    return insertNodesInside(currentTree, targetKey, nodesToMove);
+  } else {
+    return insertNodesAdjacent(currentTree, targetKey, nodesToMove, position);
+  }
+}
+
+/**
+ * 🔹 Дублирует группу нод в дереве
+ */
+export function duplicateNodesGroup(
+  tree: HtmlNode[],
+  sourceKeys: string[],
+): HtmlNode[] {
+  let currentTree = tree;
+  for (const key of sourceKeys) {
+    currentTree = duplicateNodeInTree(currentTree, key);
+  }
+  return currentTree;
 }

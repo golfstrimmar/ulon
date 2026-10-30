@@ -1,98 +1,90 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useEffect, useRef } from "react";
 import type { HtmlNode } from "@/types/HtmlNode";
+import { findNodeByKey, isDescendant } from "@/lib/htmlTree";
 import {
-  moveNodePosition,
-  findNodeByKey,
-  isDescendant,
-  duplicateNodeInTree,
-} from "@/lib/htmlTree";
+  normalizeSelectedKeys,
+  findNodeInTree,
+} from "@/app/plaza/components/CanvasArea/models/canvasModel";
+import {
+  useCanvasStore,
+  type DropTarget,
+} from "@/app/plaza/components/CanvasArea/store/useCanvasStore";
 
-export interface DropTarget {
-  key: string;
-  position: "self" | "before" | "after" | "inside";
-}
+export type { DropTarget };
 
-interface UseCanvasDnDOptions {
-  currentJsonRef: React.MutableRefObject<HtmlNode[]>;
-  persist: (next: HtmlNode[]) => Promise<void>;
-}
-
-export function useCanvasDnD({ currentJsonRef, persist }: UseCanvasDnDOptions) {
-  const [draggedKey, setDraggedKey] = useState<string | null>(null);
-  const draggedKeyRef = useRef<string | null>(null);
-
-  const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
-  const dropTargetRef = useRef<DropTarget | null>(null);
-  dropTargetRef.current = dropTarget;
-
-  const [dragMousePos, setDragMousePos] = useState<{
-    x: number;
-    y: number;
-  } | null>(null);
-
-  const potentialDragKeyRef = useRef<string | null>(null);
-  const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
-  const hasDraggedRef = useRef<boolean>(false);
-
-  // Инициирование перетаскивания при нажатии на карточку
-  const handlePointerDownNode = useCallback(
-    (e: React.PointerEvent, key: string) => {
-      if (e.button !== 0) return;
-      potentialDragKeyRef.current = key;
-      dragStartPosRef.current = { x: e.clientX, y: e.clientY };
-      hasDraggedRef.current = false;
-    },
-    [],
-  );
+export function useCanvasDnD() {
+  const hasDraggedRef = useRef(false);
 
   useEffect(() => {
     const handlePointerMove = (e: PointerEvent) => {
-      if (potentialDragKeyRef.current && dragStartPosRef.current) {
-        const dx = e.clientX - dragStartPosRef.current.x;
-        const dy = e.clientY - dragStartPosRef.current.y;
+      const state = useCanvasStore.getState();
+      const { potentialDrag, selectedKeys, currentJson } = state;
+
+      // 1. Проверяем порог начала перетаскивания (4px)
+      if (potentialDrag) {
+        const dx = e.clientX - potentialDrag.startX;
+        const dy = e.clientY - potentialDrag.startY;
         if (Math.hypot(dx, dy) > 4) {
-          draggedKeyRef.current = potentialDragKeyRef.current;
-          setDraggedKey(potentialDragKeyRef.current);
-          potentialDragKeyRef.current = null;
+          const startKey = potentialDrag.key;
+          let keysToDrag: string[];
+
+          // Проверяем: входит ли startKey в группу выделения
+          const isInSelection =
+            selectedKeys.has(startKey) ||
+            Array.from(selectedKeys).some((selKey) => {
+              const pNode = findNodeInTree(currentJson, selKey);
+              return pNode && isDescendant(pNode, startKey);
+            });
+
+          if (isInSelection) {
+            const normalized = normalizeSelectedKeys(currentJson, selectedKeys);
+            keysToDrag = normalized.length > 0 ? normalized : [startKey];
+          } else {
+            // Если узел не выделен — сбрасываем старую группу и тянем только его
+            state.clearSelection();
+            keysToDrag = [startKey];
+          }
+
+          state.setPotentialDrag(null);
+          state.setDraggedKeys(keysToDrag);
           hasDraggedRef.current = true;
           document.body.style.cursor = "default";
         }
       }
 
-      const activeDragKey = draggedKeyRef.current;
-      if (!activeDragKey) return;
+      const activeKeys = useCanvasStore.getState().draggedKeys;
+      if (activeKeys.length === 0) return;
 
-      setDragMousePos({ x: e.clientX, y: e.clientY });
+      // 2. Обновляем координаты курсора
+      useCanvasStore.getState().setDragMousePos({ x: e.clientX, y: e.clientY });
 
+      // 3. Вычисляем DropTarget под курсором
       const elements = document.elementsFromPoint(e.clientX, e.clientY);
       if (!elements || elements.length === 0) {
-        dropTargetRef.current = null;
-        setDropTarget(null);
+        useCanvasStore.getState().setDropTarget(null);
         return;
       }
 
-      // 1. Попадание в зазор между нодами (DropGap)
+      // 3.1. Попадание в зазор между нодами (DropGap)
       const gapEl = elements
         .map((el) => el.closest("[data-gap-key]"))
         .find(Boolean) as HTMLElement | undefined;
       if (gapEl) {
         const key = gapEl.getAttribute("data-gap-key")!;
-        const position = gapEl.getAttribute("data-gap-pos") as
-          "before" | "after";
-        if (key === activeDragKey) {
-          dropTargetRef.current = null;
-          setDropTarget(null);
+        const position = gapEl.getAttribute("data-gap-pos") as "before" | "after";
+
+        if (activeKeys.includes(key)) {
+          useCanvasStore.getState().setDropTarget(null);
           return;
         }
-        const nextTarget: DropTarget = { key, position };
-        dropTargetRef.current = nextTarget;
-        setDropTarget(nextTarget);
+
+        useCanvasStore.getState().setDropTarget({ key, position });
         return;
       }
 
-      // 2. Попадание на карточку ноды (NodeCard)
+      // 3.2. Попадание на карточку ноды (NodeCard)
       const cardEl = elements
         .map((el) => el.closest("[data-node-key]"))
         .find(Boolean) as HTMLElement | undefined;
@@ -100,28 +92,26 @@ export function useCanvasDnD({ currentJsonRef, persist }: UseCanvasDnDOptions) {
         const key = cardEl.getAttribute("data-node-key")!;
         const isParentRow = cardEl.getAttribute("data-is-row") === "true";
 
-        if (key === activeDragKey) {
-          const nextTarget: DropTarget = {
-            key: activeDragKey,
-            position: "self",
-          };
-          dropTargetRef.current = nextTarget;
-          setDropTarget(nextTarget);
+        // Попадание на себя -> "self" (дублирование)
+        if (activeKeys.includes(key)) {
+          useCanvasStore.getState().setDropTarget({ key, position: "self" });
           return;
         }
 
-        let sourceNode: HtmlNode | null = null;
-        for (const root of currentJsonRef.current) {
-          const found = findNodeByKey(root, activeDragKey);
-          if (found) {
-            sourceNode = found;
-            break;
+        // Запрет сброса внутрь любого узла из перемещаемой группы или их потомков
+        for (const dragKey of activeKeys) {
+          let sourceNode: HtmlNode | null = null;
+          for (const root of currentJson) {
+            const found = findNodeByKey(root, dragKey);
+            if (found) {
+              sourceNode = found;
+              break;
+            }
           }
-        }
-        if (sourceNode && isDescendant(sourceNode, key)) {
-          dropTargetRef.current = null;
-          setDropTarget(null);
-          return;
+          if (sourceNode && isDescendant(sourceNode, key)) {
+            useCanvasStore.getState().setDropTarget(null);
+            return;
+          }
         }
 
         const rect = cardEl.getBoundingClientRect();
@@ -139,97 +129,55 @@ export function useCanvasDnD({ currentJsonRef, persist }: UseCanvasDnDOptions) {
           else position = "inside";
         }
 
-        const nextTarget: DropTarget = { key, position };
-        dropTargetRef.current = nextTarget;
-        setDropTarget(nextTarget);
+        useCanvasStore.getState().setDropTarget({ key, position });
         return;
       }
 
-      // 3. Попадание в свободную область холста
+      // 3.3. Попадание в свободную область холста
       const workspaceEl = elements
         .map((el) => el.closest(".plaza-workspace"))
         .find(Boolean);
-      if (workspaceEl && currentJsonRef.current.length > 0) {
-        const lastRoot =
-          currentJsonRef.current[currentJsonRef.current.length - 1];
-        const nextTarget: DropTarget = {
+      if (workspaceEl && currentJson.length > 0) {
+        const lastRoot = currentJson[currentJson.length - 1];
+        useCanvasStore.getState().setDropTarget({
           key: lastRoot._key || "",
           position: "after",
-        };
-        dropTargetRef.current = nextTarget;
-        setDropTarget(nextTarget);
+        });
         return;
       }
 
-      dropTargetRef.current = null;
-      setDropTarget(null);
+      useCanvasStore.getState().setDropTarget(null);
     };
 
     const handlePointerUp = async () => {
-      const activeDragKey = draggedKeyRef.current;
-      const target = dropTargetRef.current;
+      const state = useCanvasStore.getState();
+      if (state.potentialDrag) {
+        state.setPotentialDrag(null);
+      }
 
-      draggedKeyRef.current = null;
-      setDraggedKey(null);
-      dropTargetRef.current = null;
-      setDropTarget(null);
-      setDragMousePos(null);
-      potentialDragKeyRef.current = null;
-      dragStartPosRef.current = null;
+      if (state.draggedKeys.length > 0) {
+        await state.commitDrop();
+      }
 
       if (hasDraggedRef.current) {
         setTimeout(() => {
           hasDraggedRef.current = false;
         }, 50);
       }
-
-      if (activeDragKey && target && target.key) {
-        if (target.position === "self") {
-          const updated = duplicateNodeInTree(
-            currentJsonRef.current,
-            activeDragKey,
-          );
-          await persist(updated);
-        } else {
-          const updated = moveNodePosition(
-            currentJsonRef.current,
-            activeDragKey,
-            target.key,
-            target.position,
-          );
-          await persist(updated);
-        }
-      }
     };
 
     window.addEventListener("pointermove", handlePointerMove);
     window.addEventListener("pointerup", handlePointerUp);
     window.addEventListener("pointercancel", handlePointerUp);
+
     return () => {
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerUp);
       window.removeEventListener("pointercancel", handlePointerUp);
     };
-  }, [currentJsonRef, persist]);
-
-  // Находим объект перетаскиваемой ноды для отображения "призрака"
-  let draggedNode: HtmlNode | null = null;
-  if (draggedKey) {
-    for (const r of currentJsonRef.current) {
-      const f = findNodeByKey(r, draggedKey);
-      if (f) {
-        draggedNode = f;
-        break;
-      }
-    }
-  }
+  }, []);
 
   return {
-    draggedKey,
-    dropTarget,
-    dragMousePos,
-    draggedNode,
     hasDraggedRef,
-    handlePointerDownNode,
   };
 }

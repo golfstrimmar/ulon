@@ -1,17 +1,15 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
-import type { HtmlNode } from "@/types/HtmlNode";
+import { useRef, useEffect } from "react";
 import {
   getHtmlJson,
-  saveHtmlJson,
-  deleteHtmlJson,
   getGlobalScss,
   getGlobalJs,
   saveGlobalScss,
   saveGlobalJs,
+  saveHtmlJson,
+  deleteHtmlJson,
 } from "@/lib/htmlStorage";
-import { deleteNodeFromArray } from "@/lib/htmlTree";
 import {
   extractStylesAndScriptsFromNodes,
   mergeScssWithoutDuplicates,
@@ -23,88 +21,16 @@ import {
 import { DB_KEY } from "@/app/plaza/components/CanvasArea/constants/theme";
 import { styleHistory } from "@/lib/styleHistory";
 import { scriptsHistory } from "@/lib/scriptsHistory";
-
-import { useCanvasHistory } from "./useCanvasHistory";
+import { useCanvasStore } from "@/app/plaza/components/CanvasArea/store/useCanvasStore";
 import { useCanvasDnD } from "./useCanvasDnD";
+import { useCanvasMarquee } from "./useCanvasMarquee";
 
 export function useCanvasArea() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [currentJson, setCurrentJson] = useState<HtmlNode[]>([]);
-  const currentJsonRef = useRef<HtmlNode[]>([]);
-  currentJsonRef.current = currentJson;
 
-  // Выбор и ховер нод
-  const [clickedKey, setClickedKey] = useState<string | null>(null);
-  const clickedKeyRef = useRef<string | null>(null);
-  clickedKeyRef.current = clickedKey;
-
-  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
-  const [collapsedKeys, setCollapsedKeys] = useState<Set<string>>(new Set());
-
-  // ─────🔹 История (Undo / Redo + хоткеи)
-  const history = useCanvasHistory({
-    currentJsonRef,
-    setCurrentJson,
-    saveToStorage: async (nodes) => {
-      if (nodes.length > 0) await saveHtmlJson(DB_KEY, nodes);
-      else await deleteHtmlJson(DB_KEY);
-    },
-  });
-
-  // ─────🔹 Сохранение дерева
-  const persist = useCallback(
-    async (next: HtmlNode[], recordHistory = true) => {
-      if (recordHistory) {
-        history.recordSnapshot(currentJsonRef.current);
-      }
-
-      setCurrentJson(next);
-      currentJsonRef.current = next;
-
-      try {
-        if (next.length > 0) {
-          await saveHtmlJson(DB_KEY, next);
-        } else {
-          await deleteHtmlJson(DB_KEY);
-        }
-        window.dispatchEvent(
-          new CustomEvent("plaza-tree-updated", {
-            detail: { nodes: next, source: "canvas-area" },
-          }),
-        );
-      } catch (e) {
-        console.error("[useCanvasArea] Persist error:", e);
-      }
-    },
-    [history],
-  );
-
-  // ─────🔹 Удаление узла
-  const deleteNode = useCallback(
-    async (key: string) => {
-      const next = deleteNodeFromArray(currentJsonRef.current, key);
-      if (clickedKeyRef.current === key) setClickedKey(null);
-      setHoveredKey(null);
-      await persist(next);
-    },
-    [persist],
-  );
-
-  // ─────🔹 Переключение сворачивания узла
-  const toggleCollapseKey = useCallback((key: string) => {
-    setCollapsedKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }, []);
-
-  // ─────🔹 Drag and Drop
-  const dnd = useCanvasDnD({
-    currentJsonRef,
-    persist,
-  });
+  // ─────🔹 Контроллеры DnD и Marquee
+  useCanvasDnD();
+  const marquee = useCanvasMarquee({ containerRef });
 
   // ─────🔹 Загрузка при монтировании
   const jsonDownload = async () => {
@@ -131,8 +57,7 @@ export function useCanvasArea() {
         }
 
         const nodesWithKeys = ensureUniqueKeys(cleanNodes);
-        setCurrentJson(nodesWithKeys);
-        currentJsonRef.current = nodesWithKeys;
+        useCanvasStore.getState().setCurrentJson(nodesWithKeys);
 
         styleHistory.init(currentScss);
         scriptsHistory.init(currentJs);
@@ -143,8 +68,7 @@ export function useCanvasArea() {
           saveHtmlJson(DB_KEY, nodesWithKeys),
         ]);
       } else {
-        setCurrentJson([]);
-        currentJsonRef.current = [];
+        useCanvasStore.getState().setCurrentJson([]);
         styleHistory.init(currentScss);
         scriptsHistory.init(currentJs);
 
@@ -164,9 +88,10 @@ export function useCanvasArea() {
     const handleSelectFromPreview = (e: any) => {
       if (e.detail?.source === "modal-properties") return;
 
-      const target = findNodeByCriteria(currentJsonRef.current, e.detail || {});
-      if (target && target._key !== clickedKeyRef.current) {
-        setClickedKey(target._key ?? null);
+      const currentTree = useCanvasStore.getState().currentJson;
+      const target = findNodeByCriteria(currentTree, e.detail || {});
+      if (target && target._key !== useCanvasStore.getState().clickedKey) {
+        useCanvasStore.getState().setClickedKey(target._key ?? null);
       }
     };
 
@@ -175,12 +100,7 @@ export function useCanvasArea() {
       window.removeEventListener("plaza-node-selected", handleSelectFromPreview);
   }, []);
 
-  // ─────🔹 Сворачивание всех нод
-  const collapsedAll = useCallback(() => {
-    const allKeys = getAllCollapsibleKeys(currentJsonRef.current);
-    setCollapsedKeys(new Set(allKeys));
-  }, []);
-
+  // ─────🔹 Внешние события обновления дерева и сворачивания
   useEffect(() => {
     const handleTreeUpdated = (e: Event) => {
       const customEvent = e as CustomEvent;
@@ -192,58 +112,62 @@ export function useCanvasArea() {
 
       if (Array.isArray(nodes)) {
         const withKeys = ensureUniqueKeys(nodes);
-        setCurrentJson(withKeys);
-        currentJsonRef.current = withKeys;
+        useCanvasStore.getState().setCurrentJson(withKeys);
       } else {
         jsonDownload();
       }
     };
 
+    const handleExternalCollapseAll = () => {
+      const allKeys = getAllCollapsibleKeys(useCanvasStore.getState().currentJson);
+      useCanvasStore.getState().collapseAll(allKeys);
+    };
+
     window.addEventListener("plaza-tree-updated", handleTreeUpdated);
-    window.addEventListener("plaza-toggle-collapse-all", collapsedAll);
+    window.addEventListener(
+      "plaza-toggle-collapse-all",
+      handleExternalCollapseAll,
+    );
 
     return () => {
       window.removeEventListener("plaza-tree-updated", handleTreeUpdated);
-      window.removeEventListener("plaza-toggle-collapse-all", collapsedAll);
+      window.removeEventListener(
+        "plaza-toggle-collapse-all",
+        handleExternalCollapseAll,
+      );
     };
-  }, [collapsedAll]);
+  }, []);
 
-  const isCollapsible = currentJson.some(
-    (node) => Array.isArray(node.children) && node.children.length > 0,
-  );
-  const allCollapsibleKeys = getAllCollapsibleKeys(currentJson);
-  const isAllCollapsed =
-    allCollapsibleKeys.length === 0 ||
-    allCollapsibleKeys.every((key) => collapsedKeys.has(key));
+  // ─────🔹 Хоткеи Undo / Redo (Ctrl+Z / Ctrl+Y)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.isContentEditable
+      ) {
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        useCanvasStore.getState().undo();
+      } else if (
+        (e.ctrlKey || e.metaKey) &&
+        (e.key.toLowerCase() === "y" || (e.shiftKey && e.key.toLowerCase() === "z"))
+      ) {
+        e.preventDefault();
+        useCanvasStore.getState().redo();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   return {
     containerRef,
-    currentJson,
-    persist,
-    // Выбор и ховер
-    clickedKey,
-    setClickedKey,
-    hoveredKey,
-    setHoveredKey,
-    // Сворачивание
-    collapsedKeys,
-    toggleCollapseKey,
-    collapsedAll,
-    isCollapsible,
-    isAllCollapsed,
-    // Удаление
-    deleteNode,
-    // История
-    canUndo: history.canUndo,
-    canRedo: history.canRedo,
-    handleUndo: history.handleUndo,
-    handleRedo: history.handleRedo,
-    // DnD
-    draggedKey: dnd.draggedKey,
-    dropTarget: dnd.dropTarget,
-    dragMousePos: dnd.dragMousePos,
-    draggedNode: dnd.draggedNode,
-    hasDraggedRef: dnd.hasDraggedRef,
-    startDrag: dnd.handlePointerDownNode,
+    handleMarqueePointerDown: marquee.handleMarqueePointerDown,
   };
 }

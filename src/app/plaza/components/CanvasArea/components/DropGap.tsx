@@ -1,26 +1,27 @@
-import React from "react";
+"use client";
 
-export interface DropTarget {
-  key: string;
-  position: "self" | "before" | "after" | "inside";
-}
-export function DropGap({
-  targetKey,
-  position,
-  orientation = "horizontal",
-  draggedKey,
-  dropTarget,
-}: {
+import React, { memo } from "react";
+import { useCanvasStore } from "@/app/plaza/components/CanvasArea/store/useCanvasStore";
+
+export interface DropGapProps {
   targetKey: string;
   position: "before" | "after";
   orientation?: "horizontal" | "vertical";
-  draggedKey: string | null;
-  dropTarget: DropTarget | null;
-}) {
-  const isTarget =
-    Boolean(draggedKey) &&
-    dropTarget?.key === targetKey &&
-    dropTarget?.position === position;
+}
+
+function DropGapComponent({
+  targetKey,
+  position,
+  orientation = "horizontal",
+}: DropGapProps) {
+  // Точечный селектор Zustand: рендерится ТОЛЬКО тот DropGap, на который навели курсор!
+  const isTarget = useCanvasStore(
+    (s) =>
+      s.draggedKeys.length > 0 &&
+      s.dropTarget?.key === targetKey &&
+      s.dropTarget?.position === position,
+  );
+  const isDragging = useCanvasStore((s) => s.draggedKeys.length > 0);
 
   const isVert = orientation === "vertical";
 
@@ -32,7 +33,7 @@ export function DropGap({
         isVert ? "w-2 h-full min-h-[30px] self-stretch" : "h-2 w-full"
       }`}
     >
-      {draggedKey && (
+      {isDragging && (
         <div
           className={`absolute pointer-events-none z-20 ${
             isVert ? "inset-y-0 -left-1 -right-1" : "inset-x-0 -top-1 -bottom-1"
@@ -57,3 +58,6 @@ export function DropGap({
     </div>
   );
 }
+
+export const DropGap = memo(DropGapComponent);
+export default DropGap;

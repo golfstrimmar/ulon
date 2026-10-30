@@ -1,5 +1,5 @@
 import type { HtmlNode } from "@/types/HtmlNode";
-export type { DropTarget } from "@/app/plaza/components/CanvasArea/hooks/useCanvasDnD";
+export type { DropTarget } from "@/app/plaza/components/CanvasArea/store/useCanvasStore";
 
 export interface NodeCardProps {
   node: HtmlNode;

@@ -16,8 +16,7 @@ function NodeCardComponent({
     isCollapsed,
     isRow,
     isDragged,
-    draggedKey,
-    dropTarget,
+    isSelected,
     borderStyle,
     bgStyle,
     shadowStyle,
@@ -52,8 +51,26 @@ function NodeCardComponent({
       }}
     >
       {/* Шапка карточки */}
-      <div className="h-[28px] px-2 flex items-center justify-between gap-1 rounded-t-md border-b border-zinc-800/60 shrink-0">
+      <div
+        data-node-header="true"
+        className="h-[28px] px-2 flex items-center justify-between gap-1 rounded-t-md border-b border-zinc-800/60 shrink-0"
+      >
         <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
+          {/* Иконка группового выделения */}
+          {isSelected && (
+            <span className="w-3.5 h-3.5 rounded-sm bg-sky-500/30 border border-sky-400 flex items-center justify-center shrink-0">
+              <svg viewBox="0 0 12 12" className="w-2.5 h-2.5 text-sky-300">
+                <path
+                  d="M2.5 6l2.5 2.5 4.5-5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+          )}
           {hasChildren && (
             <button
               type="button"
@@ -107,8 +124,6 @@ function NodeCardComponent({
                   targetKey={child._key || ""}
                   position="before"
                   orientation={isRow ? "vertical" : "horizontal"}
-                  draggedKey={draggedKey}
-                  dropTarget={dropTarget}
                 />
               )}
               <NodeCard
@@ -120,8 +135,6 @@ function NodeCardComponent({
                 targetKey={child._key || ""}
                 position="after"
                 orientation={isRow ? "vertical" : "horizontal"}
-                draggedKey={draggedKey}
-                dropTarget={dropTarget}
               />
             </React.Fragment>
           ))}

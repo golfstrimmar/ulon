@@ -5,7 +5,7 @@ import {
   DEPTH_BG,
   DEPTH_BORDER,
 } from "@/app/plaza/components/CanvasArea/constants/theme";
-import { useCanvasTreeContext } from "@/app/plaza/components/CanvasArea/context/CanvasTreeContext";
+import { useCanvasStore } from "@/app/plaza/components/CanvasArea/store/useCanvasStore";
 
 export interface UseNodeCardOptions {
   node: HtmlNode;
@@ -13,30 +13,24 @@ export interface UseNodeCardOptions {
 }
 
 export function useNodeCard({ node, depth }: UseNodeCardOptions) {
-  const {
-    clickedKey,
-    setClickedKey,
-    hoveredKey,
-    setHoveredKey,
-    collapsedKeys,
-    toggleCollapseKey,
-    deleteNode,
-    startDrag,
-    draggedKey,
-    dropTarget,
-    hasDraggedRef,
-  } = useCanvasTreeContext();
-
   const key = node._key || "";
+
+  // ── Точечные селекторы-булеаны: рендер ТОЛЬКО для этой конкретной ноды ──
+  const isClicked = useCanvasStore((s) => s.clickedKey === key);
+  const isSelected = useCanvasStore((s) => s.selectedKeys.has(key));
+  const isDragged = useCanvasStore((s) => s.draggedKeys.includes(key));
+  const isCollapsed = useCanvasStore((s) => s.collapsedKeys.has(key));
+  const isDrop = useCanvasStore((s) => s.dropTarget?.key === key);
+  const dropPos = useCanvasStore((s) =>
+    s.dropTarget?.key === key ? s.dropTarget.position : null,
+  );
+  const isHovered = useCanvasStore(
+    (s) => s.hoveredKey === key && s.clickedKey !== key && !s.selectedKeys.has(key),
+  );
+  const hasActiveDrag = useCanvasStore((s) => s.draggedKeys.length > 0);
+
   const children: HtmlNode[] = Array.isArray(node.children) ? node.children : [];
   const hasChildren = children.length > 0;
-  const isCollapsed = collapsedKeys.has(key);
-
-  const isDragged = draggedKey === key;
-  const isClicked = clickedKey === key;
-  const isHovered = hoveredKey === key && !isClicked;
-  const isDrop = dropTarget?.key === key;
-  const dropPos = isDrop ? dropTarget?.position : null;
 
   const depthIdx = Math.min(depth, DEPTH_BG.length - 1);
   const isRow = isRowContainer(node);
@@ -69,14 +63,18 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
       border = "#818cf8";
       bg = "rgba(99, 102, 241, 0.2)";
       shadow = "0 0 10px rgba(129, 140, 248, 0.35)";
-    } else if (isHovered && !draggedKey) {
+    } else if (isSelected) {
+      border = "#38bdf8";
+      bg = "rgba(56, 189, 248, 0.18)";
+      shadow = "0 0 10px rgba(56, 189, 248, 0.3)";
+    } else if (isHovered && !hasActiveDrag) {
       border = "#34d399";
       bg = "rgba(52, 211, 153, 0.12)";
       shadow = "0 0 8px rgba(52, 211, 153, 0.25)";
     }
 
     return { borderStyle: border, bgStyle: bg, shadowStyle: shadow };
-  }, [depthIdx, isDrop, dropPos, isClicked, isHovered, draggedKey]);
+  }, [depthIdx, isDrop, dropPos, isClicked, isSelected, isHovered, hasActiveDrag]);
 
   // ── Бейдж тега ────────────────────────────────────────────────────────────
   const tagBadgeClass = useMemo(() => {
@@ -105,12 +103,12 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
       e.stopPropagation();
       if (isClicked) return;
 
-      setHoveredKey(key);
+      useCanvasStore.getState().setHoveredKey(key);
       window.dispatchEvent(
         new CustomEvent("plaza-node-hovered", { detail: key }),
       );
     },
-    [isClicked, setHoveredKey, key],
+    [isClicked, key],
   );
 
   const handlePointerLeave = useCallback(
@@ -122,40 +120,37 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
       const parentNode = nextTarget?.closest<HTMLElement>("[data-node-key]");
       const parentKey = parentNode?.getAttribute("data-node-key") || null;
 
-      const targetKey = parentKey === clickedKey ? null : parentKey;
+      const targetKey = parentKey === (isClicked ? key : null) ? null : parentKey;
 
-      setHoveredKey(targetKey);
+      useCanvasStore.getState().setHoveredKey(targetKey);
       window.dispatchEvent(
         new CustomEvent("plaza-node-hovered", { detail: targetKey }),
       );
     },
-    [clickedKey, setHoveredKey],
+    [isClicked, key],
   );
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
       if (e.button === 0) {
         e.stopPropagation();
-        startDrag(e, key);
+        useCanvasStore.getState().startDragNode(key, e.clientX, e.clientY);
       }
     },
-    [startDrag, key],
+    [key],
   );
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      if (hasDraggedRef.current) {
-        hasDraggedRef.current = false;
-        return;
-      }
+      if (hasActiveDrag) return;
       if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
       clickTimeoutRef.current = setTimeout(() => {
-        setClickedKey(key);
+        useCanvasStore.getState().setClickedKey(key);
         clickTimeoutRef.current = null;
       }, 300);
     },
-    [hasDraggedRef, setClickedKey, key],
+    [hasActiveDrag, key],
   );
 
   const handleDoubleClick = useCallback(
@@ -165,17 +160,17 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
         clearTimeout(clickTimeoutRef.current);
         clickTimeoutRef.current = null;
       }
-      deleteNode(key);
+      useCanvasStore.getState().deleteNode(key);
     },
-    [deleteNode, key],
+    [key],
   );
 
   const handleToggleCollapseClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      toggleCollapseKey(key);
+      useCanvasStore.getState().toggleCollapseKey(key);
     },
-    [toggleCollapseKey, key],
+    [key],
   );
 
   return {
@@ -185,8 +180,7 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
     isCollapsed,
     isRow,
     isDragged,
-    draggedKey,
-    dropTarget,
+    isSelected,
     borderStyle,
     bgStyle,
     shadowStyle,
