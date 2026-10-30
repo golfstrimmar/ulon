@@ -387,7 +387,7 @@ export default function ModalAddSvg({
       // 1. Режим <img src="data:image/svg+xml;base64,...">
       if (outputMode === "image-datauri") {
         const dataUri = svgToBase64(item.rawClean);
-        return {
+        const imgNode: HtmlNode = {
           tag: "img",
           text: "",
           class: "svg-img",
@@ -399,6 +399,7 @@ export default function ModalAddSvg({
           children: [],
           _key: key,
         };
+        return imgNode;
       }
 
       // 2. Режим Inline <i class="..."><svg></i>
