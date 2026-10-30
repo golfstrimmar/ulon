@@ -11,12 +11,11 @@ import ButtonClose from "@/components/ButtonClose";
 import { getHtmlJson, saveHtmlJson } from "@/lib/htmlStorage";
 import { DB_KEY } from "@/app/plaza/components/CanvasArea/constants/theme";
 import type { HtmlNode } from "@/types/HtmlNode";
-import { treeToHtml } from "@/lib/htmlTree";
 
 export interface ModalAddSvgProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  onSaveNode?: (node: HtmlNode) => void;
+  onSaveNodes?: (nodes: HtmlNode[]) => void;
 }
 
 interface SvgMetadata {
@@ -27,6 +26,15 @@ interface SvgMetadata {
   elementCount: number;
   bytes: number;
   sizeFormatted: string;
+}
+
+interface SvgItem {
+  id: string;
+  name: string;
+  rawClean: string;
+  baseNode: HtmlNode;
+  meta: SvgMetadata;
+  selected: boolean;
 }
 
 const SVG_TAG_CASING: Record<string, string> = {
@@ -68,44 +76,31 @@ const SVG_ATTR_CASING: Record<string, string> = {
   numoctaves: "numOctaves",
 };
 
-const DEFAULT_SAMPLE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-  <path stroke-linecap="round" stroke-linejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5m6 4.125 2.25 2.25m0 0 2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
-</svg>`;
-
 const PRESET_HEIGHTS = [16, 18, 20, 22, 24, 28, 32, 40, 48];
 
 export default function ModalAddSvg({
   isOpen,
   setIsOpen,
-  onSaveNode,
+  onSaveNodes,
 }: ModalAddSvgProps) {
   const [activeTab, setActiveTab] = useState<"upload" | "paste">("upload");
   const [rawSvgInput, setRawSvgInput] = useState<string>("");
   const [parseError, setParseError] = useState<string | null>(null);
 
-  const [outputMode, setOutputMode] = useState<
-    "inline-wrapper" | "image-datauri"
-  >("inline-wrapper");
+  // Список загруженных SVG элементов
+  const [svgItems, setSvgItems] = useState<SvgItem[]>([]);
 
-  const [rawSvgClean, setRawSvgClean] = useState<string>("");
-  const [baseSvgNode, setBaseSvgNode] = useState<HtmlNode | null>(null);
-  const [meta, setMeta] = useState<SvgMetadata | null>(null);
-
+  // Глобальные настройки для пачки
+  const [outputMode, setOutputMode] = useState<"inline-wrapper" | "image-datauri">("inline-wrapper");
   const [targetHeight, setTargetHeight] = useState<number>(22);
   const [targetWidth, setTargetWidth] = useState<number>(22);
   const [lockAspectRatio, setLockAspectRatio] = useState<boolean>(true);
-
   const [wrapperClass, setWrapperClass] = useState<string>("svg-wrapper");
 
-  const [colorMode, setColorMode] = useState<
-    "original" | "currentcolor" | "custom"
-  >("original");
+  const [colorMode, setColorMode] = useState<"original" | "currentcolor" | "custom">("original");
   const [customColor, setCustomColor] = useState<string>("#3b82f6");
 
-  const [previewTab, setPreviewTab] = useState<"visual" | "json">("visual");
   const [isDragging, setIsDragging] = useState<boolean>(false);
-  const [copied, setCopied] = useState<boolean>(false);
-
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const formatFileSize = (bytes: number): string => {
@@ -135,7 +130,7 @@ export default function ModalAddSvg({
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "unset";
-      handleReset();
+      handleResetAll();
     }
     return () => {
       document.body.style.overflow = "unset";
@@ -145,16 +140,16 @@ export default function ModalAddSvg({
   const handleHeightChange = (newH: number) => {
     const h = Math.max(8, newH);
     setTargetHeight(h);
-    if (lockAspectRatio && meta && meta.aspectRatio > 0) {
-      setTargetWidth(Math.round(h * meta.aspectRatio));
+    if (lockAspectRatio) {
+      setTargetWidth(h);
     }
   };
 
   const handleWidthChange = (newW: number) => {
     const w = Math.max(8, newW);
     setTargetWidth(w);
-    if (lockAspectRatio && meta && meta.aspectRatio > 0) {
-      setTargetHeight(Math.round(w / meta.aspectRatio));
+    if (lockAspectRatio) {
+      setTargetHeight(w);
     }
   };
 
@@ -200,184 +195,164 @@ export default function ModalAddSvg({
     };
   };
 
-  const processSvgString = useCallback((raw: string) => {
+  /** Парсер одной строки SVG в структуру SvgItem */
+  const parseSingleSvg = useCallback(
+    (raw: string, fileName?: string): SvgItem | null => {
+      const trimmed = raw.trim();
+      if (!trimmed) return null;
+
+      try {
+        const parser = new DOMParser();
+        let doc = parser.parseFromString(trimmed, "image/svg+xml");
+        let svgEl = doc.querySelector("svg");
+
+        if (!svgEl || doc.querySelector("parsererror")) {
+          doc = parser.parseFromString(trimmed, "text/html");
+          svgEl = doc.querySelector("svg");
+        }
+
+        if (!svgEl) return null;
+
+        if (!svgEl.getAttribute("xmlns")) {
+          svgEl.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+        }
+
+        const viewBoxStr =
+          svgEl.getAttribute("viewBox") || svgEl.getAttribute("viewbox") || "";
+        let natW = 24;
+        let natH = 24;
+
+        if (viewBoxStr) {
+          const parts = viewBoxStr
+            .trim()
+            .split(/[\s,]+/)
+            .map(Number);
+          if (parts.length === 4 && parts[2] > 0 && parts[3] > 0) {
+            natW = parts[2];
+            natH = parts[3];
+          }
+        } else {
+          const wAttr = parseFloat(svgEl.getAttribute("width") || "");
+          const hAttr = parseFloat(svgEl.getAttribute("height") || "");
+          if (!isNaN(wAttr) && !isNaN(hAttr) && wAttr > 0 && hAttr > 0) {
+            natW = wAttr;
+            natH = hAttr;
+            svgEl.setAttribute("viewBox", `0 0 ${natW} ${natH}`);
+          }
+        }
+
+        const ratio = natW / natH;
+        const parsedNode = domToHtmlNode(svgEl);
+        const serializer = new XMLSerializer();
+        const cleanSerialized = serializer.serializeToString(svgEl);
+        const bytes = new Blob([cleanSerialized]).size;
+
+        return {
+          id: `svg_item_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+          name: fileName || `icon_${svgItems.length + 1}.svg`,
+          rawClean: cleanSerialized,
+          baseNode: parsedNode,
+          meta: {
+            viewBox: viewBoxStr || `0 0 ${natW} ${natH}`,
+            width: natW,
+            height: natH,
+            aspectRatio: ratio,
+            elementCount: svgEl.querySelectorAll("*").length,
+            bytes,
+            sizeFormatted: formatFileSize(bytes),
+          },
+          selected: true,
+        };
+      } catch {
+        return null;
+      }
+    },
+    [svgItems.length],
+  );
+
+  /** Обработка множества файлов */
+  const processFiles = (files: FileList | File[]) => {
     setParseError(null);
-    const trimmed = raw.trim();
+    const validFiles = Array.from(files).filter(
+      (f) => f.type.includes("svg") || f.name.toLowerCase().endsWith(".svg"),
+    );
+
+    if (validFiles.length === 0) {
+      setParseError("Please select valid .svg files.");
+      return;
+    }
+
+    const readers = validFiles.map((file) => {
+      return new Promise<SvgItem | null>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result === "string") {
+            const item = parseSingleSvg(reader.result, file.name);
+            resolve(item);
+          } else {
+            resolve(null);
+          }
+        };
+        reader.onerror = () => resolve(null);
+        reader.readAsText(file);
+      });
+    });
+
+    Promise.all(readers).then((results) => {
+      const added = results.filter(Boolean) as SvgItem[];
+      if (added.length === 0) {
+        setParseError("Could not parse any valid SVG from selected files.");
+      } else {
+        setSvgItems((prev) => [...prev, ...added]);
+      }
+    });
+  };
+
+  /** Обработка вставленного текста (может содержать сразу несколько <svg>...</svg>) */
+  const processRawText = (text: string) => {
+    setParseError(null);
+    const trimmed = text.trim();
     if (!trimmed) {
       setParseError("Please provide SVG content.");
       return;
     }
 
-    try {
-      const parser = new DOMParser();
-      let doc = parser.parseFromString(trimmed, "image/svg+xml");
-      let svgEl = doc.querySelector("svg");
+    // Ищем все блоки <svg>...</svg> в тексте
+    const svgMatches = trimmed.match(/<svg[\s\S]*?<\/svg>/gi);
 
-      if (!svgEl || doc.querySelector("parsererror")) {
-        doc = parser.parseFromString(trimmed, "text/html");
-        svgEl = doc.querySelector("svg");
-      }
+    if (svgMatches && svgMatches.length > 0) {
+      const added: SvgItem[] = [];
+      svgMatches.forEach((svgStr, idx) => {
+        const item = parseSingleSvg(svgStr, `pasted_icon_${idx + 1}.svg`);
+        if (item) added.push(item);
+      });
 
-      if (!svgEl) {
-        setParseError("No valid <svg> element found in the input.");
+      if (added.length > 0) {
+        setSvgItems((prev) => [...prev, ...added]);
+        setRawSvgInput("");
         return;
       }
-
-      if (!svgEl.getAttribute("xmlns")) {
-        svgEl.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-      }
-
-      const viewBoxStr =
-        svgEl.getAttribute("viewBox") || svgEl.getAttribute("viewbox") || "";
-      let natW = 24;
-      let natH = 24;
-
-      if (viewBoxStr) {
-        const parts = viewBoxStr
-          .trim()
-          .split(/[\s,]+/)
-          .map(Number);
-        if (parts.length === 4 && parts[2] > 0 && parts[3] > 0) {
-          natW = parts[2];
-          natH = parts[3];
-        }
-      } else {
-        const wAttr = parseFloat(svgEl.getAttribute("width") || "");
-        const hAttr = parseFloat(svgEl.getAttribute("height") || "");
-        if (!isNaN(wAttr) && !isNaN(hAttr) && wAttr > 0 && hAttr > 0) {
-          natW = wAttr;
-          natH = hAttr;
-          svgEl.setAttribute("viewBox", `0 0 ${natW} ${natH}`);
-        }
-      }
-
-      const ratio = natW / natH;
-      const initialH = 22;
-      const initialW = Math.round(initialH * ratio);
-
-      const parsedNode = domToHtmlNode(svgEl);
-      const serializer = new XMLSerializer();
-      const cleanSerialized = serializer.serializeToString(svgEl);
-      const bytes = new Blob([cleanSerialized]).size;
-
-      setBaseSvgNode(parsedNode);
-      setRawSvgClean(cleanSerialized);
-      setTargetHeight(initialH);
-      setTargetWidth(initialW);
-      setMeta({
-        viewBox: viewBoxStr || `0 0 ${natW} ${natH}`,
-        width: natW,
-        height: natH,
-        aspectRatio: ratio,
-        elementCount: svgEl.querySelectorAll("*").length,
-        bytes,
-        sizeFormatted: formatFileSize(bytes),
-      });
-    } catch (err: any) {
-      setParseError(err?.message || "Failed to parse SVG string.");
-    }
-  }, []);
-
-  const processedSvgNode = useMemo<HtmlNode | null>(() => {
-    if (!baseSvgNode) return null;
-
-    const node: HtmlNode = JSON.parse(JSON.stringify(baseSvgNode));
-
-    node.attributes = node.attributes || {};
-    node.attributes["width"] = "100%";
-    node.attributes["height"] = "100%";
-    node.style = "width: 100%; height: 100%; display: block;";
-
-    if (colorMode === "currentcolor") {
-      if (node.attributes["stroke"] && node.attributes["stroke"] !== "none") {
-        node.attributes["stroke"] = "currentColor";
-      }
-      if (node.attributes["fill"] && node.attributes["fill"] !== "none") {
-        node.attributes["fill"] = "currentColor";
-      }
-    } else if (colorMode === "custom") {
-      if (node.attributes["stroke"] && node.attributes["stroke"] !== "none") {
-        node.attributes["stroke"] = customColor;
-      }
-      if (node.attributes["fill"] && node.attributes["fill"] !== "none") {
-        node.attributes["fill"] = customColor;
-      }
     }
 
-    return node;
-  }, [baseSvgNode, colorMode, customColor]);
-
-  const finalRootNode = useMemo<HtmlNode | null>(() => {
-    if (!processedSvgNode && !rawSvgClean) return null;
-
-    const key = `svg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-
-    if (outputMode === "image-datauri") {
-      const dataUri = svgToBase64(rawSvgClean);
-      const imgNode: HtmlNode = {
-        tag: "img",
-        text: "",
-        class: "svg-img",
-        style: `width: ${targetWidth}px; height: ${targetHeight}px; display: inline-block; vertical-align: middle;`,
-        attributes: {
-          src: dataUri,
-          alt: "svg-icon",
-        },
-        children: [],
-        _key: key,
-      };
-      return imgNode;
+    // Если регулярка не нашла несколько, пробуем спарсить как один
+    const single = parseSingleSvg(trimmed, "pasted_icon.svg");
+    if (single) {
+      setSvgItems((prev) => [...prev, single]);
+      setRawSvgInput("");
+    } else {
+      setParseError("No valid <svg> elements found in pasted text.");
     }
-
-    // Чистый, валидный inline CSS без селекторов внутри style
-    const wrapperStyle = `display: inline-block; line-height: 0; vertical-align: middle; width: ${targetWidth}px; height: ${targetHeight}px;`;
-
-    const inlineNode: HtmlNode = {
-      tag: "i",
-      text: "",
-      class: wrapperClass.trim() || "svg-wrapper",
-      style: wrapperStyle,
-      attributes: {},
-      children: [processedSvgNode!],
-      _key: key,
-    };
-    return inlineNode;
-  }, [
-    processedSvgNode,
-    rawSvgClean,
-    outputMode,
-    targetWidth,
-    targetHeight,
-    wrapperClass,
-  ]);
-
-  const processFile = (file: File) => {
-    if (
-      !file ||
-      (!file.type.includes("svg") && !file.name.toLowerCase().endsWith(".svg"))
-    ) {
-      alert("Please select a valid .svg file.");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        processSvgString(reader.result);
-      }
-    };
-    reader.readAsText(file);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) processFile(file);
+    if (e.target.files && e.target.files.length > 0) {
+      processFiles(e.target.files);
+    }
   };
 
-  const handleReset = () => {
-    setBaseSvgNode(null);
-    setRawSvgClean("");
+  const handleResetAll = () => {
+    setSvgItems([]);
     setRawSvgInput("");
-    setMeta(null);
     setParseError(null);
     setTargetHeight(22);
     setTargetWidth(22);
@@ -385,38 +360,85 @@ export default function ModalAddSvg({
     setWrapperClass("svg-wrapper");
     setColorMode("original");
     setOutputMode("inline-wrapper");
-    setPreviewTab("visual");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleCopySvg = async () => {
-    if (!rawSvgClean) return;
-    try {
-      await navigator.clipboard.writeText(rawSvgClean);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (e) {
-      console.error("Copy failed:", e);
-    }
+  const toggleItemSelect = (id: string) => {
+    setSvgItems((prev) =>
+      prev.map((it) => (it.id === id ? { ...it, selected: !it.selected } : it)),
+    );
   };
 
-  const handlePasteFromClipboard = async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      if (text) {
-        setRawSvgInput(text);
-        processSvgString(text);
+  const removeItem = (id: string) => {
+    setSvgItems((prev) => prev.filter((it) => it.id !== id));
+  };
+
+  const selectAll = (val: boolean) => {
+    setSvgItems((prev) => prev.map((it) => ({ ...it, selected: val })));
+  };
+
+  // Превращение выбранных SvgItem в итоговые HtmlNode
+  const buildFinalNodes = (): HtmlNode[] => {
+    const selected = svgItems.filter((i) => i.selected);
+
+    return selected.map((item) => {
+      const key = `svg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+      // 1. Режим <img src="data:image/svg+xml;base64,...">
+      if (outputMode === "image-datauri") {
+        const dataUri = svgToBase64(item.rawClean);
+        return {
+          tag: "img",
+          text: "",
+          class: "svg-img",
+          style: `width: ${targetWidth}px; height: ${targetHeight}px; display: inline-block; vertical-align: middle;`,
+          attributes: {
+            src: dataUri,
+            alt: item.name.replace(/\.svg$/i, ""),
+          },
+          children: [],
+          _key: key,
+        };
       }
-    } catch {
-      alert(
-        "Unable to read clipboard. Please paste manually into the textarea.",
-      );
-    }
+
+      // 2. Режим Inline <i class="..."><svg></i>
+      const clonedNode: HtmlNode = JSON.parse(JSON.stringify(item.baseNode));
+      clonedNode.attributes = clonedNode.attributes || {};
+      clonedNode.attributes["width"] = "100%";
+      clonedNode.attributes["height"] = "100%";
+      clonedNode.style = "width: 100%; height: 100%; display: block;";
+
+      if (colorMode === "currentcolor") {
+        if (clonedNode.attributes["stroke"] && clonedNode.attributes["stroke"] !== "none") {
+          clonedNode.attributes["stroke"] = "currentColor";
+        }
+        if (clonedNode.attributes["fill"] && clonedNode.attributes["fill"] !== "none") {
+          clonedNode.attributes["fill"] = "currentColor";
+        }
+      } else if (colorMode === "custom") {
+        if (clonedNode.attributes["stroke"] && clonedNode.attributes["stroke"] !== "none") {
+          clonedNode.attributes["stroke"] = customColor;
+        }
+        if (clonedNode.attributes["fill"] && clonedNode.attributes["fill"] !== "none") {
+          clonedNode.attributes["fill"] = customColor;
+        }
+      }
+
+      return {
+        tag: "i",
+        text: "",
+        class: wrapperClass.trim() || "svg-wrapper",
+        style: `display: inline-block; line-height: 0; vertical-align: middle; width: ${targetWidth}px; height: ${targetHeight}px;`,
+        attributes: {},
+        children: [clonedNode],
+        _key: key,
+      };
+    });
   };
 
-  // Сохранение и рассылка события дереву
   const handleSave = async () => {
-    if (!finalRootNode) return;
+    const nodesToSave = buildFinalNodes();
+    if (nodesToSave.length === 0) return;
 
     try {
       const existing = await getHtmlJson(DB_KEY).catch(() => null);
@@ -425,7 +447,7 @@ export default function ModalAddSvg({
           ? existing
           : [existing]
         : [];
-      const nextList = [...currentList, finalRootNode];
+      const nextList = [...currentList, ...nodesToSave];
 
       await saveHtmlJson(DB_KEY, nextList);
 
@@ -435,16 +457,14 @@ export default function ModalAddSvg({
         }),
       );
 
-      if (onSaveNode) onSaveNode(finalRootNode);
+      if (onSaveNodes) onSaveNodes(nodesToSave);
       setIsOpen(false);
     } catch (err) {
-      console.error("[ModalAddSvg] Persist error:", err);
+      console.error("[ModalAddSvg] Bulk save error:", err);
     }
   };
 
-  const previewHtml = processedSvgNode
-    ? treeToHtml(processedSvgNode)
-    : rawSvgClean;
+  const selectedCount = svgItems.filter((i) => i.selected).length;
 
   return (
     <AnimatePresence>
@@ -454,32 +474,32 @@ export default function ModalAddSvg({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2, ease: "easeInOut" }}
-          className="fixed inset-0 w-screen h-screen bg-black/98 z-50 overflow-y-auto no-scrollbar flex flex-col items-center justify-between p-6 sm:p-10"
+          className="fixed inset-0 w-screen h-screen bg-black/98 z-50 overflow-y-auto custom-scrollbar flex flex-col items-center justify-between p-6 sm:p-8"
         >
           <div className="absolute top-6 right-8 z-10">
             <ButtonClose setClose={setIsOpen} />
           </div>
 
-          <div className="w-full text-center mt-2">
+          <div className="w-full text-center mt-1">
             <h2 className="text-2xl font-bold text-neutral-100 tracking-wide">
-              Add SVG Vector
+              Batch Add SVG Vectors
             </h2>
-            <p className="text-sm text-neutral-400 mt-1">
-              Zero-distortion vector SVG loader with aspect ratio locking &
-              original color preservation
+            <p className="text-xs sm:text-sm text-neutral-400 mt-0.5">
+              Загружайте пачками любые SVG: файлы, папки или множественный код.
             </p>
           </div>
 
-          <div className="w-full max-w-4xl my-auto flex flex-col items-center py-4">
+          <div className="w-full max-w-5xl my-auto flex flex-col items-center py-4">
             <input
               type="file"
               ref={fileInputRef}
               onChange={handleFileChange}
               accept=".svg,image/svg+xml"
+              multiple // 👈 Разрешаем выбор нескольких файлов
               className="hidden"
             />
 
-            {!baseSvgNode ? (
+            {svgItems.length === 0 ? (
               <div className="w-full max-w-2xl flex flex-col gap-4">
                 <div className="flex items-center justify-center gap-2 p-1 bg-neutral-900 border border-neutral-800 rounded-xl self-center">
                   <button
@@ -490,7 +510,7 @@ export default function ModalAddSvg({
                         : "text-neutral-400 hover:text-neutral-200"
                     }`}
                   >
-                    📁 Upload .svg File
+                    📁 Upload Multiple .svg Files
                   </button>
                   <button
                     onClick={() => setActiveTab("paste")}
@@ -514,36 +534,25 @@ export default function ModalAddSvg({
                     onDrop={(e) => {
                       e.preventDefault();
                       setIsDragging(false);
-                      const file = e.dataTransfer.files?.[0];
-                      if (file) processFile(file);
+                      if (e.dataTransfer.files) processFiles(e.dataTransfer.files);
                     }}
                     onClick={() => fileInputRef.current?.click()}
-                    className={`w-full h-[300px] border-2 border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all duration-300 ${
+                    className={`w-full h-[280px] border-2 border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all duration-300 ${
                       isDragging
                         ? "border-blue-500 bg-blue-500/10 scale-[1.01]"
                         : "border-neutral-700 hover:border-neutral-500 bg-neutral-900/50 hover:bg-neutral-900/80"
                     }`}
                   >
-                    <div className="p-4 rounded-full bg-neutral-800 text-neutral-300 mb-4 shadow-inner">
-                      <svg
-                        className="w-8 h-8"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="1.5"
-                          d="M12 4.5v15m7.5-7.5h-15M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14"
-                        />
+                    <div className="p-4 rounded-full bg-neutral-800 text-neutral-300 mb-3 shadow-inner">
+                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 4.5v15m7.5-7.5h-15M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14" />
                       </svg>
                     </div>
                     <p className="text-base font-medium text-neutral-200">
-                      Click to browse or drop your .svg file here
+                      Click to choose or drop multiple .svg files here
                     </p>
                     <p className="text-xs text-neutral-500 mt-1">
-                      Retains original paths, colors, gradients & aspect ratios
+                      Вы можете выбрать сразу 10, 50 или 100 иконок одновременно
                     </p>
                   </div>
                 ) : (
@@ -554,41 +563,22 @@ export default function ModalAddSvg({
                         setRawSvgInput(e.target.value);
                         setParseError(null);
                       }}
-                      placeholder={`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" ...>\n  <path ... />\n</svg>`}
-                      rows={9}
+                      placeholder={`Вставьте один или несколько SVG подряд:\n<svg ...>...</svg>\n<svg ...>...</svg>`}
+                      rows={8}
                       className="w-full p-3.5 bg-neutral-900/90 border border-neutral-700 rounded-xl text-xs font-mono text-neutral-200 placeholder-neutral-600 outline-none focus:border-blue-500 transition-all resize-y"
                     />
 
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-end">
                       <button
-                        onClick={handlePasteFromClipboard}
-                        className="text-xs text-neutral-400 hover:text-white transition flex items-center gap-1.5 cursor-pointer bg-neutral-900 px-3 py-1.5 rounded-lg border border-neutral-800"
-                      >
-                        📋 Paste from Clipboard
-                      </button>
-
-                      <button
-                        onClick={() => processSvgString(rawSvgInput)}
+                        onClick={() => processRawText(rawSvgInput)}
                         disabled={!rawSvgInput.trim()}
-                        className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:bg-neutral-800 disabled:text-neutral-600 text-white rounded-lg text-xs font-medium transition cursor-pointer"
+                        className="px-5 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-neutral-800 disabled:text-neutral-600 text-white rounded-lg text-xs font-semibold transition cursor-pointer"
                       >
-                        Parse & Preview SVG
+                        Parse & Add to List
                       </button>
                     </div>
                   </div>
                 )}
-
-                <div className="flex items-center justify-center pt-1">
-                  <button
-                    onClick={() => {
-                      setRawSvgInput(DEFAULT_SAMPLE_SVG);
-                      processSvgString(DEFAULT_SAMPLE_SVG);
-                    }}
-                    className="text-xs text-neutral-500 hover:text-blue-400 underline underline-offset-4 transition cursor-pointer"
-                  >
-                    Try Sample Heroicon SVG
-                  </button>
-                </div>
 
                 {parseError && (
                   <div className="p-3 bg-red-950/40 border border-red-800/80 rounded-xl text-xs text-red-300">
@@ -597,108 +587,108 @@ export default function ModalAddSvg({
                 )}
               </div>
             ) : (
-              <div className="w-full flex flex-col items-center gap-5">
-                <div className="relative w-full max-w-2xl bg-neutral-950 border border-neutral-800 rounded-2xl p-6 overflow-hidden shadow-2xl flex flex-col items-center justify-center min-h-[220px]">
-                  <div className="absolute top-4 right-4 flex items-center gap-2">
-                    <button
-                      onClick={handleCopySvg}
-                      className="bg-black/75 hover:bg-neutral-700 text-neutral-300 text-xs px-3 py-1.5 rounded-md backdrop-blur-md transition-all cursor-pointer font-medium"
-                    >
-                      {copied ? "✓ Copied!" : "Copy SVG"}
-                    </button>
-                    <button
-                      onClick={handleReset}
-                      className="bg-black/75 hover:bg-red-600 text-white text-xs px-3 py-1.5 rounded-md backdrop-blur-md transition-all cursor-pointer"
-                    >
-                      Replace SVG
-                    </button>
+              /* ================== РЕЖИМ ГАЛЕРЕИ И МАССОВОЙ НАСТРОЙКИ ================== */
+              <div className="w-full flex flex-col gap-5">
+                {/* Панель управления выбранными иконками */}
+                <div className="flex flex-wrap items-center justify-between gap-3 bg-neutral-900 border border-neutral-800 rounded-xl p-3 px-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-medium text-neutral-300">
+                      Loaded: <b className="text-white">{svgItems.length}</b> icons
+                    </span>
+                    <span className="text-neutral-600">|</span>
+                    <span className="text-xs font-medium text-blue-400">
+                      Selected: <b>{selectedCount}</b>
+                    </span>
                   </div>
 
-                  <div className="flex items-center gap-12 py-4">
-                    <div className="flex flex-col items-center gap-2">
-                      <span className="text-[11px] text-neutral-500 uppercase tracking-wider font-medium">
-                        Real Scale ({targetWidth} × {targetHeight} px)
-                      </span>
-                      <div className="p-4 bg-neutral-900/90 border border-neutral-800 rounded-xl flex items-center justify-center shadow-inner min-w-[70px] min-h-[70px]">
-                        {outputMode === "inline-wrapper" ? (
-                          <i
-                            className={wrapperClass}
-                            style={{
-                              display: "inline-block",
-                              lineHeight: 0,
-                              verticalAlign: "middle",
-                              width: `${targetWidth}px`,
-                              height: `${targetHeight}px`,
-                            }}
-                            dangerouslySetInnerHTML={{ __html: previewHtml }}
-                          />
-                        ) : (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={svgToBase64(rawSvgClean)}
-                            alt="preview"
-                            style={{
-                              width: `${targetWidth}px`,
-                              height: `${targetHeight}px`,
-                              objectFit: "contain",
-                            }}
-                          />
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col items-center gap-2">
-                      <span className="text-[11px] text-neutral-500 uppercase tracking-wider font-medium">
-                        Zoomed View (100% Vector Quality)
-                      </span>
-                      <div className="p-4 bg-neutral-900/90 border border-neutral-800 rounded-xl flex items-center justify-center shadow-inner">
-                        <div
-                          style={{
-                            width: "72px",
-                            height: "72px",
-                            display: "inline-block",
-                            lineHeight: 0,
-                          }}
-                          dangerouslySetInnerHTML={{ __html: previewHtml }}
-                        />
-                      </div>
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => selectAll(true)}
+                      className="text-xs text-neutral-400 hover:text-white px-2 py-1 rounded bg-neutral-800 hover:bg-neutral-700 transition cursor-pointer"
+                    >
+                      Select All
+                    </button>
+                    <button
+                      onClick={() => selectAll(false)}
+                      className="text-xs text-neutral-400 hover:text-white px-2 py-1 rounded bg-neutral-800 hover:bg-neutral-700 transition cursor-pointer"
+                    >
+                      Deselect All
+                    </button>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="text-xs text-blue-400 hover:text-blue-300 px-2.5 py-1 rounded bg-blue-950/60 border border-blue-800/60 transition cursor-pointer font-medium"
+                    >
+                      + Add More Files
+                    </button>
+                    <button
+                      onClick={handleResetAll}
+                      className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded bg-red-950/40 border border-red-900/40 transition cursor-pointer"
+                    >
+                      Clear All
+                    </button>
                   </div>
                 </div>
 
-                {meta && (
-                  <div className="flex flex-wrap items-center justify-center gap-2">
-                    <div className="flex items-center gap-1.5 px-3 py-1 bg-neutral-900 border border-neutral-700/80 rounded-lg text-xs font-medium text-neutral-300">
-                      <span className="text-neutral-500">ViewBox:</span>
-                      <span className="text-emerald-400 font-mono font-bold">
-                        {meta.viewBox}
+                {/* Сетка превью иконок */}
+                <div className="w-full max-h-[300px] overflow-y-auto custom-scrollbar p-2 bg-neutral-950 border border-neutral-800/80 rounded-2xl grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
+                  {svgItems.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => toggleItemSelect(item.id)}
+                      className={`relative group p-3 rounded-xl border flex flex-col items-center justify-between gap-2 transition cursor-pointer ${
+                        item.selected
+                          ? "bg-neutral-900 border-blue-500/80 shadow-md ring-1 ring-blue-500/30"
+                          : "bg-neutral-950/60 border-neutral-800 opacity-60 hover:opacity-100"
+                      }`}
+                    >
+                      {/* Чекбокс */}
+                      <input
+                        type="checkbox"
+                        checked={item.selected}
+                        onChange={() => {}}
+                        className="absolute top-2 left-2 rounded border-neutral-700 bg-neutral-800 text-blue-600 accent-blue-500 cursor-pointer pointer-events-none"
+                      />
+
+                      {/* Кнопка удаления отдельной иконки */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeItem(item.id);
+                        }}
+                        title="Delete"
+                        className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 text-neutral-400 hover:text-red-400 text-xs p-1 rounded transition"
+                      >
+                        ✕
+                      </button>
+
+                      {/* Превью иконки */}
+                      <div className="w-14 h-14 flex items-center justify-center p-1.5 bg-neutral-900/80 rounded-lg my-1">
+                        <div
+                          className="w-full h-full flex items-center justify-center"
+                          style={{
+                            color:
+                              colorMode === "custom"
+                                ? customColor
+                                : colorMode === "currentcolor"
+                                  ? "#ffffff"
+                                  : undefined,
+                          }}
+                          dangerouslySetInnerHTML={{ __html: item.rawClean }}
+                        />
+                      </div>
+
+                      <span
+                        title={item.name}
+                        className="text-[10px] text-neutral-400 font-mono text-center truncate max-w-full"
+                      >
+                        {item.name}
                       </span>
                     </div>
+                  ))}
+                </div>
 
-                    <div className="flex items-center gap-1.5 px-3 py-1 bg-neutral-900 border border-neutral-700/80 rounded-lg text-xs font-medium text-neutral-300">
-                      <span className="text-neutral-500">Ratio:</span>
-                      <span className="text-blue-400 font-mono font-bold">
-                        {meta.aspectRatio.toFixed(2)} : 1
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 px-3 py-1 bg-neutral-900 border border-neutral-700/80 rounded-lg text-xs font-medium text-neutral-300">
-                      <span className="text-neutral-500">Elements:</span>
-                      <span className="text-amber-400 font-mono font-bold">
-                        {meta.elementCount}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 px-3 py-1 bg-neutral-900 border border-neutral-700/80 rounded-lg text-xs font-medium text-neutral-300">
-                      <span className="text-neutral-500">Size:</span>
-                      <span className="text-purple-400 font-mono font-bold">
-                        {meta.sizeFormatted}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                <div className="w-full max-w-2xl bg-neutral-900/60 border border-neutral-800 rounded-xl p-4 flex flex-col gap-4">
+                {/* Общие настройки для всех выбранных иконок */}
+                <div className="w-full bg-neutral-900/60 border border-neutral-800 rounded-xl p-4 flex flex-col gap-4">
                   <div className="flex flex-col gap-2 pb-3 border-b border-neutral-800">
                     <span className="text-xs uppercase font-bold text-neutral-400 tracking-wider">
                       Способ сохранения (Output Mode):
@@ -706,279 +696,178 @@ export default function ModalAddSvg({
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         onClick={() => setOutputMode("inline-wrapper")}
-                        className={`p-2.5 rounded-xl border text-left flex flex-col gap-1 transition cursor-pointer ${
+                        className={`p-2.5 rounded-xl border text-left flex flex-col gap-0.5 transition cursor-pointer ${
                           outputMode === "inline-wrapper"
                             ? "bg-blue-600/10 border-blue-500 text-white"
                             : "bg-neutral-800/60 border-neutral-700 text-neutral-400 hover:text-neutral-200"
                         }`}
                       >
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-neutral-200">
-                          <span>🧩 Inline SVG (&lt;i&gt; + &lt;svg&gt;)</span>
-                        </div>
-                        <span className="text-[11px] text-neutral-400">
-                          Инлайн дерево нод. Доступ к классам, ховерам и путям в
-                          холсте.
+                        <span className="text-xs font-semibold text-neutral-200">
+                          🧩 Inline SVG (&lt;i&gt; + &lt;svg&gt;)
+                        </span>
+                        <span className="text-[10px] text-neutral-400">
+                          Полноценное дерево нод. Доступ к классам и hover в холсте.
                         </span>
                       </button>
 
                       <button
                         onClick={() => setOutputMode("image-datauri")}
-                        className={`p-2.5 rounded-xl border text-left flex flex-col gap-1 transition cursor-pointer ${
+                        className={`p-2.5 rounded-xl border text-left flex flex-col gap-0.5 transition cursor-pointer ${
                           outputMode === "image-datauri"
                             ? "bg-blue-600/10 border-blue-500 text-white"
                             : "bg-neutral-800/60 border-neutral-700 text-neutral-400 hover:text-neutral-200"
                         }`}
                       >
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-neutral-200">
-                          <span>🖼️ Векторный &lt;img&gt; (Data-URI)</span>
-                        </div>
-                        <span className="text-[11px] text-neutral-400">
-                          Как в ModalAddImg. Абсолютно 0 искажений, компактная
-                          нода, нативный рендер.
+                        <span className="text-xs font-semibold text-neutral-200">
+                          🖼️ Векторный &lt;img&gt; (Data-URI)
+                        </span>
+                        <span className="text-[10px] text-neutral-400">
+                          Компактная одиночная нода без искажений.
                         </span>
                       </button>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between border-b border-neutral-800/80 pb-2">
-                    <span className="text-xs uppercase font-bold text-neutral-400 tracking-wider">
-                      Параметры и стили
+                  {/* Размеры */}
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center justify-between text-xs text-neutral-300">
+                      <span>Размеры для всех иконок:</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setLockAspectRatio(!lockAspectRatio)}
+                          className={`px-2 py-0.5 rounded text-[11px] border transition cursor-pointer ${
+                            lockAspectRatio
+                              ? "bg-blue-600/20 border-blue-500 text-blue-300 font-semibold"
+                              : "bg-neutral-800 border-neutral-700 text-neutral-400"
+                          }`}
+                        >
+                          {lockAspectRatio ? "🔒 Квадрат (1:1)" : "🔓 Свободный"}
+                        </button>
+                        <span className="font-mono text-blue-400 font-semibold">
+                          {targetWidth} × {targetHeight} px
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex justify-between text-[11px] text-neutral-400">
+                          <span>Высота:</span>
+                          <span className="font-mono text-neutral-200">{targetHeight}px</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="12"
+                          max="120"
+                          value={targetHeight}
+                          onChange={(e) => handleHeightChange(parseInt(e.target.value, 10))}
+                          className="h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex justify-between text-[11px] text-neutral-400">
+                          <span>Ширина:</span>
+                          <span className="font-mono text-neutral-200">{targetWidth}px</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="12"
+                          max="120"
+                          value={targetWidth}
+                          onChange={(e) => handleWidthChange(parseInt(e.target.value, 10))}
+                          className="h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      <span className="text-[11px] text-neutral-500 mr-1">Пресеты:</span>
+                      {PRESET_HEIGHTS.map((h) => (
+                        <button
+                          key={h}
+                          onClick={() => handleHeightChange(h)}
+                          className={`px-2 py-0.5 rounded text-[11px] font-mono transition cursor-pointer ${
+                            targetHeight === h
+                              ? "bg-blue-600 text-white font-bold"
+                              : "bg-neutral-800 hover:bg-neutral-700 text-neutral-300"
+                          }`}
+                        >
+                          {h}px
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Цвета */}
+                  <div className="flex flex-col gap-2 pt-2 border-t border-neutral-800/80">
+                    <span className="text-xs text-neutral-300 font-medium">
+                      Цветовой режим:
                     </span>
-                    <div className="flex items-center gap-1 bg-neutral-800/80 p-0.5 rounded-lg">
+                    <div className="grid grid-cols-3 gap-2">
                       <button
-                        onClick={() => setPreviewTab("visual")}
-                        className={`px-2.5 py-1 rounded text-[11px] font-medium transition cursor-pointer ${
-                          previewTab === "visual"
-                            ? "bg-neutral-700 text-white"
-                            : "text-neutral-400 hover:text-neutral-200"
+                        onClick={() => setColorMode("original")}
+                        className={`px-3 py-2 rounded-lg border text-left text-xs transition cursor-pointer ${
+                          colorMode === "original"
+                            ? "bg-emerald-600/15 border-emerald-500 text-emerald-300 font-semibold"
+                            : "bg-neutral-800 border-neutral-700 text-neutral-400 hover:text-neutral-200"
                         }`}
                       >
-                        Настройки
+                        🎨 Оригинал (1:1)
                       </button>
+
                       <button
-                        onClick={() => setPreviewTab("json")}
-                        className={`px-2.5 py-1 rounded text-[11px] font-medium transition cursor-pointer ${
-                          previewTab === "json"
-                            ? "bg-neutral-700 text-white"
-                            : "text-neutral-400 hover:text-neutral-200"
+                        onClick={() => setColorMode("currentcolor")}
+                        className={`px-3 py-2 rounded-lg border text-left text-xs transition cursor-pointer ${
+                          colorMode === "currentcolor"
+                            ? "bg-blue-600/15 border-blue-500 text-blue-300 font-semibold"
+                            : "bg-neutral-800 border-neutral-700 text-neutral-400 hover:text-neutral-200"
                         }`}
                       >
-                        JSON Node Tree
+                        🔤 currentColor
+                      </button>
+
+                      <button
+                        onClick={() => setColorMode("custom")}
+                        className={`px-3 py-2 rounded-lg border text-left text-xs transition cursor-pointer ${
+                          colorMode === "custom"
+                            ? "bg-purple-600/15 border-purple-500 text-purple-300 font-semibold"
+                            : "bg-neutral-800 border-neutral-700 text-neutral-400 hover:text-neutral-200"
+                        }`}
+                      >
+                        🎯 Свой цвет
                       </button>
                     </div>
+
+                    {colorMode === "custom" && (
+                      <div className="flex items-center gap-3 pt-1">
+                        <input
+                          type="color"
+                          value={customColor}
+                          onChange={(e) => setCustomColor(e.target.value)}
+                          className="w-8 h-8 rounded border border-neutral-700 bg-neutral-800 cursor-pointer"
+                        />
+                        <input
+                          type="text"
+                          value={customColor}
+                          onChange={(e) => setCustomColor(e.target.value)}
+                          className="w-32 px-2.5 py-1 bg-neutral-800 border border-neutral-700 rounded text-xs font-mono text-neutral-200"
+                        />
+                      </div>
+                    )}
                   </div>
 
-                  {previewTab === "visual" ? (
-                    <>
-                      <div className="flex flex-col gap-3">
-                        <div className="flex items-center justify-between text-xs text-neutral-300">
-                          <span>Размеры (Ширина × Высота):</span>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() =>
-                                setLockAspectRatio(!lockAspectRatio)
-                              }
-                              className={`px-2 py-0.5 rounded text-[11px] border transition cursor-pointer flex items-center gap-1 ${
-                                lockAspectRatio
-                                  ? "bg-blue-600/20 border-blue-500 text-blue-300 font-semibold"
-                                  : "bg-neutral-800 border-neutral-700 text-neutral-400"
-                              }`}
-                            >
-                              {lockAspectRatio
-                                ? "🔒 Пропорции зафиксированы"
-                                : "🔓 Свободные размеры"}
-                            </button>
-                            <span className="font-mono text-blue-400 font-semibold">
-                              {targetWidth} × {targetHeight} px
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="flex flex-col gap-1.5">
-                            <div className="flex justify-between text-[11px] text-neutral-400">
-                              <span>Высота (Height):</span>
-                              <span className="font-mono text-neutral-200">
-                                {targetHeight}px
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="range"
-                                min="12"
-                                max="120"
-                                step="1"
-                                value={targetHeight}
-                                onChange={(e) =>
-                                  handleHeightChange(
-                                    parseInt(e.target.value, 10),
-                                  )
-                                }
-                                className="flex-1 h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                              />
-                              <input
-                                type="number"
-                                min="8"
-                                max="512"
-                                value={targetHeight}
-                                onChange={(e) =>
-                                  handleHeightChange(
-                                    parseInt(e.target.value, 10) || 16,
-                                  )
-                                }
-                                className="w-14 px-1.5 py-0.5 bg-neutral-800 border border-neutral-700 rounded text-xs font-mono text-neutral-200 text-center outline-none focus:border-blue-500"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="flex flex-col gap-1.5">
-                            <div className="flex justify-between text-[11px] text-neutral-400">
-                              <span>Ширина (Width):</span>
-                              <span className="font-mono text-neutral-200">
-                                {targetWidth}px
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="range"
-                                min="12"
-                                max="160"
-                                step="1"
-                                value={targetWidth}
-                                onChange={(e) =>
-                                  handleWidthChange(
-                                    parseInt(e.target.value, 10),
-                                  )
-                                }
-                                className="flex-1 h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                              />
-                              <input
-                                type="number"
-                                min="8"
-                                max="512"
-                                value={targetWidth}
-                                onChange={(e) =>
-                                  handleWidthChange(
-                                    parseInt(e.target.value, 10) || 16,
-                                  )
-                                }
-                                className="w-14 px-1.5 py-0.5 bg-neutral-800 border border-neutral-700 rounded text-xs font-mono text-neutral-200 text-center outline-none focus:border-blue-500"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                          <span className="text-[11px] text-neutral-500 mr-1">
-                            Быстрый размер:
-                          </span>
-                          {PRESET_HEIGHTS.map((h) => (
-                            <button
-                              key={h}
-                              onClick={() => handleHeightChange(h)}
-                              className={`px-2 py-0.5 rounded text-[11px] font-mono transition cursor-pointer ${
-                                targetHeight === h
-                                  ? "bg-blue-600 text-white font-bold"
-                                  : "bg-neutral-800 hover:bg-neutral-700 text-neutral-300"
-                              }`}
-                            >
-                              {h}px
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col gap-2 pt-2 border-t border-neutral-800/80">
-                        <span className="text-xs text-neutral-300 font-medium">
-                          Цветовая палитра:
-                        </span>
-                        <div className="grid grid-cols-3 gap-2">
-                          <button
-                            onClick={() => setColorMode("original")}
-                            className={`px-3 py-2 rounded-lg border text-left text-xs transition cursor-pointer ${
-                              colorMode === "original"
-                                ? "bg-emerald-600/15 border-emerald-500 text-emerald-300 font-semibold"
-                                : "bg-neutral-800 border-neutral-700 text-neutral-400 hover:text-neutral-200"
-                            }`}
-                          >
-                            🎨 Оригинал (1:1)
-                            <div className="text-[10px] text-neutral-500 font-normal mt-0.5">
-                              Без изменений цветов
-                            </div>
-                          </button>
-
-                          <button
-                            onClick={() => setColorMode("currentcolor")}
-                            className={`px-3 py-2 rounded-lg border text-left text-xs transition cursor-pointer ${
-                              colorMode === "currentcolor"
-                                ? "bg-blue-600/15 border-blue-500 text-blue-300 font-semibold"
-                                : "bg-neutral-800 border-neutral-700 text-neutral-400 hover:text-neutral-200"
-                            }`}
-                          >
-                            🔤 currentColor
-                            <div className="text-[10px] text-neutral-500 font-normal mt-0.5">
-                              Цвет текста родителя
-                            </div>
-                          </button>
-
-                          <button
-                            onClick={() => setColorMode("custom")}
-                            className={`px-3 py-2 rounded-lg border text-left text-xs transition cursor-pointer ${
-                              colorMode === "custom"
-                                ? "bg-purple-600/15 border-purple-500 text-purple-300 font-semibold"
-                                : "bg-neutral-800 border-neutral-700 text-neutral-400 hover:text-neutral-200"
-                            }`}
-                          >
-                            🎯 Свой цвет
-                            <div className="text-[10px] text-neutral-500 font-normal mt-0.5">
-                              Пользовательский цвет
-                            </div>
-                          </button>
-                        </div>
-
-                        {colorMode === "custom" && (
-                          <div className="flex items-center gap-3 pt-1">
-                            <input
-                              type="color"
-                              value={customColor}
-                              onChange={(e) => setCustomColor(e.target.value)}
-                              className="w-8 h-8 rounded border border-neutral-700 bg-neutral-800 cursor-pointer"
-                            />
-                            <input
-                              type="text"
-                              value={customColor}
-                              onChange={(e) => setCustomColor(e.target.value)}
-                              className="w-32 px-2.5 py-1 bg-neutral-800 border border-neutral-700 rounded text-xs font-mono text-neutral-200"
-                            />
-                          </div>
-                        )}
-                      </div>
-
-                      {outputMode === "inline-wrapper" && (
-                        <div className="flex flex-col gap-1 pt-2 border-t border-neutral-800/80">
-                          <label className="text-xs text-neutral-400">
-                            CSS класс обёртки &lt;i&gt;:
-                          </label>
-                          <input
-                            type="text"
-                            value={wrapperClass}
-                            onChange={(e) => setWrapperClass(e.target.value)}
-                            className="w-full px-3 py-1.5 bg-neutral-800 border border-neutral-700 rounded-lg text-xs text-neutral-200 font-mono outline-none focus:border-blue-500"
-                          />
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="flex flex-col gap-2">
-                      <div className="max-h-[260px] overflow-y-auto no-scrollbar bg-neutral-950 p-3 rounded-lg border border-neutral-800">
-                        <pre className="text-[11px] font-mono text-emerald-400 whitespace-pre-wrap break-all select-all">
-                          {JSON.stringify(
-                            finalRootNode ? [finalRootNode] : [],
-                            null,
-                            2,
-                          )}
-                        </pre>
-                      </div>
+                  {outputMode === "inline-wrapper" && (
+                    <div className="flex flex-col gap-1 pt-2 border-t border-neutral-800/80">
+                      <label className="text-xs text-neutral-400">
+                        CSS класс обёртки &lt;i&gt;:
+                      </label>
+                      <input
+                        type="text"
+                        value={wrapperClass}
+                        onChange={(e) => setWrapperClass(e.target.value)}
+                        className="w-full px-3 py-1.5 bg-neutral-800 border border-neutral-700 rounded-lg text-xs text-neutral-200 font-mono outline-none focus:border-blue-500"
+                      />
                     </div>
                   )}
                 </div>
@@ -986,24 +875,33 @@ export default function ModalAddSvg({
             )}
           </div>
 
-          <div className="w-full max-w-4xl flex items-center justify-end gap-3 pt-4 border-t border-neutral-800">
-            <button
-              onClick={() => setIsOpen(false)}
-              className="px-5 py-2.5 rounded-xl border border-neutral-700 text-neutral-300 hover:bg-neutral-800 text-sm font-medium transition cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              disabled={!finalRootNode}
-              onClick={handleSave}
-              className={`px-6 py-2.5 rounded-xl text-sm font-semibold transition shadow-lg cursor-pointer ${
-                finalRootNode
-                  ? "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/30 active:scale-95"
-                  : "bg-neutral-800 text-neutral-500 cursor-not-allowed border border-neutral-700/50"
-              }`}
-            >
-              Save to Database
-            </button>
+          {/* Нижний бар сохранения */}
+          <div className="w-full max-w-5xl flex items-center justify-between pt-4 border-t border-neutral-800">
+            <span className="text-xs text-neutral-500">
+              {selectedCount > 0
+                ? `Готово к сохранению: ${selectedCount} шт.`
+                : "Выберите или загрузите SVG"}
+            </span>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsOpen(false)}
+                className="px-5 py-2.5 rounded-xl border border-neutral-700 text-neutral-300 hover:bg-neutral-800 text-sm font-medium transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={selectedCount === 0}
+                onClick={handleSave}
+                className={`px-6 py-2.5 rounded-xl text-sm font-semibold transition shadow-lg cursor-pointer ${
+                  selectedCount > 0
+                    ? "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/30 active:scale-95"
+                    : "bg-neutral-800 text-neutral-500 cursor-not-allowed border border-neutral-700/50"
+                }`}
+              >
+                Save {selectedCount > 0 ? `(${selectedCount})` : ""} to Database
+              </button>
+            </div>
           </div>
         </motion.div>
       )}

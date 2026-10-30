@@ -10,11 +10,13 @@ export interface ElementFolder {
 
 export const ROOT_TAGS: ElementItem[] = [
   { name: "div", path: "/json/div.json" },
-  { name: "section-container", path: "/json/section_container_wrap.json" },
+  { name: "sec-con-wrap", path: "/json/section_container_wrap.json" },
   { name: "p", path: "/json/p.json" },
   { name: "span", path: "/json/span.json" },
   { name: "a", path: "/json/a.json" },
   { name: "button", path: "/json/button.json" },
+  { name: "ul", path: "/json/ul.json" },
+  { name: "li", path: "/json/li.json" },
   { name: "h1", path: "/json/h1.json" },
   { name: "h2", path: "/json/h2.json" },
   { name: "h3", path: "/json/h3.json" },
@@ -35,9 +37,9 @@ export const ROOT_TAGS: ElementItem[] = [
   { name: "grid-300-1fr", path: "/json/grid-300-1fr.json" },
   { name: "grid-auto-col", path: "/json/grid-auto-col.json" },
   { name: "grid-minmax", path: "/json/grid-minmax.json" },
-  { name: "ul", path: "/json/ul.json" },
+
   { name: "ol", path: "/json/ol.json" },
-  { name: "li", path: "/json/li.json" },
+
   { name: "img", path: "/json/img.json" },
   { name: "svg", path: "/json/svg.json" },
   { name: "label", path: "/json/label.json" },
@@ -88,7 +90,10 @@ export const ELEMENT_FOLDERS: ElementFolder[] = [
       { name: "f-number", path: "/json/inputs/f-number.json" },
       { name: "fieldset", path: "/json/inputs/fieldset.json" },
       { name: "fieldset-radio", path: "/json/inputs/fieldset-radio.json" },
-      { name: "fildset-input-data", path: "/json/inputs/fildset-input-data.json" },
+      {
+        name: "fildset-input-data",
+        path: "/json/inputs/fildset-input-data.json",
+      },
       { name: "fildset-rating", path: "/json/inputs/fildset-rating.json" },
       { name: "range-wrap-js", path: "/json/inputs/range-wrap-js.json" },
     ],
@@ -106,7 +111,10 @@ export const ELEMENT_FOLDERS: ElementFolder[] = [
       { name: "tabs-horisontal", path: "/json/sections/tabs-horisontal.json" },
       { name: "tab-uno", path: "/json/sections/tab-uno.json" },
       { name: "tab-hover", path: "/json/sections/tab-hover.json" },
-      { name: "tab-hover-horisontal", path: "/json/sections/tab-hover-horisontal.json" },
+      {
+        name: "tab-hover-horisontal",
+        path: "/json/sections/tab-hover-horisontal.json",
+      },
       { name: "custom-select", path: "/json/sections/custom-select.json" },
       { name: "pagination", path: "/json/sections/pagination.json" },
       { name: "soc", path: "/json/sections/soc.json" },
@@ -120,14 +128,32 @@ export const ELEMENT_FOLDERS: ElementFolder[] = [
       { name: "slider", path: "/json/sliders/slider.json" },
       { name: "double-slider", path: "/json/sliders/double-slider.json" },
       { name: "fade-slider", path: "/json/sliders/fade-slider.json" },
-      { name: "slider-last-flexible", path: "/json/sliders/slider-last-flexible.json" },
+      {
+        name: "slider-last-flexible",
+        path: "/json/sliders/slider-last-flexible.json",
+      },
       { name: "carousel", path: "/json/sliders/carousel.json" },
       { name: "bunner-slider", path: "/json/sliders/bunner-slider.json" },
-      { name: "swiper-center-scale", path: "/json/sliders/swiper-center-scale.json" },
-      { name: "swiper-indicator-uno", path: "/json/sliders/swiper-indicator-uno.json" },
-      { name: "swiper-indicator-numers", path: "/json/sliders/swiper-indicator-numers.json" },
-      { name: "swiper-indicator-dinamic", path: "/json/sliders/swiper-indicator-dinamic.json" },
-      { name: "swiper-indicator-multy", path: "/json/sliders/swiper-indicator-multy.json" },
+      {
+        name: "swiper-center-scale",
+        path: "/json/sliders/swiper-center-scale.json",
+      },
+      {
+        name: "swiper-indicator-uno",
+        path: "/json/sliders/swiper-indicator-uno.json",
+      },
+      {
+        name: "swiper-indicator-numers",
+        path: "/json/sliders/swiper-indicator-numers.json",
+      },
+      {
+        name: "swiper-indicator-dinamic",
+        path: "/json/sliders/swiper-indicator-dinamic.json",
+      },
+      {
+        name: "swiper-indicator-multy",
+        path: "/json/sliders/swiper-indicator-multy.json",
+      },
     ],
   },
   {
@@ -136,8 +162,14 @@ export const ELEMENT_FOLDERS: ElementFolder[] = [
       { name: "gallery", path: "/json/galleryes/gallery.json" },
       { name: "gallery-slider", path: "/json/galleryes/gallery-slider.json" },
       { name: "gallery-popup", path: "/json/galleryes/gallery-popup.json" },
-      { name: "gallery-slider-popup", path: "/json/galleryes/gallery-slider-popup.json" },
-      { name: "video-gallery-slider", path: "/json/galleryes/video-gallery-slider.json" },
+      {
+        name: "gallery-slider-popup",
+        path: "/json/galleryes/gallery-slider-popup.json",
+      },
+      {
+        name: "video-gallery-slider",
+        path: "/json/galleryes/video-gallery-slider.json",
+      },
     ],
   },
 ];

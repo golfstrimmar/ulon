@@ -18,6 +18,69 @@ export function sanitizeCssBody(css: string): string {
   return css.replace(/\}\s*;/g, "}").trim();
 }
 
+export const getNodeKey = (node: any): string => node?._key || node?.id || "";
+/** Рекурсивно находит узел в дереве */
+export function findNodeInTree(nodes: any[], key: string): any | null {
+  if (!Array.isArray(nodes)) return null;
+  for (const n of nodes) {
+    if (getNodeKey(n) === key) return n;
+    if (Array.isArray(n.children)) {
+      const f = findNodeInTree(n.children, key);
+      if (f) return f;
+    }
+  }
+  return null;
+}
+/** Рекурсивно собирает ключ самого узла и ВСЕХ его потомков на любую глубину */
+export function collectAllDescendantKeys(node: any): string[] {
+  if (!node) return [];
+  const keys: string[] = [];
+  function walk(n: any) {
+    const k = getNodeKey(n);
+    if (k) keys.push(k);
+    if (Array.isArray(n?.children)) {
+      for (const child of n.children) {
+        walk(child);
+      }
+    }
+  }
+  walk(node);
+  return keys;
+}
+
+/** Удаляет указанные ключи из дерева на любую глубину */
+export function removeNodesByKeys(nodes: any[], keys: Set<string>): any[] {
+  if (!Array.isArray(nodes)) return [];
+  return nodes
+    .filter((n) => !keys.has(getNodeKey(n)))
+    .map((n) => {
+      if (Array.isArray(n.children)) {
+        return {
+          ...n,
+          children: removeNodesByKeys(n.children, keys),
+        };
+      }
+      return n;
+    });
+}
+
+/** Извлекает ноды с указанными ключами */
+export function extractNodesByKeys(nodes: any[], keys: Set<string>): any[] {
+  if (!Array.isArray(nodes)) return [];
+  const found: any[] = [];
+  function walk(list: any[]) {
+    for (const item of list) {
+      if (keys.has(getNodeKey(item))) {
+        found.push(item);
+      } else if (Array.isArray(item.children)) {
+        walk(item.children);
+      }
+    }
+  }
+  walk(nodes);
+  return found;
+}
+
 export function isRowContainer(node: HtmlNode): boolean {
   const raw = (node.class || "").toLowerCase();
   const cls = raw.replace(/[-_]/g, " ");

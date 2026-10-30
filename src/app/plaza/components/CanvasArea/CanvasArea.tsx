@@ -2,87 +2,30 @@
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import dynamic from "next/dynamic";
-import { motion, AnimatePresence } from "framer-motion";
 import {
-  ROOT_TAGS,
-  ELEMENT_FOLDERS,
-} from "@/app/plaza/components/CanvasArea/elementsManifest";
+  ArrowLeftCircleIcon,
+  ArrowRightCircleIcon,
+} from "@heroicons/react/24/outline";
 import { useCanvasArea } from "@/app/plaza/components/CanvasArea/hooks/useCanvasArea";
 import { NodeCard } from "@/app/plaza/components/CanvasArea/components/NodeCard";
 import { DropGap } from "@/app/plaza/components/CanvasArea/components/DropGap";
-import ButtonAddImg from "@/app/plaza/components/CanvasArea/components/ButtonAddImg";
+import {
+  findNodeInTree,
+  getNodeKey,
+  collectAllDescendantKeys,
+  removeNodesByKeys,
+  extractNodesByKeys,
+} from "@/app/plaza/components/CanvasArea/models/canvasModel";
+
 import type { HtmlNode } from "@/types/HtmlNode";
+import AsideCanvas from "@/app/plaza/components/CanvasArea/components/AsideCanvas/AsideCanvas";
 
 const ModalNodeProperties = dynamic(
   () => import("./components/ModalNodeProperties"),
   { ssr: false },
 );
 
-const getNodeKey = (node: any): string => node?._key || node?.id || "";
-
-/** Рекурсивно находит узел в дереве */
-function findNodeInTree(nodes: any[], key: string): any | null {
-  if (!Array.isArray(nodes)) return null;
-  for (const n of nodes) {
-    if (getNodeKey(n) === key) return n;
-    if (Array.isArray(n.children)) {
-      const f = findNodeInTree(n.children, key);
-      if (f) return f;
-    }
-  }
-  return null;
-}
-
-/** Рекурсивно собирает ключ самого узла и ВСЕХ его потомков на любую глубину */
-function collectAllDescendantKeys(node: any): string[] {
-  if (!node) return [];
-  const keys: string[] = [];
-  function walk(n: any) {
-    const k = getNodeKey(n);
-    if (k) keys.push(k);
-    if (Array.isArray(n?.children)) {
-      for (const child of n.children) {
-        walk(child);
-      }
-    }
-  }
-  walk(node);
-  return keys;
-}
-
-/** Удаляет указанные ключи из дерева на любую глубину */
-function removeNodesByKeys(nodes: any[], keys: Set<string>): any[] {
-  if (!Array.isArray(nodes)) return [];
-  return nodes
-    .filter((n) => !keys.has(getNodeKey(n)))
-    .map((n) => {
-      if (Array.isArray(n.children)) {
-        return {
-          ...n,
-          children: removeNodesByKeys(n.children, keys),
-        };
-      }
-      return n;
-    });
-}
-
-/** Извлекает ноды с указанными ключами */
-function extractNodesByKeys(nodes: any[], keys: Set<string>): any[] {
-  if (!Array.isArray(nodes)) return [];
-  const found: any[] = [];
-  function walk(list: any[]) {
-    for (const item of list) {
-      if (keys.has(getNodeKey(item))) {
-        found.push(item);
-      } else if (Array.isArray(item.children)) {
-        walk(item.children);
-      }
-    }
-  }
-  walk(nodes);
-  return found;
-}
-
+//  ─────🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹──────
 export function CanvasArea() {
   const [isSplit, setIsSplit] = useState(false);
   // Ключи нод, перенесенных в правую колонку
@@ -94,9 +37,6 @@ export function CanvasArea() {
   const {
     containerRef,
     currentJson,
-    canUndo,
-    canRedo,
-    openFolders,
     collapsedKeys,
     hoveredKey,
     clickedKey,
@@ -115,11 +55,6 @@ export function CanvasArea() {
     setEditText,
     setHoveredKey,
     setClickedKey,
-    handleUndo,
-    handleRedo,
-    handleClear,
-    toggleFolder,
-    handleAppendFromPath,
     handlePointerDownNode,
     handleToggleCollapse,
     handleClickNode,
@@ -128,9 +63,6 @@ export function CanvasArea() {
     handleSaveScriptJs,
     handleAddClassToNode,
     updateAndPersistScss,
-    isCollapsible,
-    collapsedAll,
-    isAllCollapsed,
   } = useCanvasArea();
 
   const draggedNodeRef = useRef(draggedNode);
@@ -149,7 +81,7 @@ export function CanvasArea() {
     return extractNodesByKeys(currentJson, rightKeys);
   }, [currentJson, rightKeys, isSplit]);
 
-  // Отслеживаем перетаскивание между левой и правой колонками с полной поддержкой всех уровней вложенности
+  // Отслеживаем перетаскивание между левой и правой колонками
   useEffect(() => {
     if (!isSplit) return;
 
@@ -175,14 +107,12 @@ export function CanvasArea() {
       const overRight = isInside(rightEl);
       const overLeft = isInside(leftEl);
 
-      // Находим перетаскиваемый узел и собираем ключи ВСЕХ его потомков без ограничений по глубине
       const targetSubtree =
         draggedNodeRef.current || findNodeInTree(currentJson, activeKey);
       const allSubtreeKeys = targetSubtree
         ? collectAllDescendantKeys(targetSubtree)
         : [activeKey];
 
-      // Бросили в правую колонку -> переходит вправо целиком со ВСЕМИ потомками
       if (overRight) {
         setRightKeys((prev) => {
           const next = new Set(prev);
@@ -191,9 +121,7 @@ export function CanvasArea() {
           }
           return next;
         });
-      }
-      // Бросили в левую колонку -> возвращается влево целиком со ВСЕМИ потомками
-      else if (overLeft) {
+      } else if (overLeft) {
         setRightKeys((prev) => {
           const next = new Set(prev);
           for (const k of allSubtreeKeys) {
@@ -212,7 +140,6 @@ export function CanvasArea() {
 
   const toggleSplitMode = () => {
     if (isSplit) {
-      // При закрытии сплита все ноды объединяются обратно
       setRightKeys(new Set());
       setIsSplit(false);
     } else {
@@ -264,120 +191,9 @@ export function CanvasArea() {
   };
 
   return (
-    <div className="w-full flex gap-1 h-[calc(100vh-80px)] min-h-[500px] select-none">
+    <div className="w-full flex gap-1   select-none">
       {/* ЛЕВАЯ ПАНЕЛЬ С КНОПКАМИ */}
-      <aside className="w-48 shrink-0 bg-zinc-900 border border-zinc-800 rounded-sm p-1 flex flex-col justify-between shadow-xl select-none overflow-hidden">
-        <div className="space-y-2.5 flex-1 overflow-y-auto pr-1 min-h-0 custom-scrollbar">
-          {currentJson.length > 0 && (
-            <div>
-              <button type="button" onClick={handleClear} className="red-btn">
-                Clear
-              </button>
-            </div>
-          )}
-
-          <div className="space-y-1 border-b border-zinc-800 pb-2">
-            <div
-              className={`grid gap-1 ${isCollapsible ? "grid-cols-[2fr_1fr_2fr]" : "grid-cols-[2fr_2fr]"}`}
-            >
-              <button
-                type="button"
-                onClick={handleUndo}
-                disabled={!canUndo}
-                className="grey-btn btn"
-              >
-                <span>↶</span> Undo
-              </button>
-              {isCollapsible && (
-                <button
-                  onClick={() => collapsedAll()}
-                  className={`grey-btn btn flex flex-col !gap-0 !p-0 ${
-                    isAllCollapsed
-                      ? "opacity-40 cursor-not-allowed"
-                      : "opacity-100 cursor-pointer"
-                  }`}
-                  disabled={isAllCollapsed}
-                >
-                  <i className="text-[8px] ">↓</i>
-                  <i className="text-[8px] ">↑</i>
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={handleRedo}
-                disabled={!canRedo}
-                className="grey-btn btn"
-              >
-                <span>↷</span> Redo
-              </button>
-            </div>
-          </div>
-
-          <ButtonAddImg />
-          <div className="space-y-1">
-            {ELEMENT_FOLDERS.map((folder) => {
-              const isOpen = openFolders.has(folder.name);
-              return (
-                <div key={folder.name} className="space-y-1">
-                  <button
-                    type="button"
-                    onClick={() => toggleFolder(folder.name)}
-                    className="admin-btn !justify-between"
-                  >
-                    <span className="flex items-center gap-1.5 truncate">
-                      <span>{isOpen ? "📂" : "📁"}</span>
-                      <span className="font-mono">{folder.name}</span>
-                    </span>
-                    <span className="text-[12px] text-zinc-500 font-mono">
-                      {isOpen ? "−" : "+"}
-                    </span>
-                  </button>
-                  <AnimatePresence>
-                    {isOpen && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0, y: 0 }}
-                        animate={{ height: "auto", opacity: 1, y: 0 }}
-                        exit={{ height: 0, opacity: 0, y: 0 }}
-                        transition={{ duration: 0.2, ease: "easeInOut" }}
-                        className="pl-3 py-0.5 space-y-1 border-l border-zinc-800/80"
-                      >
-                        <div className="flex flex-col gap-1">
-                          {folder.items.map((item) => (
-                            <button
-                              type="button"
-                              key={item.path}
-                              onClick={() => handleAppendFromPath(item.path)}
-                              className="admin-btn"
-                            >
-                              {item.name}
-                            </button>
-                          ))}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="space-y-1 pt-1.5 border-t border-zinc-800">
-            <div className="grid grid-cols-2 gap-1">
-              {ROOT_TAGS.map((tag) => (
-                <button
-                  type="button"
-                  key={tag.path}
-                  onClick={() => handleAppendFromPath(tag.path)}
-                  className="admin-btn"
-                >
-                  {tag.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </aside>
+      <AsideCanvas />
 
       {/* РАБОЧАЯ ОБЛАСТЬ ХОЛСТА */}
       <div
@@ -385,18 +201,20 @@ export function CanvasArea() {
         className="plaza-workspace flex-1 relative bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl flex flex-col"
       >
         {/* ВЕРХНИЙ БАР */}
-        <div className="h-7 shrink-0 bg-zinc-900 border-b border-zinc-800 px-3 flex items-center justify-between text-xs text-zinc-400">
-          <span className="font-mono text-[11px]">Workspace</span>
+        <div className="h-7 shrink-0 bg-zinc-900 border-b border-zinc-800 pl-2 flex items-center justify-between text-xs text-zinc-400">
+          <span className="font-mono !text-[10px]">Workspace</span>
           <button
             type="button"
             onClick={toggleSplitMode}
-            className={`px-2 py-0.5 rounded text-[11px] font-mono transition-colors ${
-              isSplit
-                ? "bg-zinc-700 text-white"
-                : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
+            className={`px-2 py-0.5 rounded text-[11px] font-mono transition-colors pointer-pointer hover:bg-zinc-700 ${
+              isSplit ? " text-white" : "bg-zinc-800 text-zinc-300"
             }`}
           >
-            {isSplit ? "Close Split" : "Split"}
+            {isSplit ? (
+              <ArrowRightCircleIcon className="size-4" />
+            ) : (
+              <ArrowLeftCircleIcon className="size-4" />
+            )}
           </button>
         </div>
 
@@ -413,9 +231,9 @@ export function CanvasArea() {
                 <span>{leftNodes.length} items</span>
               </div>
             )}
-            <div className="plaza-inner w-full h-full overflow-auto custom-scrollbar p-1 pb-[500px]">
+            <div className="plaza-inner w-full h-full overflow-auto custom-scrollbar p-1 ">
               {leftNodes.length === 0 ? (
-                <div className="h-full min-h-[300px] flex items-center justify-center text-zinc-600 text-xs font-mono">
+                <div className="h-full  flex items-center justify-center text-zinc-600 text-xs font-mono">
                   Empty
                 </div>
               ) : (
@@ -437,10 +255,10 @@ export function CanvasArea() {
                 <span>{rightNodes.length} items</span>
               </div>
 
-              <div className="plaza-inner w-full h-full overflow-auto custom-scrollbar p-1 pb-[500px]">
+              <div className="plaza-inner w-full h-full overflow-auto custom-scrollbar p-1 ">
                 {rightNodes.length === 0 ? (
                   <div
-                    className={`w-full h-full min-h-[250px] border border-dashed rounded flex items-center justify-center text-xs font-mono transition-colors ${
+                    className={`w-full h-full  border border-dashed rounded flex items-center justify-center text-xs font-mono transition-colors ${
                       draggedNode
                         ? "border-zinc-500 text-zinc-300 bg-zinc-900/50"
                         : "border-zinc-800/50 text-zinc-700"

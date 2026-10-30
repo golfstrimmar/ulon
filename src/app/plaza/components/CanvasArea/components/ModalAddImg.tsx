@@ -15,68 +15,39 @@ interface ImageMetadata {
   height: number;
 }
 
-interface CropRect {
-  x: number; // percentage (0 - 100)
-  y: number;
-  w: number;
-  h: number;
+interface ImageItem {
+  id: string;
+  name: string;
+  originalBase64: string;
+  originalMeta: ImageMetadata;
+  activeBase64: string;
+  activeMeta: ImageMetadata;
+  selected: boolean;
 }
-
-type DragMode = "move" | "nw" | "ne" | "sw" | "se" | null;
 
 interface ModalAddImgProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  onSaveNode?: (node: HtmlNode) => void;
+  onSaveNodes?: (nodes: HtmlNode[]) => void;
 }
 
 export default function ModalAddImg({
   isOpen,
   setIsOpen,
-  onSaveNode,
+  onSaveNodes,
 }: ModalAddImgProps) {
-  // Первозданный загруженный файл (для отката)
-  const [masterRawBase64, setMasterRawBase64] = useState<string | null>(null);
+  // Список всех загруженных картинок
+  const [imageItems, setImageItems] = useState<ImageItem[]>([]);
 
-  // Текущее рабочее изображение (может быть уже обрезанным)
-  const [originalBase64, setOriginalBase64] = useState<string | null>(null);
-  const [originalMeta, setOriginalMeta] = useState<ImageMetadata | null>(null);
-
-  // Сжатый финальный результат
-  const [activeBase64, setActiveBase64] = useState<string | null>(null);
-  const [activeMeta, setActiveMeta] = useState<ImageMetadata | null>(null);
-
-  // Настройки компрессии
+  // Пакетные настройки сжатия
   const [quality, setQuality] = useState<number>(0.8);
   const [scale, setScale] = useState<number>(1);
   const [outputFormat, setOutputFormat] = useState<string>("image/webp");
 
-  // Состояние кадрирования (Crop)
-  const [isCropping, setIsCropping] = useState<boolean>(false);
-  const [cropRect, setCropRect] = useState<CropRect>({
-    x: 10,
-    y: 10,
-    w: 80,
-    h: 80,
-  });
-  const [dragMode, setDragMode] = useState<DragMode>(null);
-
-  const [altText, setAltText] = useState<string>("image");
-  const [isDragging, setIsDragging] = useState(false);
-
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [isCompressing, setIsCompressing] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cropContainerRef = useRef<HTMLDivElement>(null);
-  const dragStartRef = useRef<{
-    mouseX: number;
-    mouseY: number;
-    rect: CropRect;
-  }>({
-    mouseX: 0,
-    mouseY: 0,
-    rect: { x: 10, y: 10, w: 80, h: 80 },
-  });
 
-  // Helper: Format bytes
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return "0 B";
     const k = 1024;
@@ -90,313 +61,282 @@ export default function ModalAddImg({
     return Math.round((clean.length * 3) / 4);
   };
 
-  // 🔹 Lock body scroll
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "unset";
-      handleReset();
+      handleResetAll();
     }
-
     return () => {
       document.body.style.overflow = "unset";
     };
   }, [isOpen]);
 
-  // Client-side Canvas Image Compression
-  const compressImage = useCallback(
+  // Асинхронное сжатие одного изображения через Canvas
+  const compressSingleImage = useCallback(
     (
       srcBase64: string,
       targetQuality: number,
       targetScale: number,
       mimeType: string,
-    ) => {
-      const img = new Image();
-      img.src = srcBase64;
-      img.onload = () => {
-        const targetWidth = Math.round(img.naturalWidth * targetScale);
-        const targetHeight = Math.round(img.naturalHeight * targetScale);
+    ): Promise<{ activeBase64: string; activeMeta: ImageMetadata }> => {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.src = srcBase64;
+        img.onload = () => {
+          const targetWidth = Math.max(
+            1,
+            Math.round(img.naturalWidth * targetScale),
+          );
+          const targetHeight = Math.max(
+            1,
+            Math.round(img.naturalHeight * targetScale),
+          );
 
-        const canvas = document.createElement("canvas");
-        canvas.width = targetWidth;
-        canvas.height = targetHeight;
-        const ctx = canvas.getContext("2d");
+          const canvas = document.createElement("canvas");
+          canvas.width = targetWidth;
+          canvas.height = targetHeight;
+          const ctx = canvas.getContext("2d");
 
-        if (!ctx) return;
+          if (!ctx) {
+            resolve({
+              activeBase64: srcBase64,
+              activeMeta: {
+                format: "IMAGE",
+                bytes: getBase64Size(srcBase64),
+                sizeFormatted: formatFileSize(getBase64Size(srcBase64)),
+                dimensions: `${img.naturalWidth} × ${img.naturalHeight} px`,
+                width: img.naturalWidth,
+                height: img.naturalHeight,
+              },
+            });
+            return;
+          }
 
-        if (mimeType === "image/jpeg") {
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(0, 0, targetWidth, targetHeight);
-        }
+          if (mimeType === "image/jpeg") {
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, targetWidth, targetHeight);
+          }
 
-        ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+          ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
 
-        const compressedDataUrl = canvas.toDataURL(mimeType, targetQuality);
-        const bytes = getBase64Size(compressedDataUrl);
-        const formatLabel = mimeType.replace("image/", "").toUpperCase();
+          const compressedDataUrl = canvas.toDataURL(mimeType, targetQuality);
+          const bytes = getBase64Size(compressedDataUrl);
+          const formatLabel = mimeType.replace("image/", "").toUpperCase();
 
-        setActiveBase64(compressedDataUrl);
-        setActiveMeta({
-          format: formatLabel,
-          bytes,
-          sizeFormatted: formatFileSize(bytes),
-          dimensions: `${targetWidth} × ${targetHeight} px`,
-          width: targetWidth,
-          height: targetHeight,
-        });
-      };
+          resolve({
+            activeBase64: compressedDataUrl,
+            activeMeta: {
+              format: formatLabel,
+              bytes,
+              sizeFormatted: formatFileSize(bytes),
+              dimensions: `${targetWidth} × ${targetHeight} px`,
+              width: targetWidth,
+              height: targetHeight,
+            },
+          });
+        };
+      });
     },
     [],
   );
 
-  // Пересчет сжатия
-  useEffect(() => {
-    if (originalBase64 && !isCropping) {
-      compressImage(originalBase64, quality, scale, outputFormat);
-    }
-  }, [quality, scale, outputFormat, originalBase64, isCropping, compressImage]);
+  // Пакетный пересчет компрессии для всех загруженных изображений при изменении настроек
+  const recompressAll = useCallback(
+    async (items: ImageItem[], q: number, s: number, fmt: string) => {
+      if (items.length === 0) return;
+      setIsCompressing(true);
 
-  // Загрузка файла
-  const processFile = (file: File) => {
-    if (!file || !file.type.startsWith("image/")) {
-      alert("Please select a valid image file (PNG, JPG, WebP, etc.)");
+      const updated = await Promise.all(
+        items.map(async (item) => {
+          const { activeBase64, activeMeta } = await compressSingleImage(
+            item.originalBase64,
+            q,
+            s,
+            fmt,
+          );
+          return {
+            ...item,
+            activeBase64,
+            activeMeta,
+          };
+        }),
+      );
+
+      setImageItems(updated);
+      setIsCompressing(false);
+    },
+    [compressSingleImage],
+  );
+
+  // Срабатывает при движении ползунков Quality, Scale или смене формата
+  useEffect(() => {
+    if (imageItems.length > 0) {
+      const timeout = setTimeout(() => {
+        recompressAll(imageItems, quality, scale, outputFormat);
+      }, 150);
+      return () => clearTimeout(timeout);
+    }
+  }, [quality, scale, outputFormat]);
+
+  // Обработка пачки файлов
+  const processFiles = (files: FileList | File[]) => {
+    const validFiles = Array.from(files).filter((f) =>
+      f.type.startsWith("image/"),
+    );
+    if (validFiles.length === 0) {
+      alert("Please select valid image files (PNG, JPG, WebP, etc.)");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        const dataUrl = reader.result;
-        setMasterRawBase64(dataUrl);
-        setOriginalBase64(dataUrl);
+    const readers = validFiles.map((file) => {
+      return new Promise<ImageItem | null>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = async () => {
+          if (typeof reader.result === "string") {
+            const dataUrl = reader.result;
+            const img = new Image();
+            img.src = dataUrl;
+            img.onload = async () => {
+              const format = file.type
+                .replace("image/", "")
+                .replace("+xml", "")
+                .toUpperCase();
 
-        const cleanName = file.name.replace(/\.[^/.]+$/, "");
-        setAltText(cleanName || "image");
+              const origMeta: ImageMetadata = {
+                format: format || "IMAGE",
+                bytes: file.size,
+                sizeFormatted: formatFileSize(file.size),
+                dimensions: `${img.naturalWidth} × ${img.naturalHeight} px`,
+                width: img.naturalWidth,
+                height: img.naturalHeight,
+              };
 
-        const img = new Image();
-        img.src = dataUrl;
-        img.onload = () => {
-          const format = file.type
-            .replace("image/", "")
-            .replace("+xml", "")
-            .toUpperCase();
+              const { activeBase64, activeMeta } = await compressSingleImage(
+                dataUrl,
+                quality,
+                scale,
+                outputFormat,
+              );
 
-          const initialMeta: ImageMetadata = {
-            format: format || "IMAGE",
-            bytes: file.size,
-            sizeFormatted: formatFileSize(file.size),
-            dimensions: `${img.naturalWidth} × ${img.naturalHeight} px`,
-            width: img.naturalWidth,
-            height: img.naturalHeight,
-          };
-
-          setOriginalMeta(initialMeta);
-          compressImage(dataUrl, quality, scale, outputFormat);
+              resolve({
+                id: `img_item_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+                name: file.name,
+                originalBase64: dataUrl,
+                originalMeta: origMeta,
+                activeBase64,
+                activeMeta,
+                selected: true,
+              });
+            };
+          } else {
+            resolve(null);
+          }
         };
-      }
-    };
-    reader.readAsDataURL(file);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(file);
+      });
+    });
+
+    Promise.all(readers).then((results) => {
+      const added = results.filter(Boolean) as ImageItem[];
+      setImageItems((prev) => [...prev, ...added]);
+    });
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) processFile(file);
+    if (e.target.files && e.target.files.length > 0) {
+      processFiles(e.target.files);
+    }
   };
 
-  // 🔹 Логика перетаскивания и ресайза рамки кадрирования
-  const handlePointerDown = (mode: DragMode, e: React.PointerEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragMode(mode);
-    dragStartRef.current = {
-      mouseX: e.clientX,
-      mouseY: e.clientY,
-      rect: { ...cropRect },
-    };
-  };
-
-  useEffect(() => {
-    if (!dragMode) return;
-
-    const onPointerMove = (e: PointerEvent) => {
-      if (!cropContainerRef.current) return;
-      const bounds = cropContainerRef.current.getBoundingClientRect();
-      const deltaX =
-        ((e.clientX - dragStartRef.current.mouseX) / bounds.width) * 100;
-      const deltaY =
-        ((e.clientY - dragStartRef.current.mouseY) / bounds.height) * 100;
-      const init = dragStartRef.current.rect;
-
-      setCropRect(() => {
-        let { x, y, w, h } = init;
-
-        if (dragMode === "move") {
-          x = Math.max(0, Math.min(100 - w, x + deltaX));
-          y = Math.max(0, Math.min(100 - h, y + deltaY));
-        } else if (dragMode === "se") {
-          w = Math.max(5, Math.min(100 - x, init.w + deltaX));
-          h = Math.max(5, Math.min(100 - y, init.h + deltaY));
-        } else if (dragMode === "sw") {
-          const newW = Math.max(5, Math.min(init.x + init.w, init.w - deltaX));
-          x = init.x + (init.w - newW);
-          w = newW;
-          h = Math.max(5, Math.min(100 - y, init.h + deltaY));
-        } else if (dragMode === "ne") {
-          w = Math.max(5, Math.min(100 - x, init.w + deltaX));
-          const newH = Math.max(5, Math.min(init.y + init.h, init.h - deltaY));
-          y = init.y + (init.h - newH);
-          h = newH;
-        } else if (dragMode === "nw") {
-          const newW = Math.max(5, Math.min(init.x + init.w, init.w - deltaX));
-          x = init.x + (init.w - newW);
-          w = newW;
-          const newH = Math.max(5, Math.min(init.y + init.h, init.h - deltaY));
-          y = init.y + (init.h - newH);
-          h = newH;
-        }
-
-        return { x, y, w, h };
-      });
-    };
-
-    const onPointerUp = () => setDragMode(null);
-
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", onPointerUp);
-    return () => {
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", onPointerUp);
-    };
-  }, [dragMode]);
-
-  // 🔹 Применение обрезки через Canvas
-  const handleApplyCrop = () => {
-    if (!originalBase64) return;
-
-    const img = new Image();
-    img.src = originalBase64;
-    img.onload = () => {
-      const cropX = (cropRect.x / 100) * img.naturalWidth;
-      const cropY = (cropRect.y / 100) * img.naturalHeight;
-      const cropW = (cropRect.w / 100) * img.naturalWidth;
-      const cropH = (cropRect.h / 100) * img.naturalHeight;
-
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.round(cropW);
-      canvas.height = Math.round(cropH);
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      ctx.drawImage(
-        img,
-        cropX,
-        cropY,
-        cropW,
-        cropH,
-        0,
-        0,
-        canvas.width,
-        canvas.height,
-      );
-
-      const croppedBase64 = canvas.toDataURL("image/png");
-      const bytes = getBase64Size(croppedBase64);
-
-      setOriginalBase64(croppedBase64);
-      setOriginalMeta({
-        format: "PNG",
-        bytes,
-        sizeFormatted: formatFileSize(bytes),
-        dimensions: `${canvas.width} × ${canvas.height} px`,
-        width: canvas.width,
-        height: canvas.height,
-      });
-
-      setIsCropping(false);
-      compressImage(croppedBase64, quality, scale, outputFormat);
-    };
-  };
-
-  // Откат к оригиналу до обрезки
-  const handleRevertToOriginal = () => {
-    if (!masterRawBase64) return;
-    setOriginalBase64(masterRawBase64);
-    setIsCropping(false);
-  };
-
-  const handleReset = () => {
-    setMasterRawBase64(null);
-    setOriginalBase64(null);
-    setOriginalMeta(null);
-    setActiveBase64(null);
-    setActiveMeta(null);
-    setIsCropping(false);
+  const handleResetAll = () => {
+    setImageItems([]);
     setQuality(0.8);
     setScale(1);
-    setAltText("image");
+    setOutputFormat("image/webp");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // ✅ Корректное добавление ноды к существующему дереву
+  const toggleItemSelect = (id: string) => {
+    setImageItems((prev) =>
+      prev.map((it) => (it.id === id ? { ...it, selected: !it.selected } : it)),
+    );
+  };
+
+  const removeItem = (id: string) => {
+    setImageItems((prev) => prev.filter((it) => it.id !== id));
+  };
+
+  const selectAll = (val: boolean) => {
+    setImageItems((prev) => prev.map((it) => ({ ...it, selected: val })));
+  };
+
+  // Сохранение всех выбранных изображений в базу данных
   const handleSave = async () => {
-    if (!activeBase64) return;
+    const selected = imageItems.filter((i) => i.selected);
+    if (selected.length === 0) return;
 
-    const key = `img_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const newNodes: HtmlNode[] = selected.map((item) => {
+      const key = `img_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const cleanAlt = item.name.replace(/\.[^/.]+$/, "");
 
-    const newNode: HtmlNode = {
-      tag: "img",
-      text: "",
-      class: "img-fluid",
-      style:
-        "max-width: 100%; height: auto; display: inline-block; vertical-align: middle;",
-      children: [],
-      attributes: {
-        alt: altText.trim() || "image",
-        src: activeBase64,
-        ...(activeMeta
-          ? {
-              width: activeMeta.width.toString(),
-              height: activeMeta.height.toString(),
-            }
-          : {}),
-      },
-      _key: key,
-    };
+      return {
+        tag: "img",
+        text: "",
+        class: "",
+        style:
+          "max-width: 100%; height: auto; display: inline-block; vertical-align: middle;",
+        children: [],
+        attributes: {
+          alt: cleanAlt || "image",
+          src: item.activeBase64,
+          width: item.activeMeta.width.toString(),
+          height: item.activeMeta.height.toString(),
+        },
+        _key: key,
+      };
+    });
 
     try {
-      // 1. Читаем текущее дерево из базы данных
       const existing = await getHtmlJson(DB_KEY).catch(() => null);
       const currentList: HtmlNode[] = existing
         ? Array.isArray(existing)
           ? existing
           : [existing]
         : [];
+      const nextList = [...currentList, ...newNodes];
 
-      // 2. Добавляем новую ноду в конец списка, сохраняя все существующие
-      const nextList = [...currentList, newNode];
-
-      // 3. Сохраняем полный обновленный массив
       await saveHtmlJson(DB_KEY, nextList);
 
-      // 4. Оповещаем CanvasArea и PreviewArea
       window.dispatchEvent(
         new CustomEvent("plaza-tree-updated", {
           detail: { nodes: nextList, source: "modal-add-img" },
         }),
       );
 
-      if (onSaveNode) onSaveNode(newNode);
+      if (onSaveNodes) onSaveNodes(newNodes);
       setIsOpen(false);
     } catch (e) {
       console.error("[ModalAddImg] Persist error:", e);
     }
   };
 
-  const savedPercent =
-    originalMeta && activeMeta && originalMeta.bytes > 0
+  // Статистика сжатия для всей пачки
+  const selectedItems = imageItems.filter((i) => i.selected);
+  const totalOriginalBytes = selectedItems.reduce(
+    (sum, i) => sum + i.originalMeta.bytes,
+    0,
+  );
+  const totalActiveBytes = selectedItems.reduce(
+    (sum, i) => sum + i.activeMeta.bytes,
+    0,
+  );
+  const totalSavedPercent =
+    totalOriginalBytes > 0
       ? Math.round(
-          ((originalMeta.bytes - activeMeta.bytes) / originalMeta.bytes) * 100,
+          ((totalOriginalBytes - totalActiveBytes) / totalOriginalBytes) * 100,
         )
       : 0;
 
@@ -408,36 +348,32 @@ export default function ModalAddImg({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2, ease: "easeInOut" }}
-          className="fixed inset-0 w-screen h-screen bg-black/98 z-50 overflow-y-auto no-scrollbar flex flex-col items-center justify-between p-6 sm:p-10"
+          className="fixed inset-0 w-screen h-screen bg-black/98 z-50 overflow-y-auto custom-scrollbar flex flex-col items-center justify-between p-6 sm:p-8"
         >
-          {/* Close button */}
           <div className="absolute top-6 right-8 z-10">
             <ButtonClose setClose={setIsOpen} />
           </div>
 
-          {/* Header */}
-          <div className="w-full text-center mt-2">
+          <div className="w-full text-center mt-1">
             <h2 className="text-2xl font-bold text-neutral-100 tracking-wide">
-              {isCropping ? "Crop Image" : "Add Image"}
+              Batch Add Images
             </h2>
-            <p className="text-sm text-neutral-400 mt-1">
-              {isCropping
-                ? "Drag the frame or corners to crop your image"
-                : "Upload, crop, optimize and add images to canvas"}
+            <p className="text-xs sm:text-sm text-neutral-400 mt-0.5">
+              Массовая загрузка картинок с оптимизацией и конвертацией в WebP
             </p>
           </div>
 
-          {/* Main workspace */}
-          <div className="w-full max-w-4xl my-auto flex flex-col items-center py-4">
+          <div className="w-full max-w-5xl my-auto flex flex-col items-center py-4">
             <input
               type="file"
               ref={fileInputRef}
               onChange={handleFileChange}
               accept="image/*"
+              multiple // 👈 Включен массовый выбор
               className="hidden"
             />
 
-            {!activeBase64 ? (
+            {imageItems.length === 0 ? (
               /* Dropzone */
               <div
                 onDragOver={(e) => {
@@ -448,11 +384,10 @@ export default function ModalAddImg({
                 onDrop={(e) => {
                   e.preventDefault();
                   setIsDragging(false);
-                  const file = e.dataTransfer.files?.[0];
-                  if (file) processFile(file);
+                  if (e.dataTransfer.files) processFiles(e.dataTransfer.files);
                 }}
                 onClick={() => fileInputRef.current?.click()}
-                className={`w-full h-[360px] border-2 border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all duration-300 ${
+                className={`w-full max-w-2xl h-[320px] border-2 border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all duration-300 ${
                   isDragging
                     ? "border-blue-500 bg-blue-500/10 scale-[1.01]"
                     : "border-neutral-700 hover:border-neutral-500 bg-neutral-900/50 hover:bg-neutral-900/80"
@@ -474,270 +409,232 @@ export default function ModalAddImg({
                   </svg>
                 </div>
                 <p className="text-base font-medium text-neutral-200">
-                  Click to browse or drop your image here
+                  Click to browse or drop multiple images here
                 </p>
                 <p className="text-xs text-neutral-500 mt-1">
-                  Supports: PNG, JPG, GIF, WebP, SVG
+                  Поддерживает выбор десятков PNG, JPG, GIF, WebP одновременно
                 </p>
               </div>
             ) : (
-              /* Preview, Crop & Compression Area */
-              <div className="w-full flex flex-col items-center gap-5">
-                {/* Image Container / Crop Canvas */}
-                <div className="relative w-[95vw] flex items-center justify-center bg-neutral-950/80 border border-neutral-800 rounded-2xl p-3 overflow-hidden shadow-2xl">
-                  <div
-                    ref={cropContainerRef}
-                    className="relative inline-block max-w-full select-none"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={isCropping ? originalBase64! : activeBase64}
-                      alt={altText}
-                      className="max-w-full h-auto object-contain rounded-lg shadow-lg pointer-events-none"
-                    />
-
-                    {/* Crop Overlay & Resizable Box */}
-                    {isCropping && (
-                      <div
-                        style={{
-                          left: `${cropRect.x}%`,
-                          top: `${cropRect.y}%`,
-                          width: `${cropRect.w}%`,
-                          height: `${cropRect.h}%`,
-                          boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.65)",
-                        }}
-                        onPointerDown={(e) => handlePointerDown("move", e)}
-                        className="absolute border-2 border-white cursor-move z-20 group"
-                      >
-                        <div className="w-full h-full grid grid-cols-3 grid-rows-3 pointer-events-none opacity-40">
-                          <div className="border-r border-b border-white/60"></div>
-                          <div className="border-r border-b border-white/60"></div>
-                          <div className="border-b border-white/60"></div>
-                          <div className="border-r border-b border-white/60"></div>
-                          <div className="border-r border-b border-white/60"></div>
-                          <div className="border-b border-white/60"></div>
-                          <div className="border-r border-b border-white/60"></div>
-                          <div className="border-r border-b border-white/60"></div>
-                          <div></div>
-                        </div>
-
-                        <div
-                          onPointerDown={(e) => handlePointerDown("nw", e)}
-                          className="absolute -top-2 -left-2 w-4 h-4 bg-blue-500 border-2 border-white rounded-full cursor-nw-resize shadow-md"
-                        />
-                        <div
-                          onPointerDown={(e) => handlePointerDown("ne", e)}
-                          className="absolute -top-2 -right-2 w-4 h-4 bg-blue-500 border-2 border-white rounded-full cursor-ne-resize shadow-md"
-                        />
-                        <div
-                          onPointerDown={(e) => handlePointerDown("sw", e)}
-                          className="absolute -bottom-2 -left-2 w-4 h-4 bg-blue-500 border-2 border-white rounded-full cursor-sw-resize shadow-md"
-                        />
-                        <div
-                          onPointerDown={(e) => handlePointerDown("se", e)}
-                          className="absolute -bottom-2 -right-2 w-4 h-4 bg-blue-500 border-2 border-white rounded-full cursor-se-resize shadow-md"
-                        />
-                      </div>
-                    )}
+              /* Галерея загруженных изображений и массовые настройки */
+              <div className="w-full flex flex-col gap-5">
+                {/* Панель управления элементами */}
+                <div className="flex flex-wrap items-center justify-between gap-3 bg-neutral-900 border border-neutral-800 rounded-xl p-3 px-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-medium text-neutral-300">
+                      Loaded: <b className="text-white">{imageItems.length}</b>{" "}
+                      images
+                    </span>
+                    <span className="text-neutral-600">|</span>
+                    <span className="text-xs font-medium text-blue-400">
+                      Selected: <b>{selectedItems.length}</b>
+                    </span>
                   </div>
 
-                  <div className="absolute top-4 right-4 flex items-center gap-2">
-                    {isCropping ? (
-                      <>
-                        <button
-                          onClick={() => setIsCropping(false)}
-                          className="bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs px-3 py-1.5 rounded-md backdrop-blur-md transition-all cursor-pointer font-medium"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={handleApplyCrop}
-                          className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-1.5 rounded-md backdrop-blur-md transition-all cursor-pointer font-semibold shadow-lg shadow-emerald-600/30"
-                        >
-                          Apply Crop
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        {masterRawBase64 !== originalBase64 && (
-                          <button
-                            onClick={handleRevertToOriginal}
-                            className="bg-black/75 hover:bg-neutral-700 text-neutral-300 text-xs px-3 py-1.5 rounded-md backdrop-blur-md transition-all cursor-pointer"
-                          >
-                            Revert Original
-                          </button>
-                        )}
-                        <button
-                          onClick={() => {
-                            setCropRect({ x: 10, y: 10, w: 80, h: 80 });
-                            setIsCropping(true);
-                          }}
-                          className="bg-black/75 hover:bg-blue-600 text-white text-xs px-3 py-1.5 rounded-md backdrop-blur-md transition-all cursor-pointer flex items-center gap-1.5"
-                        >
-                          <svg
-                            className="w-3.5 h-3.5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M6 2v14a2 2 0 002 2h14M18 22V8a2 2 0 00-2-2H2"
-                            />
-                          </svg>
-                          Crop Image
-                        </button>
-                        <button
-                          onClick={handleReset}
-                          className="bg-black/75 hover:bg-red-600 text-white text-xs px-3 py-1.5 rounded-md backdrop-blur-md transition-all cursor-pointer"
-                        >
-                          Replace Image
-                        </button>
-                      </>
-                    )}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => selectAll(true)}
+                      className="text-xs text-neutral-400 hover:text-white px-2 py-1 rounded bg-neutral-800 hover:bg-neutral-700 transition cursor-pointer"
+                    >
+                      Select All
+                    </button>
+                    <button
+                      onClick={() => selectAll(false)}
+                      className="text-xs text-neutral-400 hover:text-white px-2 py-1 rounded bg-neutral-800 hover:bg-neutral-700 transition cursor-pointer"
+                    >
+                      Deselect All
+                    </button>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="text-xs text-blue-400 hover:text-blue-300 px-2.5 py-1 rounded bg-blue-950/60 border border-blue-800/60 transition cursor-pointer font-medium"
+                    >
+                      + Add More Images
+                    </button>
+                    <button
+                      onClick={handleResetAll}
+                      className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded bg-red-950/40 border border-red-900/40 transition cursor-pointer"
+                    >
+                      Clear All
+                    </button>
                   </div>
                 </div>
 
-                {!isCropping && activeMeta && (
+                {/* Сетка миниатюр с данными */}
+                <div className="w-full max-h-[320px] overflow-y-auto custom-scrollbar p-2 bg-neutral-950 border border-neutral-800/80 rounded-2xl grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {imageItems.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => toggleItemSelect(item.id)}
+                      className={`relative group p-2.5 rounded-xl border flex flex-col justify-between gap-2 transition cursor-pointer ${
+                        item.selected
+                          ? "bg-neutral-900 border-blue-500/80 shadow-md ring-1 ring-blue-500/30"
+                          : "bg-neutral-950/60 border-neutral-800 opacity-60 hover:opacity-100"
+                      }`}
+                    >
+                      {/* Чекбокс */}
+                      <input
+                        type="checkbox"
+                        checked={item.selected}
+                        onChange={() => {}}
+                        className="absolute top-2 left-2 rounded border-neutral-700 bg-neutral-800 text-blue-600 accent-blue-500 cursor-pointer pointer-events-none"
+                      />
+
+                      {/* Удаление одной картинки */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeItem(item.id);
+                        }}
+                        title="Delete"
+                        className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 text-neutral-400 hover:text-red-400 text-xs p-1 rounded transition"
+                      >
+                        ✕
+                      </button>
+
+                      {/* Картинка */}
+                      <div className="w-full h-28 bg-neutral-950/80 rounded-lg overflow-hidden flex items-center justify-center p-1">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={item.activeBase64}
+                          alt={item.name}
+                          className="max-w-full max-h-full object-contain pointer-events-none"
+                        />
+                      </div>
+
+                      {/* Мета-информация под миниатюрой */}
+                      <div className="flex flex-col gap-0.5 w-full">
+                        <span
+                          title={item.name}
+                          className="text-[11px] text-neutral-200 font-medium truncate"
+                        >
+                          {item.name}
+                        </span>
+                        <div className="flex items-center justify-between text-[10px] text-neutral-500 font-mono">
+                          <span>{item.activeMeta.dimensions}</span>
+                          <span className="text-emerald-400 font-bold">
+                            {item.activeMeta.sizeFormatted}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Статистика общей экономии */}
+                {selectedItems.length > 0 && (
                   <div className="flex flex-wrap items-center justify-center gap-2">
                     <div className="flex items-center gap-1.5 px-3 py-1 bg-neutral-900 border border-neutral-700/80 rounded-lg text-xs font-medium text-neutral-300">
-                      <span className="text-neutral-500">Format:</span>
-                      <span className="text-blue-400 font-mono font-bold">
-                        {activeMeta.format}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 px-3 py-1 bg-neutral-900 border border-neutral-700/80 rounded-lg text-xs font-medium text-neutral-300">
-                      <span className="text-neutral-500">Dimensions:</span>
-                      <span className="text-emerald-400 font-mono">
-                        {activeMeta.dimensions}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 px-3 py-1 bg-neutral-900 border border-neutral-700/80 rounded-lg text-xs font-medium text-neutral-300">
-                      <span className="text-neutral-500">Size:</span>
+                      <span className="text-neutral-500">Total size:</span>
                       <span className="text-amber-400 font-mono font-bold">
-                        {activeMeta.sizeFormatted}
+                        {formatFileSize(totalActiveBytes)}
                       </span>
-                      {originalMeta && (
-                        <span className="text-[11px] text-neutral-500 line-through">
-                          ({originalMeta.sizeFormatted})
-                        </span>
-                      )}
+                      <span className="text-[11px] text-neutral-500 line-through">
+                        ({formatFileSize(totalOriginalBytes)})
+                      </span>
                     </div>
 
-                    {savedPercent > 0 && (
+                    {totalSavedPercent > 0 && (
                       <div className="px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-lg text-xs font-mono font-semibold">
-                        -{savedPercent}%
+                        Saved: -{totalSavedPercent}%
                       </div>
                     )}
                   </div>
                 )}
 
-                {!isCropping && (
-                  <>
-                    <div className="w-full max-w-2xl bg-neutral-900/60 border border-neutral-800 rounded-xl p-4 flex flex-col gap-4">
-                      <div className="flex items-center justify-between border-b border-neutral-800/80 pb-2">
-                        <span className="text-xs uppercase font-bold text-neutral-400 tracking-wider">
-                          Optimization & Compression
-                        </span>
-                        <div className="flex items-center gap-2 text-xs">
-                          <span className="text-neutral-500">Output:</span>
-                          <select
-                            value={outputFormat}
-                            onChange={(e) => setOutputFormat(e.target.value)}
-                            className="bg-neutral-800 text-neutral-200 border border-neutral-700 rounded px-2 py-0.5 outline-none text-xs cursor-pointer focus:border-blue-500"
-                          >
-                            <option value="image/webp">WEBP (Best)</option>
-                            <option value="image/jpeg">JPEG</option>
-                            <option value="image/png">PNG (Lossless)</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="flex flex-col gap-1.5">
-                          <div className="flex justify-between text-xs text-neutral-300">
-                            <span>Quality:</span>
-                            <span className="font-mono text-blue-400 font-semibold">
-                              {Math.round(quality * 100)}%
-                            </span>
-                          </div>
-                          <input
-                            type="range"
-                            min="0.1"
-                            max="1"
-                            step="0.05"
-                            value={quality}
-                            disabled={outputFormat === "image/png"}
-                            onChange={(e) =>
-                              setQuality(parseFloat(e.target.value))
-                            }
-                            className="w-full h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-blue-500 disabled:opacity-40"
-                          />
-                        </div>
-
-                        <div className="flex flex-col gap-1.5">
-                          <div className="flex justify-between text-xs text-neutral-300">
-                            <span>Scale (Resolution):</span>
-                            <span className="font-mono text-emerald-400 font-semibold">
-                              {Math.round(scale * 100)}%
-                            </span>
-                          </div>
-                          <input
-                            type="range"
-                            min="0.2"
-                            max="1"
-                            step="0.05"
-                            value={scale}
-                            onChange={(e) =>
-                              setScale(parseFloat(e.target.value))
-                            }
-                            className="w-full h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                          />
-                        </div>
-                      </div>
+                {/* Блок пакетного сжатия и параметров */}
+                <div className="w-full bg-neutral-900/60 border border-neutral-800 rounded-xl p-4 flex flex-col gap-4">
+                  <div className="flex items-center justify-between border-b border-neutral-800/80 pb-2">
+                    <span className="text-xs uppercase font-bold text-neutral-400 tracking-wider">
+                      Batch Optimization & Compression
+                    </span>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="text-neutral-500">Output:</span>
+                      <select
+                        value={outputFormat}
+                        onChange={(e) => setOutputFormat(e.target.value)}
+                        className="bg-neutral-800 text-neutral-200 border border-neutral-700 rounded px-2 py-0.5 outline-none text-xs cursor-pointer focus:border-blue-500"
+                      >
+                        <option value="image/webp">WEBP (Best)</option>
+                        <option value="image/jpeg">JPEG</option>
+                        <option value="image/png">PNG (Lossless)</option>
+                      </select>
                     </div>
+                  </div>
 
-                    <div className="w-full max-w-2xl flex flex-col gap-1.5">
-                      <label className="text-xs text-neutral-400 font-medium">
-                        Alt text (SEO & accessibility description):
-                      </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Ползунок качества */}
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex justify-between text-xs text-neutral-300">
+                        <span>Quality:</span>
+                        <span className="font-mono text-blue-400 font-semibold">
+                          {Math.round(quality * 100)}%
+                        </span>
+                      </div>
                       <input
-                        type="text"
-                        value={altText}
-                        onChange={(e) => setAltText(e.target.value)}
-                        placeholder="e.g. Beautiful mountain landscape"
-                        className="w-full px-3.5 py-2 bg-neutral-900 border border-neutral-700 focus:border-blue-500 rounded-lg text-sm text-neutral-200 placeholder-neutral-500 outline-none transition-all"
+                        type="range"
+                        min="0.1"
+                        max="1"
+                        step="0.05"
+                        value={quality}
+                        disabled={outputFormat === "image/png"}
+                        onChange={(e) => setQuality(parseFloat(e.target.value))}
+                        className="w-full h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-blue-500 disabled:opacity-40"
                       />
                     </div>
-                  </>
-                )}
+
+                    {/* Ползунок масштаба разрешения */}
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex justify-between text-xs text-neutral-300">
+                        <span>Scale (Resolution):</span>
+                        <span className="font-mono text-emerald-400 font-semibold">
+                          {Math.round(scale * 100)}%
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0.1"
+                        max="1"
+                        step="0.05"
+                        value={scale}
+                        onChange={(e) => setScale(parseFloat(e.target.value))}
+                        className="w-full h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>
 
-          {/* Action buttons footer */}
-          <div className="w-full max-w-4xl flex items-center justify-end gap-3 pt-4 border-t border-neutral-800">
-            <button
-              onClick={() => setIsOpen(false)}
-              className="px-5 py-2.5 rounded-xl border border-neutral-700 text-neutral-300 hover:bg-neutral-800 text-sm font-medium transition cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              disabled={!activeBase64 || isCropping}
-              onClick={handleSave}
-              className={`px-6 py-2.5 rounded-xl text-sm font-semibold transition shadow-lg cursor-pointer ${
-                activeBase64 && !isCropping
-                  ? "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/30 active:scale-95"
-                  : "bg-neutral-800 text-neutral-500 cursor-not-allowed border border-neutral-700/50"
-              }`}
-            >
-              Save to Database
-            </button>
+          {/* Нижний бар сохранения */}
+          <div className="w-full max-w-5xl flex items-center justify-between pt-4 border-t border-neutral-800">
+            <span className="text-xs text-neutral-500">
+              {selectedItems.length > 0
+                ? `Готово к сохранению: ${selectedItems.length} картинок`
+                : "Выберите или загрузите изображения"}
+            </span>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsOpen(false)}
+                className="px-5 py-2.5 rounded-xl border border-neutral-700 text-neutral-300 hover:bg-neutral-800 text-sm font-medium transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={selectedItems.length === 0 || isCompressing}
+                onClick={handleSave}
+                className={`px-6 py-2.5 rounded-xl text-sm font-semibold transition shadow-lg cursor-pointer ${
+                  selectedItems.length > 0 && !isCompressing
+                    ? "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/30 active:scale-95"
+                    : "bg-neutral-800 text-neutral-500 cursor-not-allowed border border-neutral-700/50"
+                }`}
+              >
+                {isCompressing
+                  ? "Optimizing..."
+                  : `Save ${selectedItems.length > 0 ? `(${selectedItems.length})` : ""} to Database`}
+              </button>
+            </div>
           </div>
         </motion.div>
       )}

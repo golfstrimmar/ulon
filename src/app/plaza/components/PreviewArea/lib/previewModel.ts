@@ -256,6 +256,7 @@ export function buildDocument({
        min-height: 100%;
      }
      ${helperClasses}
+
    </style>
 
    ${

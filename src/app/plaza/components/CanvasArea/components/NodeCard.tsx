@@ -120,7 +120,8 @@ export function NodeCard({
 
         // Проверяем, куда ушел курсор: если в родительскую ноду — подсвечиваем её,
         // если в пустое место — сбрасываем в null
-        const nextTarget = e.relatedTarget as HTMLElement | null;
+        const nextTarget =
+          e.relatedTarget instanceof Element ? e.relatedTarget : null;
         const parentNode = nextTarget?.closest<HTMLElement>("[data-node-key]");
         const parentKey = parentNode?.getAttribute("data-node-key") || null;
 

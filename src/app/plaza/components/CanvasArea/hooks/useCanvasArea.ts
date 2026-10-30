@@ -24,8 +24,8 @@ import {
   mergeScssWithoutDuplicates,
   mergeScriptsWithoutDuplicates,
 } from "@/app/plaza/components/CanvasArea/models/canvasModel";
-import { DB_KEY } from "@/app/plaza/components/CanvasArea/constants/theme";
 
+import { DB_KEY } from "@/app/plaza/components/CanvasArea/constants/theme";
 import { styleHistory } from "@/lib/styleHistory";
 import { scriptsHistory } from "@/lib/scriptsHistory";
 
@@ -34,13 +34,12 @@ export interface DropTarget {
   position: "self" | "before" | "after" | "inside";
 }
 
-/**
- * Рекурсивно гарантирует уникальные _key для всех добавляемых/дублируемых нод
- */
 function ensureUniqueKeys(nodes: HtmlNode[]): HtmlNode[] {
   return nodes.map((node) => ({
     ...node,
-    _key: `${node.tag || "node"}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+    _key:
+      node._key ||
+      `${node.tag || "node"}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
     children: Array.isArray(node.children)
       ? ensureUniqueKeys(node.children)
       : node.children,
@@ -61,7 +60,6 @@ export function useCanvasArea() {
   const [canRedo, setCanRedo] = useState(false);
 
   // Выбор и навигация
-  const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
   const [collapsedKeys, setCollapsedKeys] = useState<Set<string>>(new Set());
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
   const [clickedKey, setClickedKey] = useState<string | null>(null);
@@ -110,15 +108,78 @@ export function useCanvasArea() {
     }
   }
 
-  // 🔹 Слушаем клики из PreviewArea (iframe)
+  // ─────🔹 Загрузка при монтировании
+  const jsonDownload = async () => {
+    try {
+      const [dbScss, dbJs, data] = await Promise.all([
+        getGlobalScss().catch(() => ""),
+        getGlobalJs().catch(() => ""),
+        getHtmlJson(DB_KEY).catch(() => null),
+      ]);
+
+      let currentScss = dbScss || "";
+      let currentJs = dbJs || "";
+
+      if (data) {
+        const list = Array.isArray(data) ? data : [data];
+        const { cleanNodes, extractedScss, extractedScripts } =
+          extractStylesAndScriptsFromNodes(list);
+
+        if (extractedScss) {
+          currentScss = mergeScssWithoutDuplicates(currentScss, extractedScss);
+        }
+
+        if (extractedScripts.length > 0) {
+          currentJs = mergeScriptsWithoutDuplicates(
+            currentJs,
+            extractedScripts,
+          );
+        }
+
+        const nodesWithKeys = ensureUniqueKeys(cleanNodes);
+        setCurrentJson(nodesWithKeys);
+        currentJsonRef.current = nodesWithKeys;
+
+        styleHistory.init(currentScss);
+        scriptsHistory.init(currentJs);
+
+        await Promise.all([
+          saveGlobalScss(currentScss),
+          saveGlobalJs(currentJs),
+          saveHtmlJson(DB_KEY, nodesWithKeys),
+        ]);
+      } else {
+        setCurrentJson([]);
+        currentJsonRef.current = [];
+        styleHistory.init(currentScss);
+        scriptsHistory.init(currentJs);
+
+        await Promise.all([
+          saveGlobalScss(currentScss),
+          saveGlobalJs(currentJs),
+        ]);
+      }
+
+      setGlobalScss(currentScss);
+      globalScssRef.current = currentScss;
+      setGlobalJs(currentJs);
+      globalJsRef.current = currentJs;
+    } catch (err) {
+      console.error("[useCanvasArea] Mount error:", err);
+    }
+  };
+
+  useEffect(() => {
+    jsonDownload();
+  }, []);
+
+  // ─────🔹 Слушаем клики из PreviewArea (iframe)
   useEffect(() => {
     const handleSelectFromPreview = (e: any) => {
-      // Игнорируем события от собственной модалки свойств
       if (e.detail?.source === "modal-properties") return;
 
       const { key, className, tag, text } = e.detail || {};
 
-      // 1. СТРОГИЙ поиск по ключу по всему дереву
       if (key) {
         for (const root of currentJsonRef.current) {
           const found = findNodeByKey(root, key);
@@ -131,7 +192,6 @@ export function useCanvasArea() {
         }
       }
 
-      // 2. Fallback: только если ключа не передано вовсе
       const findNodeFallback = (list: HtmlNode[]): HtmlNode | null => {
         for (const node of list) {
           if (className && node.class) {
@@ -180,7 +240,7 @@ export function useCanvasArea() {
     };
   }, []);
 
-  // Синхронизация полей редактора при смене выбранной ноды
+  // ─────🔹 Синхронизация полей редактора при смене выбранной ноды
   useEffect(() => {
     if (selectedNode) {
       setEditTag(selectedNode.tag || "div");
@@ -189,7 +249,7 @@ export function useCanvasArea() {
     }
   }, [clickedKey, selectedNode?._key]);
 
-  // Сохранение стилей в БД и запись в историю
+  // ─────🔹 Сохранение стилей в БД
   const updateAndPersistScss = async (nextScss: string) => {
     try {
       styleHistory.record(nextScss);
@@ -205,7 +265,7 @@ export function useCanvasArea() {
     }
   };
 
-  // Сохранение JS в БД и запись в историю
+  // ─────🔹 Сохранение JS в БД
   const updateAndPersistJs = async (nextJs: string) => {
     try {
       scriptsHistory.record(nextJs);
@@ -221,7 +281,7 @@ export function useCanvasArea() {
     }
   };
 
-  // Сохранение разметки дерева (с историей дерева)
+  // ─────🔹 Сохранение разметки дерева
   const persist = async (next: HtmlNode[], recordHistory = true) => {
     if (recordHistory) {
       const snapshot = JSON.parse(JSON.stringify(currentJsonRef.current));
@@ -250,7 +310,7 @@ export function useCanvasArea() {
     }
   };
 
-  // Undo / Redo для дерева нод
+  // ─────🔹 Undo / Redo
   const handleUndo = useCallback(async () => {
     if (historyRef.current.length === 0) return;
     const previousState = historyRef.current[historyRef.current.length - 1];
@@ -277,7 +337,7 @@ export function useCanvasArea() {
     await persist(nextState, false);
   }, []);
 
-  // Горячие клавиши для холста
+  // Горячие клавиши
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
@@ -304,71 +364,33 @@ export function useCanvasArea() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleUndo, handleRedo]);
 
-  // Загрузка при монтировании
-  const jsonDownload = async () => {
-    try {
-      const [dbScss, dbJs, data] = await Promise.all([
-        getGlobalScss().catch(() => ""),
-        getGlobalJs().catch(() => ""),
-        getHtmlJson(DB_KEY).catch(() => null),
-      ]);
-
-      let currentScss = dbScss || "";
-      let currentJs = dbJs || "";
-
-      if (data) {
-        const list = Array.isArray(data) ? data : [data];
-        const { cleanNodes, extractedScss, extractedScripts } =
-          extractStylesAndScriptsFromNodes(list);
-
-        if (extractedScss) {
-          currentScss = mergeScssWithoutDuplicates(currentScss, extractedScss);
+  // Сворачивание всех нод
+  const getAllCollapsibleKeys = useCallback(
+    (nodes: HtmlNode[] | null | undefined): string[] => {
+      if (!nodes || !Array.isArray(nodes)) return [];
+      const keys: string[] = [];
+      function traverse(list: HtmlNode[]) {
+        for (const node of list) {
+          if (Array.isArray(node.children) && node.children.length > 0) {
+            if (node._key) {
+              keys.push(node._key);
+            }
+            traverse(node.children);
+          }
         }
-
-        if (extractedScripts.length > 0) {
-          currentJs = mergeScriptsWithoutDuplicates(
-            currentJs,
-            extractedScripts,
-          );
-        }
-
-        setCurrentJson(cleanNodes);
-        currentJsonRef.current = cleanNodes;
-
-        styleHistory.init(currentScss);
-        scriptsHistory.init(currentJs);
-
-        await Promise.all([
-          saveGlobalScss(currentScss),
-          saveGlobalJs(currentJs),
-          saveHtmlJson(DB_KEY, cleanNodes),
-        ]);
-      } else {
-        setCurrentJson([]);
-        currentJsonRef.current = [];
-        styleHistory.init(currentScss);
-        scriptsHistory.init(currentJs);
-
-        await Promise.all([
-          saveGlobalScss(currentScss),
-          saveGlobalJs(currentJs),
-        ]);
       }
+      traverse(nodes);
+      return keys;
+    },
+    [],
+  );
 
-      setGlobalScss(currentScss);
-      globalScssRef.current = currentScss;
-      setGlobalJs(currentJs);
-      globalJsRef.current = currentJs;
-    } catch (err) {
-      console.error("[useCanvasArea] Mount error:", err);
-    }
-  };
+  const collapsedAll = useCallback(() => {
+    const allKeys = getAllCollapsibleKeys(currentJsonRef.current);
+    setCollapsedKeys(new Set(allKeys));
+  }, [getAllCollapsibleKeys]);
 
-  useEffect(() => {
-    jsonDownload();
-  }, []);
-
-  // Слушатели внешней шины событий
+  // ─────🔹 Слушатели внешней шины событий (Styles, Scripts, Tree, Collapse)
   useEffect(() => {
     const handleStyles = (e: Event) => {
       const customEvent = e as CustomEvent<string | Record<string, string>>;
@@ -396,10 +418,10 @@ export function useCanvasArea() {
       globalJsRef.current = nextJs;
     };
 
-    // Принимаем внешние добавления (от ModalAddSvg, ModalAddImg и т.д.)
+    // Слушаем добавления нод (из AsideCanvas, Modals и т.д.)
     const handleTreeUpdated = (e: Event) => {
       const customEvent = e as CustomEvent;
-      // Игнорируем собственные вызовы persist из CanvasArea
+      // Игнорируем только собственные вызовы persist этого холста
       if (customEvent.detail?.source === "canvas-area") return;
 
       const nodes = Array.isArray(customEvent.detail)
@@ -407,24 +429,38 @@ export function useCanvasArea() {
         : customEvent.detail?.nodes;
 
       if (Array.isArray(nodes)) {
-        setCurrentJson(nodes);
-        currentJsonRef.current = nodes;
+        const withKeys = ensureUniqueKeys(nodes);
+        setCurrentJson(withKeys);
+        currentJsonRef.current = withKeys;
       } else {
         jsonDownload();
       }
     };
 
+    const handleExternalCollapseAll = () => {
+      collapsedAll();
+    };
+
     window.addEventListener("plaza-tree-updated", handleTreeUpdated);
     window.addEventListener("plaza-styles-updated", handleStyles);
     window.addEventListener("plaza-scripts-updated", handleScripts);
+    window.addEventListener(
+      "plaza-toggle-collapse-all",
+      handleExternalCollapseAll,
+    );
+
     return () => {
       window.removeEventListener("plaza-tree-updated", handleTreeUpdated);
       window.removeEventListener("plaza-styles-updated", handleStyles);
       window.removeEventListener("plaza-scripts-updated", handleScripts);
+      window.removeEventListener(
+        "plaza-toggle-collapse-all",
+        handleExternalCollapseAll,
+      );
     };
-  }, []);
+  }, [collapsedAll]);
 
-  // Drag-and-Drop
+  // ─────🔹 Drag-and-Drop
   useEffect(() => {
     const handlePointerMove = (e: PointerEvent) => {
       if (potentialDragKeyRef.current && dragStartPosRef.current) {
@@ -566,7 +602,6 @@ export function useCanvasArea() {
           );
           await persist(updated);
         } else {
-          // Чистое перемещение ноды в целевую позицию без модификации её классов
           const updated = moveNodePosition(
             currentJsonRef.current,
             activeDragKey,
@@ -588,59 +623,7 @@ export function useCanvasArea() {
     };
   }, []);
 
-  const handleAppendFromPath = async (path: string) => {
-    try {
-      const res = await fetch(path);
-      if (!res.ok) return;
-      const raw = await res.json();
-      const nodes: HtmlNode[] = Array.isArray(raw) ? raw : [raw];
-
-      const { cleanNodes, extractedScss, extractedScripts } =
-        extractStylesAndScriptsFromNodes(nodes);
-
-      if (extractedScss) {
-        const nextScss = mergeScssWithoutDuplicates(
-          globalScssRef.current,
-          extractedScss,
-        );
-        if (nextScss !== globalScssRef.current) {
-          await updateAndPersistScss(nextScss);
-        }
-      }
-
-      if (extractedScripts.length > 0) {
-        const nextBundle = mergeScriptsWithoutDuplicates(
-          globalJsRef.current,
-          extractedScripts,
-        );
-        if (nextBundle !== globalJsRef.current) {
-          await updateAndPersistJs(nextBundle);
-        }
-      }
-
-      const nodesWithUniqueKeys = ensureUniqueKeys(cleanNodes);
-      const next = [...currentJsonRef.current, ...nodesWithUniqueKeys];
-      await persist(next);
-    } catch (e) {
-      console.error(`Error adding from ${path}:`, e);
-    }
-  };
-
-  const handleClear = async () => {
-    await persist([]);
-    setClickedKey(null);
-    setHoveredKey(null);
-  };
-
-  const toggleFolder = (folderName: string) => {
-    setOpenFolders((prev) => {
-      const next = new Set(prev);
-      if (next.has(folderName)) next.delete(folderName);
-      else next.add(folderName);
-      return next;
-    });
-  };
-
+  // ─────🔹 Действия с нодами на самом холсте
   const handlePointerDownNode = (e: React.PointerEvent, key: string) => {
     if (e.button !== 0) return;
     potentialDragKeyRef.current = key;
@@ -733,31 +716,7 @@ export function useCanvasArea() {
     );
   }
   const isCollapsible = canCollapse(currentJson);
-
-  function getAllCollapsibleKeys(
-    nodes: HtmlNode[] | null | undefined,
-  ): string[] {
-    if (!nodes || !Array.isArray(nodes)) return [];
-    const keys: string[] = [];
-    function traverse(list: HtmlNode[]) {
-      for (const node of list) {
-        if (Array.isArray(node.children) && node.children.length > 0) {
-          if (node._key) {
-            keys.push(node._key);
-          }
-          traverse(node.children);
-        }
-      }
-    }
-    traverse(nodes);
-    return keys;
-  }
   const allCollapsibleKeys = getAllCollapsibleKeys(currentJson);
-
-  const collapsedAll = () => {
-    setCollapsedKeys(new Set(allCollapsibleKeys));
-  };
-
   const isAllCollapsed =
     allCollapsibleKeys.length === 0 ||
     allCollapsibleKeys.every((key) => collapsedKeys.has(key));
@@ -767,7 +726,6 @@ export function useCanvasArea() {
     currentJson,
     canUndo,
     canRedo,
-    openFolders,
     collapsedKeys,
     hoveredKey,
     clickedKey,
@@ -788,9 +746,6 @@ export function useCanvasArea() {
     setClickedKey,
     handleUndo,
     handleRedo,
-    handleClear,
-    toggleFolder,
-    handleAppendFromPath,
     handlePointerDownNode,
     handleToggleCollapse,
     handleClickNode,

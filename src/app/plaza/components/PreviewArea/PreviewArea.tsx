@@ -24,10 +24,8 @@ const ModalPixelPerfect = dynamic(
   { ssr: false },
 );
 
-// 🔹 Раздельные стили: Красный для активной ноды, Зеленый для ховера
 const HIGHLIGHT_STYLE_ID = "plaza-highlight-style";
 const HIGHLIGHT_CSS = `
-  /* Активная нода (Красная) - наивысший приоритет */
   .plaza-node-selected {
     outline: 3px solid rgba(239, 68, 68, 0.95) !important;
     outline-offset: -1px !important;
@@ -35,8 +33,6 @@ const HIGHLIGHT_CSS = `
     position: relative;
     z-index: 50 !important;
   }
-
-  /* Ховер-нода (Зеленоватая) - работает ТОЛЬКО если элемент НЕ выбран */
   .plaza-node-hovered:not(.plaza-node-selected) {
     outline: 2px dashed rgba(52, 211, 153, 0.9) !important;
     outline-offset: -1px !important;
@@ -85,12 +81,21 @@ export function PreviewArea() {
   const activeSelectionRef = useRef<SelectionPayload | null>(null);
   activeSelectionRef.current = activeSelection;
 
-  const effectiveHeight =
-    hasImage && isOverlayActive && fitHeight && overlayHeight
+  // Если элементов нет (isEmpty), высота ВСЕГДА сбрасывается к исходным 140px
+  const effectiveHeight = isEmpty
+    ? 140
+    : hasImage && isOverlayActive && fitHeight && overlayHeight
       ? Math.max(iframeHeight, overlayHeight + Math.max(0, offsetY))
       : iframeHeight;
 
-  // Вспомогательная функция для инъекции CSS в iframe
+  // СБРОС ВЫСОТЫ ПРИ ОЧИСТКЕ
+  useEffect(() => {
+    if (isEmpty) {
+      setIframeHeight(140);
+      setActiveSelection(null);
+    }
+  }, [isEmpty]);
+
   const ensureStylesInjected = (doc: Document) => {
     if (!doc.getElementById(HIGHLIGHT_STYLE_ID)) {
       const styleEl = doc.createElement("style");
@@ -100,7 +105,6 @@ export function PreviewArea() {
     }
   };
 
-  // 🔹 Подсветка АКТИВНОГО элемента (Красный)
   const applyHighlight = useCallback(
     (payload: SelectionPayload | null) => {
       const iframe = iframeRef.current;
@@ -109,7 +113,6 @@ export function PreviewArea() {
 
       ensureStylesInjected(doc);
 
-      // Снимаем класс активности со старых элементов
       doc.querySelectorAll(".plaza-node-selected").forEach((el) => {
         el.classList.remove("plaza-node-selected");
       });
@@ -117,13 +120,10 @@ export function PreviewArea() {
       if (!payload) return;
 
       let targetEl: Element | null = null;
-
-      // 1. Поиск по data-node-key
       if (payload.key) {
         targetEl = doc.querySelector(`[data-node-key="${payload.key}"]`);
       }
 
-      // 2. Фолбэк по классу + тегу
       if (!targetEl && payload.className) {
         const classes = payload.className
           .trim()
@@ -138,21 +138,17 @@ export function PreviewArea() {
           if (candidates.length === 1) {
             targetEl = candidates[0];
           } else if (candidates.length > 1) {
-            if (payload.text) {
-              targetEl =
-                candidates.find((el) =>
-                  el.textContent?.trim().includes(payload.text!.trim()),
-                ) || candidates[0];
-            } else {
-              targetEl = candidates[0];
-            }
+            targetEl =
+              candidates.find((el) =>
+                payload.text
+                  ? el.textContent?.trim().includes(payload.text.trim())
+                  : false,
+              ) || candidates[0];
           }
         }
       }
 
-      // 3. Активируем ноду
       if (targetEl) {
-        // Убираем ховер, если он был на этом элементе
         targetEl.classList.remove("plaza-node-hovered");
         targetEl.classList.add("plaza-node-selected");
         targetEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -161,7 +157,6 @@ export function PreviewArea() {
     [iframeRef],
   );
 
-  // 🔹 Подсветка элемента по ХОВЕРУ (Зелёный)
   useEffect(() => {
     const handlePlazaNodeHovered = (event: Event) => {
       const customEvent = event as CustomEvent<string | null>;
@@ -172,18 +167,11 @@ export function PreviewArea() {
 
       ensureStylesInjected(doc);
 
-      // Очищаем предыдущий ховер со всех элементов
       doc.querySelectorAll(".plaza-node-hovered").forEach((el) => {
         el.classList.remove("plaza-node-hovered");
       });
 
-      // Если ховер сброшен (null/empty) — выходим
-      if (!key) return;
-
-      // ⚠️ ВАЖНО: Если наведённый элемент совпадает с текущим активным — игнорируем ховер!
-      if (activeSelectionRef.current?.key === key) {
-        return;
-      }
+      if (!key || activeSelectionRef.current?.key === key) return;
 
       const targetEl = doc.querySelector(`[data-node-key="${key}"]`);
       if (targetEl && !targetEl.classList.contains("plaza-node-selected")) {
@@ -192,18 +180,15 @@ export function PreviewArea() {
     };
 
     window.addEventListener("plaza-node-hovered", handlePlazaNodeHovered);
-
     return () => {
       window.removeEventListener("plaza-node-hovered", handlePlazaNodeHovered);
     };
   }, [iframeRef]);
 
-  // 🔹 Слушаем глобальные события выбора/снятия активной ноды
   useEffect(() => {
     const handleNodeSelected = (e: CustomEvent<SelectionPayload>) => {
-      const detail = e.detail;
-      setActiveSelection(detail || null);
-      applyHighlight(detail || null);
+      setActiveSelection(e.detail || null);
+      applyHighlight(e.detail || null);
     };
 
     const handleNodeDeselected = () => {
@@ -226,7 +211,6 @@ export function PreviewArea() {
     };
   }, [applyHighlight]);
 
-  // 🔹 При обновлении srcDoc повторно подсвечиваем активный элемент
   useEffect(() => {
     applyHighlight(activeSelectionRef.current);
   }, [srcDoc, applyHighlight]);
@@ -236,10 +220,8 @@ export function PreviewArea() {
     const doc = iframe?.contentDocument;
     if (!doc) return;
 
-    // Сразу накладываем активную подсветку
     applyHighlight(activeSelectionRef.current);
 
-    // Клик внутри самого iframe
     const handleDocClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
       if (!target || target === doc.body || target === doc.documentElement)
@@ -249,7 +231,6 @@ export function PreviewArea() {
       e.stopPropagation();
 
       const nodeEl = target.closest<HTMLElement>("[data-node-key]") || target;
-
       const key = nodeEl.getAttribute("data-node-key") || null;
 
       const payload: SelectionPayload = {
@@ -259,13 +240,10 @@ export function PreviewArea() {
         text: nodeEl.textContent?.trim() || "",
       };
 
-      // Снимаем ховер при клике
       nodeEl.classList.remove("plaza-node-hovered");
-
       setActiveSelection(payload);
       applyHighlight(payload);
 
-      // Оповещаем CanvasArea, чтобы открылась модалка
       window.dispatchEvent(
         new CustomEvent("plaza-node-selected", { detail: payload }),
       );
@@ -284,26 +262,27 @@ export function PreviewArea() {
           !["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE"].includes(el.tagName),
       );
 
-      let maxBottom = 0;
-
-      if (children.length > 0) {
-        const scrollY = win.scrollY || doc.documentElement.scrollTop || 0;
-
-        children.forEach((child) => {
-          const style = win.getComputedStyle(child);
-          if (style.display === "none" || style.visibility === "hidden") return;
-
-          const rect = child.getBoundingClientRect();
-          const marginBottom = parseFloat(style.marginBottom) || 0;
-          const bottom = rect.bottom + scrollY + marginBottom;
-
-          if (bottom > maxBottom) {
-            maxBottom = bottom;
-          }
-        });
-      } else {
-        maxBottom = doc.body.getBoundingClientRect().height;
+      // Если элементов нет — сразу сбрасываем в базовую высоту 140px
+      if (children.length === 0) {
+        setIframeHeight(140);
+        return;
       }
+
+      let maxBottom = 0;
+      const scrollY = win.scrollY || doc.documentElement.scrollTop || 0;
+
+      children.forEach((child) => {
+        const style = win.getComputedStyle(child);
+        if (style.display === "none" || style.visibility === "hidden") return;
+
+        const rect = child.getBoundingClientRect();
+        const marginBottom = parseFloat(style.marginBottom) || 0;
+        const bottom = rect.bottom + scrollY + marginBottom;
+
+        if (bottom > maxBottom) {
+          maxBottom = bottom;
+        }
+      });
 
       const bodyPaddingBottom =
         parseFloat(win.getComputedStyle(doc.body).paddingBottom) || 0;
@@ -313,7 +292,16 @@ export function PreviewArea() {
         Math.ceil(maxBottom + bodyPaddingBottom + 16),
       );
 
-      setIframeHeight((prev) => (prev !== finalHeight ? finalHeight : prev));
+      setIframeHeight((prev) => {
+        if (prev !== finalHeight) {
+          const delta = finalHeight - prev;
+          // Компенсируем рост превью — страница остаётся на месте
+          requestAnimationFrame(() => {
+            window.scrollBy({ top: delta, behavior: "instant" });
+          });
+        }
+        return prev !== finalHeight ? finalHeight : prev;
+      });
     };
 
     update();
@@ -431,7 +419,7 @@ export function PreviewArea() {
             }`}
           >
             <div
-              className={`relative bg-white transition-[width] duration-200 ease-out overflow-hidden ${
+              className={`relative bg-white transition-[width,height,min-height] duration-200 ease-out overflow-hidden ${
                 isFullWidth
                   ? "w-full"
                   : "shadow-2xl rounded-lg border border-zinc-700/70 ring-1 ring-zinc-800 shrink-0"
@@ -440,10 +428,11 @@ export function PreviewArea() {
                 width: effectiveWidthStyle,
                 minWidth: isFullWidth ? "100%" : effectiveWidthStyle,
                 minHeight: effectiveHeight,
+                height: effectiveHeight,
               }}
             >
               {!isFullWidth && (
-                <div className="relative z-200 flex items-center justify-center px-3 py-1.5 bg-zinc-900 border-b border-zinc-700/80 text-xs font-mono select-none flex-wrap gap-2">
+                <div className="relative z-20 flex items-center justify-center px-3 py-1.5 bg-zinc-900 border-b border-zinc-700/80 text-xs font-mono select-none flex-wrap gap-2">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm">{activeBreakpoint.icon}</span>
                     <span className="font-bold text-zinc-100 text-xs tracking-tight">
@@ -531,18 +520,18 @@ export function PreviewArea() {
                   srcDoc={srcDoc}
                   title="iframe Prev"
                   sandbox="allow-scripts allow-same-origin allow-modals allow-forms"
-                  className="w-full border-0 bg-white block relative z-10"
+                  className="w-full border-0 bg-white block relative z-10 transition-[height] duration-200 ease-out"
                   onLoad={handleLoad}
                   style={{
                     height: effectiveHeight,
+                    minHeight: effectiveHeight,
                     opacity:
                       hasImage && isOverlayActive ? previewOpacity / 100 : 1,
-                    transition: "opacity 0.05s ease-out",
+                    transition: "height 0.2s ease-out, opacity 0.05s ease-out",
                   }}
                 />
               )}
             </div>
-            {/*<pre className="relative  text-black text-[12px]">{srcDoc}</pre>*/}
           </motion.div>
         )}
       </AnimatePresence>
