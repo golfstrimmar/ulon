@@ -6,7 +6,7 @@ import {
   ELEMENT_FOLDERS,
 } from "@/app/plaza/components/CanvasArea/elementsManifest";
 import ButtonAddImg from "@/app/plaza/components/CanvasArea/components/ButtonAddImg";
-import { useAsideCanvas } from "@/app/plaza/components/CanvasArea/hooks/useAsideCanvas";
+import { useAsideCanvas } from "@/app/plaza/components/CanvasArea/components/AsideCanvas/hooks/useAsideCanvas";
 
 export default function AsideCanvas() {
   const {

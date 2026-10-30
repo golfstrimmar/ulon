@@ -11,11 +11,14 @@ import {
   saveGlobalScss,
   saveGlobalJs,
 } from "@/lib/htmlStorage";
-import { findNodeByKey, deleteNodeFromArray } from "@/lib/htmlTree";
+import { deleteNodeFromArray } from "@/lib/htmlTree";
 import {
   extractStylesAndScriptsFromNodes,
   mergeScssWithoutDuplicates,
   mergeScriptsWithoutDuplicates,
+  ensureUniqueKeys,
+  getAllCollapsibleKeys,
+  findNodeByCriteria,
 } from "@/app/plaza/components/CanvasArea/models/canvasModel";
 import { DB_KEY } from "@/app/plaza/components/CanvasArea/constants/theme";
 import { styleHistory } from "@/lib/styleHistory";
@@ -23,18 +26,6 @@ import { scriptsHistory } from "@/lib/scriptsHistory";
 
 import { useCanvasHistory } from "./useCanvasHistory";
 import { useCanvasDnD } from "./useCanvasDnD";
-
-function ensureUniqueKeys(nodes: HtmlNode[]): HtmlNode[] {
-  return nodes.map((node) => ({
-    ...node,
-    _key:
-      node._key ||
-      `${node.tag || "node"}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-    children: Array.isArray(node.children)
-      ? ensureUniqueKeys(node.children)
-      : node.children,
-  }));
-}
 
 export function useCanvasArea() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -173,49 +164,9 @@ export function useCanvasArea() {
     const handleSelectFromPreview = (e: any) => {
       if (e.detail?.source === "modal-properties") return;
 
-      const { key, className, tag, text } = e.detail || {};
-      if (key) {
-        for (const root of currentJsonRef.current) {
-          const found = findNodeByKey(root, key);
-          if (found) {
-            if (found._key !== clickedKeyRef.current) {
-              setClickedKey(found._key ?? null);
-            }
-            return;
-          }
-        }
-      }
-
-      const findNodeFallback = (list: HtmlNode[]): HtmlNode | null => {
-        for (const node of list) {
-          if (className && node.class) {
-            const classes = node.class.split(/\s+/).filter(Boolean);
-            const targetClasses = className.trim().split(/\s+/).filter(Boolean);
-            const specificClass = targetClasses[
-              targetClasses.length - 1
-            ]?.replace(/^\./, "");
-            if (specificClass && classes.includes(specificClass)) {
-              return node;
-            }
-          }
-          if (
-            text &&
-            node.text?.trim() === text.trim() &&
-            (!tag || node.tag === tag)
-          ) {
-            return node;
-          }
-          if (Array.isArray(node.children) && node.children.length > 0) {
-            const found = findNodeFallback(node.children);
-            if (found) return found;
-          }
-        }
-        return null;
-      };
-
-      const targetNode = findNodeFallback(currentJsonRef.current);
-      if (targetNode && targetNode._key !== clickedKeyRef.current) {
-        setClickedKey(targetNode._key ?? null);
+      const target = findNodeByCriteria(currentJsonRef.current, e.detail || {});
+      if (target && target._key !== clickedKeyRef.current) {
+        setClickedKey(target._key ?? null);
       }
     };
 
@@ -225,28 +176,10 @@ export function useCanvasArea() {
   }, []);
 
   // ─────🔹 Сворачивание всех нод
-  const getAllCollapsibleKeys = useCallback(
-    (nodes: HtmlNode[] | null | undefined): string[] => {
-      if (!nodes || !Array.isArray(nodes)) return [];
-      const keys: string[] = [];
-      function traverse(list: HtmlNode[]) {
-        for (const node of list) {
-          if (Array.isArray(node.children) && node.children.length > 0) {
-            if (node._key) keys.push(node._key);
-            traverse(node.children);
-          }
-        }
-      }
-      traverse(nodes);
-      return keys;
-    },
-    [],
-  );
-
   const collapsedAll = useCallback(() => {
     const allKeys = getAllCollapsibleKeys(currentJsonRef.current);
     setCollapsedKeys(new Set(allKeys));
-  }, [getAllCollapsibleKeys]);
+  }, []);
 
   useEffect(() => {
     const handleTreeUpdated = (e: Event) => {

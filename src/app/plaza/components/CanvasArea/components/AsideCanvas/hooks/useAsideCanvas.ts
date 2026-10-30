@@ -16,17 +16,8 @@ import {
   extractStylesAndScriptsFromNodes,
   mergeScssWithoutDuplicates,
   mergeScriptsWithoutDuplicates,
+  ensureUniqueKeys,
 } from "@/app/plaza/components/CanvasArea/models/canvasModel";
-
-function ensureUniqueKeys(nodes: HtmlNode[]): HtmlNode[] {
-  return nodes.map((node) => ({
-    ...node,
-    _key: `${node.tag || "node"}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-    children: Array.isArray(node.children)
-      ? ensureUniqueKeys(node.children)
-      : node.children,
-  }));
-}
 
 export function useAsideCanvas() {
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());

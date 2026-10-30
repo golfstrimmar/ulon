@@ -12,15 +12,109 @@
 // Мутации и вычисления над этими данными.
 // Методы сохранения/чтения (репозитории, API, LocalStorage с DB_KEY).
 import type { HtmlNode } from "@/types/HtmlNode";
-import { generateNodeKey } from "@/lib/htmlTree";
+import { generateNodeKey, findNodeByKey } from "@/lib/htmlTree";
 
 export function sanitizeCssBody(css: string): string {
   return css.replace(/\}\s*;/g, "}").trim();
 }
 
-export const getNodeKey = (node: any): string => node?._key || node?.id || "";
+export const getNodeKey = (node: HtmlNode | null | undefined): string =>
+  node?._key || (node as any)?.id || "";
+
+/**
+ * 🔹 Гарантирует уникальность и наличие ключей у всех узлов дерева
+ */
+export function ensureUniqueKeys(nodes: HtmlNode[]): HtmlNode[] {
+  return nodes.map((node) => ({
+    ...node,
+    _key:
+      node._key ||
+      `${node.tag || "node"}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+    children: Array.isArray(node.children)
+      ? ensureUniqueKeys(node.children)
+      : node.children,
+  }));
+}
+
+/**
+ * 🔹 Рекурсивно собирает ключи всех узлов-контейнеров (имеющих children)
+ */
+export function getAllCollapsibleKeys(
+  nodes: HtmlNode[] | null | undefined,
+): string[] {
+  if (!nodes || !Array.isArray(nodes)) return [];
+  const keys: string[] = [];
+
+  function traverse(list: HtmlNode[]) {
+    for (const node of list) {
+      if (Array.isArray(node.children) && node.children.length > 0) {
+        if (node._key) keys.push(node._key);
+        traverse(node.children);
+      }
+    }
+  }
+
+  traverse(nodes);
+  return keys;
+}
+
+/**
+ * 🔹 Ищет узел в дереве по критериям выделения из PreviewArea
+ * (прямой ключ -> специфичный CSS-класс -> тег + совпадение текста)
+ */
+export function findNodeByCriteria(
+  nodes: HtmlNode[],
+  criteria: {
+    key?: string | null;
+    className?: string;
+    tag?: string;
+    text?: string;
+  },
+): HtmlNode | null {
+  const { key, className, tag, text } = criteria;
+
+  if (key) {
+    for (const root of nodes) {
+      const found = findNodeByKey(root, key);
+      if (found) return found;
+    }
+  }
+
+  const findFallback = (list: HtmlNode[]): HtmlNode | null => {
+    for (const node of list) {
+      if (className && node.class) {
+        const classes = node.class.split(/\s+/).filter(Boolean);
+        const targetClasses = className.trim().split(/\s+/).filter(Boolean);
+        const specificClass = targetClasses[targetClasses.length - 1]?.replace(
+          /^\./,
+          "",
+        );
+        if (specificClass && classes.includes(specificClass)) {
+          return node;
+        }
+      }
+
+      if (
+        text &&
+        node.text?.trim() === text.trim() &&
+        (!tag || node.tag === tag)
+      ) {
+        return node;
+      }
+
+      if (Array.isArray(node.children) && node.children.length > 0) {
+        const found = findFallback(node.children);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  return findFallback(nodes);
+}
+
 /** Рекурсивно находит узел в дереве */
-export function findNodeInTree(nodes: any[], key: string): any | null {
+export function findNodeInTree(nodes: HtmlNode[], key: string): HtmlNode | null {
   if (!Array.isArray(nodes)) return null;
   for (const n of nodes) {
     if (getNodeKey(n) === key) return n;
@@ -31,11 +125,12 @@ export function findNodeInTree(nodes: any[], key: string): any | null {
   }
   return null;
 }
+
 /** Рекурсивно собирает ключ самого узла и ВСЕХ его потомков на любую глубину */
-export function collectAllDescendantKeys(node: any): string[] {
+export function collectAllDescendantKeys(node: HtmlNode | null | undefined): string[] {
   if (!node) return [];
   const keys: string[] = [];
-  function walk(n: any) {
+  function walk(n: HtmlNode) {
     const k = getNodeKey(n);
     if (k) keys.push(k);
     if (Array.isArray(n?.children)) {
@@ -49,7 +144,7 @@ export function collectAllDescendantKeys(node: any): string[] {
 }
 
 /** Удаляет указанные ключи из дерева на любую глубину */
-export function removeNodesByKeys(nodes: any[], keys: Set<string>): any[] {
+export function removeNodesByKeys(nodes: HtmlNode[], keys: Set<string>): HtmlNode[] {
   if (!Array.isArray(nodes)) return [];
   return nodes
     .filter((n) => !keys.has(getNodeKey(n)))
@@ -65,10 +160,10 @@ export function removeNodesByKeys(nodes: any[], keys: Set<string>): any[] {
 }
 
 /** Извлекает ноды с указанными ключами */
-export function extractNodesByKeys(nodes: any[], keys: Set<string>): any[] {
+export function extractNodesByKeys(nodes: HtmlNode[], keys: Set<string>): HtmlNode[] {
   if (!Array.isArray(nodes)) return [];
-  const found: any[] = [];
-  function walk(list: any[]) {
+  const found: HtmlNode[] = [];
+  function walk(list: HtmlNode[]) {
     for (const item of list) {
       if (keys.has(getNodeKey(item))) {
         found.push(item);
@@ -109,9 +204,6 @@ export function isRowContainer(node: HtmlNode): boolean {
 /**
  * 🔹 ИЗВЛЕЧЕНИЕ СТИЛЕЙ И СКРИПТОВ
  * Гарантирует, что стили ВСЕГДА завернуты в селектор класса, даже если у ноды не было класса!
- */
-/**
- * 1. ИЗВЛЕКАЕМ СТИЛИ: ЖЕСТКО ПРИВЯЗЫВАЕМ СТИЛЬ К КЛАССУ ЭЛЕМЕНТА
  */
 export function extractStylesAndScriptsFromNodes(nodes: HtmlNode[]): {
   cleanNodes: HtmlNode[];
@@ -190,6 +282,7 @@ export function extractStylesAndScriptsFromNodes(nodes: HtmlNode[]): {
         }
       }
     }
+
     // Рекурсия по дочерним
     let processedChildren: HtmlNode[] = [];
     if (Array.isArray(node.children)) {
@@ -241,24 +334,19 @@ export function mergeScssWithoutDuplicates(
   let result = currentScss;
 
   for (const rule of incomingRules) {
-    // Извлекаем имя класса из правила, например: .field-t
     const match = rule.match(/^\.([a-zA-Z0-9_-]+)/);
     if (match) {
       const className = match[1];
 
-      // Проверяем: есть ли уже .className { в текущем файле стилей
       const regex = new RegExp(`\\.${className}\\s*\\{`);
       if (!regex.test(result)) {
-        // Такого класса еще нет — дописываем!
         result = `${result.trim()}\n\n${rule}`;
       } else {
-        // Класс уже есть — пропускаем дубль!
         console.log(
           `[SCSS] Класс .${className} уже есть в файле, дубль пропущен.`,
         );
       }
     } else {
-      // На крайний случай: если правило не с точки, но его еще нет в тексте
       if (!result.includes(rule)) {
         result = `${result.trim()}\n\n${rule}`;
       }
@@ -267,12 +355,9 @@ export function mergeScssWithoutDuplicates(
 
   return result.trim();
 }
+
 /**
  * 🔹 НАДЕЖНЫЙ МЕРДЖ СКРИПТОВ БЕЗ МУСОРА И ДУБЛИКАТОВ
- * Ищет блок /* @component: name * / ... /* @end: name * /
- * - Если блока нет — добавляет в конец.
- * - Если блок есть и код тот же — пропускает.
- * - Если код изменился — заменяет только его тело.
  */
 export function mergeScriptsWithoutDuplicates(
   currentBundle: string,
@@ -284,7 +369,6 @@ export function mergeScriptsWithoutDuplicates(
 
   for (const script of incomingScripts) {
     const name = script.name.trim();
-    // Очищаем пришедший код от старых внешних меток, если они уже были
     let cleanCode = script.code
       .replace(/\/\*\s*@component:\s*.*?\*\//g, "")
       .replace(/\/\*\s*@end:\s*.*?\*\//g, "")
@@ -292,7 +376,6 @@ export function mergeScriptsWithoutDuplicates(
 
     if (!cleanCode) continue;
 
-    // Регулярка для поиска существующего блока этого компонента
     const blockRegex = new RegExp(
       `\\/\\*\\s*@component:\\s*${name}\\s*\\*\\/[\\s\\S]*?\\/\\*\\s*@end:\\s*${name}\\s*\\*\\/`,
       "g",
@@ -301,20 +384,16 @@ export function mergeScriptsWithoutDuplicates(
     const formattedBlock = `/* @component: ${name} */\n${cleanCode}\n/* @end: ${name} */`;
 
     if (blockRegex.test(result)) {
-      // Блок с таким именем уже есть!
-      // Сравниваем: если код внутри точно такой же — ничего не трогаем (пропускаем дубль)
       const existingMatch = result.match(blockRegex);
       if (existingMatch && existingMatch[0].trim() === formattedBlock.trim()) {
         console.log(
           `[JS Bundle] Скрипт "${name}" уже существует без изменений, дубль пропущен.`,
         );
       } else {
-        // Код изменился — аккуратно обновляем именно этот блок
         result = result.replace(blockRegex, formattedBlock);
         console.log(`[JS Bundle] Скрипт "${name}" обновлен.`);
       }
     } else {
-      // Такого скрипта еще нет вообще — дописываем в конец бандла
       result = result ? `${result}\n\n${formattedBlock}` : formattedBlock;
       console.log(`[JS Bundle] Скрипт "${name}" добавлен в бандл.`);
     }
