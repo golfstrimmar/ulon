@@ -2,7 +2,7 @@ import { getHtmlJson, saveHtmlJson, getAllHtmlJson } from "@/lib/htmlStorage";
 import type { HtmlNode } from "@/types/HtmlNode";
 
 const DEFAULT_TREE_ID = "plaza_tree";
-
+// проверочка
 /**
  * Оборачивает переданные ноды в общий <div> и добавляет его
  * в конец активного дерева разметки в базе, после чего диспатчит 'plaza-tree-updated'.
@@ -13,7 +13,7 @@ export async function appendNodesToTree(
   const nodesToAdd = Array.isArray(newNodes) ? newNodes : [newNodes];
   if (nodesToAdd.length === 0) return [];
 
-  // Создаем единый контейнер div для всего пакета нод
+  // Создаем единый контейнер div для всего пакета нод.
   const wrapperDiv: HtmlNode = {
     id:
       typeof crypto !== "undefined" && crypto.randomUUID
