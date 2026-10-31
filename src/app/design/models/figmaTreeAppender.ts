@@ -2,7 +2,7 @@ import { getHtmlJson, saveHtmlJson, getAllHtmlJson } from "@/lib/htmlStorage";
 import type { HtmlNode } from "@/types/HtmlNode";
 
 const DEFAULT_TREE_ID = "plaza_tree";
-// проверочка
+
 /**
  * Оборачивает переданные ноды в общий <div> и добавляет его
  * в конец активного дерева разметки в базе, после чего диспатчит 'plaza-tree-updated'.
