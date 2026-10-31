@@ -74,7 +74,7 @@ export function TypographyControl({
     <div className="bg-zinc-950/80 border border-zinc-800 rounded-md p-2 flex flex-col gap-2 shadow-inner">
       {/* Заголовок + индикатор значения слайдера */}
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-mono uppercase text-zinc-400 font-semibold tracking-wider">
+        <span className="text-[10px] font-mono  text-zinc-400 font-semibold tracking-wider">
           Typography:
         </span>
         <span className="text-[11px] font-mono text-purple-400 font-bold bg-zinc-800 px-1.5 py-0.2 rounded border border-zinc-700">
@@ -125,7 +125,7 @@ export function TypographyControl({
 
       {/* 🔹 Блок выбора Font Weight (Все возможные варианты) */}
       <div className="flex items-center justify-between gap-1.5 pt-1.5 border-t border-zinc-800/80">
-        <span className="text-[10px] font-mono text-zinc-400 font-semibold shrink-0 uppercase tracking-tight">
+        <span className="text-[10px] font-mono text-zinc-400 font-semibold shrink-0  tracking-tight">
           Weight:
         </span>
 

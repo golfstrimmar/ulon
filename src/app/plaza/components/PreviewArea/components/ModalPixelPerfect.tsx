@@ -34,7 +34,7 @@ export default function ModalPixelPerfect() {
   const [isDragging, setIsDragging] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // Закрытие по Escape
+  // Close on Escape
   useEffect(() => {
     if (!isModalOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -53,10 +53,10 @@ export default function ModalPixelPerfect() {
         setErrorMsg("");
         await loadImageFile(file);
       } catch (err: any) {
-        setErrorMsg(err.message || "Ошибка чтения файла");
+        setErrorMsg(err.message || "Failed to read file");
       }
     }
-    // Сбрасываем значение инпута, чтобы можно было выбрать тот же файл повторно
+    // Reset the input value so the same file can be selected again
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -71,7 +71,7 @@ export default function ModalPixelPerfect() {
         setErrorMsg("");
         await loadImageFile(file);
       } catch (err: any) {
-        setErrorMsg(err.message || "Ошибка чтения файла");
+        setErrorMsg(err.message || "Failed to read file");
       }
     }
   };
@@ -105,6 +105,9 @@ export default function ModalPixelPerfect() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.94, y: 8 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pixel-perfect-modal-title"
             className="relative w-full max-w-md bg-zinc-900 border border-zinc-700/80 rounded-xl shadow-2xl overflow-hidden flex flex-col z-10 text-zinc-200"
             onClick={(e) => e.stopPropagation()}
           >
@@ -112,15 +115,19 @@ export default function ModalPixelPerfect() {
             <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 bg-zinc-900/90">
               <div className="flex items-center gap-2">
                 <span className="text-base">🎯</span>
-                <span className="text-sm font-semibold font-mono tracking-tight text-zinc-100">
-                  Pixel Perfect Подложка
+                <span
+                  id="pixel-perfect-modal-title"
+                  className="text-sm font-semibold font-mono tracking-tight text-zinc-100"
+                >
+                  Pixel Perfect Overlay
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
                 className="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition cursor-pointer"
-                title="Закрыть (Esc)"
+                title="Close (Esc)"
+                aria-label="Close modal"
               >
                 ✕
               </button>
@@ -128,7 +135,7 @@ export default function ModalPixelPerfect() {
 
             {/* Body */}
             <div className="p-4 space-y-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
-              {/* Скрытый input */}
+              {/* Hidden input */}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -137,10 +144,10 @@ export default function ModalPixelPerfect() {
                 className="hidden"
               />
 
-              {/* 1. Блок добавления / управления файлом */}
+              {/* 1. Upload / file management */}
               <div>
                 <label className="text-[11px] font-mono uppercase text-zinc-400 font-semibold mb-1.5 block">
-                  Изображение макета:
+                  Layout image:
                 </label>
 
                 {!image ? (
@@ -157,10 +164,10 @@ export default function ModalPixelPerfect() {
                   >
                     <span className="text-3xl mb-1.5">🖼️</span>
                     <span className="text-xs font-medium text-zinc-200 mb-0.5">
-                      Нажмите для выбора или перетащите файл
+                      Click to select or drag and drop a file
                     </span>
                     <span className="text-[10px] text-zinc-500">
-                      PNG, JPG, WEBP, SVG из файловой системы
+                      PNG, JPG, WEBP, or SVG from your file system
                     </span>
                   </div>
                 ) : (
@@ -169,7 +176,7 @@ export default function ModalPixelPerfect() {
                     <div className="w-14 h-14 rounded-lg overflow-hidden bg-zinc-900 border border-zinc-700/60 shrink-0 flex items-center justify-center">
                       <img
                         src={image}
-                        alt="Макет"
+                        alt="Layout preview"
                         className="w-full h-full object-cover"
                       />
                     </div>
@@ -180,7 +187,7 @@ export default function ModalPixelPerfect() {
                         className="text-xs font-mono font-medium text-zinc-200 truncate"
                         title={fileName}
                       >
-                        {fileName || "Подложка макета"}
+                        {fileName || "Layout overlay"}
                       </p>
                       {imageWidth > 0 && imageHeight > 0 && (
                         <p className="text-[10px] font-mono text-zinc-500 mt-0.5">
@@ -193,7 +200,7 @@ export default function ModalPixelPerfect() {
                           onClick={() => fileInputRef.current?.click()}
                           className="text-[10px] font-mono text-indigo-400 hover:text-indigo-300 underline cursor-pointer"
                         >
-                          Заменить файл
+                          Replace file
                         </button>
                       </div>
                     </div>
@@ -202,11 +209,11 @@ export default function ModalPixelPerfect() {
                     <button
                       type="button"
                       onClick={removeImage}
-                      title="Удалить подложку"
+                      title="Remove overlay"
                       className="px-2 py-1.5 rounded-lg text-xs text-red-400 hover:text-red-200 bg-red-950/30 hover:bg-red-900/50 border border-red-800/50 transition cursor-pointer flex items-center gap-1 shrink-0"
                     >
                       <span>🗑️</span>
-                      <span className="text-[10px] font-mono">Удалить</span>
+                      <span className="text-[10px] font-mono">Remove</span>
                     </button>
                   </div>
                 )}
@@ -218,11 +225,11 @@ export default function ModalPixelPerfect() {
                 )}
               </div>
 
-              {/* 2. Ползунок прозрачности верстки (превью) */}
+              {/* 2. Layout preview opacity */}
               <div className="bg-zinc-950/50 border border-zinc-800/80 rounded-xl p-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
-                    <span>👁️‍🗨️</span> Прозрачность верстки (превью):
+                    <span>👁️‍🗨️</span> Layout preview opacity:
                   </span>
                   <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-indigo-950 border border-indigo-700/60 text-indigo-300">
                     {previewOpacity}%
@@ -253,18 +260,22 @@ export default function ModalPixelPerfect() {
                           : "bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border-zinc-700"
                       }`}
                     >
-                      {val === 0 ? "0% (макет)" : val === 100 ? "100%" : `${val}%`}
+                      {val === 0
+                        ? "0% (layout)"
+                        : val === 100
+                          ? "100%"
+                          : `${val}%`}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* 3. Позиционирование и подгонка (Pixel Perfect) */}
+              {/* 3. Positioning and fitting (Pixel Perfect) */}
               {image && (
                 <div className="bg-zinc-950/50 border border-zinc-800/80 rounded-xl p-3 space-y-3">
                   <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
                     <span className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
-                      <span>📐</span> Подгонка подложки
+                      <span>📐</span> Overlay adjustment
                     </span>
 
                     {/* Toggle Visibility */}
@@ -276,19 +287,19 @@ export default function ModalPixelPerfect() {
                           ? "bg-emerald-950/70 border-emerald-600/70 text-emerald-300"
                           : "bg-zinc-800 border-zinc-700 text-zinc-500"
                       }`}
-                      title={isVisible ? "Скрыть подложку" : "Показать подложку"}
+                      title={isVisible ? "Hide overlay" : "Show overlay"}
                     >
-                      <span>{isVisible ? "👁️ Видима" : "👁️‍🗨️ Скрыта"}</span>
+                      <span>{isVisible ? "👁️ Visible" : "👁️‍🗨️ Hidden"}</span>
                     </button>
                   </div>
 
-                  {/* Смещение X / Y */}
+                  {/* X / Y offset */}
                   <div className="grid grid-cols-2 gap-3">
                     {/* X Offset */}
                     <div className="space-y-1">
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-mono uppercase text-zinc-400">
-                          Смещение X (px):
+                          X offset (px):
                         </span>
                         <span className="text-[10px] font-mono text-zinc-300">
                           {offsetX > 0 ? `+${offsetX}` : offsetX}px
@@ -306,7 +317,9 @@ export default function ModalPixelPerfect() {
                         <input
                           type="number"
                           value={offsetX}
-                          onChange={(e) => setOffsetX(Number(e.target.value) || 0)}
+                          onChange={(e) =>
+                            setOffsetX(Number(e.target.value) || 0)
+                          }
                           className="w-full text-center px-1.5 py-1 text-xs font-mono bg-zinc-900 border border-zinc-700 rounded text-zinc-100 focus:outline-none focus:border-indigo-500"
                         />
                         <button
@@ -324,7 +337,7 @@ export default function ModalPixelPerfect() {
                     <div className="space-y-1">
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-mono uppercase text-zinc-400">
-                          Смещение Y (px):
+                          Y offset (px):
                         </span>
                         <span className="text-[10px] font-mono text-zinc-300">
                           {offsetY > 0 ? `+${offsetY}` : offsetY}px
@@ -342,7 +355,9 @@ export default function ModalPixelPerfect() {
                         <input
                           type="number"
                           value={offsetY}
-                          onChange={(e) => setOffsetY(Number(e.target.value) || 0)}
+                          onChange={(e) =>
+                            setOffsetY(Number(e.target.value) || 0)
+                          }
                           className="w-full text-center px-1.5 py-1 text-xs font-mono bg-zinc-900 border border-zinc-700 rounded text-zinc-100 focus:outline-none focus:border-indigo-500"
                         />
                         <button
@@ -362,7 +377,7 @@ export default function ModalPixelPerfect() {
                     {/* Alignment */}
                     <div className="flex items-center gap-1">
                       <span className="text-[10px] font-mono text-zinc-500">
-                        Выравнивание:
+                        Alignment:
                       </span>
                       <button
                         type="button"
@@ -373,7 +388,7 @@ export default function ModalPixelPerfect() {
                             : "bg-zinc-800 border-zinc-700 text-zinc-400"
                         }`}
                       >
-                        Слева
+                        Left
                       </button>
                       <button
                         type="button"
@@ -384,7 +399,7 @@ export default function ModalPixelPerfect() {
                             : "bg-zinc-800 border-zinc-700 text-zinc-400"
                         }`}
                       >
-                        Центр
+                        Center
                       </button>
                     </div>
 
@@ -394,7 +409,7 @@ export default function ModalPixelPerfect() {
                         onClick={resetPosition}
                         className="text-[10px] font-mono text-zinc-400 hover:text-zinc-200 underline cursor-pointer"
                       >
-                        Сбросить (0, 0)
+                        Reset (0, 0)
                       </button>
                     )}
                   </div>
@@ -408,7 +423,7 @@ export default function ModalPixelPerfect() {
                       className="rounded accent-indigo-500 cursor-pointer"
                     />
                     <span className="text-[11px] text-zinc-400">
-                      Растягивать высоту превью под размер макета
+                      Stretch preview height to match the layout size
                     </span>
                   </label>
                 </div>
@@ -417,13 +432,13 @@ export default function ModalPixelPerfect() {
 
             {/* Footer */}
             <div className="px-4 py-2.5 border-t border-zinc-800 bg-zinc-950 flex items-center justify-between text-[11px] text-zinc-500">
-              <span>💡 Подложка лежит под версткой</span>
+              <span>💡 The overlay is placed beneath the layout</span>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
                 className="px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 text-xs font-medium transition cursor-pointer"
               >
-                Готово
+                Done
               </button>
             </div>
           </motion.div>

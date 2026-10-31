@@ -62,7 +62,7 @@ function CanvasDragGhostComponent() {
             className="absolute px-2.5 py-1 rounded-md bg-indigo-950/90 border border-indigo-400 text-white shadow-2xl flex items-center gap-2 backdrop-blur-sm"
             style={{ width: 180, height: 28, top: 0, left: 0 }}
           >
-            <span className="px-1.5 py-0.5 rounded text-[11px] font-mono uppercase bg-indigo-900 border border-indigo-500 text-indigo-200 leading-none">
+            <span className="px-1.5 py-0.5 rounded text-[11px] font-mono  bg-indigo-900 border border-indigo-500 text-indigo-200 leading-none">
               {primaryNode.tag || "div"}
             </span>
             <span className="text-[11px] font-mono text-zinc-300 leading-none">
@@ -75,7 +75,7 @@ function CanvasDragGhostComponent() {
       {/* Одиночная карточка */}
       {draggedNodes.length === 1 && (
         <div className="px-2.5 py-1 rounded-md bg-indigo-950/90 border border-indigo-400 text-white shadow-2xl flex items-center gap-2 backdrop-blur-sm">
-          <span className="px-1.5 py-0.5 rounded text-[11px] font-mono uppercase bg-indigo-900 border border-indigo-500 text-indigo-200 leading-none">
+          <span className="px-1.5 py-0.5 rounded text-[11px] font-mono  bg-indigo-900 border border-indigo-500 text-indigo-200 leading-none">
             {primaryNode.tag || "div"}
           </span>
 

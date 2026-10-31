@@ -9,11 +9,12 @@ import {
   moveNodesGroup,
   duplicateNodesGroup,
   normalizeSelectedKeys,
+  mergeDonorIntoTarget,
 } from "@/app/plaza/components/CanvasArea/models/canvasModel";
 
 export interface DropTarget {
   key: string;
-  position: "self" | "before" | "after" | "inside";
+  position: "self" | "before" | "after" | "inside" | "donor";
 }
 
 export interface SelectionBox {
@@ -41,6 +42,7 @@ export interface CanvasState {
   // ── 3. Сплит-режим (Pane 1 / Pane 2) ───────────────────────────────────────
   isSplit: boolean;
   rightKeys: Set<string>;
+  isDonorMode: boolean;
 
   // ── 4. Рамочное выделение (Marquee) ────────────────────────────────────────
   selectionBox: SelectionBox | null;
@@ -75,6 +77,8 @@ export interface CanvasState {
 
   // ── Actions: Сплит-режим ───────────────────────────────────────────────────
   toggleSplitMode: () => void;
+  toggleDonorMode: () => void;
+  setDonorMode: (val: boolean) => void;
   setRightKeys: (keys: Set<string> | ((prev: Set<string>) => Set<string>)) => void;
   moveKeysToRightPane: (keys: string[]) => void;
   moveKeysToLeftPane: (keys: string[]) => void;
@@ -104,6 +108,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   isSplit: false,
   rightKeys: new Set<string>(),
+  isDonorMode: false,
 
   selectionBox: null,
   selectedKeys: new Set<string>(),
@@ -236,6 +241,13 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       rightKeys: !state.isSplit ? state.rightKeys : new Set(),
     })),
 
+  toggleDonorMode: () =>
+    set((state) => ({
+      isDonorMode: !state.isDonorMode,
+    })),
+
+  setDonorMode: (val) => set({ isDonorMode: val }),
+
   setRightKeys: (keys) =>
     set((state) => ({
       rightKeys: typeof keys === "function" ? keys(state.rightKeys) : keys,
@@ -302,7 +314,19 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   commitDrop: async () => {
     const { currentJson, draggedKeys, dropTarget } = get();
     if (draggedKeys.length > 0 && dropTarget && dropTarget.key) {
-      if (dropTarget.position === "self") {
+      if (dropTarget.position === "donor") {
+        const updated = mergeDonorIntoTarget(
+          currentJson,
+          draggedKeys,
+          dropTarget.key,
+        );
+        set((state) => {
+          const nextRight = new Set(state.rightKeys);
+          for (const k of draggedKeys) nextRight.delete(k);
+          return { rightKeys: nextRight };
+        });
+        await get().persist(updated);
+      } else if (dropTarget.position === "self") {
         const updated = duplicateNodesGroup(currentJson, draggedKeys);
         await get().persist(updated);
       } else {

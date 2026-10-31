@@ -66,7 +66,7 @@ export function MonacoPropertiesEditor({
   const firstCls = nodeClasses[0] ?? null;
   const [openTarget, setOpenTarget] = useState<string | null>(firstCls);
   const [currentText, setCurrentText] = useState<string>(() =>
-    firstCls ? extractClassSnippet(globalScss, firstCls) : ""
+    firstCls ? extractClassSnippet(globalScss, firstCls) : "",
   );
   const currentTextRef = useRef<string>("");
   currentTextRef.current = currentText;
@@ -381,7 +381,7 @@ export function MonacoPropertiesEditor({
     <div className="w-full flex flex-col gap-2">
       <div className="flex flex-wrap justify-between items-center gap-1.5 p-2 rounded-lg bg-zinc-950/80 border border-zinc-800">
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-semibold mr-1 shrink-0">
+          <span className="text-[10px] font-mono  tracking-wider text-zinc-400 font-semibold mr-1 shrink-0">
             Classes:
           </span>
 
@@ -437,74 +437,72 @@ export function MonacoPropertiesEditor({
       </div>
 
       {openTarget && (
-          <div
-            className="w-full flex flex-col rounded-lg border border-indigo-500/60 bg-zinc-950 overflow-hidden shadow-xl"
-          >
-            <div className="flex items-center justify-between px-3 py-1.5 bg-indigo-950/70 border-b border-indigo-900/60 select-none">
-              {/*{openTarget !== "__attributes__" && (*/}
-              <ModalCustomStyles
-                currentClass={openTarget}
-                currentScssText={currentText}
-                onApplySnippet={handleApplySnippet}
-              />
-              {/*)}*/}
-              {/*<span className="text-[12px] font-mono font-bold text-indigo-200">
+        <div className="w-full flex flex-col rounded-lg border border-indigo-500/60 bg-zinc-950 overflow-hidden shadow-xl">
+          <div className="flex items-center justify-between px-3 py-1.5 bg-indigo-950/70 border-b border-indigo-900/60 select-none">
+            {/*{openTarget !== "__attributes__" && (*/}
+            <ModalCustomStyles
+              currentClass={openTarget}
+              currentScssText={currentText}
+              onApplySnippet={handleApplySnippet}
+            />
+            {/*)}*/}
+            {/*<span className="text-[12px] font-mono font-bold text-indigo-200">
                 {openTarget !== "__attributes__"
                   ? `SCSS: .${openTarget}`
                   : `Attributes <${nodeTag}> (JSON)`}
               </span>*/}
-              <ButtonUndoRedoScss />
+            <ButtonUndoRedoScss />
 
-              <div className="flex items-center gap-2">
-                {openTarget !== "__attributes__" && (
-                  <button
-                    type="button"
-                    onClick={handleDeleteCurrentClassCss}
-                    className="text-[10px] font-mono text-zinc-400 hover:text-red-400 px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 transition cursor-pointer"
-                  >
-                    ✕ Clear
-                  </button>
-                )}
-
+            <div className="flex items-center gap-2">
+              {openTarget !== "__attributes__" && (
                 <button
                   type="button"
-                  onClick={handleCloseEditor}
-                  className="text-[10px] font-mono font-bold text-white px-2.5 py-0.5 rounded bg-indigo-600 hover:bg-indigo-500 shadow transition cursor-pointer"
+                  onClick={handleDeleteCurrentClassCss}
+                  className="text-[10px] font-mono text-zinc-400 hover:text-red-400 px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 transition cursor-pointer"
                 >
-                  ✓ Save / Close
+                  ✕ Clear
                 </button>
-              </div>
-            </div>
+              )}
 
-            <div className="h-[160px] w-full relative">
-              <Editor
-                key={openTarget}
-                height="160px"
-                theme="vs-dark"
-                language={openTarget === "__attributes__" ? "json" : "scss"}
-                value={currentText}
-                onChange={(val) => {
-                  const text = val || "";
-                  setCurrentText(text);
-                  currentTextRef.current = text;
-                  isDirtyRef.current = true;
-                }}
-                onMount={handleEditorDidMount}
-                options={{
-                  readOnly: false,
-                  minimap: { enabled: false },
-                  fontSize: 12,
-                  fontFamily: "var(--font-mono), monospace",
-                  lineNumbers: "on",
-                  scrollBeyondLastLine: false,
-                  automaticLayout: true,
-                  wordWrap: "on",
-                  tabSize: 2,
-                }}
-              />
+              <button
+                type="button"
+                onClick={handleCloseEditor}
+                className="text-[10px] font-mono font-bold text-white px-2.5 py-0.5 rounded bg-indigo-600 hover:bg-indigo-500 shadow transition cursor-pointer"
+              >
+                ✓ Save / Close
+              </button>
             </div>
           </div>
-        )}
+
+          <div className="h-[160px] w-full relative">
+            <Editor
+              key={openTarget}
+              height="160px"
+              theme="vs-dark"
+              language={openTarget === "__attributes__" ? "json" : "scss"}
+              value={currentText}
+              onChange={(val) => {
+                const text = val || "";
+                setCurrentText(text);
+                currentTextRef.current = text;
+                isDirtyRef.current = true;
+              }}
+              onMount={handleEditorDidMount}
+              options={{
+                readOnly: false,
+                minimap: { enabled: false },
+                fontSize: 12,
+                fontFamily: "var(--font-mono), monospace",
+                lineNumbers: "on",
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                wordWrap: "on",
+                tabSize: 2,
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

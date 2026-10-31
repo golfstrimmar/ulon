@@ -34,9 +34,7 @@ async function AccountDetails() {
           <h1 className="text-2xl font-bold text-white tracking-tight">
             My Profile
           </h1>
-          <p className="text-sm text-zinc-400">
-            Your account details
-          </p>
+          <p className="text-sm text-zinc-400">Your account details</p>
         </div>
       </div>
 
@@ -104,7 +102,9 @@ export default function AccountPage() {
       <Suspense
         fallback={
           <header className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur px-6 py-4 flex items-center justify-between">
-            <span className="font-bold text-xl tracking-tight text-white">Ulon</span>
+            <span className="font-bold text-xl tracking-tight text-white">
+              Ulon
+            </span>
             <div className="h-8 w-28 bg-zinc-800/50 rounded-full animate-pulse" />
           </header>
         }

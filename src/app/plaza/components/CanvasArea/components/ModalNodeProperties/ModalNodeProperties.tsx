@@ -91,7 +91,7 @@ export default function ModalNodeProperties({
         <div className="p-1 mt-1">
           <div className="flex items-center justify-between pl-14 pr-2">
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-mono text-zinc-500 uppercase tracking-widest">
+              <span className="text-[11px] font-mono text-zinc-500  tracking-widest">
                 Editing
               </span>
               <span className="text-[11px] font-mono text-emerald-300 truncate max-w-[200px]">
@@ -149,7 +149,7 @@ export default function ModalNodeProperties({
 
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 block">
+                <label className="text-[10px] font-mono  tracking-widest text-zinc-400 block">
                   Text
                 </label>
                 {TEXT_DEFAULT.map((item, index) => (

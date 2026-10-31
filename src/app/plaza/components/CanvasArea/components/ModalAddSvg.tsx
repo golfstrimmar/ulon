@@ -91,13 +91,17 @@ export default function ModalAddSvg({
   const [svgItems, setSvgItems] = useState<SvgItem[]>([]);
 
   // Глобальные настройки для пачки
-  const [outputMode, setOutputMode] = useState<"inline-wrapper" | "image-datauri">("inline-wrapper");
+  const [outputMode, setOutputMode] = useState<
+    "inline-wrapper" | "image-datauri"
+  >("inline-wrapper");
   const [targetHeight, setTargetHeight] = useState<number>(22);
   const [targetWidth, setTargetWidth] = useState<number>(22);
   const [lockAspectRatio, setLockAspectRatio] = useState<boolean>(true);
   const [wrapperClass, setWrapperClass] = useState<string>("svg-wrapper");
 
-  const [colorMode, setColorMode] = useState<"original" | "currentcolor" | "custom">("original");
+  const [colorMode, setColorMode] = useState<
+    "original" | "currentcolor" | "custom"
+  >("original");
   const [customColor, setCustomColor] = useState<string>("#3b82f6");
 
   const [isDragging, setIsDragging] = useState<boolean>(false);
@@ -410,17 +414,29 @@ export default function ModalAddSvg({
       clonedNode.style = "width: 100%; height: 100%; display: block;";
 
       if (colorMode === "currentcolor") {
-        if (clonedNode.attributes["stroke"] && clonedNode.attributes["stroke"] !== "none") {
+        if (
+          clonedNode.attributes["stroke"] &&
+          clonedNode.attributes["stroke"] !== "none"
+        ) {
           clonedNode.attributes["stroke"] = "currentColor";
         }
-        if (clonedNode.attributes["fill"] && clonedNode.attributes["fill"] !== "none") {
+        if (
+          clonedNode.attributes["fill"] &&
+          clonedNode.attributes["fill"] !== "none"
+        ) {
           clonedNode.attributes["fill"] = "currentColor";
         }
       } else if (colorMode === "custom") {
-        if (clonedNode.attributes["stroke"] && clonedNode.attributes["stroke"] !== "none") {
+        if (
+          clonedNode.attributes["stroke"] &&
+          clonedNode.attributes["stroke"] !== "none"
+        ) {
           clonedNode.attributes["stroke"] = customColor;
         }
-        if (clonedNode.attributes["fill"] && clonedNode.attributes["fill"] !== "none") {
+        if (
+          clonedNode.attributes["fill"] &&
+          clonedNode.attributes["fill"] !== "none"
+        ) {
           clonedNode.attributes["fill"] = customColor;
         }
       }
@@ -535,7 +551,8 @@ export default function ModalAddSvg({
                     onDrop={(e) => {
                       e.preventDefault();
                       setIsDragging(false);
-                      if (e.dataTransfer.files) processFiles(e.dataTransfer.files);
+                      if (e.dataTransfer.files)
+                        processFiles(e.dataTransfer.files);
                     }}
                     onClick={() => fileInputRef.current?.click()}
                     className={`w-full h-[280px] border-2 border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all duration-300 ${
@@ -545,8 +562,18 @@ export default function ModalAddSvg({
                     }`}
                   >
                     <div className="p-4 rounded-full bg-neutral-800 text-neutral-300 mb-3 shadow-inner">
-                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 4.5v15m7.5-7.5h-15M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14" />
+                      <svg
+                        className="w-8 h-8"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="1.5"
+                          d="M12 4.5v15m7.5-7.5h-15M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14"
+                        />
                       </svg>
                     </div>
                     <p className="text-base font-medium text-neutral-200">
@@ -594,7 +621,8 @@ export default function ModalAddSvg({
                 <div className="flex flex-wrap items-center justify-between gap-3 bg-neutral-900 border border-neutral-800 rounded-xl p-3 px-4">
                   <div className="flex items-center gap-3">
                     <span className="text-xs font-medium text-neutral-300">
-                      Loaded: <b className="text-white">{svgItems.length}</b> icons
+                      Loaded: <b className="text-white">{svgItems.length}</b>{" "}
+                      icons
                     </span>
                     <span className="text-neutral-600">|</span>
                     <span className="text-xs font-medium text-blue-400">
@@ -691,7 +719,7 @@ export default function ModalAddSvg({
                 {/* Общие настройки для всех выбранных иконок */}
                 <div className="w-full bg-neutral-900/60 border border-neutral-800 rounded-xl p-4 flex flex-col gap-4">
                   <div className="flex flex-col gap-2 pb-3 border-b border-neutral-800">
-                    <span className="text-xs uppercase font-bold text-neutral-400 tracking-wider">
+                    <span className="text-xs  font-bold text-neutral-400 tracking-wider">
                       Способ сохранения (Output Mode):
                     </span>
                     <div className="grid grid-cols-2 gap-2">
@@ -707,7 +735,8 @@ export default function ModalAddSvg({
                           🧩 Inline SVG (&lt;i&gt; + &lt;svg&gt;)
                         </span>
                         <span className="text-[10px] text-neutral-400">
-                          Полноценное дерево нод. Доступ к классам и hover в холсте.
+                          Полноценное дерево нод. Доступ к классам и hover в
+                          холсте.
                         </span>
                       </button>
 
@@ -742,7 +771,9 @@ export default function ModalAddSvg({
                               : "bg-neutral-800 border-neutral-700 text-neutral-400"
                           }`}
                         >
-                          {lockAspectRatio ? "🔒 Квадрат (1:1)" : "🔓 Свободный"}
+                          {lockAspectRatio
+                            ? "🔒 Квадрат (1:1)"
+                            : "🔓 Свободный"}
                         </button>
                         <span className="font-mono text-blue-400 font-semibold">
                           {targetWidth} × {targetHeight} px
@@ -754,14 +785,18 @@ export default function ModalAddSvg({
                       <div className="flex flex-col gap-1.5">
                         <div className="flex justify-between text-[11px] text-neutral-400">
                           <span>Высота:</span>
-                          <span className="font-mono text-neutral-200">{targetHeight}px</span>
+                          <span className="font-mono text-neutral-200">
+                            {targetHeight}px
+                          </span>
                         </div>
                         <input
                           type="range"
                           min="12"
                           max="120"
                           value={targetHeight}
-                          onChange={(e) => handleHeightChange(parseInt(e.target.value, 10))}
+                          onChange={(e) =>
+                            handleHeightChange(parseInt(e.target.value, 10))
+                          }
                           className="h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
                         />
                       </div>
@@ -769,21 +804,27 @@ export default function ModalAddSvg({
                       <div className="flex flex-col gap-1.5">
                         <div className="flex justify-between text-[11px] text-neutral-400">
                           <span>Ширина:</span>
-                          <span className="font-mono text-neutral-200">{targetWidth}px</span>
+                          <span className="font-mono text-neutral-200">
+                            {targetWidth}px
+                          </span>
                         </div>
                         <input
                           type="range"
                           min="12"
                           max="120"
                           value={targetWidth}
-                          onChange={(e) => handleWidthChange(parseInt(e.target.value, 10))}
+                          onChange={(e) =>
+                            handleWidthChange(parseInt(e.target.value, 10))
+                          }
                           className="h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
                         />
                       </div>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                      <span className="text-[11px] text-neutral-500 mr-1">Пресеты:</span>
+                      <span className="text-[11px] text-neutral-500 mr-1">
+                        Пресеты:
+                      </span>
                       {PRESET_HEIGHTS.map((h) => (
                         <button
                           key={h}

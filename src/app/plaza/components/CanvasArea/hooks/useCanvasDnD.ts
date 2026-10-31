@@ -73,6 +73,18 @@ export function useCanvasDnD() {
           return;
         }
 
+        // 🚀 Проверка на донорство: сплит-режим, включен особый режим донора, активная нода из левой панели (Pane 1), цель в правой (Pane 2)
+        const { isSplit, rightKeys, isDonorMode } = useCanvasStore.getState();
+        const isTargetInRightPane =
+          Boolean(cardEl.closest("[data-pane='right']")) || rightKeys.has(key);
+        const isDonorFromLeftPane =
+          isSplit && isDonorMode && activeKeys.every((k) => !rightKeys.has(k));
+
+        if (isDonorFromLeftPane && isTargetInRightPane) {
+          useCanvasStore.getState().setDropTarget({ key, position: "donor" });
+          return;
+        }
+
         const rect = cardEl.getBoundingClientRect();
         let position: "before" | "inside" | "after" = "inside";
 

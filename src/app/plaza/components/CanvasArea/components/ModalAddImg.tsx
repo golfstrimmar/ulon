@@ -544,7 +544,7 @@ export default function ModalAddImg({
                 {/* Блок пакетного сжатия и параметров */}
                 <div className="w-full bg-neutral-900/60 border border-neutral-800 rounded-xl p-4 flex flex-col gap-4">
                   <div className="flex items-center justify-between border-b border-neutral-800/80 pb-2">
-                    <span className="text-xs uppercase font-bold text-neutral-400 tracking-wider">
+                    <span className="text-xs  font-bold text-neutral-400 tracking-wider">
                       Batch Optimization & Compression
                     </span>
                     <div className="flex items-center gap-2 text-xs">

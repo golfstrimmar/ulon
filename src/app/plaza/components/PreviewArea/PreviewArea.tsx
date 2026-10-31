@@ -355,7 +355,7 @@ export function PreviewArea() {
               <span className="w-3 h-3 rounded-full bg-red-500/80" />
               <span className="w-3 h-3 rounded-full bg-yellow-500/80" />
               <span className="w-3 h-3 rounded-full bg-green-500/80" />
-              <span className="ml-1 text-[11px] font-mono text-zinc-400 uppercase tracking-widest hidden sm:inline">
+              <span className="ml-1 text-[11px] font-mono text-zinc-400  tracking-widest hidden sm:inline">
                 Preview
               </span>
             </div>

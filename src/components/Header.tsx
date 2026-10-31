@@ -18,13 +18,13 @@ export async function Header() {
         </Link>
         <Link
           href="/design"
-          className="text-xs uppercase font-mono font-bold tracking-wider px-2.5 py-1 rounded-md bg-zinc-800/80 hover:bg-zinc-800 border border-zinc-700/60 hover:border-indigo-500/50 text-indigo-300 hover:text-white transition"
+          className="text-xs  font-mono font-bold tracking-wider px-2.5 py-1 rounded-md bg-zinc-800/80 hover:bg-zinc-800 border border-zinc-700/60 hover:border-indigo-500/50 text-indigo-300 hover:text-white transition"
         >
           Design
         </Link>
         <Link
           href="/plaza"
-          className="text-xs uppercase font-mono font-bold tracking-wider px-2.5 py-1 rounded-md bg-zinc-800/80 hover:bg-zinc-800 border border-zinc-700/60 hover:border-indigo-500/50 text-indigo-300 hover:text-white transition"
+          className="text-xs  font-mono font-bold tracking-wider px-2.5 py-1 rounded-md bg-zinc-800/80 hover:bg-zinc-800 border border-zinc-700/60 hover:border-indigo-500/50 text-indigo-300 hover:text-white transition"
         >
           Plaza
         </Link>
@@ -47,9 +47,7 @@ export async function Header() {
                 />
               ) : (
                 <div className="w-7 h-7 rounded-full bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 font-bold text-xs flex items-center justify-center">
-                  {(session.user.name ||
-                    session.user.email ||
-                    "U")[0].toUpperCase()}
+                  {(session.user.name || session.user.email || "U")[0].toUpperCase()}
                 </div>
               )}
               <span className="text-sm font-medium text-zinc-200 group-hover:text-white transition max-w-[160px] truncate">

@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import {
   ArrowLeftCircleIcon,
   ArrowRightCircleIcon,
+  SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { useCanvasArea } from "@/app/plaza/components/CanvasArea/hooks/useCanvasArea";
 import { NodeCard } from "@/app/plaza/components/CanvasArea/components/NodeCard";
@@ -37,6 +38,8 @@ export function CanvasArea() {
   const isSplit = useCanvasStore((s) => s.isSplit);
   const rightKeys = useCanvasStore((s) => s.rightKeys);
   const toggleSplitMode = useCanvasStore((s) => s.toggleSplitMode);
+  const isDonorMode = useCanvasStore((s) => s.isDonorMode);
+  const toggleDonorMode = useCanvasStore((s) => s.toggleDonorMode);
   const clickedKey = useCanvasStore((s) => s.clickedKey);
   const setClickedKey = useCanvasStore((s) => s.setClickedKey);
   const persist = useCanvasStore((s) => s.persist);
@@ -57,8 +60,14 @@ export function CanvasArea() {
     if (!isSplit) return;
 
     const handlePointerUp = (e: PointerEvent) => {
-      const activeKeys = useCanvasStore.getState().draggedKeys;
+      const state = useCanvasStore.getState();
+      const activeKeys = state.draggedKeys;
       if (activeKeys.length === 0) return;
+
+      // Если происходит сброс на ноду-акцептор (режим донора) — слияние обрабатывается в commitDrop
+      if (state.dropTarget?.position === "donor") {
+        return;
+      }
 
       const leftEl = leftPaneRef.current;
       const rightEl = rightPaneRef.current;
@@ -120,21 +129,51 @@ export function CanvasArea() {
       {/* РАБОЧАЯ ОБЛАСТЬ ХОЛСТА */}
       <div className="plaza-workspace flex-1 relative bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl flex flex-col">
         {/* ВЕРХНИЙ БАР */}
-        <div className="h-7 shrink-0 bg-zinc-900 border-b border-zinc-800 pl-2 flex items-center justify-between text-xs text-zinc-400">
+        <div className="h-7 shrink-0 bg-zinc-900 border-b border-zinc-800 pl-2 pr-1 flex items-center justify-between text-xs text-zinc-400">
           <span className="font-mono !text-[10px]">Workspace</span>
-          <button
-            type="button"
-            onClick={toggleSplitMode}
-            className={`px-2 py-0.5 rounded text-[11px] font-mono transition-colors pointer-pointer hover:bg-zinc-700 ${
-              isSplit ? " text-white" : "bg-zinc-800 text-zinc-300"
-            }`}
-          >
-            {isSplit ? (
-              <ArrowRightCircleIcon className="size-4" />
-            ) : (
-              <ArrowLeftCircleIcon className="size-4" />
-            )}
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={toggleDonorMode}
+              title={
+                isDonorMode
+                  ? "Режим донора: ВКЛ (сброс на ноду в Pane 2 передаст свойства и удалит донора)"
+                  : "Режим донора: ВЫКЛ (ноды вкладываются как обычно)"
+              }
+              className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono transition-all pointer-pointer border ${
+                isDonorMode
+                  ? "bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.25)]"
+                  : "bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700 border-zinc-700/50"
+              }`}
+            >
+              <SparklesIcon
+                className={`size-3.5 ${
+                  isDonorMode ? "text-amber-400" : "text-zinc-400"
+                }`}
+              />
+              <span>Донор</span>
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  isDonorMode ? "bg-amber-400 animate-pulse" : "bg-zinc-600"
+                }`}
+              />
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleSplitMode}
+              title={isSplit ? "Выключить сплит-панель" : "Включить сплит-панель"}
+              className={`px-2 py-0.5 rounded text-[11px] font-mono transition-colors pointer-pointer hover:bg-zinc-700 ${
+                isSplit ? " text-white" : "bg-zinc-800 text-zinc-300"
+              }`}
+            >
+              {isSplit ? (
+                <ArrowRightCircleIcon className="size-4" />
+              ) : (
+                <ArrowLeftCircleIcon className="size-4" />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* СПЛИТ-ОБЛАСТЬ (PANE 1 И PANE 2) */}
@@ -146,6 +185,7 @@ export function CanvasArea() {
           {/* ЛЕВАЯ КОЛОНКА (PANE 1) */}
           <div
             ref={leftPaneRef}
+            data-pane="left"
             className="flex-1 h-full overflow-hidden flex flex-col"
           >
             {isSplit && (
@@ -169,6 +209,7 @@ export function CanvasArea() {
           {isSplit && (
             <div
               ref={rightPaneRef}
+              data-pane="right"
               className="flex-1 h-full overflow-hidden flex flex-col border-l border-zinc-800 bg-zinc-950"
             >
               <div className="px-3 py-1 bg-zinc-900/40 text-[11px] font-mono text-zinc-500 border-b border-zinc-800/40 flex justify-between">

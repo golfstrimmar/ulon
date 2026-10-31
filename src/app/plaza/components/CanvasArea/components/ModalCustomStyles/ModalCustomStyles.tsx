@@ -43,7 +43,7 @@ export default function ModalCustomStyles({
         <div className="fixed right-0 bottom-0 mb-1 z-50 w-[400px] bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl p-2.5 flex flex-col gap-2.5 backdrop-blur-md select-none">
           {/* Шапка */}
           <div className="flex items-center justify-between pb-1 border-b border-zinc-800">
-            <span className="text-[12px] font-mono text-zinc-400 uppercase tracking-wider font-semibold">
+            <span className="text-[12px] font-mono text-zinc-400  tracking-wider font-semibold">
               Add to <code className="text-emerald-400">.{currentClass}</code>
             </span>
             <button

@@ -51,7 +51,11 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
     let bg = DEPTH_BG[depthIdx];
     let shadow = "0 1px 3px rgba(0, 0, 0, 0.4)";
 
-    if (isDrop && dropPos === "self") {
+    if (isDrop && dropPos === "donor") {
+      border = "#f59e0b";
+      bg = "rgba(245, 158, 11, 0.22)";
+      shadow = "0 0 16px rgba(245, 158, 11, 0.55)";
+    } else if (isDrop && dropPos === "self") {
       border = "#c084fc";
       bg = "rgba(168, 85, 247, 0.22)";
       shadow = "0 0 12px rgba(192, 132, 252, 0.4)";
@@ -181,6 +185,7 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
     isRow,
     isDragged,
     isSelected,
+    isDropDonor: isDrop && dropPos === "donor",
     borderStyle,
     bgStyle,
     shadowStyle,

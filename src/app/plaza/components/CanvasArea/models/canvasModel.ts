@@ -566,3 +566,102 @@ export function duplicateNodesGroup(
   }
   return currentTree;
 }
+
+/**
+ * 🔹 Слияние ноды-донора в ноду-акцептор:
+ * 1. text: если у донора есть текст, он полностью перезаписывает текст принимающей ноды.
+ * 2. class: объединяем классы через пробел, отсекая дубликаты.
+ * 3. attributes: слияние Object.assign({}, target.attributes, donor.attributes).
+ * 4. tag: остается без изменений у акцептора.
+ * 5. children: дочерние элементы донора переносятся внутрь принимающей ноды (в конец children).
+ * 6. удаление донора: нода-донор удаляется из дерева.
+ */
+export function mergeDonorIntoTarget(
+  tree: HtmlNode[],
+  donorKeys: string[],
+  targetKey: string,
+): HtmlNode[] {
+  if (!tree || donorKeys.length === 0 || !targetKey) return tree;
+  if (donorKeys.includes(targetKey)) return tree;
+
+  // 1. Находим целевую ноду (акцептор) и ноды-доноры
+  const targetNode = findNodeInTree(tree, targetKey);
+  if (!targetNode) return tree;
+
+  const donorNodes: HtmlNode[] = [];
+  for (const dKey of donorKeys) {
+    const dNode = findNodeInTree(tree, dKey);
+    if (dNode) donorNodes.push(dNode);
+  }
+  if (donorNodes.length === 0) return tree;
+
+  // 2. Рассчитываем итоговые свойства акцептора
+  let nextText = targetNode.text;
+  const currentClasses = new Set<string>(
+    (targetNode.class || "").trim().split(/\s+/).filter(Boolean),
+  );
+  const nextAttributes: Record<string, string> = {
+    ...(targetNode.attributes || {}),
+  };
+  const appendedChildren: HtmlNode[] = [];
+
+  for (const donor of donorNodes) {
+    // 2.1. Текст: если у донора есть текст, он перезаписывает текст принимающей ноды
+    if (typeof donor.text === "string" && donor.text.trim() !== "") {
+      nextText = donor.text;
+    }
+
+    // 2.2. Классы: слияние без дубликатов
+    if (donor.class) {
+      donor.class
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .forEach((cls) => currentClasses.add(cls));
+    }
+
+    // 2.3. Атрибуты: слияние объектов (донор перезаписывает совпадения)
+    if (donor.attributes && typeof donor.attributes === "object") {
+      Object.assign(nextAttributes, donor.attributes);
+    }
+
+    // 2.4. Дети донора: переносятся внутрь принимающей ноды
+    if (Array.isArray(donor.children) && donor.children.length > 0) {
+      appendedChildren.push(...donor.children);
+    }
+  }
+
+  const nextClass = Array.from(currentClasses).join(" ");
+
+  // 3. Удаляем ноды-доноры из дерева
+  const donorSet = new Set(donorKeys);
+  const treeWithoutDonors = removeNodesByKeys(tree, donorSet);
+
+  // 4. Обновляем акцептор в дереве
+  function updateTargetInList(nodes: HtmlNode[]): HtmlNode[] {
+    return nodes.map((item) => {
+      if (getNodeKey(item) === targetKey) {
+        const existingChildren = Array.isArray(item.children)
+          ? item.children
+          : [];
+        return {
+          ...item,
+          text: nextText,
+          class: nextClass,
+          attributes:
+            Object.keys(nextAttributes).length > 0 ? nextAttributes : item.attributes,
+          children: [...existingChildren, ...appendedChildren],
+        };
+      }
+      if (Array.isArray(item.children)) {
+        return {
+          ...item,
+          children: updateTargetInList(item.children),
+        };
+      }
+      return item;
+    });
+  }
+
+  return updateTargetInList(treeWithoutDonors);
+}

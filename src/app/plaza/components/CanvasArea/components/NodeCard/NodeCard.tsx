@@ -17,6 +17,7 @@ function NodeCardComponent({
     isRow,
     isDragged,
     isSelected,
+    isDropDonor,
     borderStyle,
     bgStyle,
     shadowStyle,
@@ -50,6 +51,15 @@ function NodeCardComponent({
         boxShadow: shadowStyle,
       }}
     >
+      {/* 🚀 Оверлей режима донора: визуальная подсказка слияния свойств */}
+      {isDropDonor && (
+        <div className="absolute inset-0 z-30 pointer-events-none rounded-md border-2 border-amber-400 bg-amber-500/15 flex items-center justify-center backdrop-blur-[1px]">
+          <span className="px-2 py-0.5 rounded bg-amber-500 text-zinc-950 font-mono font-bold text-[11px] shadow-lg flex items-center gap-1.5 animate-pulse">
+            <span className="text-xs">⤓</span> Accept donor properties
+          </span>
+        </div>
+      )}
+
       {/* Шапка карточки */}
       <div
         data-node-header="true"
@@ -126,11 +136,7 @@ function NodeCardComponent({
                   orientation={isRow ? "vertical" : "horizontal"}
                 />
               )}
-              <NodeCard
-                node={child}
-                depth={depth + 1}
-                parentIsRow={isRow}
-              />
+              <NodeCard node={child} depth={depth + 1} parentIsRow={isRow} />
               <DropGap
                 targetKey={child._key || ""}
                 position="after"
