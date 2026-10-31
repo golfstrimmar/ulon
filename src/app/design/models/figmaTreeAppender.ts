@@ -4,23 +4,14 @@ import type { HtmlNode } from "@/types/HtmlNode";
 const DEFAULT_TREE_ID = "plaza_tree";
 
 /**
- * Оборачивает переданные ноды в общий <div> и добавляет его
- * в конец активного дерева разметки в базе, после чего диспатчит 'plaza-tree-updated'.
+ * Добавляет переданные ноды напрямую в конец активного дерева разметки
+ * в базе, после чего диспатчит событие 'plaza-tree-updated'.
  */
 export async function appendNodesToTree(
   newNodes: HtmlNode | HtmlNode[],
 ): Promise<HtmlNode[]> {
   const nodesToAdd = Array.isArray(newNodes) ? newNodes : [newNodes];
   if (nodesToAdd.length === 0) return [];
-
-  // Создаем единый контейнер div для всего пакета нод.
-  const wrapperDiv: HtmlNode = {
-    tag: "div",
-    class: "",
-    style: "",
-    attributes: {},
-    children: nodesToAdd,
-  };
 
   // 1. Ищем существующее дерево: сначала пробуем plaza_tree
   let currentTree = await getHtmlJson(DEFAULT_TREE_ID);
@@ -37,15 +28,15 @@ export async function appendNodesToTree(
 
   let nextTree: HtmlNode[];
 
-  // 2. Встраиваем единый wrapperDiv в структуру
+  // 2. Встраиваем новые ноды напрямую в структуру
   if (!currentTree) {
-    // Дерево ещё пустое — создаём с оберткой
-    nextTree = [wrapperDiv];
+    // Дерево ещё пустое — новые ноды становятся корнем
+    nextTree = nodesToAdd;
   } else if (Array.isArray(currentTree)) {
-    // Дерево — плоский массив корней
-    nextTree = [...currentTree, wrapperDiv];
+    // Дерево — плоский массив: докидываем в конец списка
+    nextTree = [...currentTree, ...nodesToAdd];
   } else {
-    // Дерево — объект корня (root HtmlNode)
+    // Дерево — один корневой объект: добавляем в его children
     const existingChildren = Array.isArray(currentTree.children)
       ? currentTree.children
       : [];
@@ -53,7 +44,7 @@ export async function appendNodesToTree(
     nextTree = [
       {
         ...currentTree,
-        children: [...existingChildren, wrapperDiv],
+        children: [...existingChildren, ...nodesToAdd],
       },
     ];
   }
