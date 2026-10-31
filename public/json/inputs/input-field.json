@@ -11,7 +11,7 @@
     "tag": "fieldset",
     "text": "",
     "class": "field-t js-container-input",
-    "style": "position: relative; width: 100%; text-align: left; display: block; flex: 0 0 auto; padding: 0 0 0 10px; border-radius: 4px; border: 1px solid rgba(0, 0, 0, 0.1); outline: none; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); height: 40px; font-family: 'Montserrat', sans-serif; &:hover { border-color: #38bdf8; } &:has(input:focus), &:has(input:not(:placeholder-shown)) { border-color: #38bdf8; } &:has(input:focus)>legend, &:has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; &:has(svg){ span{ padding: 0 30px 0 0; } } } &:has(input:focus)>label, &:has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 10px 0 10px; left: 5px; font-size: 11px; color: #38bdf8; transform: translateY(-50%); &:has(svg) { padding: 0px 40px 0 30px; .svg-wrapper { width: 15px; height: 15px; left: 10px; } } } &:has(svg) { label { padding: 0 0 0 25px; } .svg-wrapper { display: block; width: 20px; height: 20px; position: absolute; left: 0; top: 50%; transform: translateY(-50%); } }",
+    "style": "position: relative; width: 100%; text-align: left; display: block; flex: 0 0 auto; padding: 0 0 0 10px; border-radius: 4px; border: 1px solid rgba(0, 0, 0, 0.1); outline: none; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); height: 40px;  &:hover { border-color: #38bdf8; } &:has(input:focus), &:has(input:not(:placeholder-shown)) { border-color: #38bdf8; } &:has(input:focus)>legend, &:has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; &:has(svg){ span{ padding: 0 30px 0 0; } } } &:has(input:focus)>label, &:has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 10px 0 10px; left: 5px;  color: #38bdf8; transform: translateY(-50%); &:has(svg) { padding: 0px 40px 0 30px; .svg-wrapper { width: 15px; height: 15px; left: 10px; } } } &:has(svg) { label { padding: 0 0 0 25px; } .svg-wrapper { display: block; width: 20px; height: 20px; position: absolute; left: 0; top: 50%; transform: translateY(-50%); } }",
     "children": [
       {
         "tag": "legend",
@@ -34,7 +34,7 @@
         "tag": "input",
         "text": "",
         "class": "field-t-input",
-        "style": "display: block; width: 100%; height: 100%; padding: 0px 0px 0px 10px; font-size: 14px; border: 0; appearance: none; outline: none; background-color: transparent; cursor: pointer; position: absolute; top: 50%; transform: translateY(-50%); left: 0; z-index: 10; min-height: 40px; color: #000000; line-height: 1; font-family: 'Montserrat', sans-serif; &::placeholder { opacity: 0; } ",
+        "style": "display: block; width: 100%; height: 100%; padding: 0px 0px 0px 10px;  border: 0; appearance: none; outline: none; background-color: transparent; cursor: pointer; position: absolute; top: 50%; transform: translateY(-50%); left: 0; z-index: 10; min-height: 40px;  &::placeholder { opacity: 0; } ",
         "children": [],
         "attributes": {
           "id": "input4",
@@ -47,7 +47,7 @@
         "tag": "label",
         "text": "lorem",
         "class": "field-t-label",
-        "style": "display: inline-block; position: absolute; line-height: 1; font-family: 'Montserrat', sans-serif; top: 50%; transform: translateY(-50%); left: 10px; z-index: 20; color: #000000; font-size: 14px; padding: 0; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none;",
+        "style": "display: inline-block; position: absolute;   top: 50%; transform: translateY(-50%); left: 10px; z-index: 20;  padding: 0; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none;",
         "children": [],
         "attributes": { "for": "input4" }
       }
