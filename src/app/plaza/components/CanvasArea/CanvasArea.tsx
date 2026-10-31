@@ -118,9 +118,7 @@ export function CanvasArea() {
       <AsideCanvas />
 
       {/* РАБОЧАЯ ОБЛАСТЬ ХОЛСТА */}
-      <div
-        className="plaza-workspace flex-1 relative bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl flex flex-col"
-      >
+      <div className="plaza-workspace flex-1 relative bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl flex flex-col">
         {/* ВЕРХНИЙ БАР */}
         <div className="h-7 shrink-0 bg-zinc-900 border-b border-zinc-800 pl-2 flex items-center justify-between text-xs text-zinc-400">
           <span className="font-mono !text-[10px]">Workspace</span>
@@ -156,9 +154,7 @@ export function CanvasArea() {
                 <span>{leftNodes.length} items</span>
               </div>
             )}
-            <div
-              className="plaza-inner w-full h-full overflow-auto custom-scrollbar p-1"
-            >
+            <div className="plaza-inner w-full h-full overflow-auto custom-scrollbar p-1">
               {leftNodes.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-zinc-600 text-xs font-mono">
                   Empty
@@ -169,7 +165,7 @@ export function CanvasArea() {
             </div>
           </div>
 
-          {/* ПРАВАЯ КОЛОНКА (PANE 2) */}
+          {/* ПРАВАЯ КОЛОНКА Справа от разделителя (PANE 2) */}
           {isSplit && (
             <div
               ref={rightPaneRef}
@@ -180,9 +176,7 @@ export function CanvasArea() {
                 <span>{rightNodes.length} items</span>
               </div>
 
-              <div
-                className="plaza-inner w-full h-full overflow-auto custom-scrollbar p-1"
-              >
+              <div className="plaza-inner w-full h-full overflow-auto custom-scrollbar p-1">
                 {rightNodes.length === 0 ? (
                   <div className="w-full h-full border border-dashed border-zinc-800/50 rounded flex items-center justify-center text-xs font-mono text-zinc-700">
                     Drop nodes here
