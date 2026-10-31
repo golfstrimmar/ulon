@@ -119,8 +119,6 @@ export function CanvasArea() {
 
       {/* РАБОЧАЯ ОБЛАСТЬ ХОЛСТА */}
       <div
-        ref={containerRef}
-        onPointerDown={handleMarqueePointerDown}
         className="plaza-workspace flex-1 relative bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl flex flex-col"
       >
         {/* ВЕРХНИЙ БАР */}
@@ -142,7 +140,11 @@ export function CanvasArea() {
         </div>
 
         {/* СПЛИТ-ОБЛАСТЬ (PANE 1 И PANE 2) */}
-        <div className="flex-1 flex overflow-hidden">
+        <div
+          ref={containerRef}
+          onPointerDown={handleMarqueePointerDown}
+          className="flex-1 flex overflow-hidden"
+        >
           {/* ЛЕВАЯ КОЛОНКА (PANE 1) */}
           <div
             ref={leftPaneRef}
@@ -156,7 +158,6 @@ export function CanvasArea() {
             )}
             <div
               className="plaza-inner w-full h-full overflow-auto custom-scrollbar p-1"
-              onPointerDown={handleMarqueePointerDown}
             >
               {leftNodes.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-zinc-600 text-xs font-mono">
@@ -181,7 +182,6 @@ export function CanvasArea() {
 
               <div
                 className="plaza-inner w-full h-full overflow-auto custom-scrollbar p-1"
-                onPointerDown={handleMarqueePointerDown}
               >
                 {rightNodes.length === 0 ? (
                   <div className="w-full h-full border border-dashed border-zinc-800/50 rounded flex items-center justify-center text-xs font-mono text-zinc-700">

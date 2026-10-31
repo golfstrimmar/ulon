@@ -16,14 +16,57 @@ export function useCanvasMarquee({ containerRef }: UseCanvasMarqueeOptions) {
       const target = e.target as HTMLElement | null;
       if (!target) return;
 
-      // Если клик пришелся на саму карточку, кнопку или поле ввода — рамку НЕ запускаем
+      // 1. Проверяем, что событие произошло строго внутри контейнера сплит-области
+      const container = containerRef.current;
+      if (!container || !container.contains(target)) {
+        return;
+      }
+
+      // 2. Рамку запускаем только на рабочей области с нодами (.plaza-inner)
+      const isInsideWorkingArea = Boolean(target.closest(".plaza-inner"));
+      if (!isInsideWorkingArea) {
+        return;
+      }
+
+      // 3. Если клик пришелся на модалку, диалог или фиксированные оверлеи
+      if (
+        target.closest("[role='dialog']") ||
+        target.closest("[data-modal]") ||
+        target.closest(".modal") ||
+        target.closest(".fixed")
+      ) {
+        return;
+      }
+
+      // 4. Если клик пришелся на саму карточку, кнопку, ссылки или поля ввода — рамку НЕ запускаем
       if (
         target.closest("[data-node-key]") ||
         target.closest("button") ||
         target.closest("input") ||
-        target.closest("textarea")
+        target.closest("textarea") ||
+        target.closest("select") ||
+        target.closest("a") ||
+        (target as HTMLElement).isContentEditable
       ) {
         return;
+      }
+
+      // 5. Игнорируем клик по скроллбару
+      const scrollable = target.closest(".plaza-inner") as HTMLElement | null;
+      if (scrollable) {
+        const rect = scrollable.getBoundingClientRect();
+        if (
+          scrollable.scrollHeight > scrollable.clientHeight &&
+          e.clientX > rect.left + scrollable.clientWidth
+        ) {
+          return;
+        }
+        if (
+          scrollable.scrollWidth > scrollable.clientWidth &&
+          e.clientY > rect.top + scrollable.clientHeight
+        ) {
+          return;
+        }
       }
 
       // Новое зажатие на пустом месте — обнуляем старое выделение
@@ -62,8 +105,8 @@ export function useCanvasMarquee({ containerRef }: UseCanvasMarqueeOptions) {
         const boxT = Math.min(startY, curY);
         const boxB = Math.max(startY, curY);
 
-        const container = containerRef.current || document;
-        const cards = container.querySelectorAll<HTMLElement>("[data-node-key]");
+        const currentContainer = containerRef.current || document;
+        const cards = currentContainer.querySelectorAll<HTMLElement>("[data-node-key]");
         const hitKeys = new Set<string>();
 
         cards.forEach((card) => {

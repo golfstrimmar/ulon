@@ -71,7 +71,10 @@ export default function ModalNodeProperties({
   if (!clickedKey || !selectedNode) return null;
 
   return (
-    <div className="fixed shadow-[0_-6px_18px_rgba(32,75,110,0.7)] bottom-0 right-0 w-[calc(100vw-210px)] z-40">
+    <div
+      onPointerDown={(e) => e.stopPropagation()}
+      className="fixed shadow-[0_-6px_18px_rgba(32,75,110,0.7)] bottom-0 right-0 w-[calc(100vw-210px)] z-40"
+    >
       <div className="relative bg-zinc-800 border-t border-zinc-700 rounded-t-sm shadow-[0_-8px_32px_rgba(0,0,0,0.6)] backdrop-blur-md">
         {/* Кнопка закрытия */}
         <button
