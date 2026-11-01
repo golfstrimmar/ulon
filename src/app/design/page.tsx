@@ -1,5 +1,5 @@
 import { DesignManager } from "@/app/design/components/DesignManager";
-
+import { Suspense } from "react";
 export const metadata = {
   title: "Design - tokens",
   description: "Figma design tokens extractor",
@@ -7,8 +7,10 @@ export const metadata = {
 
 export default function Design() {
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100">
-      <DesignManager />
-    </main>
+    <section className="Design">
+      <Suspense fallback={<div className="text-zinc-400">Loading...</div>}>
+        <DesignManager />
+      </Suspense>
+    </section>
   );
 }

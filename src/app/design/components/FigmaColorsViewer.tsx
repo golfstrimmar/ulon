@@ -1,63 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import {
-  parseFigmaColors,
-  generateScss,
-  type ColorToken,
-} from "@/app/design/utils/figmaColorParser";
-import { saveColorVariables } from "@/lib/figmaColorStorage";
+import { useFigmaColorsController } from "../controllers/useFigmaColorsController";
 
 interface FigmaColorsViewerProps {
   rawJson: string;
 }
 
 export function FigmaColorsViewer({ rawJson }: FigmaColorsViewerProps) {
-  const [tokens, setTokens] = useState<ColorToken[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [copiedVar, setCopiedVar] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!rawJson.trim()) {
-      setTokens([]);
-      setError(null);
-      return;
-    }
-    const result = parseFigmaColors(rawJson);
-    setTokens(result.tokens);
-    setError(result.error);
-  }, [rawJson]);
-
-  const handleCopySingle = (text: string, id: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedVar(id);
-    setTimeout(() => setCopiedVar(null), 1800);
-  };
-
-  const handleSaveToDb = async () => {
-    if (tokens.length === 0) return;
-
-    const stringArray = tokens.map((t) => `${t.varName}: ${t.hex};`);
-
-    try {
-      await saveColorVariables(stringArray);
-      window.dispatchEvent(
-        new CustomEvent("figma_colors:saved", { detail: stringArray }),
-      );
-      setCopiedVar("all-scss");
-      setTimeout(() => setCopiedVar(null), 1800);
-    } catch (err) {
-      console.error("Error", err);
-    }
-  };
-
-  const scssOutput = generateScss(tokens);
+  const {
+    tokens,
+    error,
+    copiedVar,
+    scssOutput,
+    handleCopySingle,
+    handleSaveToDb,
+  } = useFigmaColorsController(rawJson);
 
   return (
     <div className="flex flex-col gap-6 w-full">
       {error && (
         <p className="text-xs text-red-400 bg-red-950/40 border border-red-900/50 rounded-lg p-2.5">
-          ⚠️ Ошибка цветов: {error}
+          ⚠️ Color error: {error}
         </p>
       )}
 
@@ -95,7 +58,7 @@ export function FigmaColorsViewer({ rawJson }: FigmaColorsViewerProps) {
                       onClick={() =>
                         handleCopySingle(token.varName, token.varName)
                       }
-                      className="flex items-center justify-between text-left group"
+                      className="flex items-center justify-between text-left group cursor-pointer"
                     >
                       <span className="font-mono text-sm font-semibold text-blue-400 group-hover:underline">
                         {token.varName}
@@ -124,7 +87,7 @@ export function FigmaColorsViewer({ rawJson }: FigmaColorsViewerProps) {
               <button
                 type="button"
                 onClick={handleSaveToDb}
-                className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-1.5 rounded-lg border border-zinc-700 transition"
+                className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-1.5 rounded-lg border border-zinc-700 transition cursor-pointer"
               >
                 {copiedVar === "all-scss" ? "Saved!" : "Save to DB"}
               </button>

@@ -74,7 +74,7 @@ export function usePreviewArea() {
     try {
       const [rawTree, dbScss, dbScripts, dbFonts, dbColors] = await Promise.all(
         [
-          getHtmlJson(DB_KEY),
+          getHtmlJson(DB_KEY).catch(() => null),
           getGlobalScss().catch(() => ""),
           getScriptsJs().catch(() => ({})),
           getFontsSettings().catch(() => ({ fonts: [], defaultFont: "" })),
@@ -103,7 +103,13 @@ export function usePreviewArea() {
       setScriptsJs(loadedScripts);
       scriptsJsRef.current = loadedScripts;
 
-      const css = await compileScssToCss(dbScss || "");
+      // Учитываем переменные цветов Figma при компиляции SCSS на старте
+      const colorDefs = loadedColors.join("\n");
+      const scssWithColors = colorDefs
+        ? `${colorDefs}\n${dbScss || ""}`
+        : dbScss || "";
+
+      const css = await compileScssToCss(scssWithColors);
       setCompiledCss(css);
       compiledCssRef.current = css;
 

@@ -41,6 +41,7 @@ export const ROOT_TAGS: ElementItem[] = [
   { name: "ol", path: "/json/ol.json" },
 
   { name: "img", path: "/json/img.json" },
+  { name: "is", path: "/json/is.json" },
   { name: "svg", path: "/json/svg.json" },
   { name: "label", path: "/json/label.json" },
   { name: "table", path: "/json/table.json" },

@@ -665,3 +665,117 @@ export function mergeDonorIntoTarget(
 
   return updateTargetInList(treeWithoutDonors);
 }
+
+/**
+ * 🔹 Recursively adds BEM classes to descendants of a section:
+ * - h1..h6 -> ${blockName}__title
+ * - button -> ${blockName}__button
+ * - img -> ${blockName}__img
+ * - svg -> ${blockName}__svg
+ * - a -> ${blockName}__link
+ * - div, ul, li, p, span -> ${blockName}__ (empty suffix placeholder for manual editing)
+ */
+export function applyBemClassesToSection(
+  tree: HtmlNode[],
+  targetKey?: string | null,
+): HtmlNode[] {
+  if (!tree || tree.length === 0) return tree;
+
+  function getBemSuffix(tag: string): string {
+    const t = tag.toLowerCase();
+    if (/^h[1-6]$/.test(t)) return "title";
+    if (t === "button") return "button";
+    if (t === "img") return "img";
+    if (t === "svg") return "svg";
+    if (t === "a") return "link";
+    // div, ul, li, p, span — placeholder: blockName__ (empty suffix for manual editing)
+    return "";
+  }
+
+  // 1. Locate the section node
+  let sectionNode: HtmlNode | null = null;
+  if (targetKey) {
+    const candidate = findNodeInTree(tree, targetKey);
+    if (candidate && (candidate.tag || "").toLowerCase() === "section") {
+      sectionNode = candidate;
+    }
+  }
+
+  if (!sectionNode) {
+    function findSection(list: HtmlNode[]): HtmlNode | null {
+      for (const item of list) {
+        if ((item.tag || "").toLowerCase() === "section") return item;
+        if (Array.isArray(item.children)) {
+          const found = findSection(item.children);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+    sectionNode = findSection(tree);
+  }
+
+  // Fallback to first root container if no <section> tag
+  if (!sectionNode && tree.length > 0) {
+    sectionNode = tree[0];
+  }
+
+  if (!sectionNode) return tree;
+
+  const sectionKey = getNodeKey(sectionNode);
+  const rawClasses = (sectionNode.class || "").trim().split(/\s+/).filter(Boolean);
+  const blockName =
+    rawClasses[0] || (sectionNode.tag ? sectionNode.tag.toLowerCase() : "section");
+
+  function processDescendants(children: HtmlNode[] | string): HtmlNode[] | string {
+    if (!Array.isArray(children)) return children;
+    return children.map((child) => {
+      const updatedChild: HtmlNode = { ...child };
+      const tag = (child.tag || "div").toLowerCase();
+      const existingClasses = (child.class || "").trim().split(/\s+/).filter(Boolean);
+
+      // Skip div.container — do not touch it
+      const isContainer =
+        tag === "div" && existingClasses.includes("container");
+
+      // Check if this node has already received a BEM selector from the root block
+      const alreadyHasBem =
+        Boolean((child as any)._bemApplied) ||
+        existingClasses.some(
+          (cls) => cls === `${blockName}__` || cls.startsWith(`${blockName}__`),
+        );
+
+      if (!isContainer && !alreadyHasBem) {
+        const suffix = getBemSuffix(tag);
+        const bemClass = `${blockName}__${suffix}`;
+        updatedChild.class = [...existingClasses, bemClass].join(" ");
+        (updatedChild as any)._bemApplied = true;
+      }
+
+      if (Array.isArray(updatedChild.children)) {
+        updatedChild.children = processDescendants(updatedChild.children) as HtmlNode[];
+      }
+      return updatedChild;
+    });
+  }
+
+  function updateTree(list: HtmlNode[]): HtmlNode[] {
+    return list.map((item) => {
+      if (getNodeKey(item) === sectionKey) {
+        return {
+          ...item,
+          children: processDescendants(item.children),
+        };
+      }
+      if (Array.isArray(item.children)) {
+        return {
+          ...item,
+          children: updateTree(item.children),
+        };
+      }
+      return item;
+    });
+  }
+
+  return updateTree(tree);
+}

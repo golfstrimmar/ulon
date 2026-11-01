@@ -25,28 +25,28 @@ export function FigmaTextsViewer({ rawJson }: FigmaTextsViewerProps) {
 
   return (
     <div className="flex flex-col gap-6 w-full">
-      {/* Индикатор базы цветов */}
+      {/* Color variables indicator */}
       <div className="flex items-center justify-between text-xs text-zinc-400 bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2.5">
         <span>
-          База переменных цвета:{" "}
+          Color variable database:{" "}
           <strong className="text-zinc-200">
-            {isColorsLoaded ? `Загружено (${colorMapSize})` : "Загрузка..."}
+            {isColorsLoaded ? `Loaded (${colorMapSize})` : "Loading..."}
           </strong>
         </span>
       </div>
 
       {error && (
         <p className="text-xs text-red-400 bg-red-950/40 border border-red-900/50 rounded-lg p-2.5">
-          ⚠️ Ошибка текстов: {error}
+          ⚠️ Text error: {error}
         </p>
       )}
 
-      {/* Список нод с кнопками отправки в дерево */}
+      {/* Node list with buttons for sending to the tree */}
       {nodes.length > 0 && (
         <section className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-zinc-100">
-              Сформированные HtmlNode ({nodes.length})
+              Generated HtmlNode ({nodes.length})
             </h2>
             <button
               type="button"
@@ -55,8 +55,8 @@ export function FigmaTextsViewer({ rawJson }: FigmaTextsViewerProps) {
               className="text-xs bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 text-white font-medium px-3.5 py-1.5 rounded-lg border border-blue-400/20 transition shadow-sm"
             >
               {savingKey === "all"
-                ? "Добавлено в дерево!"
-                : "Закинуть все ноды в базу"}
+                ? "Added to the tree!"
+                : "Add all nodes to the database"}
             </button>
           </div>
 
@@ -89,7 +89,7 @@ export function FigmaTextsViewer({ rawJson }: FigmaTextsViewerProps) {
                           : "bg-zinc-800 hover:bg-zinc-700 border-zinc-700 text-zinc-200"
                       }`}
                     >
-                      {isSaved ? "Добавлено!" : "Добавить в дерево"}
+                      {isSaved ? "Added!" : "Add to tree"}
                     </button>
                   </div>
 

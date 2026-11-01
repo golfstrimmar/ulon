@@ -75,18 +75,36 @@ export function createHtmlNodeFromText(
   item: FigmaTextItem,
   colorMap: ColorVariableMap,
 ): HtmlNode {
+  const hex = item.color.trim().toLowerCase();
+  const colorVar = colorMap.get(hex); // например: "$color-1"
+
+  // 1. ИНЛАЙН СТИЛЬ ДЛЯ БРАУЗЕРА (Чистый валидный CSS без $, рендерится мгновенно!)
+  const inlineStyles =
+    [
+      `font-family: '${item.fontFamily}', sans-serif`,
+      `font-size: ${item.fontSize}px`,
+      `font-weight: ${item.fontWeight}`,
+      `line-height: ${item.lineHeight}px`,
+      `letter-spacing: ${item.letterSpacing}`,
+      `text-align: ${item.textAlign}`,
+      `color: ${item.color}`, // <-- ЧИСТЫЙ HEX, браузер не упадет!
+    ].join("; ") + ";";
+
   return {
     tag: item.tag || "p",
     text: item.text,
     class: item.className || "",
-    style: buildTextStyleString(item, colorMap),
+    style: inlineStyles,
     attributes: {},
-    _key: generateKey(),
+    _key:
+      item.id ||
+      (typeof crypto !== "undefined"
+        ? crypto.randomUUID()
+        : Date.now().toString()),
     _isNew: true,
     children: [],
   };
 }
-
 /**
  * Парсинг блока texts из сырого Figma JSON
  */
@@ -103,4 +121,30 @@ export function extractTextsFromJson(rawJson: string): FigmaTextItem[] {
   }
 
   return [];
+}
+
+/**
+ * Генерация SCSS-класса для сохранения в GlobalScss плазы
+ */
+export function generateScssForTextItems(
+  items: FigmaTextItem[],
+  colorMap: ColorVariableMap,
+): string {
+  return items
+    .filter((item) => Boolean(item.className))
+    .map((item) => {
+      const hex = item.color.trim().toLowerCase();
+      const colorVar = colorMap.get(hex) || item.color; // переменная $color-N
+
+      return `.${item.className} {
+  font-family: '${item.fontFamily}', sans-serif;
+  font-size: ${item.fontSize}px;
+  font-weight: ${item.fontWeight};
+  line-height: ${item.lineHeight}px;
+  letter-spacing: ${item.letterSpacing};
+  text-align: ${item.textAlign};
+  color: ${colorVar};
+}`;
+    })
+    .join("\n\n");
 }

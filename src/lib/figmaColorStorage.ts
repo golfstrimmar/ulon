@@ -1,7 +1,4 @@
-/**
- * @file figmaColorStorage.ts
- * @description Хранилище массива SCSS-переменных цветов в IndexedDB.
- */
+// figmaColorStorage.ts
 
 const DB_NAME = "ulon_figma_tokens_db";
 const DB_VERSION = 1;
@@ -12,9 +9,6 @@ export const STORES = {
 
 const VARIABLES_KEY = "active_color_variables";
 
-/**
- * Инициализация соединения
- */
 export function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     if (typeof window === "undefined" || !window.indexedDB) {
@@ -25,7 +19,6 @@ export function openDatabase(): Promise<IDBDatabase> {
 
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
-
       if (!db.objectStoreNames.contains(STORES.COLOR_VARIABLES)) {
         db.createObjectStore(STORES.COLOR_VARIABLES, { keyPath: "id" });
       }
@@ -37,25 +30,27 @@ export function openDatabase(): Promise<IDBDatabase> {
   });
 }
 
-/* ============================================================================
-   COLOR SCSS VARIABLES (Массив строк)
-   ============================================================================ */
+/**
+ * Вспомогательная функция: извлекает HEX из строки вида "$color-1: #162D5F;"
+ */
+function extractHex(line: string): string | null {
+  const match = line.match(/#[0-9a-fA-F]{3,8}/);
+  return match ? match[0].toLowerCase() : null;
+}
 
 /**
- * Сохранить массив SCSS-переменных (например: ["$color-1: #162D5F;", "$color-2: #2770F1;"])
+ * Вспомогательная функция: извлекает максимальный номер переменной $color-N
  */
-export async function saveColorVariables(variables: string[]): Promise<void> {
-  const db = await openDatabase();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORES.COLOR_VARIABLES, "readwrite");
-    const store = tx.objectStore(STORES.COLOR_VARIABLES);
-    const req = store.put({ id: VARIABLES_KEY, variables: variables || [] });
-
-    req.onsuccess = () => resolve();
-    req.onerror = () =>
-      reject(req.error || new Error("Failed to save color variables"));
-    tx.oncomplete = () => db.close();
-  });
+function getMaxColorIndex(variables: string[]): number {
+  let max = 0;
+  for (const line of variables) {
+    const match = line.match(/\$color-(\d+)/);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (num > max) max = num;
+    }
+  }
+  return max;
 }
 
 /**
@@ -79,6 +74,68 @@ export async function getColorVariables(): Promise<string[]> {
 }
 
 /**
+ * Сохранить массив SCSS-переменных (перезапись)
+ */
+export async function saveColorVariables(variables: string[]): Promise<void> {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.COLOR_VARIABLES, "readwrite");
+    const store = tx.objectStore(STORES.COLOR_VARIABLES);
+    const req = store.put({ id: VARIABLES_KEY, variables: variables || [] });
+
+    req.onsuccess = () => resolve();
+    req.onerror = () =>
+      reject(req.error || new Error("Failed to save color variables"));
+    tx.oncomplete = () => db.close();
+  });
+}
+
+/**
+ * ДОПОЛНИТЬ переменные с проверкой на дубли по HEX и авто-нумерацией.
+ * Возвращает итоговый объединённый массив переменных.
+ */
+export async function appendColorVariables(
+  newTokens: Array<{ hex: string; original?: string }>,
+): Promise<string[]> {
+  // 1. Читаем уже сохранённые переменные
+  const existingVars = await getColorVariables();
+
+  // 2. Собираем Set уже имеющихся HEX (в lowercase для точного сравнения)
+  const existingHexes = new Set<string>();
+  for (const line of existingVars) {
+    const hex = extractHex(line);
+    if (hex) existingHexes.add(hex);
+  }
+
+  // 3. Вычисляем стартовый индекс для новых переменных
+  let nextIndex = getMaxColorIndex(existingVars) + 1;
+
+  // 4. Фильтруем новые цвета: исключаем дубли из базы и дубли внутри новой пачки
+  const uniqueIncomingLines: string[] = [];
+
+  for (const token of newTokens) {
+    const hexLower = token.hex.toLowerCase().trim();
+    if (!existingHexes.has(hexLower)) {
+      existingHexes.add(hexLower); // Чтобы не дублировались и внутри новой пачки
+
+      const comment = token.original ? ` // ${token.original}` : "";
+      uniqueIncomingLines.push(`$color-${nextIndex}: ${token.hex};${comment}`);
+      nextIndex++;
+    }
+  }
+
+  // 5. Объединяем старые и новые записи
+  const merged = [...existingVars, ...uniqueIncomingLines];
+
+  // 6. Сохраняем в базу только если появились новые уникальные цвета
+  if (uniqueIncomingLines.length > 0) {
+    await saveColorVariables(merged);
+  }
+
+  return merged;
+}
+
+/**
  * Очистить переменные
  */
 export async function clearColorVariables(): Promise<void> {
@@ -94,23 +151,3 @@ export async function clearColorVariables(): Promise<void> {
     tx.oncomplete = () => db.close();
   });
 }
-
-// import { saveColorVariables } from "@/lib/figmaColorStorage";
-
-// // 1. Записать в базу и отправить событие
-// await saveColorVariables(variables);
-// window.dispatchEvent(new CustomEvent("figma_colors:saved", { detail: variables }));
-
-// // 2. Достать из базы и отправить событие
-// const variables = await getColorVariables();
-// window.dispatchEvent(new CustomEvent("figma_colors:loaded", { detail: variables }));
-
-// // 3. Подписка на событие записи в шине
-// window.addEventListener("figma_colors:saved", (e: CustomEvent<string[]>) => {
-//   console.log("Записано:", e.detail);
-// });
-
-// // 4. Подписка на событие чтения в шине
-// window.addEventListener("figma_colors:loaded", (e: CustomEvent<string[]>) => {
-//   console.log("Достали:", e.detail);
-// });

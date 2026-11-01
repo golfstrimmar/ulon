@@ -10,6 +10,7 @@ import {
   duplicateNodesGroup,
   normalizeSelectedKeys,
   mergeDonorIntoTarget,
+  applyBemClassesToSection,
 } from "@/app/plaza/components/CanvasArea/models/canvasModel";
 
 export interface DropTarget {
@@ -63,6 +64,7 @@ export interface CanvasState {
   // ── Actions: Модификация дерева и БД ───────────────────────────────────────
   setCurrentJson: (nodes: HtmlNode[]) => void;
   persist: (next: HtmlNode[], recordHistory?: boolean) => Promise<void>;
+  applyBemClasses: () => Promise<void>;
   deleteNode: (key: string) => Promise<void>;
   recordSnapshot: () => void;
   undo: () => Promise<void>;
@@ -216,6 +218,12 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         detail: { nodes: nextState, source: "canvas-area" },
       }),
     );
+  },
+
+  applyBemClasses: async () => {
+    const { currentJson, clickedKey } = get();
+    const updated = applyBemClassesToSection(currentJson, clickedKey);
+    await get().persist(updated);
   },
 
   // ── Actions: Выбор и сворачивание ──────────────────────────────────────────

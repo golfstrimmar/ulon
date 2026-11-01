@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ROOT_TAGS,
   ELEMENT_FOLDERS,
-} from "@/app/plaza/components/CanvasArea/elementsManifest";
+} from "@/app/plaza/components/CanvasArea/lib/elementsManifest";
 import ButtonAddImg from "@/app/plaza/components/CanvasArea/components/ButtonAddImg";
 import { useAsideCanvas } from "@/app/plaza/components/CanvasArea/components/AsideCanvas/hooks/useAsideCanvas";
 

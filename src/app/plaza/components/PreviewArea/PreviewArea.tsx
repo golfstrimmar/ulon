@@ -295,10 +295,12 @@ export function PreviewArea() {
       setIframeHeight((prev) => {
         if (prev !== finalHeight) {
           const delta = finalHeight - prev;
-          // Компенсируем рост превью — страница остаётся на месте
-          requestAnimationFrame(() => {
-            window.scrollBy({ top: delta, behavior: "instant" });
-          });
+          // Компенсируем рост превью только если пользователь уже проскроллил вниз к холсту
+          if (typeof window !== "undefined" && window.scrollY > 150) {
+            requestAnimationFrame(() => {
+              window.scrollBy({ top: delta, behavior: "instant" });
+            });
+          }
         }
         return prev !== finalHeight ? finalHeight : prev;
       });

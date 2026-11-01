@@ -6,6 +6,7 @@ import {
   ArrowLeftCircleIcon,
   ArrowRightCircleIcon,
   SparklesIcon,
+  TagIcon,
 } from "@heroicons/react/24/outline";
 import { useCanvasArea } from "@/app/plaza/components/CanvasArea/hooks/useCanvasArea";
 import { NodeCard } from "@/app/plaza/components/CanvasArea/components/NodeCard";
@@ -43,6 +44,7 @@ export function CanvasArea() {
   const clickedKey = useCanvasStore((s) => s.clickedKey);
   const setClickedKey = useCanvasStore((s) => s.setClickedKey);
   const persist = useCanvasStore((s) => s.persist);
+  const applyBemClasses = useCanvasStore((s) => s.applyBemClasses);
 
   // ─────🔹 Разделение нод: левая колонка получает свои, правая — свои
   const leftNodes = useMemo(() => {
@@ -134,11 +136,21 @@ export function CanvasArea() {
           <div className="flex items-center gap-1.5">
             <button
               type="button"
+              onClick={applyBemClasses}
+              title="Auto-generate BEM classes for section descendants"
+              className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono transition-all pointer-pointer border bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border-zinc-700/50 hover:border-indigo-500/50"
+            >
+              <TagIcon className="size-3.5 text-indigo-400" />
+              <span>+ class</span>
+            </button>
+
+            <button
+              type="button"
               onClick={toggleDonorMode}
               title={
                 isDonorMode
-                  ? "Режим донора: ВКЛ (сброс на ноду в Pane 2 передаст свойства и удалит донора)"
-                  : "Режим донора: ВЫКЛ (ноды вкладываются как обычно)"
+                  ? "Donor mode: ON (dropping onto Pane 2 node merges props and removes donor)"
+                  : "Donor mode: OFF (nodes are nested normally)"
               }
               className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono transition-all pointer-pointer border ${
                 isDonorMode
@@ -151,7 +163,7 @@ export function CanvasArea() {
                   isDonorMode ? "text-amber-400" : "text-zinc-400"
                 }`}
               />
-              <span>Донор</span>
+              <span>Donor</span>
               <span
                 className={`w-1.5 h-1.5 rounded-full ${
                   isDonorMode ? "bg-amber-400 animate-pulse" : "bg-zinc-600"
@@ -162,7 +174,7 @@ export function CanvasArea() {
             <button
               type="button"
               onClick={toggleSplitMode}
-              title={isSplit ? "Выключить сплит-панель" : "Включить сплит-панель"}
+              title={isSplit ? "Collapse split panel" : "Expand split panel"}
               className={`px-2 py-0.5 rounded text-[11px] font-mono transition-colors pointer-pointer hover:bg-zinc-700 ${
                 isSplit ? " text-white" : "bg-zinc-800 text-zinc-300"
               }`}

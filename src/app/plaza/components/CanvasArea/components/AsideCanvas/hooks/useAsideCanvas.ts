@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import type { HtmlNode } from "@/types/HtmlNode";
 import {
   getHtmlJson,
-  saveHtmlJson,
   deleteHtmlJson,
   getGlobalScss,
   saveGlobalScss,
@@ -18,6 +17,7 @@ import {
   mergeScriptsWithoutDuplicates,
   ensureUniqueKeys,
 } from "@/app/plaza/components/CanvasArea/models/canvasModel";
+import { useCanvasStore } from "@/app/plaza/components/CanvasArea/store/useCanvasStore";
 
 export function useAsideCanvas() {
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
@@ -100,38 +100,25 @@ export function useAsideCanvas() {
         }
       }
 
-      // 3. Добавление элементов в базу и оповещение холста
-      const currentTree = (await getHtmlJson(DB_KEY).catch(() => [])) || [];
-      const treeList = Array.isArray(currentTree) ? currentTree : [currentTree];
-
+      // 3. Добавление элементов через store.persist — чтобы история (undo) работала
+      const currentTree = useCanvasStore.getState().currentJson;
       const nodesWithUniqueKeys = ensureUniqueKeys(cleanNodes);
-      const nextTree = [...treeList, ...nodesWithUniqueKeys];
+      const nextTree = [...currentTree, ...nodesWithUniqueKeys];
 
-      await saveHtmlJson(DB_KEY, nextTree);
+      await useCanvasStore.getState().persist(nextTree);
       setHasNodes(true);
-
-      // Генерируем событие — холст мгновенно отрисует!
-      window.dispatchEvent(
-        new CustomEvent("plaza-tree-updated", {
-          detail: { nodes: nextTree, source: "aside-canvas" },
-        }),
-      );
     } catch (e) {
       console.error(`Error adding from ${path}:`, e);
     }
   };
 
-  // Кнопки Undo/Redo/Collapse сайдбар может просто триггерить через системные события
+  // Call undo/redo directly on the store — synthetic keyboard events are unreliable
   const triggerUndo = () => {
-    window.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "z", ctrlKey: true }),
-    );
+    useCanvasStore.getState().undo();
   };
 
   const triggerRedo = () => {
-    window.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "y", ctrlKey: true }),
-    );
+    useCanvasStore.getState().redo();
   };
 
   const triggerCollapseAll = () => {
