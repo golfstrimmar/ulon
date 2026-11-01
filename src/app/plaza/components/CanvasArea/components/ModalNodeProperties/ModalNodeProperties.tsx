@@ -196,6 +196,7 @@ export default function ModalNodeProperties({
                   nodeKey={selectedNode._key || clickedKey || ""}
                   nodeTag={selectedNode.tag || "div"}
                   nodeClasses={nodeClasses}
+                  nodeStyle={selectedNode.style}
                   globalScss={globalScss}
                   globalJs={globalJs}
                   attributesValue={selectedNode.attributes}

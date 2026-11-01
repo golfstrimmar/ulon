@@ -151,7 +151,7 @@ export function PreviewArea() {
       if (targetEl) {
         targetEl.classList.remove("plaza-node-hovered");
         targetEl.classList.add("plaza-node-selected");
-        targetEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        // targetEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }
     },
     [iframeRef],

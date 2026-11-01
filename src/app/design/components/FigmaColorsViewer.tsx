@@ -89,7 +89,11 @@ export function FigmaColorsViewer({ rawJson }: FigmaColorsViewerProps) {
                 onClick={handleSaveToDb}
                 className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-1.5 rounded-lg border border-zinc-700 transition cursor-pointer"
               >
-                {copiedVar === "all-scss" ? "Saved!" : "Save to DB"}
+                {copiedVar === "all-scss"
+                  ? "Saved!"
+                  : copiedVar === "all-scss-duplicate"
+                    ? "Уже в базе!"
+                    : "Save to DB"}
               </button>
             </div>
 

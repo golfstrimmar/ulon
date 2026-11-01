@@ -8,7 +8,9 @@ import ModalCustomStyles from "@/app/plaza/components/CanvasArea/components/Moda
 import {
   extractClassSnippet,
   updateClassInGlobalScss,
+  updateNestedSnippetInClass,
 } from "@/lib/scssCompiler";
+import { extractExistingPseudoSelectors } from "@/app/plaza/components/CanvasArea/components/ModalCustomStyles/constants/pseudoLibrary";
 import { motion, AnimatePresence } from "framer-motion";
 import ButtonUndoRedoScss from "@/components/ButtonUndoRedoScss";
 
@@ -25,6 +27,7 @@ interface MonacoPropertiesEditorProps {
   nodeKey?: string;
   nodeTag?: string;
   nodeClasses: string[];
+  nodeStyle?: string;
   globalScss: string;
   globalJs?: string;
   attributesValue?: Record<string, string>;
@@ -34,6 +37,34 @@ interface MonacoPropertiesEditorProps {
   onSaveAttributes?: (
     attributes: Record<string, string>,
   ) => Promise<void> | void;
+}
+
+function getSnippetWithFallback(
+  cls: string | null,
+  scss: string,
+  fallbackStyle?: string,
+): string {
+  if (!cls) return "";
+  const extracted = extractClassSnippet(scss, cls);
+  const isEmpty =
+    !extracted ||
+    extracted.trim() === `.${cls} {\n  \n}` ||
+    extracted.trim() === `.${cls} {}` ||
+    extracted.trim() === `.${cls} {\n}`;
+
+  if (isEmpty && fallbackStyle && fallbackStyle.trim()) {
+    const formatted = fallbackStyle
+      .split(";")
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((s) => `  ${s};`)
+      .join("\n");
+    if (formatted) {
+      return `.${cls} {\n${formatted}\n}`;
+    }
+  }
+
+  return extracted;
 }
 
 function ensureSelectorWrapper(className: string, code: string): string {
@@ -57,6 +88,7 @@ export function MonacoPropertiesEditor({
   nodeKey = "",
   nodeTag = "div",
   nodeClasses = [],
+  nodeStyle = "",
   globalScss = "",
   attributesValue = {},
   onSaveGlobalScss,
@@ -65,8 +97,9 @@ export function MonacoPropertiesEditor({
   // Инициализируем сразу первым классом при монтировании
   const firstCls = nodeClasses[0] ?? null;
   const [openTarget, setOpenTarget] = useState<string | null>(firstCls);
+  const [activeScope, setActiveScope] = useState<string>("base");
   const [currentText, setCurrentText] = useState<string>(() =>
-    firstCls ? extractClassSnippet(globalScss, firstCls) : "",
+    firstCls ? getSnippetWithFallback(firstCls, globalScss, nodeStyle) : "",
   );
   const currentTextRef = useRef<string>("");
   currentTextRef.current = currentText;
@@ -77,6 +110,12 @@ export function MonacoPropertiesEditor({
   globalScssRef.current = globalScss;
 
   const prevNodeKeyRef = useRef<string>(nodeKey);
+
+  // Список существующих псевдоэлементов/классов внутри текущего класса
+  const existingPseudos = useMemo(() => {
+    if (!openTarget || openTarget === "__attributes__") return [];
+    return extractExistingPseudoSelectors(currentText);
+  }, [openTarget, currentText]);
 
   const saveCurrentOpenTarget = (targetToSave: string | null = openTarget) => {
     if (!targetToSave || !isDirtyRef.current) return;
@@ -117,9 +156,14 @@ export function MonacoPropertiesEditor({
       isDirtyRef.current = false;
 
       // Авто-открываем первый класс если есть
+      setActiveScope("base");
       if (nodeClasses.length > 0) {
         const firstCls = nodeClasses[0];
-        const snippet = extractClassSnippet(globalScssRef.current, firstCls);
+        const snippet = getSnippetWithFallback(
+          firstCls,
+          globalScssRef.current,
+          nodeStyle,
+        );
         setCurrentText(snippet);
         currentTextRef.current = snippet;
         setOpenTarget(firstCls);
@@ -136,9 +180,14 @@ export function MonacoPropertiesEditor({
     if (openTarget && openTarget !== "__attributes__") {
       if (!nodeClasses.includes(openTarget)) {
         isDirtyRef.current = false;
+        setActiveScope("base");
         if (nodeClasses.length > 0) {
           const fallback = nodeClasses[0];
-          const snippet = extractClassSnippet(globalScssRef.current, fallback);
+          const snippet = getSnippetWithFallback(
+            fallback,
+            globalScssRef.current,
+            nodeStyle,
+          );
           setCurrentText(snippet);
           currentTextRef.current = snippet;
           setOpenTarget(fallback);
@@ -168,18 +217,23 @@ export function MonacoPropertiesEditor({
         currentTextRef.current = formatted;
       }
     } else {
-      const freshSnippet = extractClassSnippet(globalScss, openTarget);
+      const freshSnippet = getSnippetWithFallback(
+        openTarget,
+        globalScss,
+        nodeStyle,
+      );
       if (freshSnippet !== currentTextRef.current) {
         setCurrentText(freshSnippet);
         currentTextRef.current = freshSnippet;
       }
     }
-  }, [globalScss, openTarget, attributesValue]);
+  }, [globalScss, openTarget, attributesValue, nodeStyle]);
 
   const handleToggleClass = (cls: string) => {
     const clean = cls.trim().replace(/^\./, "");
     if (!clean) return;
 
+    setActiveScope("base");
     if (openTarget === clean) {
       saveCurrentOpenTarget(clean);
       setOpenTarget(null);
@@ -190,7 +244,11 @@ export function MonacoPropertiesEditor({
       saveCurrentOpenTarget(openTarget);
     }
 
-    const snippet = extractClassSnippet(globalScssRef.current, clean);
+    const snippet = getSnippetWithFallback(
+      clean,
+      globalScssRef.current,
+      nodeStyle,
+    );
     setCurrentText(snippet);
     currentTextRef.current = snippet;
     isDirtyRef.current = false;
@@ -198,6 +256,7 @@ export function MonacoPropertiesEditor({
   };
 
   const handleToggleAttributes = () => {
+    setActiveScope("base");
     if (openTarget === "__attributes__") {
       saveCurrentOpenTarget("__attributes__");
       setOpenTarget(null);
@@ -339,23 +398,63 @@ export function MonacoPropertiesEditor({
     if (!openTarget || openTarget === "__attributes__") return;
 
     let text = currentTextRef.current.trim();
+    const trimmedSnippet = snippetCss.trim();
 
-    if (text) {
-      text = cleanConflictingProperties(text, snippetCss);
+    // 1. Если snippetCss это целый класс .cls { ... } — заменяем полностью
+    if (trimmedSnippet.startsWith(`.${openTarget}`)) {
+      text = trimmedSnippet;
     }
-
-    if (
-      !text ||
-      text === `.${openTarget} {\n  \n}` ||
-      text === `.${openTarget} {}`
+    // 2. Если snippetCss это псевдо-селектор (&:before, &:after, &:hover, etc.) или медиа-запрос (@media ...)
+    else if (
+      trimmedSnippet.startsWith("&") ||
+      trimmedSnippet.startsWith("@media")
     ) {
-      text = `.${openTarget} {\n  ${snippetCss}\n}`;
-    } else if (text.endsWith("}")) {
-      const lastBraceIndex = text.lastIndexOf("}");
-      const before = text.slice(0, lastBraceIndex).trimEnd();
-      text = `${before}\n  ${snippetCss.split("\n").join("\n  ")}\n}`;
-    } else {
-      text = `${text}\n  ${snippetCss}`;
+      let nestedSelector: string | null = null;
+      if (trimmedSnippet.startsWith("&")) {
+        const match = trimmedSnippet.match(/^(&[:a-zA-Z0-9_()-]+)/);
+        nestedSelector = match ? match[1] : null;
+      } else if (trimmedSnippet.startsWith("@media")) {
+        const match = trimmedSnippet.match(/^(@media[^{]+)/);
+        nestedSelector = match ? match[1].trim() : null;
+      }
+
+      if (
+        !text ||
+        text === `.${openTarget} {\n  \n}` ||
+        text === `.${openTarget} {}`
+      ) {
+        text = `.${openTarget} {\n  ${trimmedSnippet.split("\n").join("\n  ")}\n}`;
+      } else if (nestedSelector) {
+        text = updateNestedSnippetInClass(text, nestedSelector, trimmedSnippet);
+      } else {
+        const lastBraceIndex = text.lastIndexOf("}");
+        if (lastBraceIndex !== -1) {
+          const before = text.slice(0, lastBraceIndex).trimEnd();
+          text = `${before}\n\n  ${trimmedSnippet.split("\n").join("\n  ")}\n}`;
+        } else {
+          text = `${text}\n  ${trimmedSnippet}`;
+        }
+      }
+    }
+    // 3. Стандартный набор CSS свойств (например typography, position, color и т.д.)
+    else {
+      if (text) {
+        text = cleanConflictingProperties(text, snippetCss);
+      }
+
+      if (
+        !text ||
+        text === `.${openTarget} {\n  \n}` ||
+        text === `.${openTarget} {}`
+      ) {
+        text = `.${openTarget} {\n  ${snippetCss}\n}`;
+      } else if (text.endsWith("}")) {
+        const lastBraceIndex = text.lastIndexOf("}");
+        const before = text.slice(0, lastBraceIndex).trimEnd();
+        text = `${before}\n  ${snippetCss.split("\n").join("\n  ")}\n}`;
+      } else {
+        text = `${text}\n  ${snippetCss}`;
+      }
     }
 
     setCurrentText(text);
@@ -443,6 +542,8 @@ export function MonacoPropertiesEditor({
             <ModalCustomStyles
               currentClass={openTarget}
               currentScssText={currentText}
+              activeScope={activeScope}
+              onScopeChange={setActiveScope}
               onApplySnippet={handleApplySnippet}
             />
             {/*)}*/}
@@ -458,19 +559,11 @@ export function MonacoPropertiesEditor({
                 <button
                   type="button"
                   onClick={handleDeleteCurrentClassCss}
-                  className="text-[10px] font-mono text-zinc-400 hover:text-red-400 px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 transition cursor-pointer"
+                  className="text-[10px] font-mono text-zinc-400 hover:text-red-400 px-2 py-0.5 rounded bg-red-900/70 hover:bg-zinc-800/70 border border-zinc-700 transition cursor-pointer ml-4 whitespace-nowrap"
                 >
                   ✕ Clear
                 </button>
               )}
-
-              <button
-                type="button"
-                onClick={handleCloseEditor}
-                className="text-[10px] font-mono font-bold text-white px-2.5 py-0.5 rounded bg-indigo-600 hover:bg-indigo-500 shadow transition cursor-pointer"
-              >
-                ✓ Save / Close
-              </button>
             </div>
           </div>
 
