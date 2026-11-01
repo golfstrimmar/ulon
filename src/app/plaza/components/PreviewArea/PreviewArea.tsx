@@ -76,16 +76,37 @@ export function PreviewArea() {
   } = useBreakpoint();
 
   const [iframeHeight, setIframeHeight] = useState(140);
+  const [naturalImgHeight, setNaturalImgHeight] = useState<number>(0);
   const [activeSelection, setActiveSelection] =
     useState<SelectionPayload | null>(null);
   const activeSelectionRef = useRef<SelectionPayload | null>(null);
   activeSelectionRef.current = activeSelection;
 
-  // Если элементов нет (isEmpty), высота ВСЕГДА сбрасывается к исходным 140px
-  const effectiveHeight = isEmpty
-    ? 140
-    : hasImage && isOverlayActive && fitHeight && overlayHeight
-      ? Math.max(iframeHeight, overlayHeight + Math.max(0, offsetY))
+  // Измеряем высоту картинки-прототипа если она еще не записана в стейт
+  useEffect(() => {
+    if (!overlayImage) {
+      setNaturalImgHeight(0);
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      setNaturalImgHeight(img.naturalHeight);
+    };
+    img.src = overlayImage;
+  }, [overlayImage]);
+
+  const activeImageHeight = overlayHeight || naturalImgHeight;
+
+  // Если есть картинка-прототип (образец), высота превью автоматически равна высоте этой картинки
+  const prototypeHeight =
+    hasImage && activeImageHeight > 0
+      ? activeImageHeight + Math.max(0, offsetY)
+      : null;
+
+  const effectiveHeight = prototypeHeight
+    ? Math.max(isEmpty ? 140 : iframeHeight, prototypeHeight)
+    : isEmpty
+      ? 140
       : iframeHeight;
 
   // СБРОС ВЫСОТЫ ПРИ ОЧИСТКЕ
@@ -421,7 +442,7 @@ export function PreviewArea() {
             }`}
           >
             <div
-              className={`relative bg-white transition-[width,height,min-height] duration-200 ease-out overflow-hidden ${
+              className={`relative bg-white transition-[width] duration-200 ease-out overflow-hidden ${
                 isFullWidth
                   ? "w-full"
                   : "shadow-2xl rounded-lg border border-zinc-700/70 ring-1 ring-zinc-800 shrink-0"
@@ -429,8 +450,6 @@ export function PreviewArea() {
               style={{
                 width: effectiveWidthStyle,
                 minWidth: isFullWidth ? "100%" : effectiveWidthStyle,
-                minHeight: effectiveHeight,
-                height: effectiveHeight,
               }}
             >
               {!isFullWidth && (
@@ -476,63 +495,77 @@ export function PreviewArea() {
                 </div>
               )}
 
-              {hasImage && isOverlayActive && (
-                <div
-                  className="absolute top-0 pointer-events-none select-none z-0"
-                  style={{
-                    left: align === "center" ? "50%" : 0,
-                    transform:
-                      align === "center"
-                        ? `translateX(calc(-50% + ${offsetX}px)) translateY(${offsetY}px)`
-                        : `translate(${offsetX}px, ${offsetY}px)`,
-                  }}
-                >
-                  <img
-                    src={overlayImage}
-                    alt="Pixel Perfect Reference"
-                    className="max-w-none block pointer-events-none select-none"
-                    draggable={false}
+              {/* Область экрана превью (холст / iframe и подложка прототипа) */}
+              <div
+                className="relative w-full bg-white transition-[height] duration-200 ease-out overflow-hidden"
+                style={{
+                  height: effectiveHeight,
+                  minHeight: effectiveHeight,
+                }}
+              >
+                {hasImage && isOverlayActive && (
+                  <div
+                    className="absolute top-0 pointer-events-none select-none z-0"
                     style={{
-                      opacity: overlayOpacity / 100,
+                      left: align === "center" ? "50%" : 0,
+                      transform:
+                        align === "center"
+                          ? `translateX(calc(-50% + ${offsetX}px)) translateY(${offsetY}px)`
+                          : `translate(${offsetX}px, ${offsetY}px)`,
+                    }}
+                  >
+                    <img
+                      src={overlayImage}
+                      alt="Pixel Perfect Reference"
+                      className="max-w-none block pointer-events-none select-none"
+                      draggable={false}
+                      style={{
+                        opacity: overlayOpacity / 100,
+                      }}
+                      onLoad={(e) => {
+                        if (e.currentTarget.naturalHeight) {
+                          setNaturalImgHeight(e.currentTarget.naturalHeight);
+                        }
+                      }}
+                    />
+                  </div>
+                )}
+
+                {isEmpty ? (
+                  <div
+                    className="absolute inset-0 flex flex-col items-center justify-center text-zinc-300 gap-2 bg-white z-10"
+                    style={{
+                      opacity:
+                        hasImage && isOverlayActive ? previewOpacity / 100 : 1,
+                      transition: "opacity 0.05s ease-out",
+                    }}
+                  >
+                    <span className="text-2xl">🖼️</span>
+                    <p className="text-sm font-medium text-zinc-400">
+                      There are no elements to display
+                    </p>
+                    <p className="text-xs text-zinc-500">
+                      Add the blocks to the canvas — they will appear here
+                    </p>
+                  </div>
+                ) : (
+                  <iframe
+                    ref={iframeRef}
+                    srcDoc={srcDoc}
+                    title="iframe Prev"
+                    sandbox="allow-scripts allow-same-origin allow-modals allow-forms"
+                    className="w-full border-0 bg-white block relative z-10 transition-[height] duration-200 ease-out"
+                    onLoad={handleLoad}
+                    style={{
+                      height: effectiveHeight,
+                      minHeight: effectiveHeight,
+                      opacity:
+                        hasImage && isOverlayActive ? previewOpacity / 100 : 1,
+                      transition: "height 0.2s ease-out, opacity 0.05s ease-out",
                     }}
                   />
-                </div>
-              )}
-
-              {isEmpty ? (
-                <div
-                  className="absolute inset-0 flex flex-col items-center justify-center text-zinc-300 gap-2 bg-white z-10"
-                  style={{
-                    opacity:
-                      hasImage && isOverlayActive ? previewOpacity / 100 : 1,
-                    transition: "opacity 0.05s ease-out",
-                  }}
-                >
-                  <span className="text-2xl">🖼️</span>
-                  <p className="text-sm font-medium text-zinc-400">
-                    There are no elements to display
-                  </p>
-                  <p className="text-xs text-zinc-500">
-                    Add the blocks to the canvas — they will appear here
-                  </p>
-                </div>
-              ) : (
-                <iframe
-                  ref={iframeRef}
-                  srcDoc={srcDoc}
-                  title="iframe Prev"
-                  sandbox="allow-scripts allow-same-origin allow-modals allow-forms"
-                  className="w-full border-0 bg-white block relative z-10 transition-[height] duration-200 ease-out"
-                  onLoad={handleLoad}
-                  style={{
-                    height: effectiveHeight,
-                    minHeight: effectiveHeight,
-                    opacity:
-                      hasImage && isOverlayActive ? previewOpacity / 100 : 1,
-                    transition: "height 0.2s ease-out, opacity 0.05s ease-out",
-                  }}
-                />
-              )}
+                )}
+              </div>
             </div>
           </motion.div>
         )}
