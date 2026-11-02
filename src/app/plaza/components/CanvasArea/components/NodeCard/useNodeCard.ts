@@ -15,7 +15,6 @@ export interface UseNodeCardOptions {
 export function useNodeCard({ node, depth }: UseNodeCardOptions) {
   const key = node._key || "";
 
-  // ── Точечные селекторы-булеаны: рендер ТОЛЬКО для этой конкретной ноды ──
   const isClicked = useCanvasStore((s) => s.clickedKey === key);
   const isSelected = useCanvasStore((s) => s.selectedKeys.has(key));
   const isDragged = useCanvasStore((s) => s.draggedKeys.includes(key));
@@ -25,11 +24,20 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
     s.dropTarget?.key === key ? s.dropTarget.position : null,
   );
   const isHovered = useCanvasStore(
-    (s) => s.hoveredKey === key && s.clickedKey !== key && !s.selectedKeys.has(key),
+    (s) =>
+      s.hoveredKey === key && s.clickedKey !== key && !s.selectedKeys.has(key),
   );
   const hasActiveDrag = useCanvasStore((s) => s.draggedKeys.length > 0);
 
-  const children: HtmlNode[] = Array.isArray(node.children) ? node.children : [];
+  // Template Mode selectors
+  const isTemplateMode = useCanvasStore((s) => s.isTemplateMode);
+  const isRightPaneNode = useCanvasStore((s) => s.rightKeys.has(key));
+  const slotIdx = useCanvasStore((s) => s.templateSlotKeys.indexOf(key));
+  const slotNumber = slotIdx !== -1 ? slotIdx + 1 : null;
+
+  const children: HtmlNode[] = Array.isArray(node.children)
+    ? node.children
+    : [];
   const hasChildren = children.length > 0;
 
   const depthIdx = Math.min(depth, DEPTH_BG.length - 1);
@@ -45,13 +53,16 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
     };
   }, []);
 
-  // ── Стили карточки ────────────────────────────────────────────────────────
   const { borderStyle, bgStyle, shadowStyle } = useMemo(() => {
     let border = DEPTH_BORDER[depthIdx];
     let bg = DEPTH_BG[depthIdx];
     let shadow = "0 1px 3px rgba(0, 0, 0, 0.4)";
 
-    if (isDrop && dropPos === "donor") {
+    if (slotNumber !== null) {
+      border = "#f59e0b";
+      bg = "rgba(245, 158, 11, 0.16)";
+      shadow = "0 0 12px rgba(245, 158, 11, 0.4)";
+    } else if (isDrop && dropPos === "donor") {
       border = "#f59e0b";
       bg = "rgba(245, 158, 11, 0.22)";
       shadow = "0 0 16px rgba(245, 158, 11, 0.55)";
@@ -78,9 +89,17 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
     }
 
     return { borderStyle: border, bgStyle: bg, shadowStyle: shadow };
-  }, [depthIdx, isDrop, dropPos, isClicked, isSelected, isHovered, hasActiveDrag]);
+  }, [
+    depthIdx,
+    slotNumber,
+    isDrop,
+    dropPos,
+    isClicked,
+    isSelected,
+    isHovered,
+    hasActiveDrag,
+  ]);
 
-  // ── Бейдж тега ────────────────────────────────────────────────────────────
   const tagBadgeClass = useMemo(() => {
     const tagLower = (node.tag || "div").toLowerCase();
     if (tagLower === "div") {
@@ -101,7 +120,6 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
     : "";
   const hasText = Boolean(node.text && node.text.trim());
 
-  // ── Обработчики действий ноды ─────────────────────────────────────────────
   const handlePointerEnter = useCallback(
     (e: React.PointerEvent) => {
       e.stopPropagation();
@@ -124,7 +142,8 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
       const parentNode = nextTarget?.closest<HTMLElement>("[data-node-key]");
       const parentKey = parentNode?.getAttribute("data-node-key") || null;
 
-      const targetKey = parentKey === (isClicked ? key : null) ? null : parentKey;
+      const targetKey =
+        parentKey === (isClicked ? key : null) ? null : parentKey;
 
       useCanvasStore.getState().setHoveredKey(targetKey);
       window.dispatchEvent(
@@ -148,13 +167,20 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
     (e: React.MouseEvent) => {
       e.stopPropagation();
       if (hasActiveDrag) return;
+
+      // In Template mode, clicking Right Pane node toggles slot assignment
+      if (isTemplateMode && isRightPaneNode) {
+        useCanvasStore.getState().toggleTemplateSlot(key);
+        return;
+      }
+
       if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
       clickTimeoutRef.current = setTimeout(() => {
         useCanvasStore.getState().setClickedKey(key);
         clickTimeoutRef.current = null;
       }, 300);
     },
-    [hasActiveDrag, key],
+    [hasActiveDrag, isTemplateMode, isRightPaneNode, key],
   );
 
   const handleDoubleClick = useCallback(
@@ -186,6 +212,9 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
     isDragged,
     isSelected,
     isDropDonor: isDrop && dropPos === "donor",
+    isTemplateMode,
+    isRightPaneNode,
+    slotNumber,
     borderStyle,
     bgStyle,
     shadowStyle,

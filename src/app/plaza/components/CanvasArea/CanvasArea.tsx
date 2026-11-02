@@ -7,6 +7,7 @@ import {
   ArrowRightCircleIcon,
   SparklesIcon,
   TagIcon,
+  Square3Stack3DIcon,
 } from "@heroicons/react/24/outline";
 import { useCanvasArea } from "@/app/plaza/components/CanvasArea/hooks/useCanvasArea";
 import { NodeCard } from "@/app/plaza/components/CanvasArea/components/NodeCard";
@@ -31,22 +32,23 @@ export function CanvasArea() {
   const leftPaneRef = useRef<HTMLDivElement>(null);
   const rightPaneRef = useRef<HTMLDivElement>(null);
 
-  // ─────🔹 Координатор холста
   const { containerRef, handleMarqueePointerDown } = useCanvasArea();
 
-  // ─────🔹 Атомарные подписки на Zustand стор
   const currentJson = useCanvasStore((s) => s.currentJson);
   const isSplit = useCanvasStore((s) => s.isSplit);
   const rightKeys = useCanvasStore((s) => s.rightKeys);
   const toggleSplitMode = useCanvasStore((s) => s.toggleSplitMode);
   const isDonorMode = useCanvasStore((s) => s.isDonorMode);
   const toggleDonorMode = useCanvasStore((s) => s.toggleDonorMode);
+  const isTemplateMode = useCanvasStore((s) => s.isTemplateMode);
+  const toggleTemplateMode = useCanvasStore((s) => s.toggleTemplateMode);
+  const templateSlotKeys = useCanvasStore((s) => s.templateSlotKeys);
+  const hudMessage = useCanvasStore((s) => s.hudMessage);
   const clickedKey = useCanvasStore((s) => s.clickedKey);
   const setClickedKey = useCanvasStore((s) => s.setClickedKey);
   const persist = useCanvasStore((s) => s.persist);
   const applyBemClasses = useCanvasStore((s) => s.applyBemClasses);
 
-  // ─────🔹 Разделение нод: левая колонка получает свои, правая — свои
   const leftNodes = useMemo(() => {
     if (!isSplit || rightKeys.size === 0) return currentJson;
     return removeNodesByKeys(currentJson, rightKeys);
@@ -57,7 +59,6 @@ export function CanvasArea() {
     return extractNodesByKeys(currentJson, rightKeys);
   }, [currentJson, rightKeys, isSplit]);
 
-  // ─────🔹 Отслеживаем перенос групп между Pane 1 и Pane 2
   useEffect(() => {
     if (!isSplit) return;
 
@@ -66,7 +67,6 @@ export function CanvasArea() {
       const activeKeys = state.draggedKeys;
       if (activeKeys.length === 0) return;
 
-      // Если происходит сброс на ноду-акцептор (режим донора) — слияние обрабатывается в commitDrop
       if (state.dropTarget?.position === "donor") {
         return;
       }
@@ -98,7 +98,6 @@ export function CanvasArea() {
     };
   }, [isSplit]);
 
-  /** Рендер списка нод со всеми DropGap */
   const renderNodeList = (nodes: HtmlNode[], panePrefix: string) => {
     return (
       <div className="w-full mx-auto flex flex-col min-h-full">
@@ -125,12 +124,28 @@ export function CanvasArea() {
 
   return (
     <div className="w-full flex gap-1 select-none">
-      {/* ЛЕВАЯ ПАНЕЛЬ С КНОПКАМИ */}
       <AsideCanvas />
 
-      {/* РАБОЧАЯ ОБЛАСТЬ ХОЛСТА */}
       <div className="plaza-workspace flex-1 relative bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl flex flex-col">
-        {/* ВЕРХНИЙ БАР */}
+        {/* HUD TOAST NOTIFICATION */}
+        {hudMessage && (
+          <div className="absolute top-9 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-200 animate-in fade-in slide-in-from-top-2">
+            <div
+              className={`px-3 py-1.5 rounded-lg border shadow-2xl backdrop-blur-md text-xs font-mono font-medium flex items-center gap-2 ${
+                hudMessage.type === "warning"
+                  ? "bg-amber-950/90 border-amber-500/60 text-amber-200"
+                  : hudMessage.type === "success"
+                    ? "bg-emerald-950/90 border-emerald-500/60 text-emerald-200"
+                    : "bg-zinc-900/90 border-indigo-500/60 text-zinc-200"
+              }`}
+            >
+              <span className="size-2 rounded-full bg-current animate-ping" />
+              <span>{hudMessage.text}</span>
+            </div>
+          </div>
+        )}
+
+        {/* TOP TOOLBAR */}
         <div className="h-7 shrink-0 bg-zinc-900 border-b border-zinc-800 pl-2 pr-1 flex items-center justify-between text-xs text-zinc-400">
           <span className="font-mono !text-[10px]">Workspace</span>
           <div className="flex items-center gap-1.5">
@@ -142,6 +157,34 @@ export function CanvasArea() {
             >
               <TagIcon className="size-3.5 text-indigo-400" />
               <span>+ class</span>
+            </button>
+
+            {/* TEMPLATE MODE BUTTON */}
+            <button
+              type="button"
+              onClick={toggleTemplateMode}
+              title={
+                isTemplateMode
+                  ? "Template mode: ON (click right nodes to set slots [1], [2]..., marquee left nodes to fill)"
+                  : "Template mode: OFF"
+              }
+              className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono transition-all pointer-pointer border ${
+                isTemplateMode
+                  ? "bg-indigo-600/25 text-indigo-200 border-indigo-500/70 shadow-[0_0_12px_rgba(99,102,241,0.35)]"
+                  : "bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700 border-zinc-700/50"
+              }`}
+            >
+              <Square3Stack3DIcon
+                className={`size-3.5 ${
+                  isTemplateMode ? "text-indigo-400" : "text-zinc-400"
+                }`}
+              />
+              <span>Template</span>
+              {templateSlotKeys.length > 0 && (
+                <span className="px-1 py-0.2 rounded-full bg-indigo-500 text-white text-[10px] font-bold">
+                  {templateSlotKeys.length}
+                </span>
+              )}
             </button>
 
             <button
@@ -188,13 +231,13 @@ export function CanvasArea() {
           </div>
         </div>
 
-        {/* СПЛИТ-ОБЛАСТЬ (PANE 1 И PANE 2) */}
+        {/* WORKSPACE PANELS */}
         <div
           ref={containerRef}
           onPointerDown={handleMarqueePointerDown}
           className="flex-1 flex overflow-hidden"
         >
-          {/* ЛЕВАЯ КОЛОНКА (PANE 1) */}
+          {/* LEFT PANEL (PANE 1 - MAIN / DONORS) */}
           <div
             ref={leftPaneRef}
             data-pane="left"
@@ -202,7 +245,7 @@ export function CanvasArea() {
           >
             {isSplit && (
               <div className="px-3 py-1 bg-zinc-900/40 text-[11px] font-mono text-zinc-500 border-b border-zinc-800/40 flex justify-between">
-                <span>Pane 1</span>
+                <span>Pane 1 {isTemplateMode && "(Donors Source)"}</span>
                 <span>{leftNodes.length} items</span>
               </div>
             )}
@@ -217,22 +260,29 @@ export function CanvasArea() {
             </div>
           </div>
 
-          {/* ПРАВАЯ КОЛОНКА Справа от разделителя (PANE 2) */}
+          {/* RIGHT PANEL (PANE 2 - PROTOTYPE TEMPLATE) */}
           {isSplit && (
             <div
               ref={rightPaneRef}
               data-pane="right"
               className="flex-1 h-full overflow-hidden flex flex-col border-l border-zinc-800 bg-zinc-950"
             >
-              <div className="px-3 py-1 bg-zinc-900/40 text-[11px] font-mono text-zinc-500 border-b border-zinc-800/40 flex justify-between">
-                <span>Pane 2</span>
-                <span>{rightNodes.length} items</span>
+              <div className="px-3 py-1 bg-zinc-900/40 text-[11px] font-mono text-zinc-500 border-b border-zinc-800/40 flex justify-between items-center">
+                <span>Pane 2 {isTemplateMode && "(Template Blueprint)"}</span>
+                <div className="flex items-center gap-2">
+                  {isTemplateMode && (
+                    <span className="text-[10px] text-amber-400 font-bold">
+                      {templateSlotKeys.length} slot(s)
+                    </span>
+                  )}
+                  <span>{rightNodes.length} items</span>
+                </div>
               </div>
 
               <div className="plaza-inner w-full h-full overflow-auto custom-scrollbar p-1">
                 {rightNodes.length === 0 ? (
                   <div className="w-full h-full border border-dashed border-zinc-800/50 rounded flex items-center justify-center text-xs font-mono text-zinc-700">
-                    Drop nodes here
+                    Drop template prototype nodes here
                   </div>
                 ) : (
                   renderNodeList(rightNodes, "p2")
@@ -242,7 +292,6 @@ export function CanvasArea() {
           )}
         </div>
 
-        {/* МОДАЛКА СВОЙСТВ */}
         <ModalNodeProperties
           clickedKey={clickedKey}
           currentJson={currentJson}
@@ -251,10 +300,7 @@ export function CanvasArea() {
         />
       </div>
 
-      {/* ИЗОЛИРОВАННЫЙ ОВЕРЛЕЙ ПРИЗРАКА ПЕРЕТАСКИВАНИЯ (0 лишних рендеров холста) */}
       <CanvasDragGhost />
-
-      {/* ИЗОЛИРОВАННЫЙ ОВЕРЛЕЙ РАМКИ ВЫДЕЛЕНИЯ (0 лишних рендеров холста) */}
       <CanvasMarqueeOverlay />
     </div>
   );

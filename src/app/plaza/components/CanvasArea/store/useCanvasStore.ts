@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { HtmlNode } from "@/types/HtmlNode";
-import { deleteNodeFromArray, findNodeByKey, isDescendant } from "@/lib/htmlTree";
+import { deleteNodeFromArray } from "@/lib/htmlTree";
 import { saveHtmlJson, deleteHtmlJson } from "@/lib/htmlStorage";
 import { DB_KEY } from "@/app/plaza/components/CanvasArea/constants/theme";
 import {
@@ -8,9 +8,9 @@ import {
   collectAllDescendantKeys,
   moveNodesGroup,
   duplicateNodesGroup,
-  normalizeSelectedKeys,
   mergeDonorIntoTarget,
   applyBemClassesToSection,
+  fillTemplateWithDonors,
 } from "@/app/plaza/components/CanvasArea/models/canvasModel";
 
 export interface DropTarget {
@@ -32,36 +32,34 @@ export interface PotentialDrag {
 }
 
 export interface CanvasState {
-  // ── 1. Дерево и структура ──────────────────────────────────────────────────
   currentJson: HtmlNode[];
   collapsedKeys: Set<string>;
 
-  // ── 2. Выбор и ховер ───────────────────────────────────────────────────────
   clickedKey: string | null;
   hoveredKey: string | null;
 
-  // ── 3. Сплит-режим (Pane 1 / Pane 2) ───────────────────────────────────────
   isSplit: boolean;
   rightKeys: Set<string>;
   isDonorMode: boolean;
 
-  // ── 4. Рамочное выделение (Marquee) ────────────────────────────────────────
+  // ── Template Mode ────────────────────────────────────────────────────────
+  isTemplateMode: boolean;
+  templateSlotKeys: string[];
+  hudMessage: { text: string; type: "info" | "warning" | "success" } | null;
+
   selectionBox: SelectionBox | null;
   selectedKeys: Set<string>;
 
-  // ── 5. Drag-and-Drop ───────────────────────────────────────────────────────
   potentialDrag: PotentialDrag | null;
   draggedKeys: string[];
   dropTarget: DropTarget | null;
   dragMousePos: { x: number; y: number } | null;
 
-  // ── 6. История изменений ───────────────────────────────────────────────────
   historyStack: HtmlNode[][];
   futureStack: HtmlNode[][];
   canUndo: boolean;
   canRedo: boolean;
 
-  // ── Actions: Модификация дерева и БД ───────────────────────────────────────
   setCurrentJson: (nodes: HtmlNode[]) => void;
   persist: (next: HtmlNode[], recordHistory?: boolean) => Promise<void>;
   applyBemClasses: () => Promise<void>;
@@ -70,27 +68,34 @@ export interface CanvasState {
   undo: () => Promise<void>;
   redo: () => Promise<void>;
 
-  // ── Actions: Сворачивание и выбор ─────────────────────────────────────────
   setClickedKey: (key: string | null) => void;
   setHoveredKey: (key: string | null) => void;
   toggleCollapseKey: (key: string) => void;
   setCollapsedKeys: (keys: Set<string>) => void;
   collapseAll: (keys: string[]) => void;
 
-  // ── Actions: Сплит-режим ───────────────────────────────────────────────────
   toggleSplitMode: () => void;
   toggleDonorMode: () => void;
   setDonorMode: (val: boolean) => void;
-  setRightKeys: (keys: Set<string> | ((prev: Set<string>) => Set<string>)) => void;
+  setRightKeys: (
+    keys: Set<string> | ((prev: Set<string>) => Set<string>),
+  ) => void;
   moveKeysToRightPane: (keys: string[]) => void;
   moveKeysToLeftPane: (keys: string[]) => void;
 
-  // ── Actions: Рамка выделения ───────────────────────────────────────────────
+  // ── Template Mode Actions ─────────────────────────────────────────────────
+  toggleTemplateMode: () => void;
+  toggleTemplateSlot: (key: string) => void;
+  clearTemplateSlots: () => void;
+  showHud: (text: string, type?: "info" | "warning" | "success") => void;
+  fillTemplateFromDonors: (donorKeys: string[]) => Promise<boolean>;
+
   setSelectionBox: (box: SelectionBox | null) => void;
-  setSelectedKeys: (keys: Set<string> | ((prev: Set<string>) => Set<string>)) => void;
+  setSelectedKeys: (
+    keys: Set<string> | ((prev: Set<string>) => Set<string>),
+  ) => void;
   clearSelection: () => void;
 
-  // ── Actions: Drag-and-Drop ─────────────────────────────────────────────────
   startDragNode: (key: string, clientX: number, clientY: number) => void;
   setPotentialDrag: (drag: PotentialDrag | null) => void;
   setDraggedKeys: (keys: string[]) => void;
@@ -100,8 +105,9 @@ export interface CanvasState {
   cancelDrag: () => void;
 }
 
+let hudTimeout: ReturnType<typeof setTimeout> | null = null;
+
 export const useCanvasStore = create<CanvasState>((set, get) => ({
-  // ── Исходное состояние ─────────────────────────────────────────────────────
   currentJson: [],
   collapsedKeys: new Set<string>(),
 
@@ -111,6 +117,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   isSplit: false,
   rightKeys: new Set<string>(),
   isDonorMode: false,
+
+  isTemplateMode: false,
+  templateSlotKeys: [],
+  hudMessage: null,
 
   selectionBox: null,
   selectedKeys: new Set<string>(),
@@ -125,7 +135,6 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   canUndo: false,
   canRedo: false,
 
-  // ── Actions: Дерево и сохранение ───────────────────────────────────────────
   setCurrentJson: (nodes) => set({ currentJson: nodes }),
 
   recordSnapshot: () => {
@@ -202,7 +211,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
     const nextState = futureStack[0];
     const newFuture = futureStack.slice(1);
-    const newHistory = [...historyStack, JSON.parse(JSON.stringify(currentJson))];
+    const newHistory = [
+      ...historyStack,
+      JSON.parse(JSON.stringify(currentJson)),
+    ];
 
     set({
       currentJson: nextState,
@@ -226,7 +238,6 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     await get().persist(updated);
   },
 
-  // ── Actions: Выбор и сворачивание ──────────────────────────────────────────
   setClickedKey: (key) => set({ clickedKey: key }),
   setHoveredKey: (key) => set({ hoveredKey: key }),
 
@@ -242,11 +253,12 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   collapseAll: (keys) => set({ collapsedKeys: new Set(keys) }),
 
-  // ── Actions: Сплит-режим ───────────────────────────────────────────────────
   toggleSplitMode: () =>
     set((state) => ({
       isSplit: !state.isSplit,
       rightKeys: !state.isSplit ? state.rightKeys : new Set(),
+      isTemplateMode: !state.isSplit ? state.isTemplateMode : false,
+      templateSlotKeys: !state.isSplit ? state.templateSlotKeys : [],
     })),
 
   toggleDonorMode: () =>
@@ -293,21 +305,107 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     set((state) => {
       const next = new Set(state.rightKeys);
       for (const k of allSubtreeKeys) next.delete(k);
-      return { rightKeys: next };
+      return {
+        rightKeys: next,
+        templateSlotKeys: state.templateSlotKeys.filter(
+          (slotKey) => !allSubtreeKeys.includes(slotKey),
+        ),
+      };
     });
   },
 
-  // ── Actions: Рамка выделения ───────────────────────────────────────────────
+  // ── Template Mode Actions ─────────────────────────────────────────────────
+  toggleTemplateMode: () => {
+    const nextMode = !get().isTemplateMode;
+    set((state) => ({
+      isTemplateMode: nextMode,
+      isSplit: nextMode ? true : state.isSplit,
+      templateSlotKeys: nextMode ? state.templateSlotKeys : [],
+    }));
+    if (nextMode) {
+      get().showHud(
+        "Template mode: ON. Click nodes in Right Pane to assign slots [1], [2]...",
+        "info",
+      );
+    } else {
+      get().showHud("Template mode: OFF", "info");
+    }
+  },
+
+  toggleTemplateSlot: (key: string) => {
+    set((state) => {
+      const existingIdx = state.templateSlotKeys.indexOf(key);
+      let updated: string[];
+
+      if (existingIdx !== -1) {
+        updated = state.templateSlotKeys.filter((k) => k !== key);
+      } else {
+        updated = [...state.templateSlotKeys, key];
+      }
+
+      return { templateSlotKeys: updated };
+    });
+  },
+
+  clearTemplateSlots: () => set({ templateSlotKeys: [] }),
+
+  showHud: (text: string, type: "info" | "warning" | "success" = "info") => {
+    if (hudTimeout) clearTimeout(hudTimeout);
+    set({ hudMessage: { text, type } });
+    hudTimeout = setTimeout(() => {
+      set({ hudMessage: null });
+      hudTimeout = null;
+    }, 3200);
+  },
+
+  fillTemplateFromDonors: async (donorKeys: string[]) => {
+    const { currentJson, rightKeys, templateSlotKeys } = get();
+
+    if (templateSlotKeys.length === 0) {
+      get().showHud(
+        "No slots assigned in template! Click nodes in Right Pane first.",
+        "warning",
+      );
+      return false;
+    }
+
+    if (rightKeys.size === 0) {
+      get().showHud("Right pane template is empty!", "warning");
+      return false;
+    }
+
+    const result = fillTemplateWithDonors(
+      currentJson,
+      rightKeys,
+      templateSlotKeys,
+      donorKeys,
+    );
+
+    if (!result) return false;
+
+    if (result.warning) {
+      get().showHud(result.warning, "warning");
+    } else {
+      get().showHud(
+        `Template populated successfully (${result.usedCount} slots)!`,
+        "success",
+      );
+    }
+
+    await get().persist(result.nextTree);
+    return true;
+  },
+
   setSelectionBox: (box) => set({ selectionBox: box }),
 
   setSelectedKeys: (keys) =>
     set((state) => ({
-      selectedKeys: typeof keys === "function" ? keys(state.selectedKeys) : keys,
+      selectedKeys:
+        typeof keys === "function" ? keys(state.selectedKeys) : keys,
     })),
 
   clearSelection: () => set({ selectedKeys: new Set() }),
 
-  // ── Actions: Drag-and-Drop ─────────────────────────────────────────────────
   startDragNode: (key, clientX, clientY) => {
     set({
       potentialDrag: { key, startX: clientX, startY: clientY },

@@ -1,16 +1,3 @@
-// ---Критерий 1: Независимость от интерфейса (UI-Agnostic)
-// Тест: «Сможет ли этот код работать в терминале (Node.js) или на бэкенде без браузера, React/Vue и CSS?»
-// Ваши функции extractStylesAndScriptsFromNodes и mergeScriptsWithoutDuplicates этот тест проходят. Им плевать, как нарисован интерфейс (кнопками, холстом или терминалом). Они оперируют только данными дерева.
-// ---Критерий 2: Владение правилами предметной области (Business / Domain Logic)
-// Модель — это не просто структура базы данных (DTO), это правила работы вашего приложения:
-// Как объединять стили?
-// Как валидировать узел дерева?
-// Что считается строчным контейнером?
-// ---Критерий 3: Управление состоянием (State & Data Lifecycle)
-// К модели относятся:
-// Типы данных сущностей (HtmlNode, схемы).
-// Мутации и вычисления над этими данными.
-// Методы сохранения/чтения (репозитории, API, LocalStorage с DB_KEY).
 import type { HtmlNode } from "@/types/HtmlNode";
 import {
   generateNodeKey,
@@ -27,9 +14,7 @@ export function sanitizeCssBody(css: string): string {
 export const getNodeKey = (node: HtmlNode | null | undefined): string =>
   node?._key || (node as any)?.id || "";
 
-/**
- * 🔹 Гарантирует уникальность и наличие ключей у всех узлов дерева
- */
+/** Guarantees unique keys for all nodes */
 export function ensureUniqueKeys(nodes: HtmlNode[]): HtmlNode[] {
   return nodes.map((node) => ({
     ...node,
@@ -42,9 +27,7 @@ export function ensureUniqueKeys(nodes: HtmlNode[]): HtmlNode[] {
   }));
 }
 
-/**
- * 🔹 Рекурсивно собирает ключи всех узлов-контейнеров (имеющих children)
- */
+/** Recursively collects keys of all container nodes */
 export function getAllCollapsibleKeys(
   nodes: HtmlNode[] | null | undefined,
 ): string[] {
@@ -64,10 +47,7 @@ export function getAllCollapsibleKeys(
   return keys;
 }
 
-/**
- * 🔹 Ищет узел в дереве по критериям выделения из PreviewArea
- * (прямой ключ -> специфичный CSS-класс -> тег + совпадение текста)
- */
+/** Finds a node by criteria */
 export function findNodeByCriteria(
   nodes: HtmlNode[],
   criteria: {
@@ -119,8 +99,11 @@ export function findNodeByCriteria(
   return findFallback(nodes);
 }
 
-/** Рекурсивно находит узел в дереве */
-export function findNodeInTree(nodes: HtmlNode[], key: string): HtmlNode | null {
+/** Recursively finds a node in the tree */
+export function findNodeInTree(
+  nodes: HtmlNode[],
+  key: string,
+): HtmlNode | null {
   if (!Array.isArray(nodes)) return null;
   for (const n of nodes) {
     if (getNodeKey(n) === key) return n;
@@ -132,8 +115,10 @@ export function findNodeInTree(nodes: HtmlNode[], key: string): HtmlNode | null 
   return null;
 }
 
-/** Рекурсивно собирает ключ самого узла и ВСЕХ его потомков на любую глубину */
-export function collectAllDescendantKeys(node: HtmlNode | null | undefined): string[] {
+/** Collects node key and all descendant keys */
+export function collectAllDescendantKeys(
+  node: HtmlNode | null | undefined,
+): string[] {
   if (!node) return [];
   const keys: string[] = [];
   function walk(n: HtmlNode) {
@@ -149,8 +134,11 @@ export function collectAllDescendantKeys(node: HtmlNode | null | undefined): str
   return keys;
 }
 
-/** Удаляет указанные ключи из дерева на любую глубину */
-export function removeNodesByKeys(nodes: HtmlNode[], keys: Set<string>): HtmlNode[] {
+/** Removes specified keys from tree */
+export function removeNodesByKeys(
+  nodes: HtmlNode[],
+  keys: Set<string>,
+): HtmlNode[] {
   if (!Array.isArray(nodes)) return [];
   return nodes
     .filter((n) => !keys.has(getNodeKey(n)))
@@ -165,8 +153,11 @@ export function removeNodesByKeys(nodes: HtmlNode[], keys: Set<string>): HtmlNod
     });
 }
 
-/** Извлекает ноды с указанными ключами */
-export function extractNodesByKeys(nodes: HtmlNode[], keys: Set<string>): HtmlNode[] {
+/** Extracts nodes by keys */
+export function extractNodesByKeys(
+  nodes: HtmlNode[],
+  keys: Set<string>,
+): HtmlNode[] {
   if (!Array.isArray(nodes)) return [];
   const found: HtmlNode[] = [];
   function walk(list: HtmlNode[]) {
@@ -207,10 +198,7 @@ export function isRowContainer(node: HtmlNode): boolean {
   return raw.includes("flex");
 }
 
-/**
- * 🔹 ИЗВЛЕЧЕНИЕ СТИЛЕЙ И СКРИПТОВ
- * Гарантирует, что стили ВСЕГДА завернуты в селектор класса, даже если у ноды не было класса!
- */
+/** Extracts styles and scripts */
 export function extractStylesAndScriptsFromNodes(nodes: HtmlNode[]): {
   cleanNodes: HtmlNode[];
   extractedScss: string;
@@ -224,7 +212,6 @@ export function extractStylesAndScriptsFromNodes(nodes: HtmlNode[]): {
     const tag = (node.tag || "div").toLowerCase();
     let classList = (node.class || "").split(/\s+/).filter(Boolean);
 
-    // 1. Скрипты
     if (tag === "script") {
       const code = (node.text || "").trim();
       if (code) {
@@ -252,11 +239,8 @@ export function extractStylesAndScriptsFromNodes(nodes: HtmlNode[]): {
       extractedScripts.push({ name: scriptName, code });
     }
 
-    // 2. Стили — ВСЕГДА В ОБЕРТКЕ СВОЕГО КЛАССА
     if (node.style && node.style.trim()) {
       const cleanBody = node.style.trim();
-
-      // Для svg и его дочерних элементов (path, g...) не генерируем искусственные классы
       const isSvgElement = [
         "svg",
         "path",
@@ -267,14 +251,11 @@ export function extractStylesAndScriptsFromNodes(nodes: HtmlNode[]): {
         "polyline",
       ].includes(tag);
 
-      // Берем первый нормальный класс элемента (не утилиты типа flex/grid)
       let targetClass = classList.find(
         (c) =>
           !c.includes(":") && !c.startsWith("flex") && !c.startsWith("grid"),
       );
 
-      // Если класса не было и это НЕ элемент SVG — даем имя по тегу (если нужно),
-      // а для SVG оставляем инлайн-стиль или пропускаем создание мусорного класса
       if (!targetClass && !isSvgElement) {
         targetClass = `${tag}-custom`;
         classList.push(targetClass);
@@ -289,7 +270,6 @@ export function extractStylesAndScriptsFromNodes(nodes: HtmlNode[]): {
       }
     }
 
-    // Рекурсия по дочерним
     let processedChildren: HtmlNode[] = [];
     if (Array.isArray(node.children)) {
       processedChildren = node.children
@@ -319,11 +299,6 @@ export function extractStylesAndScriptsFromNodes(nodes: HtmlNode[]): {
   };
 }
 
-/**
- * 2. ДУБОВАЯ ПРОВЕРКА ПО КЛАССАМ:
- * Пришел класс — смотрим, есть ли уже такой в файле.
- * Есть — пропускаем. Нет — дописываем в конец.
- */
 export function mergeScssWithoutDuplicates(
   currentScss: string,
   incomingScss: string,
@@ -331,7 +306,6 @@ export function mergeScssWithoutDuplicates(
   if (!incomingScss.trim()) return currentScss;
   if (!currentScss.trim()) return incomingScss.trim();
 
-  // Разбиваем входящий блок по правилам (каждое начинается с точки: .имя-класса {)
   const incomingRules = incomingScss
     .split(/\n(?=\.[a-zA-Z0-9_-]+\s*\{)/g)
     .map((r) => r.trim())
@@ -343,14 +317,9 @@ export function mergeScssWithoutDuplicates(
     const match = rule.match(/^\.([a-zA-Z0-9_-]+)/);
     if (match) {
       const className = match[1];
-
       const regex = new RegExp(`\\.${className}\\s*\\{`);
       if (!regex.test(result)) {
         result = `${result.trim()}\n\n${rule}`;
-      } else {
-        console.log(
-          `[SCSS] Класс .${className} уже есть в файле, дубль пропущен.`,
-        );
       }
     } else {
       if (!result.includes(rule)) {
@@ -362,9 +331,6 @@ export function mergeScssWithoutDuplicates(
   return result.trim();
 }
 
-/**
- * 🔹 Объединение JS-скриптов с дедупликацией по имени компонента
- */
 export function mergeScriptsWithoutDuplicates(
   currentBundle: string,
   incomingScripts: { name: string; code: string }[],
@@ -375,7 +341,6 @@ export function mergeScriptsWithoutDuplicates(
 
   for (const script of incomingScripts) {
     const name = script.name.trim();
-    // Очищаем пришедший код от старых внешних меток, если они уже были
     let cleanCode = script.code
       .replace(/\/\*\s*@component:\s*.*?\*\//g, "")
       .replace(/\/\*\s*@end:\s*.*?\*\//g, "")
@@ -383,7 +348,6 @@ export function mergeScriptsWithoutDuplicates(
 
     if (!cleanCode) continue;
 
-    // Регулярка для поиска существующего блока этого компонента
     const blockRegex = new RegExp(
       `\\/\\*\\s*@component:\\s*${name}\\s*\\*\\/[\\s\\S]*?\\/\\*\\s*@end:\\s*${name}\\s*\\*\\/`,
       "g",
@@ -392,35 +356,19 @@ export function mergeScriptsWithoutDuplicates(
     const formattedBlock = `/* @component: ${name} */\n${cleanCode}\n/* @end: ${name} */`;
 
     if (blockRegex.test(result)) {
-      // Блок с таким именем уже есть!
-      // Сравниваем: если код внутри точно такой же — ничего не трогаем (пропускаем дубль)
       const existingMatch = result.match(blockRegex);
       if (existingMatch && existingMatch[0].trim() === formattedBlock.trim()) {
-        console.log(
-          `[JS Bundle] Скрипт "${name}" уже существует без изменений, дубль пропущен.`,
-        );
-      } else {
-        // Код изменился — аккуратно обновляем именно этот блок
-        result = result.replace(blockRegex, formattedBlock);
-        console.log(`[JS Bundle] Скрипт "${name}" обновлен.`);
+        continue;
       }
+      result = result.replace(blockRegex, formattedBlock);
     } else {
-      // Такого скрипта еще нет вообще — дописываем в конец бандла
       result = result ? `${result}\n\n${formattedBlock}` : formattedBlock;
-      console.log(`[JS Bundle] Скрипт "${name}" добавлен в бандл.`);
     }
   }
 
   return result.trim();
 }
 
-/**
- * 🔹 Нормализует набор выделенных ключей:
- * Если выделен родитель и его дочерний узел, дочерний узел отсекается,
- * так как он уже является частью родителя.
- * Возвращает массив ключей законченных (верхнеуровневых в выделении) нод
- * в порядке следования в документе.
- */
 export function normalizeSelectedKeys(
   tree: HtmlNode[],
   selectedKeys: Set<string>,
@@ -443,9 +391,6 @@ export function normalizeSelectedKeys(
   return result;
 }
 
-/**
- * 🔹 Вставляет массив нод рядом с целевой нодой (до или после)
- */
 export function insertNodesAdjacent(
   nodes: HtmlNode[],
   targetKey: string,
@@ -481,9 +426,6 @@ export function insertNodesAdjacent(
   return result;
 }
 
-/**
- * 🔹 Вставляет массив нод внутрь целевого контейнера
- */
 export function insertNodesInside(
   nodes: HtmlNode[],
   targetKey: string,
@@ -509,9 +451,6 @@ export function insertNodesInside(
   });
 }
 
-/**
- * 🔹 Перемещает группу нод (законченные поддеревья) в целевую позицию
- */
 export function moveNodesGroup(
   tree: HtmlNode[],
   sourceKeys: string[],
@@ -519,11 +458,8 @@ export function moveNodesGroup(
   position: "before" | "after" | "inside",
 ): HtmlNode[] {
   if (!tree || sourceKeys.length === 0 || !targetKey) return tree;
-
-  // Нельзя бросать группу на саму себя
   if (sourceKeys.includes(targetKey)) return tree;
 
-  // Нельзя сбрасывать внутрь любого из перемещаемых узлов или их потомков
   for (const key of sourceKeys) {
     const node = findNodeInTree(tree, key);
     if (node && isDescendant(node, targetKey)) {
@@ -531,7 +467,6 @@ export function moveNodesGroup(
     }
   }
 
-  // 1. Извлекаем все ноды группы из дерева
   let currentTree = tree;
   const nodesToMove: HtmlNode[] = [];
 
@@ -545,7 +480,6 @@ export function moveNodesGroup(
 
   if (nodesToMove.length === 0) return tree;
 
-  // 2. Вставляем группу в целевую позицию
   if (position === "inside") {
     return insertNodesInside(currentTree, targetKey, nodesToMove);
   } else {
@@ -553,9 +487,6 @@ export function moveNodesGroup(
   }
 }
 
-/**
- * 🔹 Дублирует группу нод в дереве
- */
 export function duplicateNodesGroup(
   tree: HtmlNode[],
   sourceKeys: string[],
@@ -567,15 +498,6 @@ export function duplicateNodesGroup(
   return currentTree;
 }
 
-/**
- * 🔹 Слияние ноды-донора в ноду-акцептор:
- * 1. text: если у донора есть текст, он полностью перезаписывает текст принимающей ноды.
- * 2. class: объединяем классы через пробел, отсекая дубликаты.
- * 3. attributes: слияние Object.assign({}, target.attributes, donor.attributes).
- * 4. tag: остается без изменений у акцептора.
- * 5. children: дочерние элементы донора переносятся внутрь принимающей ноды (в конец children).
- * 6. удаление донора: нода-донор удаляется из дерева.
- */
 export function mergeDonorIntoTarget(
   tree: HtmlNode[],
   donorKeys: string[],
@@ -584,7 +506,6 @@ export function mergeDonorIntoTarget(
   if (!tree || donorKeys.length === 0 || !targetKey) return tree;
   if (donorKeys.includes(targetKey)) return tree;
 
-  // 1. Находим целевую ноду (акцептор) и ноды-доноры
   const targetNode = findNodeInTree(tree, targetKey);
   if (!targetNode) return tree;
 
@@ -595,7 +516,6 @@ export function mergeDonorIntoTarget(
   }
   if (donorNodes.length === 0) return tree;
 
-  // 2. Рассчитываем итоговые свойства акцептора
   let nextText = targetNode.text;
   const currentClasses = new Set<string>(
     (targetNode.class || "").trim().split(/\s+/).filter(Boolean),
@@ -606,12 +526,10 @@ export function mergeDonorIntoTarget(
   const appendedChildren: HtmlNode[] = [];
 
   for (const donor of donorNodes) {
-    // 2.1. Текст: если у донора есть текст, он перезаписывает текст принимающей ноды
     if (typeof donor.text === "string" && donor.text.trim() !== "") {
       nextText = donor.text;
     }
 
-    // 2.2. Классы: слияние без дубликатов
     if (donor.class) {
       donor.class
         .trim()
@@ -620,24 +538,19 @@ export function mergeDonorIntoTarget(
         .forEach((cls) => currentClasses.add(cls));
     }
 
-    // 2.3. Атрибуты: слияние объектов (донор перезаписывает совпадения)
     if (donor.attributes && typeof donor.attributes === "object") {
       Object.assign(nextAttributes, donor.attributes);
     }
 
-    // 2.4. Дети донора: переносятся внутрь принимающей ноды
     if (Array.isArray(donor.children) && donor.children.length > 0) {
       appendedChildren.push(...donor.children);
     }
   }
 
   const nextClass = Array.from(currentClasses).join(" ");
-
-  // 3. Удаляем ноды-доноры из дерева
   const donorSet = new Set(donorKeys);
   const treeWithoutDonors = removeNodesByKeys(tree, donorSet);
 
-  // 4. Обновляем акцептор в дереве
   function updateTargetInList(nodes: HtmlNode[]): HtmlNode[] {
     return nodes.map((item) => {
       if (getNodeKey(item) === targetKey) {
@@ -649,7 +562,9 @@ export function mergeDonorIntoTarget(
           text: nextText,
           class: nextClass,
           attributes:
-            Object.keys(nextAttributes).length > 0 ? nextAttributes : item.attributes,
+            Object.keys(nextAttributes).length > 0
+              ? nextAttributes
+              : item.attributes,
           children: [...existingChildren, ...appendedChildren],
         };
       }
@@ -666,15 +581,6 @@ export function mergeDonorIntoTarget(
   return updateTargetInList(treeWithoutDonors);
 }
 
-/**
- * 🔹 Recursively adds BEM classes to descendants of a section:
- * - h1..h6 -> ${blockName}__title
- * - button -> ${blockName}__button
- * - img -> ${blockName}__img
- * - svg -> ${blockName}__svg
- * - a -> ${blockName}__link
- * - div, ul, li, p, span -> ${blockName}__ (empty suffix placeholder for manual editing)
- */
 export function applyBemClassesToSection(
   tree: HtmlNode[],
   targetKey?: string | null,
@@ -688,11 +594,9 @@ export function applyBemClassesToSection(
     if (t === "img") return "img";
     if (t === "svg") return "svg";
     if (t === "a") return "link";
-    // div, ul, li, p, span — placeholder: blockName__ (empty suffix for manual editing)
     return "";
   }
 
-  // 1. Locate the section node
   let sectionNode: HtmlNode | null = null;
   if (targetKey) {
     const candidate = findNodeInTree(tree, targetKey);
@@ -715,7 +619,6 @@ export function applyBemClassesToSection(
     sectionNode = findSection(tree);
   }
 
-  // Fallback to first root container if no <section> tag
   if (!sectionNode && tree.length > 0) {
     sectionNode = tree[0];
   }
@@ -723,22 +626,29 @@ export function applyBemClassesToSection(
   if (!sectionNode) return tree;
 
   const sectionKey = getNodeKey(sectionNode);
-  const rawClasses = (sectionNode.class || "").trim().split(/\s+/).filter(Boolean);
+  const rawClasses = (sectionNode.class || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
   const blockName =
-    rawClasses[0] || (sectionNode.tag ? sectionNode.tag.toLowerCase() : "section");
+    rawClasses[0] ||
+    (sectionNode.tag ? sectionNode.tag.toLowerCase() : "section");
 
-  function processDescendants(children: HtmlNode[] | string): HtmlNode[] | string {
+  function processDescendants(
+    children: HtmlNode[] | string,
+  ): HtmlNode[] | string {
     if (!Array.isArray(children)) return children;
     return children.map((child) => {
       const updatedChild: HtmlNode = { ...child };
       const tag = (child.tag || "div").toLowerCase();
-      const existingClasses = (child.class || "").trim().split(/\s+/).filter(Boolean);
+      const existingClasses = (child.class || "")
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
 
-      // Skip div.container — do not touch it
       const isContainer =
         tag === "div" && existingClasses.includes("container");
 
-      // Check if this node has already received a BEM selector from the root block
       const alreadyHasBem =
         Boolean((child as any)._bemApplied) ||
         existingClasses.some(
@@ -753,7 +663,9 @@ export function applyBemClassesToSection(
       }
 
       if (Array.isArray(updatedChild.children)) {
-        updatedChild.children = processDescendants(updatedChild.children) as HtmlNode[];
+        updatedChild.children = processDescendants(
+          updatedChild.children,
+        ) as HtmlNode[];
       }
       return updatedChild;
     });
@@ -781,12 +693,9 @@ export function applyBemClassesToSection(
 }
 
 // ============================================================================
-// TEMPLATE ENGINE / BATCH DONOR FILLING (ШАБЛОНИЗАТОР)
+// TEMPLATE ENGINE / BATCH DONOR FILLING
 // ============================================================================
 
-/**
- * 🔹 Сортирует ключи в строгом порядке прямого обхода дерева (DOM tree order, сверху вниз)
- */
 export function sortKeysByTreeOrder(
   tree: HtmlNode[],
   keys: Set<string> | string[],
@@ -810,9 +719,6 @@ export function sortKeysByTreeOrder(
   return ordered;
 }
 
-/**
- * 🔹 Клонирует ноду со всеми потомками, генерируя новые ключи и сохраняя маппинг старых -> новых ключей
- */
 export function cloneTemplateWithKeyMapping(
   node: HtmlNode,
   keyMap: Map<string, string>,
@@ -832,9 +738,6 @@ export function cloneTemplateWithKeyMapping(
   };
 }
 
-/**
- * 🔹 Мутирует ноду по targetKey в дереве с помощью функции-обновителя
- */
 export function mutateNodeInTree(
   nodes: HtmlNode[],
   targetKey: string,
@@ -854,14 +757,6 @@ export function mutateNodeInTree(
   });
 }
 
-/**
- * 🔹 Переносит свойства ноды-донора в ноду-слот (акцептор):
- * - текст донора перезаписывает текст слота (если у донора он не пустой)
- * - классы объединяются без дубликатов
- * - атрибуты объединяются (донор перезаписывает совпадения, напр. src, href, alt)
- * - inline style донора (если есть) переносится
- * - если у слота нет детей, а у донора есть — копируются дети
- */
 export function applyDonorToSlot(
   slotNode: HtmlNode,
   donorNode: HtmlNode,
@@ -912,96 +807,80 @@ export function applyDonorToSlot(
   };
 }
 
+export interface TemplateFillResult {
+  nextTree: HtmlNode[];
+  usedCount: number;
+  excessCount: number;
+  warning?: string;
+}
+
 /**
- * 🔹 Пакетное заполнение шаблона группой доноров:
- * 1. Берет шаблонные ноды из правой панели (rightKeys)
- * 2. Упорядочивает доноров по порядку в дереве
- * 3. Разбивает доноров на порции по числу слотов шаблона (если слотов 3, а доноров 6 — создаст 2 карточки)
- * 4. Для каждой порции создает чистую копию шаблона с новыми ключами, заполняет слоты донорами
- * 5. Удаляет доноров из исходного дерева
- * 6. Добавляет готовые карточки в конец общего дерева (в Pane 1)
+ * 🔹 Single Template Population with Donors:
+ * 1. Takes right pane template roots.
+ * 2. Takes donor nodes sorted by DOM order.
+ * 3. Uses donors up to the number of slots. Excess donors are untouched!
+ * 4. Clones template with fresh keys and maps donor props to corresponding slots.
+ * 5. Removes used donors from tree.
+ * 6. Appends populated clone to the end of tree (Pane 1).
  */
-export function executeTemplateBatch(
+export function fillTemplateWithDonors(
   tree: HtmlNode[],
   rightKeys: Set<string>,
-  templateSlots: Record<string, number>,
+  slotKeys: string[],
   rawDonorKeys: string[],
-): { nextTree: HtmlNode[]; generatedCount: number } {
-  if (!tree || tree.length === 0 || rightKeys.size === 0) {
-    return { nextTree: tree, generatedCount: 0 };
+): TemplateFillResult | null {
+  if (
+    !tree ||
+    tree.length === 0 ||
+    rightKeys.size === 0 ||
+    slotKeys.length === 0
+  ) {
+    return null;
   }
 
-  // 1. Извлекаем шаблон из правой панели
   const templateRoots = extractNodesByKeys(tree, rightKeys);
-  if (templateRoots.length === 0) {
-    return { nextTree: tree, generatedCount: 0 };
-  }
+  if (templateRoots.length === 0) return null;
 
-  // 2. Сортируем слоты шаблона по их номеру: 1, 2, 3...
-  const sortedSlots = Object.entries(templateSlots)
-    .sort((a, b) => a[1] - b[1])
-    .map(([origKey, slotNum]) => ({ origKey, slotNum }));
-
-  if (sortedSlots.length === 0) {
-    return { nextTree: tree, generatedCount: 0 };
-  }
-
-  // 3. Фильтруем доноров (донорами не могут быть сами ноды шаблона)
   const validDonorKeys = rawDonorKeys.filter((k) => !rightKeys.has(k));
-  if (validDonorKeys.length === 0) {
-    return { nextTree: tree, generatedCount: 0 };
-  }
+  if (validDonorKeys.length === 0) return null;
 
-  // Упорядочиваем доноров по DOM-дереву сверху вниз
   const orderedDonors = sortKeysByTreeOrder(tree, validDonorKeys);
-  if (orderedDonors.length === 0) {
-    return { nextTree: tree, generatedCount: 0 };
-  }
+  if (orderedDonors.length === 0) return null;
 
-  // 4. Разбиваем доноров на пачки размером = количеству слотов
-  const slotsCount = sortedSlots.length;
-  const donorBatches: string[][] = [];
-  for (let i = 0; i < orderedDonors.length; i += slotsCount) {
-    donorBatches.push(orderedDonors.slice(i, i + slotsCount));
-  }
+  const slotsCount = slotKeys.length;
+  const donorsToUse = orderedDonors.slice(0, slotsCount);
+  const excessCount = Math.max(0, orderedDonors.length - slotsCount);
 
-  const generatedBlocks: HtmlNode[] = [];
-  const usedDonorKeysSet = new Set<string>();
+  const keyMap = new Map<string, string>();
+  let clonedRoots = templateRoots.map((root) =>
+    cloneTemplateWithKeyMapping(root, keyMap),
+  );
 
-  // 5. Для каждой пачки доноров генерируем копию шаблона
-  for (const batch of donorBatches) {
-    const keyMap = new Map<string, string>();
-    let clonedRoots = templateRoots.map((rootNode) =>
-      cloneTemplateWithKeyMapping(rootNode, keyMap),
+  const usedDonorSet = new Set<string>();
+  donorsToUse.forEach((donorKey, idx) => {
+    usedDonorSet.add(donorKey);
+    const origSlotKey = slotKeys[idx];
+    const clonedSlotKey = keyMap.get(origSlotKey);
+    if (!clonedSlotKey) return;
+
+    const donorNode = findNodeInTree(tree, donorKey);
+    if (!donorNode) return;
+
+    clonedRoots = mutateNodeInTree(clonedRoots, clonedSlotKey, (target) =>
+      applyDonorToSlot(target, donorNode),
     );
+  });
 
-    batch.forEach((donorKey, slotIdx) => {
-      usedDonorKeysSet.add(donorKey);
-      const slotDef = sortedSlots[slotIdx];
-      if (!slotDef) return;
-
-      const clonedTargetKey = keyMap.get(slotDef.origKey);
-      if (!clonedTargetKey) return;
-
-      const donorNode = findNodeInTree(tree, donorKey);
-      if (!donorNode) return;
-
-      clonedRoots = mutateNodeInTree(clonedRoots, clonedTargetKey, (target) =>
-        applyDonorToSlot(target, donorNode),
-      );
-    });
-
-    generatedBlocks.push(...clonedRoots);
-  }
-
-  // 6. Удаляем использованные ноды-доноры из дерева
-  const treeWithoutDonors = removeNodesByKeys(tree, usedDonorKeysSet);
-
-  // 7. Добавляем готовые сгенерированные блоки в конец дерева
-  const nextTree = [...treeWithoutDonors, ...generatedBlocks];
+  const treeWithoutUsedDonors = removeNodesByKeys(tree, usedDonorSet);
+  const nextTree = [...treeWithoutUsedDonors, ...clonedRoots];
 
   return {
     nextTree,
-    generatedCount: donorBatches.length,
+    usedCount: donorsToUse.length,
+    excessCount,
+    warning:
+      excessCount > 0
+        ? `Filled ${donorsToUse.length} slots. ${excessCount} excess donor(s) skipped.`
+        : undefined,
   };
 }

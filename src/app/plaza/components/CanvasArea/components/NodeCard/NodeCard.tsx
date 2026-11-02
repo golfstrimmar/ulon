@@ -18,6 +18,9 @@ function NodeCardComponent({
     isDragged,
     isSelected,
     isDropDonor,
+    isTemplateMode,
+    isRightPaneNode,
+    slotNumber,
     borderStyle,
     bgStyle,
     shadowStyle,
@@ -51,7 +54,7 @@ function NodeCardComponent({
         boxShadow: shadowStyle,
       }}
     >
-      {/* 🚀 Оверлей режима донора: визуальная подсказка слияния свойств */}
+      {/* Visual cue for Donor drop */}
       {isDropDonor && (
         <div className="absolute inset-0 z-30 pointer-events-none rounded-md border-2 border-amber-400 bg-amber-500/15 flex items-center justify-center backdrop-blur-[1px]">
           <span className="px-2 py-0.5 rounded bg-amber-500 text-zinc-950 font-mono font-bold text-[11px] shadow-lg flex items-center gap-1.5 animate-pulse">
@@ -60,13 +63,33 @@ function NodeCardComponent({
         </div>
       )}
 
-      {/* Шапка карточки */}
+      {/* Card Header */}
       <div
         data-node-header="true"
         className="h-[28px] px-2 flex items-center justify-between gap-1 rounded-t-md border-b border-zinc-800/60 shrink-0"
       >
         <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
-          {/* Иконка группового выделения */}
+          {/* Template Slot Badge [1], [2]... */}
+          {slotNumber !== null && (
+            <span
+              title={`Template Slot #${slotNumber}`}
+              className="size-4 rounded-full bg-amber-500 text-zinc-950 font-mono font-black text-[11px] flex items-center justify-center shrink-0 shadow-md ring-2 ring-amber-400/50 animate-in fade-in zoom-in-75 duration-150"
+            >
+              {slotNumber}
+            </span>
+          )}
+
+          {/* Template mode hint for unslotted right nodes */}
+          {slotNumber === null && isTemplateMode && isRightPaneNode && (
+            <span
+              title="Click to assign slot number"
+              className="size-4 rounded-full border border-dashed border-amber-500/50 text-amber-400/60 font-mono text-[9px] flex items-center justify-center shrink-0 hover:bg-amber-500/20 hover:text-amber-300 transition"
+            >
+              +
+            </span>
+          )}
+
+          {/* Marquee Selection Indicator */}
           {isSelected && (
             <span className="w-3.5 h-3.5 rounded-sm bg-sky-500/30 border border-sky-400 flex items-center justify-center shrink-0">
               <svg viewBox="0 0 12 12" className="w-2.5 h-2.5 text-sky-300">
@@ -81,6 +104,7 @@ function NodeCardComponent({
               </svg>
             </span>
           )}
+
           {hasChildren && (
             <button
               type="button"
@@ -118,7 +142,7 @@ function NodeCardComponent({
         </div>
       </div>
 
-      {/* Дочерние элементы (рекурсия) */}
+      {/* Children Nodes (Recursive) */}
       {hasChildren && !isCollapsed && (
         <div
           className={`pl-2 w-full flex-1 relative ${
