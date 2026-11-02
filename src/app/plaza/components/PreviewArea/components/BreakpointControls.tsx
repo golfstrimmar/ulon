@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import { useBreakpoint } from "@/app/plaza/components/PreviewArea/hooks/useBreakpoint";
-import { BreakpointId } from "@/app/plaza/components/PreviewArea/types/breakpoints";
 
 export default function BreakpointControls() {
   const {
@@ -10,7 +9,6 @@ export default function BreakpointControls() {
     activeBreakpoint,
     effectiveWidth,
     isRotated,
-    isFullWidth,
     selectBreakpoint,
     setCustomWidth,
     toggleRotate,
@@ -48,7 +46,7 @@ export default function BreakpointControls() {
 
   return (
     <div className="flex items-center gap-1 bg-zinc-950/70 p-0.5 rounded-lg border border-zinc-800 text-[11px] font-mono">
-      {/* Кнопки брейкпоинтов */}
+      {/* Кнопки с отрезками брейкпоинтов */}
       <div className="flex items-center gap-0.5">
         {breakpoints.map((b) => {
           const isActive = activeId === b.id;
@@ -57,14 +55,23 @@ export default function BreakpointControls() {
               key={b.id}
               type="button"
               onClick={() => selectBreakpoint(b.id)}
-              title={b.tooltip}
-              className={`px-1.5 py-0.5 rounded transition cursor-pointer flex items-center gap-1 select-none text-[11px] font-semibold ${
+              title={`${b.name}: ${b.segment} | @media ${b.mediaQuery}`}
+              className={`px-1.5 py-0.5 rounded transition cursor-pointer flex items-center gap-1 select-none text-[10px] font-mono font-bold whitespace-nowrap ${
                 isActive
-                  ? "bg-indigo-600 text-white font-bold border border-indigo-400 shadow-sm"
+                  ? "bg-indigo-600 text-white border border-indigo-400 shadow-sm"
                   : "text-zinc-300 hover:text-white hover:bg-zinc-800 border border-transparent"
               }`}
             >
-              <span>{b.label}</span>
+              {b.id !== "full" && (
+                <span
+                  className={`text-[9px] font-normal ${
+                    isActive ? "text-indigo-200" : "text-zinc-500"
+                  }`}
+                >
+                  {b.name}
+                </span>
+              )}
+              <span>{b.segment}</span>
             </button>
           );
         })}
@@ -73,27 +80,25 @@ export default function BreakpointControls() {
       {/* Разделитель */}
       <span className="w-px h-3.5 bg-zinc-800 mx-0.5" />
 
-      {/* Числовое поле ширины в пикселях */}
+      {/* Поле произвольного ввода ширины */}
       <form onSubmit={handleInputSubmit} className="flex items-center gap-1">
         <input
           type="text"
           value={effectiveWidth === "100%" ? "100%" : inputVal}
           onChange={(e) => setInputVal(e.target.value)}
           onBlur={handleInputBlur}
-          title="Произвольная ширина превью (введите число в px или нажмите Enter)"
+          title="Custom width in px (press Enter)"
           className="w-12 px-1 py-0.5 text-center text-[10px] font-mono font-bold bg-zinc-900 border border-zinc-700 rounded text-zinc-100 focus:outline-none focus:border-indigo-500"
         />
         <span className="text-[10px] text-zinc-400 select-none">px</span>
       </form>
 
-      {/* Кнопка поворота ориентации (если применима) */}
+      {/* Поворот ориентации */}
       {canRotate && (
         <button
           type="button"
           onClick={toggleRotate}
-          title={`Повернуть ориентацию (${
-            isRotated ? "Вертикальная" : "Горизонтальная"
-          })`}
+          title={`Rotate Orientation (${isRotated ? "Landscape" : "Portrait"})`}
           className={`px-1.5 py-0.5 rounded transition cursor-pointer flex items-center gap-1 border ${
             isRotated
               ? "bg-amber-950/80 border-amber-600/70 text-amber-300 font-bold"

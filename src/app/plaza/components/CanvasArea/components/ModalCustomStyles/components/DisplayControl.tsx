@@ -61,6 +61,7 @@ const GRID_ALIGN = [
   { id: "stretch", label: "stretch" },
 ] as const;
 const GRID_COLS = [
+  { id: "1fr", label: "1fr" },
   { id: "repeat(2, 1fr)", label: "2 col" },
   { id: "repeat(3, 1fr)", label: "3 col" },
   { id: "repeat(4, 1fr)", label: "4 col" },

@@ -500,45 +500,45 @@ export default function ModalCustomStyles({
         <div className="fixed right-0 bottom-0 mb-1 z-50 w-[420px] max-h-[85vh] bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl p-2.5 flex flex-col gap-2.5 backdrop-blur-md select-none">
           {/* Шапка модалки */}
           <div className="flex items-center justify-between pb-1 border-b border-zinc-800">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[12px] font-mono text-zinc-400 tracking-wider font-semibold">
-                Target:{" "}
-                {activeScope === "base" ? (
-                  <code className="text-emerald-400 font-bold">
-                    .{currentClass}
-                  </code>
-                ) : activeScope.startsWith("@media") ? (
-                  (() => {
-                    const seg = getSegmentDisplay(activeScope);
-                    return (
-                      <span className="font-mono text-sky-400 font-bold flex items-center gap-1.5 flex-wrap">
-                        <code>.{currentClass}</code>
-                        <span className="text-sky-300 bg-sky-950/80 border border-sky-600/70 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1">
-                          {seg.name && (
-                            <span className="font-bold text-sky-400">
-                              {seg.name}
+            <div className="">
+              <div className="flex items-center gap-2">
+                <span className="text-[12px] font-mono text-zinc-400 tracking-wider font-semibold flex  gap-2">
+                  {activeScope === "base" ? (
+                    <code className="text-emerald-400 font-bold">
+                      .{currentClass}
+                    </code>
+                  ) : activeScope.startsWith("@media") ? (
+                    (() => {
+                      const seg = getSegmentDisplay(activeScope);
+                      return (
+                        <span className="font-mono text-sky-400 font-bold flex items-center gap-1.5 flex-wrap">
+                          <code>.{currentClass}</code>
+                          <span className="text-sky-300 bg-sky-950/80 border border-sky-600/70 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1">
+                            {seg.name && (
+                              <span className="font-bold text-sky-400">
+                                {seg.name}
+                              </span>
+                            )}
+                            <span className="font-semibold text-white">
+                              {seg.segment}
                             </span>
-                          )}
-                          <span className="font-semibold text-white">
-                            {seg.segment}
-                          </span>
-                          <span className="text-[9px] text-zinc-400 opacity-80 font-mono ml-1">
-                            {activeScope}
+                            <span className="text-[9px] text-zinc-400 opacity-80 font-mono ml-1">
+                              {activeScope}
+                            </span>
                           </span>
                         </span>
+                      );
+                    })()
+                  ) : (
+                    <span className="font-mono text-amber-400 font-bold">
+                      .{currentClass}{" "}
+                      <span className="text-amber-300 bg-amber-950/80 border border-amber-600/70 px-1 py-0.5 rounded text-[10px]">
+                        {activeScope}
                       </span>
-                    );
-                  })()
-                ) : (
-                  <span className="font-mono text-amber-400 font-bold">
-                    .{currentClass}{" "}
-                    <span className="text-amber-300 bg-amber-950/80 border border-amber-600/70 px-1 py-0.5 rounded text-[10px]">
-                      {activeScope}
                     </span>
-                  </span>
-                )}
-              </span>
-
+                  )}
+                </span>
+              </div>
               {activeScope !== "base" && (
                 <button
                   type="button"

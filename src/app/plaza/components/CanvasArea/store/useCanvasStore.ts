@@ -3,6 +3,7 @@ import type { HtmlNode } from "@/types/HtmlNode";
 import { deleteNodeFromArray } from "@/lib/htmlTree";
 import { saveHtmlJson, deleteHtmlJson } from "@/lib/htmlStorage";
 import { DB_KEY } from "@/app/plaza/components/CanvasArea/constants/theme";
+import type { BreakpointId } from "@/app/plaza/components/PreviewArea/types/breakpoints";
 import {
   findNodeInTree,
   collectAllDescendantKeys,
@@ -47,6 +48,11 @@ export interface CanvasState {
   templateSlotKeys: string[];
   hudMessage: { text: string; type: "info" | "warning" | "success" } | null;
 
+  // ── Breakpoints State (Zustand only) ─────────────────────────────────────
+  activeBreakpointId: BreakpointId;
+  customBreakpointWidth: number | null;
+  isBreakpointRotated: boolean;
+
   selectionBox: SelectionBox | null;
   selectedKeys: Set<string>;
 
@@ -90,6 +96,11 @@ export interface CanvasState {
   showHud: (text: string, type?: "info" | "warning" | "success") => void;
   fillTemplateFromDonors: (donorKeys: string[]) => Promise<boolean>;
 
+  // ── Breakpoints Actions ───────────────────────────────────────────────────
+  selectBreakpoint: (id: BreakpointId) => void;
+  setCustomBreakpointWidth: (width: number) => void;
+  toggleBreakpointRotate: () => void;
+
   setSelectionBox: (box: SelectionBox | null) => void;
   setSelectedKeys: (
     keys: Set<string> | ((prev: Set<string>) => Set<string>),
@@ -121,6 +132,11 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   isTemplateMode: false,
   templateSlotKeys: [],
   hudMessage: null,
+
+  // ── Breakpoints Default ──────────────────────────────────────────────────
+  activeBreakpointId: "full",
+  customBreakpointWidth: null,
+  isBreakpointRotated: false,
 
   selectionBox: null,
   selectedKeys: new Set<string>(),
@@ -394,6 +410,31 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
     await get().persist(result.nextTree);
     return true;
+  },
+
+  // ── Breakpoints Actions ───────────────────────────────────────────────────
+  selectBreakpoint: (id: BreakpointId) => {
+    set((state) => ({
+      activeBreakpointId: id,
+      customBreakpointWidth:
+        id === "custom" ? state.customBreakpointWidth || 800 : null,
+      isBreakpointRotated: false,
+    }));
+  },
+
+  setCustomBreakpointWidth: (width: number) => {
+    const clamped = Math.max(280, Math.min(3840, Math.round(width)));
+    set({
+      activeBreakpointId: "custom",
+      customBreakpointWidth: clamped,
+      isBreakpointRotated: false,
+    });
+  },
+
+  toggleBreakpointRotate: () => {
+    set((state) => ({
+      isBreakpointRotated: !state.isBreakpointRotated,
+    }));
   },
 
   setSelectionBox: (box) => set({ selectionBox: box }),

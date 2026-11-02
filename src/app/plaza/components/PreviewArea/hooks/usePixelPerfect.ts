@@ -1,11 +1,10 @@
 "use client";
 
-import { useSyncExternalStore, useEffect, useRef } from "react";
+import { useSyncExternalStore, useEffect } from "react";
 import {
   getPixelPerfectSettings,
   savePixelPerfectSettings,
   clearPixelPerfectSettings,
-  type PixelPerfectSettingsData,
 } from "@/lib/htmlStorage";
 
 export interface PixelPerfectState {
@@ -34,7 +33,7 @@ const DEFAULT_STATE: PixelPerfectState = {
   offsetX: 0,
   offsetY: 0,
   isVisible: true,
-  align: "left",
+  align: "center", // Default to centered design
   fitHeight: true,
   isModalOpen: false,
   isLoaded: false,
@@ -56,7 +55,7 @@ function updateState(partial: Partial<PixelPerfectState>, saveToDb = true) {
   }
 }
 
-let saveTimeout: any = null;
+let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 function debouncedSave() {
   if (saveTimeout) clearTimeout(saveTimeout);
   saveTimeout = setTimeout(async () => {
@@ -79,12 +78,14 @@ function debouncedSave() {
         });
       }
     } catch (err) {
-      console.error("[usePixelPerfect] Failed to save settings to IndexedDB:", err);
+      console.error(
+        "[usePixelPerfect] Failed to save settings to IndexedDB:",
+        err,
+      );
     }
   }, 250);
 }
 
-// Инициализация из базы данных (только один раз при клиенте)
 let isDbInitStarted = false;
 async function initFromDb() {
   if (isDbInitStarted || typeof window === "undefined") return;
@@ -100,13 +101,17 @@ async function initFromDb() {
           imageWidth: saved.imageWidth || 0,
           imageHeight: saved.imageHeight || 0,
           previewOpacity:
-            typeof saved.previewOpacity === "number" ? saved.previewOpacity : 50,
+            typeof saved.previewOpacity === "number"
+              ? saved.previewOpacity
+              : 50,
           overlayOpacity:
-            typeof saved.overlayOpacity === "number" ? saved.overlayOpacity : 100,
+            typeof saved.overlayOpacity === "number"
+              ? saved.overlayOpacity
+              : 100,
           offsetX: saved.offsetX || 0,
           offsetY: saved.offsetY || 0,
           isVisible: saved.isVisible !== undefined ? saved.isVisible : true,
-          align: saved.align || "left",
+          align: saved.align || "center",
           fitHeight: saved.fitHeight !== undefined ? saved.fitHeight : true,
           isLoaded: true,
         },
@@ -116,7 +121,10 @@ async function initFromDb() {
       updateState({ isLoaded: true }, false);
     }
   } catch (err) {
-    console.error("[usePixelPerfect] Failed to load settings from IndexedDB:", err);
+    console.error(
+      "[usePixelPerfect] Failed to load settings from IndexedDB:",
+      err,
+    );
     updateState({ isLoaded: true }, false);
   }
 }
@@ -140,7 +148,7 @@ export function usePixelPerfect() {
   const loadImageFile = (file: File): Promise<void> => {
     return new Promise((resolve, reject) => {
       if (!file || !file.type.startsWith("image/")) {
-        reject(new Error("Пожалуйста, выберите файл изображения (PNG, JPG, WEBP, SVG)"));
+        reject(new Error("Please select an image file (PNG, JPG, WEBP, SVG)"));
         return;
       }
 
@@ -154,9 +162,13 @@ export function usePixelPerfect() {
             fileName: file.name,
             imageWidth: img.naturalWidth,
             imageHeight: img.naturalHeight,
-            // Если была 100%, поставим 50% для мгновенного эффекта сравнения
             previewOpacity:
-              currentState.previewOpacity === 100 ? 50 : currentState.previewOpacity,
+              currentState.previewOpacity === 100
+                ? 50
+                : currentState.previewOpacity,
+            align: "center",
+            offsetX: 0,
+            offsetY: 0,
             isVisible: true,
           });
           resolve();
@@ -168,7 +180,9 @@ export function usePixelPerfect() {
             imageWidth: 0,
             imageHeight: 0,
             previewOpacity:
-              currentState.previewOpacity === 100 ? 50 : currentState.previewOpacity,
+              currentState.previewOpacity === 100
+                ? 50
+                : currentState.previewOpacity,
             isVisible: true,
           });
           resolve();
@@ -229,6 +243,10 @@ export function usePixelPerfect() {
     updateState({ align });
   };
 
+  const centerImage = () => {
+    updateState({ align: "center", offsetX: 0 });
+  };
+
   const setFitHeight = (fitHeight: boolean) => {
     updateState({ fitHeight });
   };
@@ -254,6 +272,7 @@ export function usePixelPerfect() {
     setIsVisible,
     toggleVisible,
     setAlign,
+    centerImage,
     setFitHeight,
     resetPosition,
     setIsModalOpen,

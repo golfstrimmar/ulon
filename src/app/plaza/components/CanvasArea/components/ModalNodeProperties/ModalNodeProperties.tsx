@@ -6,7 +6,7 @@ import {
   COMMON_TAGS,
   TEXT_DEFAULT,
 } from "@/app/plaza/components/CanvasArea/constants/theme";
-import { MonacoPropertiesEditor } from "@/app/plaza/components/CanvasArea/components/MonacoPropertiesEditor";
+import { MonacoPropertiesEditor } from "@/app/plaza/components/CanvasArea/components/MonacoPropertiesEditor/MonacoPropertiesEditor";
 import { useModalNodeProperties } from "@/app/plaza/components/CanvasArea/components/ModalNodeProperties/hooks/useModalNodeProperties";
 
 export interface ModalNodePropertiesProps {

@@ -1,17 +1,21 @@
 "use client";
 
-import React, { useState, useCallback, useRef, useEffect } from "react";
-import { usePreviewArea } from "@/app/plaza/components/PreviewArea/hooks/usePreviewArea";
+import React, { useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import dynamic from "next/dynamic";
+
+import { usePreviewArea } from "@/app/plaza/components/PreviewArea/hooks/usePreviewArea";
+import { usePixelPerfect } from "@/app/plaza/components/PreviewArea/hooks/usePixelPerfect";
+import { useBreakpoint } from "@/app/plaza/components/PreviewArea/hooks/useBreakpoint";
+import { usePreviewHeight } from "@/app/plaza/components/PreviewArea/hooks/usePreviewHeight";
+import { usePreviewHighlight } from "@/app/plaza/components/PreviewArea/hooks/usePreviewHighlight";
+
 import ButtonCss from "@/app/plaza/components/PreviewArea/components/ButtonCss";
 import ButtonJS from "@/app/plaza/components/PreviewArea/components/ButtonJS";
 import ButtonFonts from "@/app/plaza/components/PreviewArea/components/ButtonFonts";
 import ButtonPixelPerfect from "@/app/plaza/components/PreviewArea/components/ButtonPixelPerfect";
-import { usePixelPerfect } from "@/app/plaza/components/PreviewArea/hooks/usePixelPerfect";
 import ButtonJson from "@/app/plaza/components/PreviewArea/components/ButtonJson";
 import BreakpointControls from "@/app/plaza/components/PreviewArea/components/BreakpointControls";
-import { useBreakpoint } from "@/app/plaza/components/PreviewArea/hooks/useBreakpoint";
-import dynamic from "next/dynamic";
 
 const ModalFonts = dynamic(
   () => import("@/app/plaza/components/PreviewArea/components/ModalFonts"),
@@ -23,31 +27,6 @@ const ModalPixelPerfect = dynamic(
     import("@/app/plaza/components/PreviewArea/components/ModalPixelPerfect"),
   { ssr: false },
 );
-
-const HIGHLIGHT_STYLE_ID = "plaza-highlight-style";
-const HIGHLIGHT_CSS = `
-  .plaza-node-selected {
-    outline: 3px solid rgba(239, 68, 68, 0.95) !important;
-    outline-offset: -1px !important;
-    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.3) !important;
-    position: relative;
-    z-index: 50 !important;
-  }
-  .plaza-node-hovered:not(.plaza-node-selected) {
-    outline: 2px dashed rgba(52, 211, 153, 0.9) !important;
-    outline-offset: -1px !important;
-    box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.25) !important;
-    position: relative;
-    z-index: 40 !important;
-  }
-`;
-
-interface SelectionPayload {
-  key?: string | null;
-  className?: string;
-  tag?: string;
-  text?: string;
-}
 
 export function PreviewArea() {
   const { iframeRef, srcDoc, isEmpty, isCollapsed, setIsCollapsed } =
@@ -62,9 +41,11 @@ export function PreviewArea() {
     offsetX,
     offsetY,
     align,
-    fitHeight,
     imageHeight: overlayHeight,
     setPreviewOpacity,
+    setOffsetX,
+    setAlign,
+    centerImage,
   } = usePixelPerfect();
 
   const {
@@ -75,333 +56,151 @@ export function PreviewArea() {
     isRotated,
   } = useBreakpoint();
 
-  const [iframeHeight, setIframeHeight] = useState(140);
-  const [naturalImgHeight, setNaturalImgHeight] = useState<number>(0);
-  const [activeSelection, setActiveSelection] =
-    useState<SelectionPayload | null>(null);
-  const activeSelectionRef = useRef<SelectionPayload | null>(null);
-  activeSelectionRef.current = activeSelection;
+  // 🔹 Height controller
+  const { effectiveHeight, initHeightMeasurement, setNaturalImgHeight } =
+    usePreviewHeight({
+      iframeRef,
+      isEmpty,
+      overlayImage,
+      hasImage,
+      overlayHeight,
+      offsetY,
+    });
 
-  // Измеряем высоту картинки-прототипа если она еще не записана в стейт
-  useEffect(() => {
-    if (!overlayImage) {
-      setNaturalImgHeight(0);
-      return;
-    }
-    const img = new Image();
-    img.onload = () => {
-      setNaturalImgHeight(img.naturalHeight);
-    };
-    img.src = overlayImage;
-  }, [overlayImage]);
+  // 🔹 Highlight & selection controller
+  const { initHighlighting } = usePreviewHighlight({
+    iframeRef,
+    srcDoc,
+  });
 
-  const activeImageHeight = overlayHeight || naturalImgHeight;
-
-  // Если есть картинка-прототип (образец), высота превью автоматически равна высоте этой картинки
-  const prototypeHeight =
-    hasImage && activeImageHeight > 0
-      ? activeImageHeight + Math.max(0, offsetY)
-      : null;
-
-  const effectiveHeight = prototypeHeight
-    ? Math.max(isEmpty ? 140 : iframeHeight, prototypeHeight)
-    : isEmpty
-      ? 140
-      : iframeHeight;
-
-  // СБРОС ВЫСОТЫ ПРИ ОЧИСТКЕ
-  useEffect(() => {
-    if (isEmpty) {
-      setIframeHeight(140);
-      setActiveSelection(null);
-    }
-  }, [isEmpty]);
-
-  const ensureStylesInjected = (doc: Document) => {
-    if (!doc.getElementById(HIGHLIGHT_STYLE_ID)) {
-      const styleEl = doc.createElement("style");
-      styleEl.id = HIGHLIGHT_STYLE_ID;
-      styleEl.textContent = HIGHLIGHT_CSS;
-      (doc.head || doc.body).appendChild(styleEl);
-    }
-  };
-
-  const applyHighlight = useCallback(
-    (payload: SelectionPayload | null) => {
-      const iframe = iframeRef.current;
-      const doc = iframe?.contentDocument;
-      if (!doc || !doc.body) return;
-
-      ensureStylesInjected(doc);
-
-      doc.querySelectorAll(".plaza-node-selected").forEach((el) => {
-        el.classList.remove("plaza-node-selected");
-      });
-
-      if (!payload) return;
-
-      let targetEl: Element | null = null;
-      if (payload.key) {
-        targetEl = doc.querySelector(`[data-node-key="${payload.key}"]`);
-      }
-
-      if (!targetEl && payload.className) {
-        const classes = payload.className
-          .trim()
-          .split(/\s+/)
-          .map((c) => c.replace(/^\./, "").trim())
-          .filter(Boolean);
-
-        if (classes.length > 0) {
-          const selector = `${payload.tag || ""}.${classes[0]}`.trim();
-          const candidates = Array.from(doc.querySelectorAll(selector));
-
-          if (candidates.length === 1) {
-            targetEl = candidates[0];
-          } else if (candidates.length > 1) {
-            targetEl =
-              candidates.find((el) =>
-                payload.text
-                  ? el.textContent?.trim().includes(payload.text.trim())
-                  : false,
-              ) || candidates[0];
-          }
-        }
-      }
-
-      if (targetEl) {
-        targetEl.classList.remove("plaza-node-hovered");
-        targetEl.classList.add("plaza-node-selected");
-        // targetEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      }
-    },
-    [iframeRef],
-  );
-
-  useEffect(() => {
-    const handlePlazaNodeHovered = (event: Event) => {
-      const customEvent = event as CustomEvent<string | null>;
-      const key = customEvent.detail;
-      const iframe = iframeRef.current;
-      const doc = iframe?.contentDocument;
-      if (!doc || !doc.body) return;
-
-      ensureStylesInjected(doc);
-
-      doc.querySelectorAll(".plaza-node-hovered").forEach((el) => {
-        el.classList.remove("plaza-node-hovered");
-      });
-
-      if (!key || activeSelectionRef.current?.key === key) return;
-
-      const targetEl = doc.querySelector(`[data-node-key="${key}"]`);
-      if (targetEl && !targetEl.classList.contains("plaza-node-selected")) {
-        targetEl.classList.add("plaza-node-hovered");
-      }
-    };
-
-    window.addEventListener("plaza-node-hovered", handlePlazaNodeHovered);
-    return () => {
-      window.removeEventListener("plaza-node-hovered", handlePlazaNodeHovered);
-    };
-  }, [iframeRef]);
-
-  useEffect(() => {
-    const handleNodeSelected = (e: CustomEvent<SelectionPayload>) => {
-      setActiveSelection(e.detail || null);
-      applyHighlight(e.detail || null);
-    };
-
-    const handleNodeDeselected = () => {
-      setActiveSelection(null);
-      applyHighlight(null);
-    };
-
-    window.addEventListener(
-      "plaza-node-selected",
-      handleNodeSelected as EventListener,
-    );
-    window.addEventListener("plaza-node-deselected", handleNodeDeselected);
-
-    return () => {
-      window.removeEventListener(
-        "plaza-node-selected",
-        handleNodeSelected as EventListener,
-      );
-      window.removeEventListener("plaza-node-deselected", handleNodeDeselected);
-    };
-  }, [applyHighlight]);
-
-  useEffect(() => {
-    applyHighlight(activeSelectionRef.current);
-  }, [srcDoc, applyHighlight]);
-
+  // 🔹 Iframe Load Coordinator
   const handleLoad = useCallback(() => {
-    const iframe = iframeRef.current;
-    const doc = iframe?.contentDocument;
+    const doc = iframeRef.current?.contentDocument;
     if (!doc) return;
 
-    applyHighlight(activeSelectionRef.current);
+    initHighlighting(doc);
+    initHeightMeasurement(doc);
+  }, [iframeRef, initHighlighting, initHeightMeasurement]);
 
-    const handleDocClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (!target || target === doc.body || target === doc.documentElement)
-        return;
+  const stepOffset = useCallback(
+    (delta: number) => {
+      if (align !== "center") setAlign("center");
+      setOffsetX(offsetX + delta);
+    },
+    [align, offsetX, setAlign, setOffsetX],
+  );
 
+  const handleWheelOffset = useCallback(
+    (e: React.WheelEvent) => {
       e.preventDefault();
-      e.stopPropagation();
-
-      const nodeEl = target.closest<HTMLElement>("[data-node-key]") || target;
-      const key = nodeEl.getAttribute("data-node-key") || null;
-
-      const payload: SelectionPayload = {
-        key,
-        tag: nodeEl.tagName.toLowerCase(),
-        className: nodeEl.className || "",
-        text: nodeEl.textContent?.trim() || "",
-      };
-
-      nodeEl.classList.remove("plaza-node-hovered");
-      setActiveSelection(payload);
-      applyHighlight(payload);
-
-      window.dispatchEvent(
-        new CustomEvent("plaza-node-selected", { detail: payload }),
-      );
-    };
-
-    doc.addEventListener("click", handleDocClick);
-
-    // Расчет высоты
-    const update = () => {
-      if (!doc.body || !doc.documentElement) return;
-      const win = doc.defaultView;
-      if (!win) return;
-
-      const children = Array.from(doc.body.children).filter(
-        (el) =>
-          !["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE"].includes(el.tagName),
-      );
-
-      // Если элементов нет — сразу сбрасываем в базовую высоту 140px
-      if (children.length === 0) {
-        setIframeHeight(140);
-        return;
-      }
-
-      let maxBottom = 0;
-      const scrollY = win.scrollY || doc.documentElement.scrollTop || 0;
-
-      children.forEach((child) => {
-        const style = win.getComputedStyle(child);
-        if (style.display === "none" || style.visibility === "hidden") return;
-
-        const rect = child.getBoundingClientRect();
-        const marginBottom = parseFloat(style.marginBottom) || 0;
-        const bottom = rect.bottom + scrollY + marginBottom;
-
-        if (bottom > maxBottom) {
-          maxBottom = bottom;
-        }
-      });
-
-      const bodyPaddingBottom =
-        parseFloat(win.getComputedStyle(doc.body).paddingBottom) || 0;
-
-      const finalHeight = Math.max(
-        140,
-        Math.ceil(maxBottom + bodyPaddingBottom + 16),
-      );
-
-      setIframeHeight((prev) => {
-        if (prev !== finalHeight) {
-          const delta = finalHeight - prev;
-          // Компенсируем рост превью только если пользователь уже проскроллил вниз к холсту
-          if (typeof window !== "undefined" && window.scrollY > 150) {
-            requestAnimationFrame(() => {
-              window.scrollBy({ top: delta, behavior: "instant" });
-            });
-          }
-        }
-        return prev !== finalHeight ? finalHeight : prev;
-      });
-    };
-
-    update();
-
-    const resizeObserver = new ResizeObserver(() => {
-      requestAnimationFrame(update);
-    });
-    resizeObserver.observe(doc.body);
-    resizeObserver.observe(doc.documentElement);
-
-    const mutationObserver = new MutationObserver(() => {
-      requestAnimationFrame(update);
-    });
-    mutationObserver.observe(doc.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-    });
-
-    const images = doc.querySelectorAll("img");
-    images.forEach((img) => {
-      if (!img.complete) {
-        img.addEventListener("load", update, { once: true });
-        img.addEventListener("error", update, { once: true });
-      }
-    });
-
-    if (doc.fonts) {
-      doc.fonts.ready.then(update).catch(() => {});
-    }
-
-    const handleLiveStyle = () => requestAnimationFrame(update);
-    window.addEventListener("plaza-styles-updated", handleLiveStyle);
-    window.addEventListener("plaza-live-style", handleLiveStyle);
-
-    return () => {
-      doc.removeEventListener("click", handleDocClick);
-      resizeObserver.disconnect();
-      mutationObserver.disconnect();
-      window.removeEventListener("plaza-styles-updated", handleLiveStyle);
-      window.removeEventListener("plaza-live-style", handleLiveStyle);
-    };
-  }, [iframeRef, applyHighlight]);
+      const delta = e.deltaY < 0 ? 1 : -1;
+      stepOffset(delta);
+    },
+    [stepOffset],
+  );
 
   return (
     <div className="w-full flex flex-col border border-zinc-800 rounded-xl overflow-hidden bg-zinc-900 shadow-xl">
+      {/* Top Controls Bar */}
       <div className="flex items-center justify-between px-2 py-1 border-b border-zinc-800 bg-zinc-900/80 shrink-0 gap-2 flex-wrap">
         <div className="flex items-center justify-between gap-2 w-full">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-red-500/80" />
               <span className="w-3 h-3 rounded-full bg-yellow-500/80" />
               <span className="w-3 h-3 rounded-full bg-green-500/80" />
-              <span className="ml-1 text-[11px] font-mono text-zinc-400  tracking-widest hidden sm:inline">
+              <span className="ml-1 text-[11px] font-mono text-zinc-400 tracking-widest hidden sm:inline">
                 Preview
               </span>
             </div>
+
             {hasImage && isOverlayActive && (
-              <div
-                className="hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded bg-zinc-950/80 border border-zinc-800 text-[10px] font-mono text-zinc-400"
-                title="Прозрачность верстки (превью) для сравнения с подложкой"
-              >
-                <span className="text-zinc-400">Opacity:</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="1"
-                  value={previewOpacity}
-                  onChange={(e) => setPreviewOpacity(Number(e.target.value))}
-                  className="w-26 h-1 accent-indigo-500 cursor-pointer"
-                />
-                <span className="w-7 text-right text-indigo-300 font-bold">
-                  {previewOpacity}%
-                </span>
-              </div>
+              <>
+                {/* Opacity Slider */}
+                <div
+                  className="hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded bg-zinc-950/80 border border-zinc-800 text-[10px] font-mono text-zinc-400"
+                  title="Preview opacity for reference comparison"
+                >
+                  <span className="text-zinc-400">Opacity:</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={previewOpacity}
+                    onChange={(e) => setPreviewOpacity(Number(e.target.value))}
+                    className="w-16 h-1.5 accent-indigo-500 cursor-pointer"
+                  />
+                  <span className="w-7 text-right text-indigo-300 font-bold">
+                    {previewOpacity}%
+                  </span>
+                </div>
+
+                {/* Precision Horizontal Alignment & Centering Controls */}
+                <div
+                  className="hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded bg-zinc-950/80 border border-zinc-800 text-[10px] font-mono text-zinc-400"
+                  title="Center & horizontal alignment. Use slider, arrows, mouse wheel or buttons for 1px steps"
+                >
+                  <button
+                    type="button"
+                    onClick={centerImage}
+                    title="Snap to exact center (0px)"
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition ${
+                      align === "center" && offsetX === 0
+                        ? "bg-indigo-600/30 text-indigo-300 border border-indigo-500/50"
+                        : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                    }`}
+                  >
+                    Center
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => stepOffset(-1)}
+                    title="Move 1px Left"
+                    className="w-4 h-4 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold flex items-center justify-center transition leading-none active:scale-95"
+                  >
+                    −
+                  </button>
+
+                  <span className="text-zinc-400 select-none">X:</span>
+
+                  <input
+                    type="range"
+                    min="-300"
+                    max="300"
+                    step="1"
+                    value={offsetX}
+                    onWheel={handleWheelOffset}
+                    onChange={(e) => {
+                      if (align !== "center") setAlign("center");
+                      setOffsetX(Number(e.target.value));
+                    }}
+                    className="w-36 md:w-48 h-1.5 accent-indigo-500 cursor-pointer"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => stepOffset(1)}
+                    title="Move 1px Right"
+                    className="w-4 h-4 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold flex items-center justify-center transition leading-none active:scale-95"
+                  >
+                    +
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setOffsetX(0)}
+                    onWheel={handleWheelOffset}
+                    title="Click to reset X offset to 0px (or scroll wheel to adjust 1px)"
+                    className="w-12 text-right text-indigo-300 font-bold hover:text-white transition cursor-pointer select-none"
+                  >
+                    {offsetX > 0 ? `+${offsetX}` : offsetX}px
+                  </button>
+                </div>
+              </>
             )}
+
             <ButtonPixelPerfect />
             <ButtonCss />
             <ButtonJS />
@@ -409,10 +208,11 @@ export function PreviewArea() {
             <BreakpointControls />
             <ButtonJson />
           </div>
+
           <button
             type="button"
             onClick={() => setIsCollapsed((c) => !c)}
-            title={isCollapsed ? "Развернуть" : "Свернуть"}
+            title={isCollapsed ? "Expand" : "Collapse"}
             className="text-zinc-500 hover:text-zinc-200 px-2 rounded bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 transition cursor-pointer"
           >
             <img
@@ -425,6 +225,7 @@ export function PreviewArea() {
           </button>
         </div>
       </div>
+
       <ModalFonts />
       <ModalPixelPerfect />
 
@@ -441,15 +242,16 @@ export function PreviewArea() {
                 : "bg-zinc-950/90 p-2 sm:p-4 flex flex-col items-center"
             }`}
           >
+            {/* Box-content ensures borders are OUTSIDE the viewport width */}
             <div
               className={`relative bg-white transition-[width] duration-200 ease-out overflow-hidden ${
                 isFullWidth
                   ? "w-full"
-                  : "shadow-2xl rounded-lg border border-zinc-700/70 ring-1 ring-zinc-800 shrink-0"
+                  : "shadow-2xl rounded-lg border border-zinc-700/70 ring-1 ring-zinc-800 shrink-0 box-content"
               }`}
               style={{
-                width: effectiveWidthStyle,
-                minWidth: isFullWidth ? "100%" : effectiveWidthStyle,
+                width: isFullWidth ? "100%" : effectiveWidthStyle,
+                maxWidth: isFullWidth ? "100%" : effectiveWidthStyle,
               }}
             >
               {!isFullWidth && (
@@ -487,7 +289,7 @@ export function PreviewArea() {
                   </div>
 
                   <div className="flex items-center gap-1.5 font-mono text-[11px]">
-                    <span className="text-zinc-400">Ширина:</span>
+                    <span className="text-zinc-400">Viewport:</span>
                     <span className="px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-600/70 text-emerald-300 font-bold">
                       {effectiveWidth}px
                     </span>
@@ -495,7 +297,7 @@ export function PreviewArea() {
                 </div>
               )}
 
-              {/* Область экрана превью (холст / iframe и подложка прототипа) */}
+              {/* Viewport Screen */}
               <div
                 className="relative w-full bg-white transition-[height] duration-200 ease-out overflow-hidden"
                 style={{
@@ -503,6 +305,7 @@ export function PreviewArea() {
                   minHeight: effectiveHeight,
                 }}
               >
+                {/* Pixel Perfect Reference Overlay */}
                 {hasImage && isOverlayActive && (
                   <div
                     className="absolute top-0 pointer-events-none select-none z-0"
@@ -519,9 +322,7 @@ export function PreviewArea() {
                       alt="Pixel Perfect Reference"
                       className="max-w-none block pointer-events-none select-none"
                       draggable={false}
-                      style={{
-                        opacity: overlayOpacity / 100,
-                      }}
+                      style={{ opacity: overlayOpacity / 100 }}
                       onLoad={(e) => {
                         if (e.currentTarget.naturalHeight) {
                           setNaturalImgHeight(e.currentTarget.naturalHeight);
@@ -531,6 +332,7 @@ export function PreviewArea() {
                   </div>
                 )}
 
+                {/* Empty State or Live Iframe */}
                 {isEmpty ? (
                   <div
                     className="absolute inset-0 flex flex-col items-center justify-center text-zinc-300 gap-2 bg-white z-10"
@@ -545,7 +347,7 @@ export function PreviewArea() {
                       There are no elements to display
                     </p>
                     <p className="text-xs text-zinc-500">
-                      Add the blocks to the canvas — they will appear here
+                      Add blocks to the canvas — they will appear here
                     </p>
                   </div>
                 ) : (
@@ -561,7 +363,8 @@ export function PreviewArea() {
                       minHeight: effectiveHeight,
                       opacity:
                         hasImage && isOverlayActive ? previewOpacity / 100 : 1,
-                      transition: "height 0.2s ease-out, opacity 0.05s ease-out",
+                      transition:
+                        "height 0.2s ease-out, opacity 0.05s ease-out",
                     }}
                   />
                 )}
@@ -573,3 +376,5 @@ export function PreviewArea() {
     </div>
   );
 }
+
+export default PreviewArea;

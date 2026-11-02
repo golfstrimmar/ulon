@@ -1,108 +1,40 @@
 "use client";
 
-import { useSyncExternalStore, useEffect } from "react";
+import { useCanvasStore } from "@/app/plaza/components/CanvasArea/store/useCanvasStore";
 import {
-  type BreakpointId,
   type BreakpointItem,
   BREAKPOINTS,
 } from "@/app/plaza/components/PreviewArea/types/breakpoints";
 
-export interface BreakpointState {
-  activeId: BreakpointId;
-  customWidth: number | null;
-  isRotated: boolean;
-}
-
-const STORAGE_KEY = "plaza_preview_breakpoint";
-
-const DEFAULT_STATE: BreakpointState = {
-  activeId: "full",
-  customWidth: null,
-  isRotated: false,
-};
-
-let currentState: BreakpointState = { ...DEFAULT_STATE };
-const listeners = new Set<() => void>();
-
-function notify() {
-  listeners.forEach((listener) => listener());
-}
-
-function updateState(partial: Partial<BreakpointState>) {
-  currentState = { ...currentState, ...partial };
-  notify();
-
-  if (typeof window !== "undefined") {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(currentState));
-    } catch (e) {
-      console.error(e);
-    }
-  }
-}
-
-// Загрузка из localStorage
-let isInitialized = false;
-function initFromStorage() {
-  if (isInitialized || typeof window === "undefined") return;
-  isInitialized = true;
-
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed.activeId === "string") {
-        currentState = {
-          activeId: parsed.activeId,
-          customWidth:
-            typeof parsed.customWidth === "number" ? parsed.customWidth : null,
-          isRotated: Boolean(parsed.isRotated),
-        };
-        notify();
-      }
-    }
-  } catch (e) {
-    console.error(e);
-  }
-}
-
 export function useBreakpoint() {
-  const state = useSyncExternalStore(
-    (onStoreChange) => {
-      listeners.add(onStoreChange);
-      return () => {
-        listeners.delete(onStoreChange);
-      };
-    },
-    () => currentState,
-    () => DEFAULT_STATE,
-  );
-
-  useEffect(() => {
-    initFromStorage();
-  }, []);
+  const activeId = useCanvasStore((s) => s.activeBreakpointId);
+  const customWidth = useCanvasStore((s) => s.customBreakpointWidth);
+  const isRotated = useCanvasStore((s) => s.isBreakpointRotated);
+  const selectBreakpoint = useCanvasStore((s) => s.selectBreakpoint);
+  const setCustomWidth = useCanvasStore((s) => s.setCustomBreakpointWidth);
+  const toggleRotate = useCanvasStore((s) => s.toggleBreakpointRotate);
 
   const activeBreakpoint: BreakpointItem =
-    state.activeId === "custom"
+    activeId === "custom"
       ? {
           id: "custom",
           name: "Custom",
           label: "Custom",
-          width: state.customWidth || 800,
+          segment: `${customWidth || 800}px`,
+          width: customWidth || 800,
           icon: "⚙️",
-          tooltip: `Пользовательское разрешение (${state.customWidth || 800}px)`,
-          mediaQuery: `${state.customWidth || 800}px`,
-          deviceType: "Пользовательское",
+          tooltip: `Custom resolution (${customWidth || 800}px)`,
+          mediaQuery: `${customWidth || 800}px`,
+          deviceType: "Custom",
         }
-      : BREAKPOINTS.find((b) => b.id === state.activeId) || BREAKPOINTS[0];
+      : BREAKPOINTS.find((b) => b.id === activeId) || BREAKPOINTS[0];
 
-  // Рассчитываем итоговую ширину (число или "100%")
   let effectiveWidth: number | "100%" = "100%";
 
-  if (state.activeId === "custom") {
-    effectiveWidth = state.customWidth || 800;
-  } else if (state.activeId !== "full") {
-    if (state.isRotated && activeBreakpoint.rotatedWidth) {
+  if (activeId === "custom") {
+    effectiveWidth = customWidth || 800;
+  } else if (activeId !== "full") {
+    if (isRotated && activeBreakpoint.rotatedWidth) {
       effectiveWidth = activeBreakpoint.rotatedWidth;
     } else {
       effectiveWidth = activeBreakpoint.width;
@@ -112,35 +44,12 @@ export function useBreakpoint() {
   const effectiveWidthStyle =
     effectiveWidth === "100%" ? "100%" : `${effectiveWidth}px`;
 
-  const selectBreakpoint = (id: BreakpointId) => {
-    updateState({
-      activeId: id,
-      customWidth: id === "custom" ? currentState.customWidth || 800 : null,
-      isRotated: false,
-    });
-  };
-
-  const setCustomWidth = (width: number) => {
-    const clamped = Math.max(280, Math.min(3840, Math.round(width)));
-    updateState({
-      activeId: "custom",
-      customWidth: clamped,
-      isRotated: false,
-    });
-  };
-
-  const toggleRotate = () => {
-    updateState({
-      isRotated: !currentState.isRotated,
-    });
-  };
-
   return {
-    activeId: state.activeId,
+    activeId,
     activeBreakpoint,
-    customWidth: state.customWidth,
-    isRotated: state.isRotated,
-    isFullWidth: state.activeId === "full",
+    customWidth,
+    isRotated,
+    isFullWidth: activeId === "full",
     effectiveWidth,
     effectiveWidthStyle,
     selectBreakpoint,
