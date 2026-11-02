@@ -779,3 +779,229 @@ export function applyBemClassesToSection(
 
   return updateTree(tree);
 }
+
+// ============================================================================
+// TEMPLATE ENGINE / BATCH DONOR FILLING (ШАБЛОНИЗАТОР)
+// ============================================================================
+
+/**
+ * 🔹 Сортирует ключи в строгом порядке прямого обхода дерева (DOM tree order, сверху вниз)
+ */
+export function sortKeysByTreeOrder(
+  tree: HtmlNode[],
+  keys: Set<string> | string[],
+): string[] {
+  const keySet = keys instanceof Set ? keys : new Set(keys);
+  const ordered: string[] = [];
+
+  function traverse(nodes: HtmlNode[]) {
+    for (const node of nodes) {
+      const k = getNodeKey(node);
+      if (k && keySet.has(k)) {
+        ordered.push(k);
+      }
+      if (Array.isArray(node.children)) {
+        traverse(node.children);
+      }
+    }
+  }
+
+  traverse(tree);
+  return ordered;
+}
+
+/**
+ * 🔹 Клонирует ноду со всеми потомками, генерируя новые ключи и сохраняя маппинг старых -> новых ключей
+ */
+export function cloneTemplateWithKeyMapping(
+  node: HtmlNode,
+  keyMap: Map<string, string>,
+): HtmlNode {
+  const oldKey = getNodeKey(node);
+  const newKey = generateNodeKey();
+  if (oldKey) {
+    keyMap.set(oldKey, newKey);
+  }
+
+  return {
+    ...node,
+    _key: newKey,
+    children: Array.isArray(node.children)
+      ? node.children.map((child) => cloneTemplateWithKeyMapping(child, keyMap))
+      : node.children,
+  };
+}
+
+/**
+ * 🔹 Мутирует ноду по targetKey в дереве с помощью функции-обновителя
+ */
+export function mutateNodeInTree(
+  nodes: HtmlNode[],
+  targetKey: string,
+  updater: (node: HtmlNode) => HtmlNode,
+): HtmlNode[] {
+  return nodes.map((node) => {
+    if (getNodeKey(node) === targetKey) {
+      return updater(node);
+    }
+    if (Array.isArray(node.children)) {
+      return {
+        ...node,
+        children: mutateNodeInTree(node.children, targetKey, updater),
+      };
+    }
+    return node;
+  });
+}
+
+/**
+ * 🔹 Переносит свойства ноды-донора в ноду-слот (акцептор):
+ * - текст донора перезаписывает текст слота (если у донора он не пустой)
+ * - классы объединяются без дубликатов
+ * - атрибуты объединяются (донор перезаписывает совпадения, напр. src, href, alt)
+ * - inline style донора (если есть) переносится
+ * - если у слота нет детей, а у донора есть — копируются дети
+ */
+export function applyDonorToSlot(
+  slotNode: HtmlNode,
+  donorNode: HtmlNode,
+): HtmlNode {
+  let nextText = slotNode.text;
+  if (typeof donorNode.text === "string" && donorNode.text.trim() !== "") {
+    nextText = donorNode.text;
+  }
+
+  const classes = new Set<string>(
+    (slotNode.class || "").trim().split(/\s+/).filter(Boolean),
+  );
+  if (donorNode.class) {
+    donorNode.class
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .forEach((c) => classes.add(c));
+  }
+  const nextClass = Array.from(classes).join(" ");
+
+  const nextAttributes: Record<string, string> = {
+    ...(slotNode.attributes || {}),
+  };
+  if (donorNode.attributes && typeof donorNode.attributes === "object") {
+    Object.assign(nextAttributes, donorNode.attributes);
+  }
+
+  let nextChildren = slotNode.children;
+  if (
+    (!slotNode.children || slotNode.children.length === 0) &&
+    Array.isArray(donorNode.children) &&
+    donorNode.children.length > 0
+  ) {
+    const childMap = new Map<string, string>();
+    nextChildren = donorNode.children.map((c) =>
+      cloneTemplateWithKeyMapping(c, childMap),
+    );
+  }
+
+  return {
+    ...slotNode,
+    text: nextText,
+    class: nextClass,
+    attributes: nextAttributes,
+    style: donorNode.style || slotNode.style,
+    children: nextChildren,
+  };
+}
+
+/**
+ * 🔹 Пакетное заполнение шаблона группой доноров:
+ * 1. Берет шаблонные ноды из правой панели (rightKeys)
+ * 2. Упорядочивает доноров по порядку в дереве
+ * 3. Разбивает доноров на порции по числу слотов шаблона (если слотов 3, а доноров 6 — создаст 2 карточки)
+ * 4. Для каждой порции создает чистую копию шаблона с новыми ключами, заполняет слоты донорами
+ * 5. Удаляет доноров из исходного дерева
+ * 6. Добавляет готовые карточки в конец общего дерева (в Pane 1)
+ */
+export function executeTemplateBatch(
+  tree: HtmlNode[],
+  rightKeys: Set<string>,
+  templateSlots: Record<string, number>,
+  rawDonorKeys: string[],
+): { nextTree: HtmlNode[]; generatedCount: number } {
+  if (!tree || tree.length === 0 || rightKeys.size === 0) {
+    return { nextTree: tree, generatedCount: 0 };
+  }
+
+  // 1. Извлекаем шаблон из правой панели
+  const templateRoots = extractNodesByKeys(tree, rightKeys);
+  if (templateRoots.length === 0) {
+    return { nextTree: tree, generatedCount: 0 };
+  }
+
+  // 2. Сортируем слоты шаблона по их номеру: 1, 2, 3...
+  const sortedSlots = Object.entries(templateSlots)
+    .sort((a, b) => a[1] - b[1])
+    .map(([origKey, slotNum]) => ({ origKey, slotNum }));
+
+  if (sortedSlots.length === 0) {
+    return { nextTree: tree, generatedCount: 0 };
+  }
+
+  // 3. Фильтруем доноров (донорами не могут быть сами ноды шаблона)
+  const validDonorKeys = rawDonorKeys.filter((k) => !rightKeys.has(k));
+  if (validDonorKeys.length === 0) {
+    return { nextTree: tree, generatedCount: 0 };
+  }
+
+  // Упорядочиваем доноров по DOM-дереву сверху вниз
+  const orderedDonors = sortKeysByTreeOrder(tree, validDonorKeys);
+  if (orderedDonors.length === 0) {
+    return { nextTree: tree, generatedCount: 0 };
+  }
+
+  // 4. Разбиваем доноров на пачки размером = количеству слотов
+  const slotsCount = sortedSlots.length;
+  const donorBatches: string[][] = [];
+  for (let i = 0; i < orderedDonors.length; i += slotsCount) {
+    donorBatches.push(orderedDonors.slice(i, i + slotsCount));
+  }
+
+  const generatedBlocks: HtmlNode[] = [];
+  const usedDonorKeysSet = new Set<string>();
+
+  // 5. Для каждой пачки доноров генерируем копию шаблона
+  for (const batch of donorBatches) {
+    const keyMap = new Map<string, string>();
+    let clonedRoots = templateRoots.map((rootNode) =>
+      cloneTemplateWithKeyMapping(rootNode, keyMap),
+    );
+
+    batch.forEach((donorKey, slotIdx) => {
+      usedDonorKeysSet.add(donorKey);
+      const slotDef = sortedSlots[slotIdx];
+      if (!slotDef) return;
+
+      const clonedTargetKey = keyMap.get(slotDef.origKey);
+      if (!clonedTargetKey) return;
+
+      const donorNode = findNodeInTree(tree, donorKey);
+      if (!donorNode) return;
+
+      clonedRoots = mutateNodeInTree(clonedRoots, clonedTargetKey, (target) =>
+        applyDonorToSlot(target, donorNode),
+      );
+    });
+
+    generatedBlocks.push(...clonedRoots);
+  }
+
+  // 6. Удаляем использованные ноды-доноры из дерева
+  const treeWithoutDonors = removeNodesByKeys(tree, usedDonorKeysSet);
+
+  // 7. Добавляем готовые сгенерированные блоки в конец дерева
+  const nextTree = [...treeWithoutDonors, ...generatedBlocks];
+
+  return {
+    nextTree,
+    generatedCount: donorBatches.length,
+  };
+}
