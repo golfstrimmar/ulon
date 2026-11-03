@@ -8,6 +8,8 @@ import {
   FolderIcon,
   CheckCircleIcon,
   ArrowUpTrayIcon,
+  PhotoIcon,
+  BoltIcon,
 } from "@heroicons/react/24/outline";
 import {
   getAllFragments,
@@ -15,6 +17,10 @@ import {
   deleteFragment,
   type FigmaJsonFragment,
 } from "@/lib/figmaJsonStorage";
+import { useFigmaImagesController } from "@/app/design/controllers/useFigmaImagesController";
+import { useFigmaSvgController } from "@/app/design/controllers/useFigmaSvgController";
+import ModalFigmaImageCrop from "@/app/design/components/ModalFigmaImageCrop";
+import ModalFigmaSvgBatch from "@/app/design/components/ModalFigmaSvgBatch";
 
 interface FigmaJsonInputProps {
   value: string;
@@ -33,7 +39,7 @@ export function FigmaJsonInput({
   const [activeFragmentId, setActiveFragmentId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Состояние модального окна требования названия
+  // Модальное окно названия фрагмента
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [pendingJson, setPendingJson] = useState<string | null>(null);
   const [fragmentName, setFragmentName] = useState("");
@@ -43,7 +49,26 @@ export function FigmaJsonInput({
 
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Загрузка сохранённых фрагментов из базы
+  // 🔹 Контроллер картинок из JSON
+  const {
+    images,
+    imagesCount,
+    hasImages,
+    isModalOpen: isImagesModalOpen,
+    setIsModalOpen: setIsImagesModalOpen,
+    saveImagesToTree,
+  } = useFigmaImagesController(value);
+
+  // 🔹 Контроллер SVG из JSON
+  const {
+    svgs,
+    svgsCount,
+    hasSvgs,
+    isModalOpen: isSvgModalOpen,
+    setIsModalOpen: setIsSvgModalOpen,
+    saveSvgsToTree,
+  } = useFigmaSvgController(value);
+
   const loadFragments = useCallback(async () => {
     try {
       const list = await getAllFragments();
@@ -68,7 +93,6 @@ export function FigmaJsonInput({
     };
   }, [loadFragments]);
 
-  // Фокус в инпут при открытии модального окна
   useEffect(() => {
     if (isModalOpen) {
       setNameError(null);
@@ -78,13 +102,11 @@ export function FigmaJsonInput({
     }
   }, [isModalOpen]);
 
-  // Выбор фрагмента из банка
   const handleSelectFragment = (fragment: FigmaJsonFragment) => {
     setActiveFragmentId(fragment.id);
     onChange(fragment.json);
   };
 
-  // Удаление фрагмента из базы
   const handleDeleteFragment = async (
     e: React.MouseEvent,
     id: string,
@@ -104,17 +126,14 @@ export function FigmaJsonInput({
     }
   };
 
-  // Перехват вставки нового JSON (Ctrl+V)
   const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const text = e.clipboardData.getData("text");
     if (!text || !text.trim()) return;
 
-    // Блокируем прямую вставку в текстовое поле без названия
     e.preventDefault();
     initiateNewFragment(text.trim());
   };
 
-  // Drag & drop файлов или текста
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(true);
@@ -154,7 +173,6 @@ export function FigmaJsonInput({
     setIsModalOpen(true);
   };
 
-  // Подтверждение сохранения с названием в базу
   const handleConfirmSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
@@ -185,7 +203,6 @@ export function FigmaJsonInput({
     }
   };
 
-  // Отмена добавления
   const handleCancelModal = () => {
     setIsModalOpen(false);
     setPendingJson(null);
@@ -193,7 +210,6 @@ export function FigmaJsonInput({
     setNameError(null);
   };
 
-  // Очистка формы
   const handleClear = () => {
     setActiveFragmentId(null);
     onClear();
@@ -240,14 +256,17 @@ export function FigmaJsonInput({
           </div>
         </div>
 
-        {/* Список кнопок фрагментов с кнопками удаления */}
+        {/* Список кнопок фрагментов */}
         <div className="min-h-[42px] flex items-center">
           {isLoading ? (
             <div className="text-xs text-zinc-500 py-1">Загрузка банка...</div>
           ) : fragments.length === 0 ? (
             <div className="text-xs text-zinc-500 py-1 flex items-center gap-2">
               <span>📭 Банк пуст.</span>
-              <span>Вставьте JSON из Figma ниже — откроется запрос названия для сохранения в базу.</span>
+              <span>
+                Вставьте JSON из Figma ниже — откроется запрос названия для
+                сохранения в базу.
+              </span>
             </div>
           ) : (
             <div className="flex flex-wrap items-center gap-2 w-full">
@@ -262,7 +281,6 @@ export function FigmaJsonInput({
                         : "bg-zinc-900 hover:bg-zinc-800/90 text-zinc-300 hover:text-white border-zinc-800 hover:border-zinc-700"
                     }`}
                   >
-                    {/* Кнопка выбора фрагмента */}
                     <button
                       type="button"
                       onClick={() => handleSelectFragment(frag)}
@@ -271,16 +289,19 @@ export function FigmaJsonInput({
                     >
                       <DocumentDuplicateIcon
                         className={`w-3.5 h-3.5 ${
-                          isActive ? "text-blue-200" : "text-zinc-400 group-hover:text-zinc-200"
+                          isActive
+                            ? "text-blue-200"
+                            : "text-zinc-400 group-hover:text-zinc-200"
                         }`}
                       />
                       <span>{frag.name}</span>
                     </button>
 
-                    {/* Кнопка удаления фрагмента из базы */}
                     <button
                       type="button"
-                      onClick={(e) => handleDeleteFragment(e, frag.id, frag.name)}
+                      onClick={(e) =>
+                        handleDeleteFragment(e, frag.id, frag.name)
+                      }
                       className={`p-1.5 pr-2 rounded-r-xl transition cursor-pointer ${
                         isActive
                           ? "hover:bg-blue-700 text-blue-200 hover:text-white"
@@ -311,7 +332,7 @@ export function FigmaJsonInput({
             : "border-zinc-800"
         }`}
       >
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <label
             htmlFor="figma-json-input"
             className="text-sm font-semibold text-zinc-200 flex items-center gap-2"
@@ -325,11 +346,37 @@ export function FigmaJsonInput({
           </label>
 
           <div className="flex items-center gap-2">
+            {/* 🖼️ КНОПКА КАРТИНОК ИЗ JSON */}
+            {hasImages && (
+              <button
+                type="button"
+                onClick={() => setIsImagesModalOpen(true)}
+                className="flex items-center gap-1.5 text-xs px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition shadow-md shadow-emerald-950 animate-pulse cursor-pointer"
+                title="Crop and optimize images from this JSON"
+              >
+                <PhotoIcon className="w-3.5 h-3.5" />
+                <span>Images ({imagesCount})</span>
+              </button>
+            )}
+
+            {/* ⚡ КНОПКА SVG ИЗ JSON */}
+            {hasSvgs && (
+              <button
+                type="button"
+                onClick={() => setIsSvgModalOpen(true)}
+                className="flex items-center gap-1.5 text-xs px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold transition shadow-md shadow-amber-950 animate-pulse cursor-pointer"
+                title="Configure and insert SVGs from this JSON"
+              >
+                <BoltIcon className="w-3.5 h-3.5" />
+                <span>SVGs ({svgsCount})</span>
+              </button>
+            )}
+
             {value && !activeFragment && (
               <button
                 type="button"
                 onClick={() => initiateNewFragment(value)}
-                className="text-xs px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium transition"
+                className="text-xs px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium transition cursor-pointer"
               >
                 Сохранить в банк
               </button>
@@ -338,7 +385,7 @@ export function FigmaJsonInput({
               <button
                 type="button"
                 onClick={handleClear}
-                className="text-xs text-zinc-400 hover:text-zinc-200 transition"
+                className="text-xs text-zinc-400 hover:text-zinc-200 transition cursor-pointer"
               >
                 Clear
               </button>
@@ -353,7 +400,6 @@ export function FigmaJsonInput({
             value={value}
             onPaste={handlePaste}
             onChange={(e) => {
-              // Если пользователь редактирует вручную
               setActiveFragmentId(null);
               onChange(e.target.value);
             }}
@@ -364,18 +410,19 @@ export function FigmaJsonInput({
           {isDragging && (
             <div className="absolute inset-0 bg-blue-950/80 border-2 border-dashed border-blue-400 rounded-xl flex flex-col items-center justify-center gap-2 pointer-events-none text-blue-200">
               <ArrowUpTrayIcon className="w-8 h-8 animate-bounce" />
-              <span className="text-sm font-semibold">Отпустите файл для загрузки в банк</span>
+              <span className="text-sm font-semibold">
+                Отпустите файл для загрузки в банк
+              </span>
             </div>
           )}
         </div>
 
         <div className="flex items-center justify-between text-xs text-zinc-500">
           <span>
-            💡 Вставьте JSON фрагмент (Ctrl+V) — всплывёт окно для задания имени перед сохранением в базу.
+            💡 Вставьте JSON фрагмент (Ctrl+V) — картинки и SVG распознаются
+            автоматически.
           </span>
-          {value && (
-            <span>Размер: {(value.length / 1024).toFixed(1)} КБ</span>
-          )}
+          {value && <span>Размер: {(value.length / 1024).toFixed(1)} КБ</span>}
         </div>
 
         {error && (
@@ -385,9 +432,23 @@ export function FigmaJsonInput({
         )}
       </div>
 
-      {/* =========================================================================
-          МОДАЛЬНОЕ ОКНО С ТРЕБОВАНИЕМ НАЗВАНИЯ ("пока имя не дали — дальше не пускает")
-          ========================================================================= */}
+      {/* Модалка картинок */}
+      <ModalFigmaImageCrop
+        isOpen={isImagesModalOpen}
+        setIsOpen={setIsImagesModalOpen}
+        rawImages={images}
+        onSaveNodes={saveImagesToTree}
+      />
+
+      {/* Модалка SVG */}
+      <ModalFigmaSvgBatch
+        isOpen={isSvgModalOpen}
+        setIsOpen={setIsSvgModalOpen}
+        rawSvgs={svgs}
+        onSaveNodes={saveSvgsToTree}
+      />
+
+      {/* Модальное окно названия фрагмента */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-150">
           <div
@@ -404,7 +465,8 @@ export function FigmaJsonInput({
                   Сохранение нового фрагмента
                 </h3>
                 <p className="text-xs text-zinc-400">
-                  Пожалуйста, задайте название для сохранения этого JSON фрагмента в базе IndexedDB.
+                  Пожалуйста, задайте название для сохранения этого JSON
+                  фрагмента в базе IndexedDB.
                 </p>
               </div>
             </div>
@@ -438,7 +500,8 @@ export function FigmaJsonInput({
                   <span className="text-xs text-red-400">{nameError}</span>
                 ) : (
                   <span className="text-[11px] text-zinc-500">
-                    Пока название не введено, переход к работе с фрагментом заблокирован.
+                    Пока название не введено, переход к работе с фрагментом
+                    заблокирован.
                   </span>
                 )}
               </div>

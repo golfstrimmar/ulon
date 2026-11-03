@@ -6,7 +6,7 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
-
+// Добавь в существующую модель User связи:
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -18,7 +18,44 @@ model User {
   updatedAt     DateTime  @updatedAt
   accounts      Account[]
   sessions      Session[]
+
+  // ─── Связи с проектами Plaza ───
+  folders       Folder[]
+  projects      Project[]
 }
+
+// ─── Модель папки (Сайта) ───
+model Folder {
+  id        String    @id @default(cuid())
+  name      String
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projects  Project[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+// ─── Модель проекта/фрагмента (Снимок холста) ───
+model Project {
+  id        String   @id @default(cuid())
+  name      String
+  htmlJson  Json     // Полное дерево HtmlNode[] холста
+  scss      String?  @default("") // Глобальные стили проекта
+  js        String?  @default("") // Скрипты проекта
+  folderId  String
+  folder    Folder   @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([folderId])
+  @@index([userId])
+}
+
 
 model Account {
   id                String  @id @default(cuid())

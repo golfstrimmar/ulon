@@ -581,31 +581,124 @@ export function mergeDonorIntoTarget(
   return updateTargetInList(treeWithoutDonors);
 }
 
+// ── Теги SVG и иконок, которые вообще не трогаем ──
+const IGNORED_SVG_TAGS = new Set([
+  "i",
+  "svg",
+  "path",
+  "rect",
+  "circle",
+  "ellipse",
+  "line",
+  "polyline",
+  "polygon",
+  "g",
+  "defs",
+  "clippath",
+  "mask",
+  "pattern",
+  "lineargradient",
+  "radialgradient",
+  "stop",
+  "text",
+  "tspan",
+  "use",
+  "symbol",
+  "marker",
+  "animate",
+  "animatetransform",
+  "fegaussianblur",
+  "femerge",
+  "femergenode",
+  "fecolormatrix",
+  "fecomposite",
+  "feblend",
+  "feoffset",
+  "fedropshadow",
+]);
+
+/**
+ * 🔹 Проверка на утилитарные классы шрифтов/отступов/цветов из Figma
+ */
+function isUtilityOrFontClass(cls: string): boolean {
+  const lower = cls.toLowerCase();
+  return (
+    lower.startsWith("font-") ||
+    lower.startsWith("text-") ||
+    lower.startsWith("bg-") ||
+    lower.startsWith("border-") ||
+    lower.startsWith("p-") ||
+    lower.startsWith("m-") ||
+    lower.startsWith("w-") ||
+    lower.startsWith("h-") ||
+    lower.startsWith("flex") ||
+    lower.startsWith("grid") ||
+    lower.includes(":") ||
+    lower === "container" ||
+    lower.includes("__")
+  );
+}
+
+/**
+ * 🔹 Извлекает чистое смысловое имя блока (например "card", "services", "section-frame-32")
+ */
+function getSemanticBlockName(node: HtmlNode): string {
+  const rawClasses = (node.class || "").trim().split(/\s+/).filter(Boolean);
+  const semanticClass = rawClasses.find((cls) => !isUtilityOrFontClass(cls));
+
+  if (semanticClass) {
+    return semanticClass;
+  }
+
+  const tag = (node.tag || "div").toLowerCase();
+  return tag !== "div" ? tag : "block";
+}
+
+/**
+ * 🔹 Подсчитывает общее количество тегов <ul> в поддереве
+ */
+function countUlElements(node: HtmlNode): number {
+  let count = 0;
+  function walk(n: HtmlNode) {
+    const tag = (n.tag || "div").toLowerCase();
+    if (IGNORED_SVG_TAGS.has(tag)) return;
+    if (tag === "ul") count++;
+    if (Array.isArray(n.children)) {
+      n.children.forEach(walk);
+    }
+  }
+  walk(node);
+  return count;
+}
+
+/**
+ * 🔹 Интеллектуальное автоформирование БЭМ-классов:
+ * 1. Игнорирует <i>, <svg> и всё их содержимое.
+ * 2. Утилитарные классы шрифтов (font-montserrat-...) не становятся именем родителя.
+ * 3. Если <ul> несколько в секции => нумеруются (__items-1, __items-2...)
+ * 4. Все дочерние элементы получают индекс своего <ul>:
+ *    - li        => родитель__item-1
+ *    - a         => родитель__item-1_link
+ *    - тег в a   => родитель__item-1_link_{tag}
+ * 5. <p>         => родитель__p
+ * 6. <span>      => родитель__span (вне ссылки)
+ * 7. <h1>..<h6>  => родитель__title
+ * 8. <button>    => родитель__button
+ * 9. <img>       => родитель__img
+ */
 export function applyBemClassesToSection(
   tree: HtmlNode[],
   targetKey?: string | null,
 ): HtmlNode[] {
   if (!tree || tree.length === 0) return tree;
 
-  function getBemSuffix(tag: string): string {
-    const t = tag.toLowerCase();
-    if (/^h[1-6]$/.test(t)) return "title";
-    if (t === "button") return "button";
-    if (t === "img") return "img";
-    if (t === "svg") return "svg";
-    if (t === "a") return "link";
-    return "";
-  }
-
-  let sectionNode: HtmlNode | null = null;
+  // 1. Находим целевую секцию или активную ноду
+  let rootNode: HtmlNode | null = null;
   if (targetKey) {
-    const candidate = findNodeInTree(tree, targetKey);
-    if (candidate && (candidate.tag || "").toLowerCase() === "section") {
-      sectionNode = candidate;
-    }
+    rootNode = findNodeInTree(tree, targetKey);
   }
 
-  if (!sectionNode) {
+  if (!rootNode) {
     function findSection(list: HtmlNode[]): HtmlNode | null {
       for (const item of list) {
         if ((item.tag || "").toLowerCase() === "section") return item;
@@ -616,67 +709,141 @@ export function applyBemClassesToSection(
       }
       return null;
     }
-    sectionNode = findSection(tree);
+    rootNode = findSection(tree) || tree[0];
   }
 
-  if (!sectionNode && tree.length > 0) {
-    sectionNode = tree[0];
-  }
+  if (!rootNode) return tree;
 
-  if (!sectionNode) return tree;
+  const rootKey = getNodeKey(rootNode);
 
-  const sectionKey = getNodeKey(sectionNode);
-  const rawClasses = (sectionNode.class || "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-  const blockName =
-    rawClasses[0] ||
-    (sectionNode.tag ? sectionNode.tag.toLowerCase() : "section");
+  // 2. Определяем смысловое имя родительского блока
+  const rootBlockName = getSemanticBlockName(rootNode);
 
-  function processDescendants(
-    children: HtmlNode[] | string,
-  ): HtmlNode[] | string {
-    if (!Array.isArray(children)) return children;
-    return children.map((child) => {
-      const updatedChild: HtmlNode = { ...child };
-      const tag = (child.tag || "div").toLowerCase();
-      const existingClasses = (child.class || "")
-        .trim()
-        .split(/\s+/)
-        .filter(Boolean);
+  // 3. Считаем, сколько списков <ul> есть в этой секции
+  const totalUlCount = countUlElements(rootNode);
+  let ulCounter = 0; // Счётчик текущего списка
 
-      const isContainer =
-        tag === "div" && existingClasses.includes("container");
+  // 4. Рекурсивная контекстная обработка
+  function processNode(
+    node: HtmlNode,
+    currentBlock: string,
+    currentUlItemPrefix: string | null = null,
+    isInLink = false,
+  ): HtmlNode {
+    const tag = (node.tag || "div").toLowerCase();
 
-      const alreadyHasBem =
-        Boolean((child as any)._bemApplied) ||
-        existingClasses.some(
-          (cls) => cls === `${blockName}__` || cls.startsWith(`${blockName}__`),
-        );
+    // ⛔ Игнорируем иконки и SVG целиком
+    if (IGNORED_SVG_TAGS.has(tag)) {
+      return {
+        ...node,
+        children: Array.isArray(node.children)
+          ? node.children.map((c) => processNode(c, currentBlock, null, false))
+          : node.children,
+      };
+    }
 
-      if (!isContainer && !alreadyHasBem) {
-        const suffix = getBemSuffix(tag);
-        const bemClass = `${blockName}__${suffix}`;
-        updatedChild.class = [...existingClasses, bemClass].join(" ");
-        (updatedChild as any)._bemApplied = true;
+    const existingClasses = (node.class || "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    const isContainer = tag === "div" && existingClasses.includes("container");
+
+    // Если встречаем вложенный самостоятельный смысловой блок (например .card)
+    let activeBlock = currentBlock;
+    if (
+      tag !== "ul" &&
+      tag !== "li" &&
+      tag !== "a" &&
+      tag !== "span" &&
+      tag !== "p"
+    ) {
+      const subBlockClass = existingClasses.find(
+        (cls) => !isUtilityOrFontClass(cls),
+      );
+      if (subBlockClass) {
+        activeBlock = subBlockClass;
       }
+    }
 
-      if (Array.isArray(updatedChild.children)) {
-        updatedChild.children = processDescendants(
-          updatedChild.children,
-        ) as HtmlNode[];
+    let generatedClass = "";
+    let nextUlItemPrefix = currentUlItemPrefix;
+    let nextIsInLink = isInLink;
+
+    if (!isContainer) {
+      if (tag === "ul") {
+        // Увеличиваем номер списка
+        ulCounter++;
+        // Если списков несколько — добавляем суффикс "-1", "-2"
+        const ulIndexSuffix = totalUlCount > 1 ? `-${ulCounter}` : "";
+        generatedClass = `${activeBlock}__items${ulIndexSuffix}`;
+
+        // Запоминаем базовый префикс для всех дочерних li и ссылок этого списка:
+        // например "section-frame-32__item-1" или "section-frame-32__item"
+        nextUlItemPrefix = `${activeBlock}__item${ulIndexSuffix}`;
+        nextIsInLink = false;
+      } else if (tag === "li") {
+        // <li> получает префикс своего <ul>
+        generatedClass = currentUlItemPrefix || `${activeBlock}__item`;
+        nextIsInLink = false;
+      } else if (tag === "a") {
+        // Ссылка внутри <li> или обычная ссылка
+        if (currentUlItemPrefix) {
+          generatedClass = `${currentUlItemPrefix}_link`;
+          nextIsInLink = true;
+        } else {
+          generatedClass = `${activeBlock}__link`;
+          nextIsInLink = true;
+        }
+      } else if (isInLink && currentUlItemPrefix) {
+        // 🎯 Тег внутри ссылки, которая внутри <li>
+        // => родитель__item-1_link_{tag} (напр. section-frame-32__item-1_link_span)
+        generatedClass = `${currentUlItemPrefix}_link_${tag}`;
+      } else if (tag === "p") {
+        // Обычный абзац
+        generatedClass = `${activeBlock}__p`;
+      } else if (tag === "span") {
+        // Обычный span (не в ссылке)
+        generatedClass = `${activeBlock}__span`;
+      } else if (/^h[1-6]$/.test(tag)) {
+        // Заголовок
+        generatedClass = `${activeBlock}__title`;
+      } else if (tag === "button") {
+        // Кнопка
+        generatedClass = `${activeBlock}__button`;
+      } else if (tag === "img") {
+        // Картинка
+        generatedClass = `${activeBlock}__img`;
       }
-      return updatedChild;
-    });
+    }
+
+    // Добавляем сформированный класс без дубликатов
+    const updatedClassSet = new Set(existingClasses);
+    if (generatedClass && !updatedClassSet.has(generatedClass)) {
+      updatedClassSet.add(generatedClass);
+    }
+
+    return {
+      ...node,
+      class: Array.from(updatedClassSet).join(" "),
+      children: Array.isArray(node.children)
+        ? node.children.map((c) =>
+            processNode(c, activeBlock, nextUlItemPrefix, nextIsInLink),
+          )
+        : node.children,
+    };
   }
 
+  // 5. Обновляем корень и запускаем обход
   function updateTree(list: HtmlNode[]): HtmlNode[] {
     return list.map((item) => {
-      if (getNodeKey(item) === sectionKey) {
+      if (getNodeKey(item) === rootKey) {
         return {
           ...item,
-          children: processDescendants(item.children),
+          children: Array.isArray(item.children)
+            ? item.children.map((c) =>
+                processNode(c, rootBlockName, null, false),
+              )
+            : item.children,
         };
       }
       if (Array.isArray(item.children)) {

@@ -16,12 +16,14 @@ import {
   mergeScssWithoutDuplicates,
   mergeScriptsWithoutDuplicates,
   ensureUniqueKeys,
+  collectAllDescendantKeys,
 } from "@/app/plaza/components/CanvasArea/models/canvasModel";
 import { useCanvasStore } from "@/app/plaza/components/CanvasArea/store/useCanvasStore";
 
 export function useAsideCanvas() {
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
   const [hasNodes, setHasNodes] = useState(false);
+
   // Синхронизируем наличие нод (чтобы кнопка Clear знала, когда отображаться)
   useEffect(() => {
     const checkTree = async () => {
@@ -56,6 +58,7 @@ export function useAsideCanvas() {
   const handleClear = async () => {
     await deleteHtmlJson(DB_KEY);
     setHasNodes(false);
+    useCanvasStore.getState().setRightKeys(new Set());
     window.dispatchEvent(
       new CustomEvent("plaza-tree-updated", {
         detail: { nodes: [], source: "aside-canvas" },
@@ -100,19 +103,36 @@ export function useAsideCanvas() {
         }
       }
 
-      // 3. Добавление элементов через store.persist — чтобы история (undo) работала
-      const currentTree = useCanvasStore.getState().currentJson;
+      // 3. Подготовка новых нод с уникальными ключами
+      const store = useCanvasStore.getState();
+      const currentTree = store.currentJson;
       const nodesWithUniqueKeys = ensureUniqueKeys(cleanNodes);
       const nextTree = [...currentTree, ...nodesWithUniqueKeys];
 
-      await useCanvasStore.getState().persist(nextTree);
+      // 🎯 ЕСЛИ ВКЛЮЧЕН СПЛИТ-РЕЖИМ (PANE 2):
+      // Направляем все новые добавленные ноды сразу в правую панель!
+      if (store.isSplit) {
+        const newKeys: string[] = [];
+        for (const node of nodesWithUniqueKeys) {
+          newKeys.push(...collectAllDescendantKeys(node));
+        }
+
+        store.setRightKeys((prev) => {
+          const next = new Set(prev);
+          newKeys.forEach((k) => next.add(k));
+          return next;
+        });
+      }
+
+      // 4. Сохраняем в дерево через persist (для работы истории Undo/Redo)
+      await store.persist(nextTree);
       setHasNodes(true);
     } catch (e) {
       console.error(`Error adding from ${path}:`, e);
     }
   };
 
-  // Call undo/redo directly on the store — synthetic keyboard events are unreliable
+  // Прямой вызов undo/redo из стора
   const triggerUndo = () => {
     useCanvasStore.getState().undo();
   };

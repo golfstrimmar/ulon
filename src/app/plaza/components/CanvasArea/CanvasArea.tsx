@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useMemo, useEffect } from "react";
+import React, { useRef, useMemo, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import {
   ArrowLeftCircleIcon,
@@ -22,7 +22,9 @@ import {
   extractNodesByKeys,
 } from "@/app/plaza/components/CanvasArea/models/canvasModel";
 import type { HtmlNode } from "@/types/HtmlNode";
-
+// 1. В импорты CanvasArea.tsx добавь:
+import { CloudArrowUpIcon } from "@heroicons/react/24/outline";
+import { ProjectManagerModal } from "@/app/plaza/components/ProjectManager/ProjectManagerModal";
 const ModalNodeProperties = dynamic(
   () => import("./components/ModalNodeProperties"),
   { ssr: false },
@@ -48,7 +50,7 @@ export function CanvasArea() {
   const setClickedKey = useCanvasStore((s) => s.setClickedKey);
   const persist = useCanvasStore((s) => s.persist);
   const applyBemClasses = useCanvasStore((s) => s.applyBemClasses);
-
+  const [isProjectsOpen, setIsProjectsOpen] = useState(false);
   const leftNodes = useMemo(() => {
     if (!isSplit || rightKeys.size === 0) return currentJson;
     return removeNodesByKeys(currentJson, rightKeys);
@@ -148,6 +150,17 @@ export function CanvasArea() {
         {/* TOP TOOLBAR */}
         <div className="h-7 shrink-0 bg-zinc-900 border-b border-zinc-800 pl-2 pr-1 flex items-center justify-between text-xs text-zinc-400">
           <span className="font-mono !text-[10px]">Workspace</span>
+
+          <button
+            type="button"
+            onClick={() => setIsProjectsOpen(true)}
+            title="Manage user projects and website folders in Neon DB"
+            className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono transition-all pointer-pointer border bg-blue-950/40 text-blue-300 hover:text-white hover:bg-blue-600/30 border-blue-700/50"
+          >
+            <CloudArrowUpIcon className="size-3.5 text-blue-400" />
+            <span>Projects</span>
+          </button>
+
           <div className="flex items-center gap-1.5">
             <button
               type="button"
@@ -299,7 +312,10 @@ export function CanvasArea() {
           onClose={() => setClickedKey(null)}
         />
       </div>
-
+      <ProjectManagerModal
+        isOpen={isProjectsOpen}
+        onClose={() => setIsProjectsOpen(false)}
+      />
       <CanvasDragGhost />
       <CanvasMarqueeOverlay />
     </div>
