@@ -4,6 +4,46 @@ import { DropGap } from "@/app/plaza/components/CanvasArea/components/DropGap";
 import type { NodeCardProps } from "./nodeCard.types";
 import { useNodeCard } from "./useNodeCard";
 
+/**
+ * 🔹 Рекурсивный рендерер миниатюрного SVG дерева (для path, circle, rect и т.д.)
+ */
+function MiniSvgChild({ node }: { node: HtmlNode }) {
+  const Tag = (node.tag || "path").toLowerCase() as any;
+  const attrs = node.attributes || {};
+  const { class: _cls, style: _stl, ...validAttrs } = attrs;
+
+  return (
+    <Tag {...validAttrs}>
+      {Array.isArray(node.children) &&
+        node.children.map((child, idx) => (
+          <MiniSvgChild key={child._key || idx} node={child} />
+        ))}
+    </Tag>
+  );
+}
+
+/**
+ * 🔹 Мини-превью для SVG
+ */
+function MiniSvgPreview({ node }: { node: HtmlNode }) {
+  const attrs = node.attributes || {};
+  const viewBox = attrs.viewBox || attrs.viewbox || "0 0 24 24";
+
+  return (
+    <svg
+      viewBox={viewBox}
+      className="w-full h-full text-zinc-300 pointer-events-none"
+      fill={attrs.fill || "currentColor"}
+      stroke={attrs.stroke || "none"}
+    >
+      {Array.isArray(node.children) &&
+        node.children.map((child, idx) => (
+          <MiniSvgChild key={child._key || idx} node={child} />
+        ))}
+    </svg>
+  );
+}
+
 function NodeCardComponent({
   node,
   depth,
@@ -21,6 +61,8 @@ function NodeCardComponent({
     isTemplateMode,
     isRightPaneNode,
     slotNumber,
+    imgSrc,
+    svgTargetNode,
     borderStyle,
     bgStyle,
     shadowStyle,
@@ -116,11 +158,37 @@ function NodeCardComponent({
             </button>
           )}
 
+          {/* Tag badge */}
           <span
             className={`px-1.5 py-0.5 rounded text-[12px] tracking-tight border shrink-0 leading-none ${tagBadgeClass}`}
           >
             {node.tag || "div"}
           </span>
+
+          {/* 🖼️ МИНИ-ПРЕВЬЮ ДЛЯ <img> */}
+          {imgSrc && (
+            <div
+              title={`Image source: ${imgSrc.substring(0, 60)}...`}
+              className="size-5 rounded border border-zinc-700/80 bg-zinc-950 flex items-center justify-center overflow-hidden shrink-0 shadow-sm"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={imgSrc}
+                alt=""
+                className="max-w-full max-h-full object-contain pointer-events-none"
+              />
+            </div>
+          )}
+
+          {/* ⚡ МИНИ-ПРЕВЬЮ ДЛЯ <svg> */}
+          {svgTargetNode && (
+            <div
+              title="SVG Vector preview"
+              className="size-5 rounded border border-zinc-700/80 bg-zinc-950/90 p-0.5 flex items-center justify-center overflow-hidden shrink-0 shadow-sm"
+            >
+              <MiniSvgPreview node={svgTargetNode} />
+            </div>
+          )}
 
           {hasClass && (
             <span

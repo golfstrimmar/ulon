@@ -53,6 +53,31 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
     };
   }, []);
 
+  // 🖼️ Детекция картинки <img>
+  const imgSrc = useMemo(() => {
+    const tag = (node.tag || "").toLowerCase();
+    if (tag === "img" && node.attributes?.src) {
+      return node.attributes.src;
+    }
+    return null;
+  }, [node]);
+
+  // ⚡ Детекция SVG (тег <svg> напрямую либо обертка <i>/<div class="svg-wrapper">)
+  const svgTargetNode = useMemo(() => {
+    const tag = (node.tag || "").toLowerCase();
+    if (tag === "svg") return node;
+
+    // Проверяем, если это обертка <i> или <div>, содержащая <svg> внутри
+    if (Array.isArray(node.children)) {
+      const svgChild = node.children.find(
+        (c) => (c.tag || "").toLowerCase() === "svg",
+      );
+      if (svgChild) return svgChild;
+    }
+
+    return null;
+  }, [node]);
+
   const { borderStyle, bgStyle, shadowStyle } = useMemo(() => {
     let border = DEPTH_BORDER[depthIdx];
     let bg = DEPTH_BG[depthIdx];
@@ -110,6 +135,12 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
     }
     if (["section", "header", "footer"].includes(tagLower)) {
       return "bg-amber-950/80 border-amber-500/80 text-amber-200";
+    }
+    if (tagLower === "img") {
+      return "bg-sky-950/80 border-sky-500/80 text-sky-200";
+    }
+    if (tagLower === "svg" || tagLower === "i") {
+      return "bg-violet-950/80 border-violet-500/80 text-violet-200";
     }
     return "bg-zinc-800/80 border-zinc-600/80 text-zinc-200";
   }, [node.tag]);
@@ -215,6 +246,8 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
     isTemplateMode,
     isRightPaneNode,
     slotNumber,
+    imgSrc,
+    svgTargetNode,
     borderStyle,
     bgStyle,
     shadowStyle,
