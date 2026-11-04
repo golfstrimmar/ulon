@@ -3,23 +3,20 @@
  * @description Компиляция SCSS в CSS и обновление конкретного класса на месте.
  */
 
+import { compileScssAction } from "@/actions/scss.actions";
+
 export async function compileScssToCss(scss: string): Promise<string> {
   const code = (scss || "").trim();
   if (!code) return "";
 
   try {
-    const res = await fetch("/api/compile-scss", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scss: code }),
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      return data.css || "";
+    // 🚀 Прямой вызов серверного экшена без всяких fetch('/api/compile-scss')!
+    const res = await compileScssAction(code);
+    if (res.success && res.css !== undefined) {
+      return res.css;
     }
   } catch (e) {
-    // Фоллбэк
+    console.warn("⚠️ [SCSS Action Network Error]:", e.message);
   }
 
   return code;
@@ -122,7 +119,9 @@ export function extractNestedSnippet(
 ): string | null {
   if (!classSnippet || !nestedSelector) return null;
   const escaped = escapeRegex(nestedSelector.trim());
-  const regex = new RegExp(`(^|\\n)[ \\t]*(${escaped})(?:\\b|(?=[\\s{]))[^{]*\\{`);
+  const regex = new RegExp(
+    `(^|\\n)[ \\t]*(${escaped})(?:\\b|(?=[\\s{]))[^{]*\\{`,
+  );
   const match = regex.exec(classSnippet);
   if (!match) return null;
 
@@ -169,9 +168,7 @@ function mergeNestedBody(existingBody: string, newBody: string): string {
     .map((l) => l.trim())
     .filter((l) => Boolean(l) && l !== "{" && l !== "}");
 
-  return [...keptLines, ...newLines]
-    .map((l) => `    ${l}`)
-    .join("\n");
+  return [...keptLines, ...newLines].map((l) => `    ${l}`).join("\n");
 }
 
 /**
@@ -188,7 +185,9 @@ export function updateNestedSnippetInClass(
 
   const trimmedSnippet = newNestedSnippet.trim();
   const escaped = escapeRegex(sel);
-  const regex = new RegExp(`(^|\\n)([ \\t]*${escaped}(?:\\b|(?=[\\s{]))[^{]*\\{)`);
+  const regex = new RegExp(
+    `(^|\\n)([ \\t]*${escaped}(?:\\b|(?=[\\s{]))[^{]*\\{)`,
+  );
   const match = regex.exec(classSnippet);
 
   if (match) {
