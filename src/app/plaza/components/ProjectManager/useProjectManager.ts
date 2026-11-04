@@ -10,32 +10,78 @@ import {
   getGlobalJs,
 } from "@/lib/htmlStorage";
 import { DB_KEY } from "@/app/plaza/components/CanvasArea/constants/theme";
-import type { FolderItem, FullProjectPayload } from "./projectManager.types";
+import {
+  ensureUniqueKeys,
+  mergeScssWithoutDuplicates,
+} from "@/app/plaza/components/CanvasArea/models/canvasModel";
+import type { FolderItem } from "./projectManager.types";
+import {
+  getFoldersAction,
+  createFolderAction,
+  renameFolderAction,
+  deleteFolderAction,
+  saveProjectAction,
+  loadProjectAction,
+  updateProjectAction,
+  deleteProjectAction,
+} from "./projectManager.actions";
+
+export interface ActiveCloudProject {
+  id: string;
+  name: string;
+  folderId: string;
+}
+
+let globalActiveProject: ActiveCloudProject | null = null;
+const activeProjectListeners = new Set<() => void>();
+
+function notifyActiveProjectChange() {
+  activeProjectListeners.forEach((fn) => fn());
+}
 
 export function useProjectManager() {
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
+  const [activeCloudProject, setActiveCloudProject] =
+    useState<ActiveCloudProject | null>(globalActiveProject);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  // Загрузка списка папок с бэкенда
+  useEffect(() => {
+    const listener = () => setActiveCloudProject(globalActiveProject);
+    activeProjectListeners.add(listener);
+    return () => {
+      activeProjectListeners.delete(listener);
+    };
+  }, []);
+
+  const setGlobalActive = (proj: ActiveCloudProject | null) => {
+    globalActiveProject = proj;
+    setActiveCloudProject(proj);
+    notifyActiveProjectChange();
+  };
+
+  // ─── Загрузка списка папок ───
   const fetchFolders = useCallback(async () => {
     setIsLoading(true);
     setActionError(null);
     try {
-      const res = await fetch("/api/folders");
-      if (!res.ok) throw new Error("Failed to load folders");
-      const data = await res.json();
-      setFolders(data.folders || []);
+      const res = await getFoldersAction();
+      if (!res.success) throw new Error(res.error);
 
-      // Если активная папка еще не выбрана — выбираем первую
-      if (!activeFolderId && data.folders?.length > 0) {
-        setActiveFolderId(data.folders[0].id);
+      const list = res.folders || [];
+      setFolders(list);
+
+      if (!activeFolderId && list.length > 0) {
+        if (globalActiveProject?.folderId) {
+          setActiveFolderId(globalActiveProject.folderId);
+        } else {
+          setActiveFolderId(list[0].id);
+        }
       }
     } catch (err: any) {
-      console.error(err);
-      setActionError(err.message || "Failed to load projects");
+      setActionError(err.message || "Failed to load folders");
     } finally {
       setIsLoading(false);
     }
@@ -45,21 +91,15 @@ export function useProjectManager() {
     fetchFolders();
   }, [fetchFolders]);
 
-  // ─── Операции с папками ───
+  // ─── Папки ───
   const createFolder = async (name: string): Promise<boolean> => {
-    if (!name.trim()) return false;
     setActionError(null);
     try {
-      const res = await fetch("/api/folders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to create folder");
+      const res = await createFolderAction(name);
+      if (!res.success) throw new Error(res.error);
 
       await fetchFolders();
-      setActiveFolderId(data.folder.id);
+      if (res.folder?.id) setActiveFolderId(res.folder.id);
       return true;
     } catch (err: any) {
       setActionError(err.message);
@@ -71,14 +111,9 @@ export function useProjectManager() {
     id: string,
     newName: string,
   ): Promise<boolean> => {
-    if (!newName.trim()) return false;
     try {
-      const res = await fetch("/api/folders", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, name: newName.trim() }),
-      });
-      if (!res.ok) throw new Error("Failed to rename folder");
+      const res = await renameFolderAction(id, newName);
+      if (!res.success) throw new Error(res.error);
       await fetchFolders();
       return true;
     } catch (err: any) {
@@ -89,9 +124,11 @@ export function useProjectManager() {
 
   const deleteFolder = async (id: string): Promise<boolean> => {
     try {
-      const res = await fetch(`/api/folders?id=${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete folder");
+      const res = await deleteFolderAction(id);
+      if (!res.success) throw new Error(res.error);
+
       if (activeFolderId === id) setActiveFolderId(null);
+      if (globalActiveProject?.folderId === id) setGlobalActive(null);
       await fetchFolders();
       return true;
     } catch (err: any) {
@@ -100,42 +137,41 @@ export function useProjectManager() {
     }
   };
 
-  // ─── Сохранение текущего холста в базу ───
+  // ─── Сохранить как НОВЫЙ проект ───
   const saveCurrentCanvasAsProject = async (
     name: string,
     targetFolderId: string,
   ): Promise<boolean> => {
-    if (!name.trim() || !targetFolderId) return false;
     setIsSaving(true);
     setActionError(null);
 
     try {
-      // 1. Берем текущие данные холста, стилей и скриптов
       const currentJson = useCanvasStore.getState().currentJson;
       const [currentScss, currentJs] = await Promise.all([
         getGlobalScss().catch(() => ""),
         getGlobalJs().catch(() => ""),
       ]);
 
-      const res = await fetch("/api/projects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          folderId: targetFolderId,
-          htmlJson: currentJson,
-          scss: currentScss,
-          js: currentJs,
-        }),
+      const res = await saveProjectAction({
+        name,
+        folderId: targetFolderId,
+        htmlJson: currentJson,
+        scss: currentScss,
+        js: currentJs,
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to save project");
+      if (!res.success) throw new Error(res.error);
+
+      setGlobalActive({
+        id: res.project.id,
+        name: res.project.name,
+        folderId: res.project.folderId,
+      });
 
       await fetchFolders();
       useCanvasStore
         .getState()
-        .showHud(`Project «${name}» saved successfully!`, "success");
+        .showHud(`Project «${name}» saved to Neon DB!`, "success");
       return true;
     } catch (err: any) {
       setActionError(err.message);
@@ -145,45 +181,126 @@ export function useProjectManager() {
     }
   };
 
-  // ─── Извлечение проекта из базы и применение на холст ───
+  // ─── ОБНОВИТЬ / ПЕРЕЗАПИСАТЬ СУЩЕСТВУЮЩИЙ ПРОЕКТ ───
+  const updateProjectWithCurrentCanvas = async (
+    projectId: string,
+    customName?: string,
+  ): Promise<boolean> => {
+    setIsSaving(true);
+    setActionError(null);
+
+    try {
+      const currentJson = useCanvasStore.getState().currentJson;
+      const [currentScss, currentJs] = await Promise.all([
+        getGlobalScss().catch(() => ""),
+        getGlobalJs().catch(() => ""),
+      ]);
+
+      const res = await updateProjectAction(projectId, {
+        name: customName,
+        htmlJson: currentJson,
+        scss: currentScss,
+        js: currentJs,
+      });
+
+      if (!res.success) throw new Error(res.error);
+
+      if (customName && globalActiveProject?.id === projectId) {
+        setGlobalActive({ ...globalActiveProject, name: customName.trim() });
+      }
+
+      await fetchFolders();
+      useCanvasStore
+        .getState()
+        .showHud(`Project updated in Neon DB!`, "success");
+      return true;
+    } catch (err: any) {
+      setActionError(err.message);
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // ─── 🚀 ДОБАВИТЬ ПРОЕКТ ИЗ БАЗЫ В КОНЕЦ ТЕКУЩЕГО ХОЛСТА (БЕЗ ПЕРЕЗАТИРАНИЯ) ───
   const loadProjectToCanvas = async (projectId: string): Promise<boolean> => {
     setIsLoading(true);
     setActionError(null);
 
     try {
-      const res = await fetch(`/api/projects/${projectId}`);
-      if (!res.ok) throw new Error("Failed to fetch project");
-      const { project }: { project: FullProjectPayload } = await res.json();
+      const res = await loadProjectAction(projectId);
+      if (!res.success || !res.project)
+        throw new Error(res.error || "Failed to load");
 
-      const nodes = Array.isArray(project.htmlJson) ? project.htmlJson : [];
-      const scss = project.scss || "";
-      const js = project.js || "";
+      const project = res.project;
+      const incomingRawNodes = Array.isArray(project.htmlJson)
+        ? project.htmlJson
+        : [];
+      const incomingScss = (project.scss || "").trim();
+      const incomingJs = (project.js || "").trim();
 
-      // 1. Обновляем Zustand стор
-      useCanvasStore.getState().setCurrentJson(nodes);
-      useCanvasStore.getState().setRightKeys(new Set());
+      // 1. Гарантируем уникальные ключи для входящих нод (исключаем коллизии с уже стоящими на холсте)
+      const incomingNodes = ensureUniqueKeys(incomingRawNodes);
 
-      // 2. Синхронизируем с локальной БД холста (IndexedDB)
-      await Promise.all([
-        saveHtmlJson(DB_KEY, nodes),
-        saveGlobalScss(scss),
-        saveGlobalJs(js),
+      // 2. 🎯 ДОБАВЛЯЕМ В КОНЕЦ: объединяем текущее дерево с новыми нодами
+      const currentTree = useCanvasStore.getState().currentJson;
+      const nextTree = [...currentTree, ...incomingNodes];
+
+      // 3. Берем текущие стили и скрипты и объединяем их без дубликатов
+      const [currentScss, currentJs] = await Promise.all([
+        getGlobalScss().catch(() => ""),
+        getGlobalJs().catch(() => ""),
       ]);
 
-      // 3. Диспатчим события обновления холста и превью
+      const nextScss = incomingScss
+        ? mergeScssWithoutDuplicates(currentScss, incomingScss)
+        : currentScss;
+
+      const nextJs =
+        incomingJs && !currentJs.includes(incomingJs)
+          ? `${currentJs ? `${currentJs}\n\n` : ""}${incomingJs}`
+          : currentJs;
+
+      // 4. Обновляем Zustand стор и локальную базу IndexedDB объединенными данными
+      useCanvasStore.getState().setCurrentJson(nextTree);
+
+      await Promise.all([
+        saveHtmlJson(DB_KEY, nextTree),
+        saveGlobalScss(nextScss),
+        saveGlobalJs(nextJs),
+      ]);
+
+      // 5. Запоминаем проект как активный в рабочей сессии
+      setGlobalActive({
+        id: project.id,
+        name: project.name,
+        folderId: project.folderId,
+      });
+
+      // 6. Оповещаем все компоненты и iframe превью об обновлении
       window.dispatchEvent(
         new CustomEvent("plaza-tree-updated", {
-          detail: { nodes, source: "project-manager" },
+          detail: { nodes: nextTree, source: "project-manager" },
         }),
       );
-      window.dispatchEvent(
-        new CustomEvent("plaza-styles-updated", { detail: scss }),
-      );
-      window.dispatchEvent(
-        new CustomEvent("plaza-scripts-updated", { detail: js }),
-      );
 
-      useCanvasStore.getState().showHud(`Loaded: «${project.name}»`, "success");
+      if (nextScss !== currentScss) {
+        window.dispatchEvent(
+          new CustomEvent("plaza-styles-updated", { detail: nextScss }),
+        );
+      }
+      if (nextJs !== currentJs) {
+        window.dispatchEvent(
+          new CustomEvent("plaza-scripts-updated", { detail: nextJs }),
+        );
+      }
+
+      useCanvasStore
+        .getState()
+        .showHud(
+          `Appended: «${project.name}» (${incomingNodes.length} nodes)`,
+          "success",
+        );
       return true;
     } catch (err: any) {
       setActionError(err.message);
@@ -193,19 +310,19 @@ export function useProjectManager() {
     }
   };
 
-  // ─── Переименование и удаление проектов ───
+  // ─── Переименование и удаление ───
   const renameProject = async (
     id: string,
     newName: string,
   ): Promise<boolean> => {
-    if (!newName.trim()) return false;
     try {
-      const res = await fetch(`/api/projects/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName.trim() }),
-      });
-      if (!res.ok) throw new Error("Failed to rename project");
+      const res = await updateProjectAction(id, { name: newName });
+      if (!res.success) throw new Error(res.error);
+
+      if (globalActiveProject?.id === id) {
+        setGlobalActive({ ...globalActiveProject, name: newName.trim() });
+      }
+
       await fetchFolders();
       return true;
     } catch (err: any) {
@@ -216,8 +333,10 @@ export function useProjectManager() {
 
   const deleteProject = async (id: string): Promise<boolean> => {
     try {
-      const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete project");
+      const res = await deleteProjectAction(id);
+      if (!res.success) throw new Error(res.error);
+
+      if (globalActiveProject?.id === id) setGlobalActive(null);
       await fetchFolders();
       return true;
     } catch (err: any) {
@@ -226,6 +345,8 @@ export function useProjectManager() {
     }
   };
 
+  const unlinkActiveProject = () => setGlobalActive(null);
+
   const activeFolder = folders.find((f) => f.id === activeFolderId) || null;
 
   return {
@@ -233,6 +354,7 @@ export function useProjectManager() {
     activeFolder,
     activeFolderId,
     setActiveFolderId,
+    activeCloudProject,
     isLoading,
     isSaving,
     actionError,
@@ -241,8 +363,10 @@ export function useProjectManager() {
     renameFolder,
     deleteFolder,
     saveCurrentCanvasAsProject,
+    updateProjectWithCurrentCanvas,
     loadProjectToCanvas,
     renameProject,
     deleteProject,
+    unlinkActiveProject,
   };
 }
