@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { Header } from "@/components/Header";
 import { prisma } from "@/lib/prisma";
+import { DeleteAccountButton } from "./DeleteAccountButton";
 
 async function AccountDetails() {
   const session = await auth();
@@ -16,7 +17,7 @@ async function AccountDetails() {
     : null;
 
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 shadow-xl">
+    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 shadow-xl m-4">
       <div className="flex items-center gap-4 mb-6 border-b border-zinc-800 pb-6">
         {session.user.image ? (
           <img
@@ -34,9 +35,7 @@ async function AccountDetails() {
           <h1 className="text-2xl font-bold text-white tracking-tight">
             My Profile
           </h1>
-          <p className="text-sm text-zinc-400">
-            Your account details
-          </p>
+          <p className="text-sm text-zinc-400">Your account details</p>
         </div>
       </div>
 
@@ -86,13 +85,16 @@ async function AccountDetails() {
         )}
       </div>
 
-      <div className="mt-8 pt-4 border-t border-zinc-800 flex justify-between items-center">
+      <div className="mt-8 pt-6 border-t border-zinc-800 flex justify-between items-center">
         <Link
           href="/"
           className="text-sm text-zinc-400 hover:text-white transition flex items-center gap-1.5"
         >
           ← Back to home
         </Link>
+
+        {/* Delete Account button */}
+        <DeleteAccountButton />
       </div>
     </div>
   );
@@ -100,27 +102,12 @@ async function AccountDetails() {
 
 export default function AccountPage() {
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col">
-      <Suspense
-        fallback={
-          <header className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur px-6 py-4 flex items-center justify-between">
-            <span className="font-bold text-xl tracking-tight text-white">Ulon</span>
-            <div className="h-8 w-28 bg-zinc-800/50 rounded-full animate-pulse" />
-          </header>
-        }
-      >
-        <Header />
-      </Suspense>
-
-      <main className="flex-1 max-w-2xl w-full mx-auto p-6 flex flex-col justify-center">
-        <Suspense
-          fallback={
-            <div className="h-64 w-full bg-zinc-900/50 rounded-2xl animate-pulse" />
-          }
-        >
-          <AccountDetails />
-        </Suspense>
-      </main>
-    </div>
+    <Suspense
+      fallback={
+        <div className="h-64 w-full bg-zinc-900/50 rounded-2xl animate-pulse" />
+      }
+    >
+      <AccountDetails />
+    </Suspense>
   );
 }
