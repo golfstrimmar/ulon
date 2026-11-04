@@ -1,5 +1,5 @@
-import { PreviewArea } from "./components/PreviewArea/PreviewArea";
-import { CanvasArea } from "./components/CanvasArea/CanvasArea";
+import { PreviewArea } from "@/app/plaza/components/PreviewArea/PreviewArea";
+import { CanvasArea } from "@/app/plaza/components/CanvasArea/CanvasArea";
 
 export const metadata = {
   title: "Plaza - Canvas htmlJson Renderer",

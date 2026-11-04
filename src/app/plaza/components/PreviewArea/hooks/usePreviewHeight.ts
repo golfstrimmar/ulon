@@ -38,10 +38,10 @@ export function usePreviewHeight({
 
   const activeImageHeight = overlayHeight || naturalImgHeight;
 
-  // Calculate prototype target height
+  // Calculate prototype target height with 40px buffer
   const prototypeHeight =
     hasImage && activeImageHeight > 0
-      ? activeImageHeight + Math.max(0, offsetY)
+      ? activeImageHeight + Math.max(0, offsetY) + 80
       : null;
 
   const effectiveHeight = prototypeHeight
@@ -100,7 +100,7 @@ export function usePreviewHeight({
 
       const finalHeight = Math.max(
         140,
-        Math.ceil(maxBottom + bodyPaddingBottom + 16),
+        Math.ceil(maxBottom + bodyPaddingBottom + 40),
       );
 
       setIframeHeight((prev) => {

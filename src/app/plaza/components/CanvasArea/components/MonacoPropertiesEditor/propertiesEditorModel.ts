@@ -20,7 +20,11 @@ export function getSnippetWithFallback(
     extracted.trim() === `.${cls} {\n}`;
 
   if (isEmpty && fallbackStyle && fallbackStyle.trim()) {
-    const formatted = fallbackStyle
+    const trimmed = fallbackStyle.trim();
+    if (trimmed.includes("{")) {
+      return `.${cls} {\n  ${trimmed.split("\n").join("\n  ")}\n}`;
+    }
+    const formatted = trimmed
       .split(";")
       .map((s) => s.trim())
       .filter(Boolean)

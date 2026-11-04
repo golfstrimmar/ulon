@@ -1,14 +1,16 @@
 "use client";
 
-import React, { useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
+import { PencilSquareIcon } from "@heroicons/react/24/outline";
 
 import { usePreviewArea } from "@/app/plaza/components/PreviewArea/hooks/usePreviewArea";
 import { usePixelPerfect } from "@/app/plaza/components/PreviewArea/hooks/usePixelPerfect";
 import { useBreakpoint } from "@/app/plaza/components/PreviewArea/hooks/useBreakpoint";
 import { usePreviewHeight } from "@/app/plaza/components/PreviewArea/hooks/usePreviewHeight";
 import { usePreviewHighlight } from "@/app/plaza/components/PreviewArea/hooks/usePreviewHighlight";
+import TracingWireframeOverlay from "./components/TracingWireframeOverlay";
 
 import ButtonCss from "@/app/plaza/components/PreviewArea/components/ButtonCss";
 import ButtonJS from "@/app/plaza/components/PreviewArea/components/ButtonJS";
@@ -56,7 +58,9 @@ export function PreviewArea() {
     isRotated,
   } = useBreakpoint();
 
-  // 🔹 Height controller
+  // Режим кальки (обводки поверх макета)
+  const [isTracingActive, setIsTracingActive] = useState(false);
+
   const { effectiveHeight, initHeightMeasurement, setNaturalImgHeight } =
     usePreviewHeight({
       iframeRef,
@@ -67,13 +71,11 @@ export function PreviewArea() {
       offsetY,
     });
 
-  // 🔹 Highlight & selection controller
   const { initHighlighting } = usePreviewHighlight({
     iframeRef,
     srcDoc,
   });
 
-  // 🔹 Iframe Load Coordinator
   const handleLoad = useCallback(() => {
     const doc = iframeRef.current?.contentDocument;
     if (!doc) return;
@@ -114,6 +116,25 @@ export function PreviewArea() {
               </span>
             </div>
 
+            {/* 🚀 КНОПКА КАЛЬКИ (TRACING MODE) */}
+            <button
+              type="button"
+              onClick={() => setIsTracingActive(!isTracingActive)}
+              title={
+                isTracingActive
+                  ? "Exit Tracing Mode"
+                  : "Trace Layout: Draw wireframe boxes directly over prototype mockup"
+              }
+              className={`flex items-center gap-1 px-2.5 py-0.5 rounded text-[11px] font-mono font-bold transition cursor-pointer border ${
+                isTracingActive
+                  ? "bg-cyan-500/20 text-cyan-300 border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.35)]"
+                  : "bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border-zinc-700/60"
+              }`}
+            >
+              <PencilSquareIcon className="size-3.5 text-cyan-400" />
+              <span>Trace</span>
+            </button>
+
             {hasImage && isOverlayActive && (
               <>
                 {/* Opacity Slider */}
@@ -136,10 +157,10 @@ export function PreviewArea() {
                   </span>
                 </div>
 
-                {/* Precision Horizontal Alignment & Centering Controls */}
+                {/* Horizontal Alignment */}
                 <div
                   className="hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded bg-zinc-950/80 border border-zinc-800 text-[10px] font-mono text-zinc-400"
-                  title="Center & horizontal alignment. Use slider, arrows, mouse wheel or buttons for 1px steps"
+                  title="Center & horizontal alignment. Use slider or buttons for 1px steps"
                 >
                   <button
                     type="button"
@@ -192,7 +213,7 @@ export function PreviewArea() {
                     type="button"
                     onClick={() => setOffsetX(0)}
                     onWheel={handleWheelOffset}
-                    title="Click to reset X offset to 0px (or scroll wheel to adjust 1px)"
+                    title="Click to reset X offset to 0px"
                     className="w-12 text-right text-indigo-300 font-bold hover:text-white transition cursor-pointer select-none"
                   >
                     {offsetX > 0 ? `+${offsetX}` : offsetX}px
@@ -242,7 +263,6 @@ export function PreviewArea() {
                 : "bg-zinc-950/90 p-2 sm:p-4 flex flex-col items-center"
             }`}
           >
-            {/* Box-content ensures borders are OUTSIDE the viewport width */}
             <div
               className={`relative bg-white transition-[width] duration-200 ease-out overflow-hidden ${
                 isFullWidth
@@ -297,7 +317,7 @@ export function PreviewArea() {
                 </div>
               )}
 
-              {/* Viewport Screen */}
+              {/* Viewport Screen with live Tracing Overlay Layer */}
               <div
                 className="relative w-full bg-white transition-[height] duration-200 ease-out overflow-hidden"
                 style={{
@@ -305,6 +325,14 @@ export function PreviewArea() {
                   minHeight: effectiveHeight,
                 }}
               >
+                {/* 🎯 СЛОЙ-КАЛЬКА ДЛЯ РИСОВАНИЯ РАМОК ПОВЕРХ МАКЕТА */}
+                <TracingWireframeOverlay
+                  isActive={isTracingActive}
+                  onClose={() => setIsTracingActive(false)}
+                  viewportWidth={isFullWidth ? "100%" : effectiveWidthStyle}
+                  viewportHeight={effectiveHeight}
+                />
+
                 {/* Pixel Perfect Reference Overlay */}
                 {hasImage && isOverlayActive && (
                   <div

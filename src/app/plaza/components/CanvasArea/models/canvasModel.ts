@@ -174,28 +174,36 @@ export function extractNodesByKeys(
 }
 
 export function isRowContainer(node: HtmlNode): boolean {
-  const raw = (node.class || "").toLowerCase();
-  const cls = raw.replace(/[-_]/g, " ");
+  const rawClass = (node.class || "").toLowerCase();
+  const rawStyle = (node.style || "").toLowerCase();
 
+  // 1. Проверка через нативный CSS в style
+  if (rawStyle.includes("flex-direction: row")) {
+    return true;
+  }
+  if (rawStyle.includes("flex-direction: column")) {
+    return false;
+  }
+
+  // 2. Проверка через классы
+  const cls = rawClass.replace(/[-_]/g, " ");
   if (
-    raw.includes("flex-col") ||
-    raw.includes("flex-column") ||
-    cls.includes("flex col") ||
-    cls.includes("flex column")
+    rawClass.includes("flex-col") ||
+    rawClass.includes("flex-column") ||
+    cls.includes("flex col")
   ) {
     return false;
   }
 
   if (
-    raw.includes("flex-row") ||
+    rawClass.includes("flex-row") ||
     cls.includes("flex row") ||
-    raw.includes("ul-flex-row") ||
-    raw.includes("grid")
+    rawClass.includes("grid")
   ) {
     return true;
   }
 
-  return raw.includes("flex");
+  return rawClass.includes("flex") || rawStyle.includes("display: flex");
 }
 
 /** Extracts styles and scripts */
@@ -928,6 +936,10 @@ export function applyDonorToSlot(
   slotNode: HtmlNode,
   donorNode: HtmlNode,
 ): HtmlNode {
+  // 🎯 ЕСЛИ У СЛОТА ТЕГ ПУСТОЙ ("", null, undefined) — ОН ЗАБИРАЕТ ТЕГ ДОНОРА!
+  const nextTag =
+    slotNode.tag && slotNode.tag.trim() ? slotNode.tag : donorNode.tag || "div";
+
   let nextText = slotNode.text;
   if (typeof donorNode.text === "string" && donorNode.text.trim() !== "") {
     nextText = donorNode.text;
@@ -966,6 +978,7 @@ export function applyDonorToSlot(
 
   return {
     ...slotNode,
+    tag: nextTag, // 👈 Тег обновлен от донора, если был пустым!
     text: nextText,
     class: nextClass,
     attributes: nextAttributes,

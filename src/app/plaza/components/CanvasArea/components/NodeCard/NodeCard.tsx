@@ -1,12 +1,11 @@
+"use client";
+
 import React, { memo } from "react";
 import type { HtmlNode } from "@/types/HtmlNode";
 import { DropGap } from "@/app/plaza/components/CanvasArea/components/DropGap";
 import type { NodeCardProps } from "./nodeCard.types";
 import { useNodeCard } from "./useNodeCard";
 
-/**
- * 🔹 Рекурсивный рендерер миниатюрного SVG дерева (для path, circle, rect и т.д.)
- */
 function MiniSvgChild({ node }: { node: HtmlNode }) {
   const Tag = (node.tag || "path").toLowerCase() as any;
   const attrs = node.attributes || {};
@@ -22,9 +21,6 @@ function MiniSvgChild({ node }: { node: HtmlNode }) {
   );
 }
 
-/**
- * 🔹 Мини-превью для SVG
- */
 function MiniSvgPreview({ node }: { node: HtmlNode }) {
   const attrs = node.attributes || {};
   const viewBox = attrs.viewBox || attrs.viewbox || "0 0 24 24";
@@ -78,6 +74,8 @@ function NodeCardComponent({
     handleToggleCollapseClick,
   } = useNodeCard({ node, depth });
 
+  const hasTag = Boolean(node.tag && node.tag.trim());
+
   return (
     <div
       data-node-key={key}
@@ -96,7 +94,6 @@ function NodeCardComponent({
         boxShadow: shadowStyle,
       }}
     >
-      {/* Visual cue for Donor drop */}
       {isDropDonor && (
         <div className="absolute inset-0 z-30 pointer-events-none rounded-md border-2 border-amber-400 bg-amber-500/15 flex items-center justify-center backdrop-blur-[1px]">
           <span className="px-2 py-0.5 rounded bg-amber-500 text-zinc-950 font-mono font-bold text-[11px] shadow-lg flex items-center gap-1.5 animate-pulse">
@@ -111,7 +108,6 @@ function NodeCardComponent({
         className="h-[28px] px-2 flex items-center justify-between gap-1 rounded-t-md border-b border-zinc-800/60 shrink-0"
       >
         <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
-          {/* Template Slot Badge [1], [2]... */}
           {slotNumber !== null && (
             <span
               title={`Template Slot #${slotNumber}`}
@@ -121,7 +117,6 @@ function NodeCardComponent({
             </span>
           )}
 
-          {/* Template mode hint for unslotted right nodes */}
           {slotNumber === null && isTemplateMode && isRightPaneNode && (
             <span
               title="Click to assign slot number"
@@ -131,7 +126,6 @@ function NodeCardComponent({
             </span>
           )}
 
-          {/* Marquee Selection Indicator */}
           {isSelected && (
             <span className="w-3.5 h-3.5 rounded-sm bg-sky-500/30 border border-sky-400 flex items-center justify-center shrink-0">
               <svg viewBox="0 0 12 12" className="w-2.5 h-2.5 text-sky-300">
@@ -158,14 +152,16 @@ function NodeCardComponent({
             </button>
           )}
 
-          {/* Tag badge */}
           <span
-            className={`px-1.5 py-0.5 rounded text-[12px] tracking-tight border shrink-0 leading-none ${tagBadgeClass}`}
+            className={`px-1.5 py-0.5 rounded text-[11px] font-mono tracking-tight border shrink-0 leading-none ${
+              hasTag
+                ? tagBadgeClass
+                : "border-dashed border-zinc-600 bg-zinc-900/90 text-zinc-400"
+            }`}
           >
-            {node.tag || "div"}
+            {hasTag ? node.tag : "empty"}
           </span>
 
-          {/* 🖼️ МИНИ-ПРЕВЬЮ ДЛЯ <img> */}
           {imgSrc && (
             <div
               title={`Image source: ${imgSrc.substring(0, 60)}...`}
@@ -180,7 +176,6 @@ function NodeCardComponent({
             </div>
           )}
 
-          {/* ⚡ МИНИ-ПРЕВЬЮ ДЛЯ <svg> */}
           {svgTargetNode && (
             <div
               title="SVG Vector preview"

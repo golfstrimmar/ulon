@@ -1,3 +1,5 @@
+"use client";
+
 import { useMemo, useCallback, useRef, useEffect } from "react";
 import type { HtmlNode } from "@/types/HtmlNode";
 import { isRowContainer } from "@/app/plaza/components/CanvasArea/models/canvasModel";
@@ -62,12 +64,11 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
     return null;
   }, [node]);
 
-  // ⚡ Детекция SVG (тег <svg> напрямую либо обертка <i>/<div class="svg-wrapper">)
+  // ⚡ Детекция SVG
   const svgTargetNode = useMemo(() => {
     const tag = (node.tag || "").toLowerCase();
     if (tag === "svg") return node;
 
-    // Проверяем, если это обертка <i> или <div>, содержащая <svg> внутри
     if (Array.isArray(node.children)) {
       const svgChild = node.children.find(
         (c) => (c.tag || "").toLowerCase() === "svg",

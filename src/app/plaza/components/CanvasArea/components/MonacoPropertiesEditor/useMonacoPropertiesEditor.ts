@@ -16,6 +16,7 @@ interface UseMonacoPropertiesEditorOptions {
   globalScss: string;
   attributesValue?: Record<string, string>;
   onSaveGlobalScss: (nextScss: string) => Promise<void> | void;
+  onClearNodeStyle?: () => Promise<void> | void;
   onSaveAttributes?: (
     attributes: Record<string, string>,
   ) => Promise<void> | void;
@@ -28,13 +29,29 @@ export function useMonacoPropertiesEditor({
   globalScss = "",
   attributesValue = {},
   onSaveGlobalScss,
+  onClearNodeStyle,
   onSaveAttributes,
 }: UseMonacoPropertiesEditorOptions) {
+  const getFallbackForTarget = useCallback(
+    (target: string | null) => {
+      if (!target || !nodeStyle || !nodeStyle.trim()) return undefined;
+      // fallbackStyle применим ТОЛЬКО к первому (базовому) классу ноды
+      return target === nodeClasses[0] ? nodeStyle : undefined;
+    },
+    [nodeStyle, nodeClasses],
+  );
+
   const firstCls = nodeClasses[0] ?? null;
   const [openTarget, setOpenTarget] = useState<string | null>(firstCls);
   const [activeScope, setActiveScope] = useState<string>("base");
   const [currentText, setCurrentText] = useState<string>(() =>
-    firstCls ? getSnippetWithFallback(firstCls, globalScss, nodeStyle) : "",
+    firstCls
+      ? getSnippetWithFallback(
+          firstCls,
+          globalScss,
+          firstCls === nodeClasses[0] ? nodeStyle : undefined,
+        )
+      : "",
   );
 
   const currentTextRef = useRef<string>("");
@@ -71,18 +88,50 @@ export function useMonacoPropertiesEditor({
           targetToSave,
           currentTextRef.current,
         );
-        const nextScss = updateClassInGlobalScss(
+        let nextScss = updateClassInGlobalScss(
           globalScssRef.current,
           targetToSave,
           preparedCode,
         );
+
+        // Если у ноды был инлайн nodeStyle, переносим стили базового класса в SCSS (если их там нет) и очищаем style
+        if (nodeStyle && nodeStyle.trim() && onClearNodeStyle) {
+          const baseCls = nodeClasses[0];
+          if (
+            baseCls &&
+            baseCls !== targetToSave &&
+            !nextScss.includes(`.${baseCls}`)
+          ) {
+            const baseSnippet = getSnippetWithFallback(
+              baseCls,
+              nextScss,
+              nodeStyle,
+            );
+            if (baseSnippet) {
+              nextScss = updateClassInGlobalScss(
+                nextScss,
+                baseCls,
+                ensureSelectorWrapper(baseCls, baseSnippet),
+              );
+            }
+          }
+          onClearNodeStyle();
+        }
+
         globalScssRef.current = nextScss;
         onSaveGlobalScss(nextScss);
       }
 
       isDirtyRef.current = false;
     },
-    [openTarget, onSaveAttributes, onSaveGlobalScss],
+    [
+      openTarget,
+      nodeStyle,
+      nodeClasses,
+      onClearNodeStyle,
+      onSaveAttributes,
+      onSaveGlobalScss,
+    ],
   );
 
   // Reset and auto-open first class on active node change
@@ -100,7 +149,7 @@ export function useMonacoPropertiesEditor({
         const snippet = getSnippetWithFallback(
           fallback,
           globalScssRef.current,
-          nodeStyle,
+          getFallbackForTarget(fallback),
         );
         setCurrentText(snippet);
         currentTextRef.current = snippet;
@@ -111,7 +160,14 @@ export function useMonacoPropertiesEditor({
         currentTextRef.current = "";
       }
     }
-  }, [nodeKey, nodeClasses, nodeStyle, openTarget, saveCurrentOpenTarget]);
+  }, [
+    nodeKey,
+    nodeClasses,
+    nodeStyle,
+    openTarget,
+    saveCurrentOpenTarget,
+    getFallbackForTarget,
+  ]);
 
   // Fallback to first available class if currently opened class was deleted
   useEffect(() => {
@@ -124,7 +180,7 @@ export function useMonacoPropertiesEditor({
           const snippet = getSnippetWithFallback(
             fallback,
             globalScssRef.current,
-            nodeStyle,
+            getFallbackForTarget(fallback),
           );
           setCurrentText(snippet);
           currentTextRef.current = snippet;
@@ -136,7 +192,7 @@ export function useMonacoPropertiesEditor({
         }
       }
     }
-  }, [nodeClasses, openTarget, nodeStyle]);
+  }, [nodeClasses, openTarget, nodeStyle, getFallbackForTarget]);
 
   // Sync with external SCSS or attribute updates when editor is not dirty
   useEffect(() => {
@@ -159,14 +215,20 @@ export function useMonacoPropertiesEditor({
       const freshSnippet = getSnippetWithFallback(
         openTarget,
         globalScss,
-        nodeStyle,
+        getFallbackForTarget(openTarget),
       );
       if (freshSnippet !== currentTextRef.current) {
         setCurrentText(freshSnippet);
         currentTextRef.current = freshSnippet;
       }
     }
-  }, [globalScss, openTarget, attributesValue, nodeStyle]);
+  }, [
+    globalScss,
+    openTarget,
+    attributesValue,
+    nodeStyle,
+    getFallbackForTarget,
+  ]);
 
   const handleToggleClass = useCallback(
     (cls: string) => {
@@ -187,14 +249,14 @@ export function useMonacoPropertiesEditor({
       const snippet = getSnippetWithFallback(
         clean,
         globalScssRef.current,
-        nodeStyle,
+        getFallbackForTarget(clean),
       );
       setCurrentText(snippet);
       currentTextRef.current = snippet;
       isDirtyRef.current = false;
       setOpenTarget(clean);
     },
-    [openTarget, nodeStyle, saveCurrentOpenTarget],
+    [openTarget, getFallbackForTarget, saveCurrentOpenTarget],
   );
 
   const handleToggleAttributes = useCallback(() => {

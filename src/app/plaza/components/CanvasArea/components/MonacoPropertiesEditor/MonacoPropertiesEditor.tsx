@@ -26,6 +26,7 @@ export interface MonacoPropertiesEditorProps {
   onSaveGlobalScss: (nextScss: string) => Promise<void> | void;
   onSaveScriptJs?: (targetName: string, jsCode: string) => Promise<void>;
   onAddClassToNode?: (newCls: string) => Promise<void>;
+  onClearNodeStyle?: () => Promise<void> | void;
   onSaveAttributes?: (
     attributes: Record<string, string>,
   ) => Promise<void> | void;

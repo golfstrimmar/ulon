@@ -118,11 +118,20 @@ export function useModalNodeProperties({
   // ─── Обработчики ─────────────────────────────────────────────────────────
 
   const handleSaveNodeField = async (
-    field: "tag" | "class" | "text" | "attributes",
+    field: "tag" | "class" | "text" | "attributes" | "style",
     value: any,
   ) => {
     if (!clickedKey) return;
     const patch: Partial<HtmlNode> = { [field]: value };
+    const next = currentJsonRef.current.map((root) =>
+      updateNodeByKey(root, clickedKey, patch),
+    );
+    await persist(next);
+  };
+
+  const handleClearNodeStyle = async () => {
+    if (!clickedKey) return;
+    const patch: Partial<HtmlNode> = { style: "" };
     const next = currentJsonRef.current.map((root) =>
       updateNodeByKey(root, clickedKey, patch),
     );
@@ -195,6 +204,7 @@ export function useModalNodeProperties({
     handleSaveNodeField,
     handleSaveScriptJs,
     handleAddClassToNode,
+    handleClearNodeStyle,
     updateAndPersistScss,
   };
 }

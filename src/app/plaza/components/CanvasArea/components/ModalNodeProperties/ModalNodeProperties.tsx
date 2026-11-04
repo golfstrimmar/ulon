@@ -44,6 +44,7 @@ export default function ModalNodeProperties({
     handleSaveNodeField,
     handleSaveScriptJs,
     handleAddClassToNode,
+    handleClearNodeStyle,
     updateAndPersistScss,
   } = controller;
 
@@ -206,6 +207,7 @@ export default function ModalNodeProperties({
                     await handleSaveNodeField("attributes", newAttrs);
                   }}
                   onAddClassToNode={handleAddClassToNode}
+                  onClearNodeStyle={handleClearNodeStyle}
                 />
               );
             })()}
