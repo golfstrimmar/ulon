@@ -204,7 +204,9 @@ export async function updateProjectAction(
   try {
     const userId = await getAuthUserId();
 
-    const updateData: any = {};
+    const updateData: any = {
+      updatedAt: new Date(),
+    };
     if (data.name?.trim()) updateData.name = data.name.trim();
     if (data.htmlJson !== undefined) updateData.htmlJson = data.htmlJson;
     if (data.scss !== undefined) updateData.scss = data.scss;

@@ -6,6 +6,7 @@ import {
   saveHtmlJson,
   saveGlobalScss,
   saveGlobalJs,
+  getHtmlJson,
   getGlobalScss,
   getGlobalJs,
 } from "@/lib/htmlStorage";
@@ -190,11 +191,19 @@ export function useProjectManager() {
     setActionError(null);
 
     try {
-      const currentJson = useCanvasStore.getState().currentJson;
-      const [currentScss, currentJs] = await Promise.all([
+      // 🎯 Читаем текущую версию напрямую из локальной базы IndexedDB
+      const [dbJson, currentScss, currentJs] = await Promise.all([
+        getHtmlJson(DB_KEY).catch(() => null),
         getGlobalScss().catch(() => ""),
         getGlobalJs().catch(() => ""),
       ]);
+
+      const currentJson =
+        dbJson && Array.isArray(dbJson)
+          ? dbJson
+          : dbJson
+            ? [dbJson]
+            : useCanvasStore.getState().currentJson;
 
       const res = await updateProjectAction(projectId, {
         name: customName,

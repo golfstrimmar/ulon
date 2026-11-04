@@ -8,6 +8,7 @@ import {
   PencilSquareIcon,
   TrashIcon,
   ArrowDownTrayIcon,
+  ArrowPathIcon,
   CloudArrowUpIcon,
   DocumentDuplicateIcon,
   CheckIcon,
@@ -37,6 +38,7 @@ export function ProjectManagerModal({
     renameFolder,
     deleteFolder,
     saveCurrentCanvasAsProject,
+    updateProjectWithCurrentCanvas,
     loadProjectToCanvas,
     renameProject,
     deleteProject,
@@ -85,6 +87,27 @@ export function ProjectManagerModal({
     if (!projectEditVal.trim()) return;
     await renameProject(id, projectEditVal);
     setEditingProjectId(null);
+  };
+
+  const [updatingProjectId, setUpdatingProjectId] = useState<string | null>(
+    null,
+  );
+
+  // Обновление проекта текущей версией из локальной базы
+  const handleUpdateProject = async (id: string, name: string) => {
+    if (
+      !confirm(
+        `Update project «${name}» with the current canvas version from local database?`,
+      )
+    ) {
+      return;
+    }
+    setUpdatingProjectId(id);
+    try {
+      await updateProjectWithCurrentCanvas(id);
+    } finally {
+      setUpdatingProjectId(null);
+    }
   };
 
   // Загрузка проекта на холст
@@ -440,6 +463,27 @@ export function ProjectManagerModal({
                                     className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition cursor-pointer"
                                   >
                                     <PencilSquareIcon className="w-3.5 h-3.5" />
+                                  </button>
+                                  {/* Обновить проект текущей версией с локальной базы */}
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleUpdateProject(proj.id, proj.name)
+                                    }
+                                    title="Update project with current local canvas version"
+                                    disabled={
+                                      updatingProjectId === proj.id || isSaving
+                                    }
+                                    className="px-2.5 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/35 border border-emerald-500/40 text-emerald-300 hover:text-emerald-200 text-xs font-bold transition flex items-center gap-1 cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    <ArrowPathIcon
+                                      className={`w-3.5 h-3.5 ${
+                                        updatingProjectId === proj.id
+                                          ? "animate-spin text-emerald-400"
+                                          : ""
+                                      }`}
+                                    />
+                                    <span>Update</span>
                                   </button>
 
                                   {/* Удалить */}

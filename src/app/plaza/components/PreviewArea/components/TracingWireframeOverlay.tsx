@@ -32,6 +32,7 @@ const AVAILABLE_TAGS = [
   "h4",
   "h5",
   "p",
+  "span",
   "a",
   "button",
   "is",
