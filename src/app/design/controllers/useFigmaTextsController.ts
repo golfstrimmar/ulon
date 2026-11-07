@@ -7,7 +7,10 @@ import { getGlobalScss, saveGlobalScss } from "@/lib/htmlStorage";
 import {
   buildColorMap,
   createHtmlNodeFromText,
+  createHtmlNodeFromStructureItem,
   extractTextsFromJson,
+  extractStructureFromJson,
+  flattenStructureTexts,
   generateScssForTextItems,
   type ColorVariableMap,
   type FigmaTextItem,
@@ -64,16 +67,33 @@ export function useFigmaTextsController() {
       }
 
       try {
+        const structureItems = extractStructureFromJson(rawJson);
         const textItems = extractTextsFromJson(rawJson);
 
+        if (structureItems.length > 0) {
+          // Если есть иерархический блок structure — используем его:
+          // 1. Порядок узлов в точности как в дереве
+          // 2. Родительские блоки (div) группируют дочерние ноды
+          const generatedNodes = structureItems.map((item) =>
+            createHtmlNodeFromStructureItem(item, colorMap),
+          );
+
+          // Для SCSS сохраняем тексты: из блока texts или рекурсивно из structure
+          currentTextItemsRef.current =
+            textItems.length > 0 ? textItems : flattenStructureTexts(structureItems);
+
+          setNodes(generatedNodes);
+          return;
+        }
+
         if (textItems.length === 0) {
-          setError("В переданном JSON не найден массив 'texts'");
+          setError("В переданном JSON не найден массив 'structure' или 'texts'");
           setNodes([]);
           currentTextItemsRef.current = [];
           return;
         }
 
-        // Сохраняем элементы текущего фрагмента в ref
+        // Фоллбэк: если пришел старый формат только с текстами
         currentTextItemsRef.current = textItems;
 
         const generatedNodes = textItems.map((item) =>

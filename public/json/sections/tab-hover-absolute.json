@@ -1,0 +1,56 @@
+[
+  {
+    "tag": "div",
+    "text": "",
+    "class": "tab-hover-absolute",
+    "style": "position: relative; &:hover> .tab-hover-absolute__top .tab-hover__icon {transform: rotate(180deg); }",
+    "children": [
+      {
+        "tag": "div",
+        "text": "tab hover absolute",
+        "class": "tab-hover-absolute__top",
+        "style": "display: flex; justify-content: space-between; align-items: center;cursor: pointer; &:hover + .tab-hover-absolute__bottom { opacity: 1; visibility: visible; transform: translateY(0); } ",
+        "children": [
+          {
+            "tag": "svg",
+            "class": "tab-hover__icon",
+            "style": "width: 20px; height: 20px; transition: transform 0.3s ease;",
+            "attributes": {
+              "xmlns": "http://www.w3.org/2000/svg",
+              "fill": "none",
+              "viewBox": "0 0 24 24",
+              "stroke-width": "1.5",
+              "stroke": "currentColor"
+            },
+            "children": [
+              {
+                "tag": "path",
+                "attributes": {
+                  "stroke-linecap": "round",
+                  "stroke-linejoin": "round",
+                  "d": "m19.5 8.25-7.5 7.5-7.5-7.5"
+                },
+                "children": []
+              }
+            ]
+          }
+        ],
+        "attributes": {}
+      },
+      {
+        "tag": "div",
+        "text": "",
+        "class": "tab-hover-absolute__bottom",
+        "style": "background: #1c67a0;  position: absolute; top: 100%; left: 0; width: 100%; opacity: 0; z-index: 5; visibility: hidden; transform: translateY(10px); transition: opacity 0.25s ease, visibility 0.25s, transform 0.25s ease; &:hover { opacity: 1; visibility: visible; transform: translateY(0); }",
+        "children": [
+          {
+            "tag": "p",
+            "text": "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Iusto consequatur minus quam, nisi perferendis, vel quaerat commodi deleniti molestias laboriosam saepe, eius quisquam dignissimos laborum vero repellat dolorem. Autem, ab!",
+            "children": []
+          }
+        ],
+        "attributes": {}
+      }
+    ]
+  }
+]

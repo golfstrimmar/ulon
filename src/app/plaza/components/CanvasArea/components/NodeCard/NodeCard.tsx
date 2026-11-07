@@ -187,7 +187,7 @@ function NodeCardComponent({
 
           {hasClass && (
             <span
-              className="text-[12px] font-mono text-green-300 leading-none"
+              className="text-[12px] font-mono text-green-300 leading-none whitespace-nowrap"
               title={classStr}
             >
               {classStr}
@@ -196,7 +196,7 @@ function NodeCardComponent({
 
           {hasText && (
             <span
-              className="text-[11px] text-zinc-200 truncate max-w-[180px] font-sans leading-none"
+              className="text-[11px] text-zinc-200 truncate font-sans "
               title={node.text}
             >
               &quot;{node.text}&quot;

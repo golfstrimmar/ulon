@@ -64,6 +64,8 @@ export function useCanvasMarquee({ containerRef }: UseCanvasMarqueeOptions) {
         }
       }
 
+      e.preventDefault();
+
       const startPane = target
         .closest("[data-pane]")
         ?.getAttribute("data-pane");

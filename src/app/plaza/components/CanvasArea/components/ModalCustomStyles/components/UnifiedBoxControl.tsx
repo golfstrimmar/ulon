@@ -170,7 +170,7 @@ export function UnifiedBoxControl({
           ? 1200
           : activeProp === "gap"
             ? 120
-            : 160,
+            : 400,
     step:
       activeProp === "opacity"
         ? 0.05

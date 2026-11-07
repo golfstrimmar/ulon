@@ -307,6 +307,50 @@ export function extractStylesAndScriptsFromNodes(nodes: HtmlNode[]): {
   };
 }
 
+export function splitTopLevelCssBlocks(scss: string): {
+  selector: string;
+  full: string;
+  classes: string[];
+}[] {
+  const blocks: { selector: string; full: string; classes: string[] }[] = [];
+  let depth = 0;
+  let selector = "";
+  let startIdx = 0;
+  const len = scss.length;
+
+  for (let i = 0; i < len; i++) {
+    const char = scss[i];
+
+    if (char === "{") {
+      if (depth === 0) {
+        selector = scss.slice(startIdx, i).trim();
+      }
+      depth++;
+    } else if (char === "}") {
+      depth--;
+      if (depth === 0) {
+        const full = scss.slice(startIdx, i + 1).trim();
+        const classes: string[] = [];
+        const classRegex = /\.([a-zA-Z0-9_-]+)/g;
+        let m: RegExpExecArray | null;
+        while ((m = classRegex.exec(selector)) !== null) {
+          classes.push(m[1]);
+        }
+        blocks.push({ selector, full, classes });
+        startIdx = i + 1;
+        selector = "";
+      }
+    }
+  }
+
+  const remainder = scss.slice(startIdx).trim();
+  if (remainder) {
+    blocks.push({ selector: remainder, full: remainder, classes: [] });
+  }
+
+  return blocks;
+}
+
 export function mergeScssWithoutDuplicates(
   currentScss: string,
   incomingScss: string,
@@ -314,24 +358,51 @@ export function mergeScssWithoutDuplicates(
   if (!incomingScss.trim()) return currentScss;
   if (!currentScss.trim()) return incomingScss.trim();
 
-  const incomingRules = incomingScss
-    .split(/\n(?=\.[a-zA-Z0-9_-]+\s*\{)/g)
-    .map((r) => r.trim())
-    .filter(Boolean);
+  const currentBlocks = splitTopLevelCssBlocks(currentScss);
+  const existingSelectors = new Set<string>();
+  const existingClasses = new Set<string>();
+  const existingRules = new Set<string>();
 
-  let result = currentScss;
+  for (const block of currentBlocks) {
+    existingRules.add(block.full);
+    const norm = block.selector.replace(/\s+/g, " ").trim();
+    if (norm) {
+      existingSelectors.add(norm);
+    }
+    for (const cls of block.classes) {
+      existingClasses.add(cls);
+    }
+  }
 
-  for (const rule of incomingRules) {
-    const match = rule.match(/^\.([a-zA-Z0-9_-]+)/);
-    if (match) {
-      const className = match[1];
-      const regex = new RegExp(`\\.${className}\\s*\\{`);
-      if (!regex.test(result)) {
-        result = `${result.trim()}\n\n${rule}`;
+  const incomingBlocks = splitTopLevelCssBlocks(incomingScss);
+  let result = currentScss.trim();
+
+  for (const block of incomingBlocks) {
+    if (existingRules.has(block.full)) {
+      continue;
+    }
+
+    const norm = block.selector.replace(/\s+/g, " ").trim();
+    if (norm && existingSelectors.has(norm)) {
+      continue;
+    }
+
+    if (block.classes.length > 0) {
+      result = `${result}\n\n${block.full}`;
+      if (norm) {
+        existingSelectors.add(norm);
       }
+      for (const cls of block.classes) {
+        existingClasses.add(cls);
+      }
+      existingRules.add(block.full);
     } else {
-      if (!result.includes(rule)) {
-        result = `${result.trim()}\n\n${rule}`;
+      if (!result.includes(block.full)) {
+        result = `${result}\n\n${block.full}`;
+        if (norm) {
+          existingSelectors.add(norm);
+        }
+        existingRules.add(block.full);
       }
     }
   }
@@ -814,7 +885,7 @@ export function applyBemClassesToSection(
         generatedClass = `${activeBlock}__span`;
       } else if (/^h[1-6]$/.test(tag)) {
         // Заголовок
-        generatedClass = `${activeBlock}__title`;
+        generatedClass = `${activeBlock}__title_${tag}`;
       } else if (tag === "button") {
         // Кнопка
         generatedClass = `${activeBlock}__button`;

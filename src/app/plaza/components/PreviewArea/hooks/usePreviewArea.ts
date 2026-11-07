@@ -170,6 +170,21 @@ export function usePreviewArea() {
       // 🚀 Вставляем HTML напрямую в body. iframe НЕ перезагружается, белого экрана нет!
       if (iframeDoc && iframeDoc.body) {
         iframeDoc.body.innerHTML = nextHtml;
+
+        // 🔁 После вставки HTML — перезапускаем актуальный JS-бандл,
+        // иначе слайдеры и другие скрипты не реинициализируются
+        const rawJs =
+          scriptsJsRef.current.__bundle__ ||
+          Object.values(scriptsJsRef.current).join("\n\n");
+        const code = (rawJs || "").trim();
+        if (code) {
+          iframeDoc.getElementById("compiled-bundle-scripts")?.remove();
+          const script = iframeDoc.createElement("script");
+          script.id = "compiled-bundle-scripts";
+          script.textContent = code;
+          iframeDoc.body.appendChild(script);
+        }
+
         return;
       }
 
@@ -229,7 +244,9 @@ export function usePreviewArea() {
       window.removeEventListener("plaza-styles-updated", handleStylesUpdate);
   }, []);
 
-  // Обновление скриптов JS
+  /* ==========================================================================
+     4. ОБНОВЛЕНИЕ JS — горячая замена без перезагрузки iframe
+     ========================================================================== */
   useEffect(() => {
     const handleScriptsUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<string | Record<string, string>>;
@@ -246,6 +263,28 @@ export function usePreviewArea() {
       setScriptsJs(nextScripts);
       scriptsJsRef.current = nextScripts;
 
+      // Собираем актуальный JS-бандл
+      const rawJs =
+        nextScripts.__bundle__ || Object.values(nextScripts).join("\n\n");
+      const newCode = (rawJs || "").trim();
+
+      const iframeDoc = iframeRef.current?.contentDocument;
+
+      // 🚀 Горячая замена: удаляем старый <script>, вставляем новый.
+      // Браузер немедленно выполняет код нового тега без перезагрузки iframe.
+      if (iframeDoc && iframeDoc.body) {
+        iframeDoc.getElementById("compiled-bundle-scripts")?.remove();
+
+        if (newCode) {
+          const script = iframeDoc.createElement("script");
+          script.id = "compiled-bundle-scripts";
+          script.textContent = newCode;
+          iframeDoc.body.appendChild(script);
+        }
+        return;
+      }
+
+      // Fallback: если iframe ещё не готов — полная пересборка
       rebuildEntireIframe(
         currentBodyHtmlRef.current,
         undefined,

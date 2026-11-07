@@ -2,73 +2,63 @@
   {
     "tag": "div",
     "text": "",
-    "class": "",
-    "style": "min-height: 300px;",
+    "class": "tab-hover",
+    "style": "position: relative; &:hover> .tab-hover__top .tab-hover__icon {transform: rotate(180deg); }",
     "children": [
       {
-        "tag": "section",
-        "text": "",
-        "class": "tab-hover",
-        "style": "display: inline-block; position: relative; &:hover { &>.btn-tab-hover { color: var(--teal-500); background: color-mix(in srgb, var(--teal-500) 25%, transparent); max-width: max-content; .svg-tab-hover { transform: rotate(180deg); } } &>.tab-hover-content { visibility: visible; opacity: 1; transform: translate(0%, 0%); } }",
+        "tag": "div",
+        "text": "tab hover",
+        "class": "tab-hover__top",
+        "style": " display: flex; justify-content: space-between; align-items: center;cursor: pointer; &:hover + .tab-hover__bottom { grid-template-rows: 1fr; opacity: 1; visibility: visible; } ",
         "children": [
           {
-            "tag": "button",
-            "text": "Lorem",
-            "class": "btn-tab-hover",
-            "style": "display: flex; align-items: center; gap: 10px; background: transparent; transition: all 0.3s ease-in-out;",
+            "tag": "svg",
+            "class": "tab-hover__icon",
+            "style": "width: 20px; height: 20px; transition: transform 0.3s ease;",
+            "attributes": {
+              "xmlns": "http://www.w3.org/2000/svg",
+              "fill": "none",
+              "viewBox": "0 0 24 24",
+              "stroke-width": "1.5",
+              "stroke": "currentColor"
+            },
             "children": [
               {
-                "tag": "i",
-                "text": "",
-                "class": "svg-tab-hover",
-                "style": "transition: all 0.2s ease-in-out; display: inline-block; line-height: 0; vertical-align: middle; width: 15px; height: 15px; svg { width: 100%; height: 100%; display: inline-block; } transform: rotate(0deg);",
-                "attributes": {},
-                "children": [
-                  {
-                    "tag": "svg",
-                    "text": "",
-                    "class": "",
-                    "style": "",
-                    "attributes": {
-                      "xmlns": "http://www.w3.org/2000/svg",
-                      "fill": "none",
-                      "viewBox": "0 0 24 24",
-                      "stroke-width": "1.5",
-                      "stroke": "currentColor"
-                    },
-                    "children": [
-                      {
-                        "tag": "path",
-                        "text": "",
-                        "class": "",
-                        "style": "",
-                        "attributes": {
-                          "stroke-linecap": "round",
-                          "stroke-linejoin": "round",
-                          "d": "m19.5 8.25-7.5 7.5-7.5-7.5"
-                        },
-                        "children": []
-                      }
-                    ]
-                  }
-                ]
+                "tag": "path",
+                "attributes": {
+                  "stroke-linecap": "round",
+                  "stroke-linejoin": "round",
+                  "d": "m19.5 8.25-7.5 7.5-7.5-7.5"
+                },
+                "children": []
               }
-            ],
-            "attributes": { "type": "button" }
-          },
+            ]
+          }
+        ],
+        "attributes": {}
+      },
+      {
+        "tag": "div",
+        "text": "",
+        "class": "tab-hover__bottom",
+        "style": "position: relative; display: grid; grid-template-rows: 0fr; opacity: 0; visibility: hidden; transition: grid-template-rows 0.35s ease, opacity 0.25s ease, visibility 0.25s; &:hover { grid-template-rows: 1fr; opacity: 1; visibility: visible; }",
+        "children": [
           {
             "tag": "div",
-            "text": "",
-            "class": "tab-hover-content",
-            "style": "border: 1px solid color-mix(in srgb, var(--slate-400) 67%, transparent); border-radius: 4px; visibility: hidden; opacity: 0; transition: all 0.3s ease-in-out; display: inline-block; position: absolute; top: 100%; left: 0; transform: translate(0%, 50%); width: max-content; padding: 2px 0px; background: var(--color-white);",
+            "class": "tab-hover__inner",
+            "style": "min-height: 0; overflow: hidden;",
             "children": [
               {
                 "tag": "p",
-                "text": "Lorem ipsum dolor sit amet consectetur adipiscing elit sed do",
-                "class": "",
-                "style": "",
-                "children": [],
-                "attributes": {}
+                "text": "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Iusto consequatur minus quam, nisi perferendis, vel quaerat commodi deleniti molestias laboriosam saepe, eius quisquam dignissimos laborum vero repellat dolorem. Autem, ab!",
+                "class": "p-custom",
+                "children": []
+              },
+              {
+                "tag": "p",
+                "text": "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Iusto consequatur minus quam, nisi perferendis, vel quaerat commodi deleniti molestias laboriosam saepe, eius quisquam dignissimos laborum vero repellat dolorem. Autem, ab!",
+                "class": "p-custom",
+                "children": []
               }
             ],
             "attributes": {}
@@ -76,7 +66,6 @@
         ],
         "attributes": {}
       }
-    ],
-    "attributes": {}
+    ]
   }
 ]

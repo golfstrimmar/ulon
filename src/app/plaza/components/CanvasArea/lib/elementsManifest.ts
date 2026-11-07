@@ -113,6 +113,10 @@ export const ELEMENT_FOLDERS: ElementFolder[] = [
       { name: "tab-uno", path: "/json/sections/tab-uno.json" },
       { name: "tab-hover", path: "/json/sections/tab-hover.json" },
       {
+        name: "tab-hover-absolute",
+        path: "/json/sections/tab-hover-absolute.json",
+      },
+      {
         name: "tab-hover-horisontal",
         path: "/json/sections/tab-hover-horisontal.json",
       },
