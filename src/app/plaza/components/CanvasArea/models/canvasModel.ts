@@ -764,6 +764,7 @@ function countUlElements(node: HtmlNode): number {
  * 7. <h1>..<h6>  => родитель__title
  * 8. <button>    => родитель__button
  * 9. <img>       => родитель__img
+ * 10. <div>      => родитель__ (неполный селектор)
  */
 export function applyBemClassesToSection(
   tree: HtmlNode[],
@@ -825,7 +826,6 @@ export function applyBemClassesToSection(
       .trim()
       .split(/\s+/)
       .filter(Boolean);
-    const isContainer = tag === "div" && existingClasses.includes("container");
 
     // Если встречаем вложенный самостоятельный смысловой блок (например .card)
     let activeBlock = currentBlock;
@@ -848,50 +848,58 @@ export function applyBemClassesToSection(
     let nextUlItemPrefix = currentUlItemPrefix;
     let nextIsInLink = isInLink;
 
-    if (!isContainer) {
-      if (tag === "ul") {
-        // Увеличиваем номер списка
-        ulCounter++;
-        // Если списков несколько — добавляем суффикс "-1", "-2"
-        const ulIndexSuffix = totalUlCount > 1 ? `-${ulCounter}` : "";
-        generatedClass = `${activeBlock}__items${ulIndexSuffix}`;
+    if (tag === "ul") {
+      // Увеличиваем номер списка
+      ulCounter++;
+      // Если списков несколько — добавляем суффикс "-1", "-2"
+      const ulIndexSuffix = totalUlCount > 1 ? `-${ulCounter}` : "";
+      generatedClass = `${activeBlock}__items${ulIndexSuffix}`;
 
-        // Запоминаем базовый префикс для всех дочерних li и ссылок этого списка:
-        // например "section-frame-32__item-1" или "section-frame-32__item"
-        nextUlItemPrefix = `${activeBlock}__item${ulIndexSuffix}`;
-        nextIsInLink = false;
-      } else if (tag === "li") {
-        // <li> получает префикс своего <ul>
-        generatedClass = currentUlItemPrefix || `${activeBlock}__item`;
-        nextIsInLink = false;
-      } else if (tag === "a") {
-        // Ссылка внутри <li> или обычная ссылка
-        if (currentUlItemPrefix) {
-          generatedClass = `${currentUlItemPrefix}_link`;
-          nextIsInLink = true;
-        } else {
-          generatedClass = `${activeBlock}__link`;
-          nextIsInLink = true;
-        }
-      } else if (isInLink && currentUlItemPrefix) {
-        // 🎯 Тег внутри ссылки, которая внутри <li>
-        // => родитель__item-1_link_{tag} (напр. section-frame-32__item-1_link_span)
-        generatedClass = `${currentUlItemPrefix}_link_${tag}`;
-      } else if (tag === "p") {
-        // Обычный абзац
-        generatedClass = `${activeBlock}__p`;
-      } else if (tag === "span") {
-        // Обычный span (не в ссылке)
-        generatedClass = `${activeBlock}__span`;
-      } else if (/^h[1-6]$/.test(tag)) {
-        // Заголовок
-        generatedClass = `${activeBlock}__title_${tag}`;
-      } else if (tag === "button") {
-        // Кнопка
-        generatedClass = `${activeBlock}__button`;
-      } else if (tag === "img") {
-        // Картинка
-        generatedClass = `${activeBlock}__img`;
+      // Запоминаем базовый префикс для всех дочерних li и ссылок этого списка:
+      // например "section-frame-32__item-1" или "section-frame-32__item"
+      nextUlItemPrefix = `${activeBlock}__item${ulIndexSuffix}`;
+      nextIsInLink = false;
+    } else if (tag === "li") {
+      // <li> получает префикс своего <ul>
+      generatedClass = currentUlItemPrefix || `${activeBlock}__item`;
+      nextIsInLink = false;
+    } else if (tag === "a") {
+      // Ссылка внутри <li> или обычная ссылка
+      if (currentUlItemPrefix) {
+        generatedClass = `${currentUlItemPrefix}_link`;
+        nextIsInLink = true;
+      } else {
+        generatedClass = `${activeBlock}__link`;
+        nextIsInLink = true;
+      }
+    } else if (isInLink && currentUlItemPrefix) {
+      // 🎯 Тег внутри ссылки, которая внутри <li>
+      // => родитель__item-1_link_{tag} (напр. section-frame-32__item-1_link_span)
+      generatedClass = `${currentUlItemPrefix}_link_${tag}`;
+    } else if (tag === "p") {
+      // Обычный абзац
+      generatedClass = `${activeBlock}__p`;
+    } else if (tag === "span") {
+      // Обычный span (не в ссылке)
+      generatedClass = `${activeBlock}__span`;
+    } else if (/^h[1-6]$/.test(tag)) {
+      // Заголовок
+      generatedClass = `${activeBlock}__title_${tag}`;
+    } else if (tag === "button") {
+      // Кнопка
+      generatedClass = `${activeBlock}__button`;
+    } else if (tag === "img") {
+      // Картинка
+      generatedClass = `${activeBlock}__img`;
+    } else if (tag === "div") {
+      // 🎯 Для div формируем неполный селектор (например "www__"), исключая .container
+      const isContainer = existingClasses.includes("container");
+      const alreadyHasBem = existingClasses.some(
+        (cls) =>
+          cls === `${currentBlock}__` || cls.startsWith(`${currentBlock}__`),
+      );
+      if (!isContainer && !alreadyHasBem) {
+        generatedClass = `${currentBlock}__`;
       }
     }
 

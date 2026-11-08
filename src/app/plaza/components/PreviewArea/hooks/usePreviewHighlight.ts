@@ -8,15 +8,11 @@ export const HIGHLIGHT_CSS = `
     outline: 3px solid rgba(239, 68, 68, 0.95) !important;
     outline-offset: -1px !important;
     box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.3) !important;
-    position: relative;
-    z-index: 50 !important;
   }
   .plaza-node-hovered:not(.plaza-node-selected) {
     outline: 2px dashed rgba(52, 211, 153, 0.9) !important;
     outline-offset: -1px !important;
     box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.25) !important;
-    position: relative;
-    z-index: 40 !important;
   }
 `;
 

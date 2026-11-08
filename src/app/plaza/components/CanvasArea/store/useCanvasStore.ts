@@ -504,3 +504,33 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     });
   },
 }));
+
+// (function () {
+//   function initRew() {
+//     const container = document.querySelector('.more-text');
+//     if (!container) return;
+//     const rewSlides = [...document.querySelectorAll('.more-text')];
+//     rewSlides.forEach((foo) => {
+//       const btn = foo.querySelector("a.more-text_link");
+//       const span = btn.querySelector("span");
+//       const text = foo.querySelector(".more-text_p");
+//       const svg = btn.querySelector(".more-text_svg");
+//       btn.addEventListener("click", (e) => {
+//         e.preventDefault();
+//         text.classList.toggle("_is-active")
+//        text.classList.contains("_is-active")
+//   ? span.textContent = "Скрыть"
+//   : span.textContent = "Читать далее";
+
+// text.classList.contains("_is-active")
+//   ? svg.style.transform = "rotate(180deg)"
+//   : svg.style.transform = "rotate(0deg)";
+//       })
+//     })
+//   }
+//   if (document.readyState === 'loading') {
+//     document.addEventListener('DOMContentLoaded', initRew);
+//   } else {
+//     initRew();
+//   }
+// })();
