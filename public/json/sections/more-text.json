@@ -10,7 +10,7 @@
         "tag": "p",
         "text": "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Iusto consequatur minus quam, nisi perferendis, vel quaerat commodi deleniti molestias laboriosam saepe, eius quisquam dignissimos laborum vero repellat dolorem. Autem, ab!Lorem ipsum dolor sit amet, consectetur adipisicing elit. Iusto consequatur minus quam, nisi perferendis, vel quaerat commodi deleniti molestias laboriosam saepe, eius quisquam dignissimos laborum vero repellat dolorem. Autem, ab!Lorem ipsum dolor sit amet, consectetur adipisicing elit. Iusto consequatur minus quam, nisi perferendis, vel quaerat commodi deleniti molestias laboriosam saepe, eius quisquam dignissimos laborum vero repellat dolorem. Autem, ab!",
         "class": "more-text-p",
-        "style": "overflow: hidden; max-height: 4.5em; transition: max-height 0.35s ease; &._is-active  { max-height: 1000px !important; }",
+        "style": "overflow: hidden; max-height: 4.5em;",
         "attributes": {
           "data-name": "Повседневная практика показывает, что начало повседневной работы по формированию позиции представляет собой интересный эксперимент проверки дальнейших направлений развития. Повседневная практика показывает, что укрепление и развитие структуры позволяет оценить значение"
         },
@@ -31,8 +31,8 @@
           {
             "tag": "span",
             "text": "Читать далее",
-            "class": "",
-            "style": "",
+            "class": "more-text-span",
+            "style": "display: inline-block; vertical-align: middle;",
             "attributes": {},
             "children": []
           },
@@ -40,7 +40,7 @@
             "tag": "i",
             "text": "",
             "class": "svg-wrapper more-text-svg",
-            "style": "width: 15px; height: 15px; display: inline-flex; align-items: center; justify-content: center; transition: transform 0.35s ease;",
+            "style": "width: 15px; height: 15px; display: inline-flex; align-items: center; justify-content: center; transition: transform 0.25s ease;",
             "attributes": {},
             "children": [
               {
@@ -63,7 +63,7 @@
                     "style": "",
                     "attributes": {
                       "d": "M5.99997 9.41993C5.7849 9.41993 5.56987 9.33781 5.4059 9.17392L0.24617 4.01414C-0.0820565 3.68592 -0.0820565 3.15375 0.24617 2.82566C0.574263 2.49757 1.10632 2.49757 1.43457 2.82566L5.99997 7.39132L10.5654 2.82582C10.8936 2.49773 11.4256 2.49773 11.7537 2.82582C12.0821 3.15391 12.0821 3.68607 11.7537 4.0143L6.59404 9.17408C6.42999 9.338 6.21495 9.41993 5.99997 9.41993Z",
-                      "fill": "#00AE9A"
+                      "fill": "currentColor"
                     },
                     "children": []
                   }
@@ -75,7 +75,7 @@
       },
       {
         "tag": "script",
-        "text": "/* @component: .more-text */(function () { function initRew() { const container = document.querySelector('.more-text'); if (!container) return; const rewSlides = [...document.querySelectorAll('.more-text')]; rewSlides.forEach((foo) => { const btn = foo.querySelector('a.more-text-link'); const span = btn.querySelector('span'); const text = foo.querySelector('.more-text-p'); const svg = btn.querySelector('.more-text-svg'); btn.addEventListener('click', (e) => { e.preventDefault(); text.classList.toggle('_is-active'); text.classList.contains('_is-active') ? span.textContent = 'Скрыть' : span.textContent = 'Читать далее'; text.classList.contains('_is-active') ? svg.style.transform = 'rotate(180deg)' : svg.style.transform = 'rotate(0deg)'; }) }) } if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', initRew); } else { initRew(); } })();",
+        "text": "/* @component: more-text */ (function () { function initRew() { const rewSlides = [...document.querySelectorAll('.more-text')]; rewSlides.forEach((container) => { const btn = container.querySelector('a.more-text-link, .more-text_link'); if (!btn) return; const span = btn.querySelector('.more-text-span, span'); const text = container.querySelector('.more-text-p'); const svg = btn.querySelector('.more-text-svg, .more-text_svg'); if (!span || !text) return; text.style.overflow = 'hidden'; let isAnimating = false; btn.addEventListener('click', (e) => { e.preventDefault(); if (isAnimating) return; isAnimating = true; const isActive = text.classList.toggle('_is-active'); if (svg) svg.style.transform = isActive ? 'rotate(180deg)' : 'rotate(0deg)'; const collapsedHeight = '4.5em'; const fullHeight = text.scrollHeight + 'px'; const heightAnim = text.animate([{ maxHeight: isActive ? collapsedHeight : fullHeight }, { maxHeight: isActive ? fullHeight : collapsedHeight }], { duration: 250, easing: 'ease', fill: 'forwards' }); const anim = span.animate([{ opacity: '1' }, { opacity: '0' }], { duration: 125, easing: 'ease', fill: 'forwards' }); anim.addEventListener('finish', () => { span.textContent = isActive ? 'Скрыть' : 'Читать далее'; span.animate([{ opacity: '0' }, { opacity: '1' }], { duration: 125, easing: 'ease', fill: 'forwards' }); }); heightAnim.addEventListener('finish', () => { isAnimating = false; }); }); }); } if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', initRew); } else { initRew(); } })(); /* @end: more-text */",
         "class": "",
         "style": "",
         "attributes": {},

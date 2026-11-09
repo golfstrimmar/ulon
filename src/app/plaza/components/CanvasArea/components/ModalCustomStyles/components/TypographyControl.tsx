@@ -74,7 +74,7 @@ export function TypographyControl({
     <div className="bg-zinc-950/80 border border-zinc-800 rounded-md p-2 flex flex-col gap-2 shadow-inner">
       {/* Заголовок + индикатор значения слайдера */}
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-mono  text-zinc-400 font-semibold tracking-wider">
+        <span className="text-[12px] font-mono  text-indigo-300 font-semibold tracking-wider">
           Typography:
         </span>
         <span className="text-[11px] font-mono text-purple-400 font-bold bg-zinc-800 px-1.5 py-0.2 rounded border border-zinc-700">

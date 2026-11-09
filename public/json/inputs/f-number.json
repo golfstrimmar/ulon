@@ -44,7 +44,7 @@
   },
   {
     "tag": "script",
-    "text": "/* @component: .f-number */\ndocument.addEventListener('click', function(e) {\n  let btnDec = e.target.closest('.num-btn--dec');\n  if (btnDec) {\n    let input = btnDec.parentElement.querySelector('input');\n    if (input && input.stepDown) input.stepDown();\n    return;\n  }\n\n  let btnInc = e.target.closest('.num-btn--inc');\n  if (btnInc) {\n    let input = btnInc.parentElement.querySelector('input');\n    if (input && input.stepUp) input.stepUp();\n    return;\n  }\n});",
+    "text": "/* @component: .f-number */ (function () { if (window.__fNumberInit) return; window.__fNumberInit = true; document.addEventListener('click', function (e) { const btnDec = e.target.closest('.num-btn--dec'); if (btnDec) { const parent = btnDec.closest('.f-number') || btnDec.parentElement; const input = parent ? parent.querySelector('input') : null; if (input && input.stepDown) { input.stepDown(); input.dispatchEvent(new Event('input', { bubbles: true })); input.dispatchEvent(new Event('change', { bubbles: true })); } return; } const btnInc = e.target.closest('.num-btn--inc'); if (btnInc) { const parent = btnInc.closest('.f-number') || btnInc.parentElement; const input = parent ? parent.querySelector('input') : null; if (input && input.stepUp) { input.stepUp(); input.dispatchEvent(new Event('input', { bubbles: true })); input.dispatchEvent(new Event('change', { bubbles: true })); } return; } }); })(); /* @end: .f-number */",
     "class": "",
     "style": "",
     "children": []

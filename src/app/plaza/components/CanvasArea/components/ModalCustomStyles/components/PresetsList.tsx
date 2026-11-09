@@ -10,7 +10,7 @@ export function PresetsList({ onApplySnippet }: Props) {
     <div className="flex flex-col gap-2">
       {STYLE_PRESETS.map((group) => (
         <div key={group.category} className="flex flex-col gap-1">
-          <span className="text-[9px] font-mono  text-zinc-500 font-bold tracking-wider">
+          <span className="text-[12px] font-mono  text-indigo-300 font-semibold tracking-wider">
             {group.category}
           </span>
           <div className="flex flex-wrap gap-1">

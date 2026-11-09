@@ -50,7 +50,7 @@
   },
   {
     "tag": "script",
-    "text": "/* @component: .js-container-input */\n(function (){document.addEventListener('DOMContentLoaded',function(){document.querySelectorAll('fieldset').forEach(function(fs){const label=fs.querySelector('label');const legendSpan=fs.querySelector('legend span');if(label&&legendSpan){legendSpan.textContent=label.textContent;}});});})();",
+    "text": "/* @component: .js-container-input */ (function () { function initInputs() { document.querySelectorAll('fieldset').forEach(function (fs) { if (fs.dataset.init === 'true') return; fs.dataset.init = 'true'; const label = fs.querySelector('label'); const legendSpan = fs.querySelector('legend span'); if (label && legendSpan) { legendSpan.innerHTML = label.innerHTML; } }); } if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', initInputs); } else { initInputs(); } })(); /* @end: .js-container-input */",
     "class": "",
     "style": "",
     "children": [],

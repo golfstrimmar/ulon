@@ -154,7 +154,7 @@ export function ColorControl({
     <div className="bg-zinc-950/80 border border-zinc-800 rounded-md p-2 flex flex-col gap-2 shadow-inner">
       {/* Шапка: Выбор режима */}
       <div className="flex items-center">
-        <span className="text-[10px] font-mono  text-zinc-400 font-semibold tracking-wider">
+        <span className="text-[12px] font-mono  text-indigo-300 font-semibold tracking-wider">
           Colors:
         </span>
 

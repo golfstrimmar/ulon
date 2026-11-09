@@ -562,7 +562,17 @@ export default function ModalCustomStyles({
 
           {/* Контейнер с подкомпонентами стилей */}
           <div className="overflow-y-auto custom-scrollbar flex flex-col gap-2.5 pr-0.5">
+            <DisplayControl
+              currentClass={currentClass}
+              currentScssText={effectiveScssText}
+              onApplySnippet={handleScopedApplySnippet}
+            />
             <UnifiedBoxControl
+              currentClass={currentClass}
+              currentScssText={effectiveScssText}
+              onApplySnippet={handleScopedApplySnippet}
+            />
+            <ColorControl
               currentClass={currentClass}
               currentScssText={effectiveScssText}
               onApplySnippet={handleScopedApplySnippet}
@@ -574,19 +584,7 @@ export default function ModalCustomStyles({
               onApplySnippet={handleScopedApplySnippet}
             />
 
-            <DisplayControl
-              currentClass={currentClass}
-              currentScssText={effectiveScssText}
-              onApplySnippet={handleScopedApplySnippet}
-            />
-
             <PositionControl
-              currentClass={currentClass}
-              currentScssText={effectiveScssText}
-              onApplySnippet={handleScopedApplySnippet}
-            />
-
-            <ColorControl
               currentClass={currentClass}
               currentScssText={effectiveScssText}
               onApplySnippet={handleScopedApplySnippet}

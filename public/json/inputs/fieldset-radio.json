@@ -3,7 +3,8 @@
     "tag": "fieldset",
     "text": "",
     "class": "field-radio",
-    "style": "margin: 0;\r\npadding: 0;\r\nborder: none;\r\ndisplay: flex;\r\nflex-direction: column;\r\ngap: 2px;\r\n\r\n.f-radio {\r\n  position: relative;\r\n\r\n  input {\r\n    position: fixed !important;\r\n    left: -9999px !important;\r\n    height: 0;\r\n    width: 0;\r\n\r\n    &:checked+label {\r\n      color: var(--bg-surface);\r\n    }\r\n\r\n    &:checked+label::before {\r\n      border-color: var(--bg-surface);\r\n    }\r\n\r\n    &:checked+label::after {\r\n      opacity: 1;\r\n    }\r\n  }\r\n\r\n  label {\r\n    display: inline-block;\r\n    position: relative;\r\n    cursor: pointer;\r\n    opacity: 1;\r\n    line-height: 17px;\r\n    padding: 0 0 0 28px;\r\n    transition: all 0.2s ease-in-out;\r\n\r\n    &:hover {\r\n      color: var(--bg-surface);\r\n    }\r\n\r\n    &:hover::before {\r\n      border-color: var(--bg-surface);\r\n    }\r\n\r\n    &::before,\r\n    &::after {\r\n      display: block;\r\n      transition: all 0.2s ease-in-out;\r\n      content: '';\r\n      position: absolute;\r\n      left: 0;\r\n      top: 0;\r\n    }\r\n\r\n    &::before {\r\n      border-radius: 50%;\r\n      width: 16px;\r\n      height: 16px;\r\n      border: 2px solid var(--text-main);\r\n      background: transparent;\r\n    }\r\n\r\n    &::after {\r\n      width: 10px;\r\n      height: 10px;\r\n      border-radius: 100%;\r\n      top: -3px;\r\n      left: -3px;\r\n      transform: translate(6px, 6px);\r\n      border: 2px solid var(--bg-surface);\r\n      background-color: var(--bg-surface);\r\n      opacity: 0;\r\n    }\r\n  }\r\n}",
+    "style": "margin: 0;\r\npadding: 0;\r\nborder: none;\r\ndisplay: flex;\r\nflex-direction: column;\r\ngap: 8px;\r\n\r\n.f-radio {\r\n  position: relative;\r\n  display: flex;\r\n  align-items: center;\r\n\r\n  input {\r\n    position: absolute !important;\r\n    opacity: 0 !important;\r\n    width: 1px !important;\r\n    height: 1px !important;\r\n    pointer-events: none !important;\r\n\r\n    &:checked + label {\r\n      color: #00ae9a;\r\n    }\r\n\r\n    &:checked + label::before {\r\n      border-color: #00ae9a;\r\n    }\r\n\r\n    &:checked + label::after {\r\n      opacity: 1;\r\n    }\r\n  }\r\n\r\n  label {\r\n    display: inline-flex;\r\n    align-items: center;\r\n    position: relative;\r\n    cursor: pointer;\r\n    opacity: 1;\r\n    line-height: 1.2;\r\n    padding: 0 0 0 26px;\r\n    user-select: none;\r\n    transition: color 0.2s ease-in-out;\r\n\r\n    &:hover {\r\n      color: #00ae9a;\r\n    }\r\n\r\n    &:hover::before {\r\n      border-color: #00ae9a;\r\n    }\r\n\r\n    &::before,\r\n    &::after {\r\n      display: block;\r\n      content: '';\r\n      position: absolute;\r\n      border-radius: 50%;\r\n      transition: all 0.2s ease-in-out;\r\n    }\r\n\r\n    &::before {\r\n      left: 0;\r\n      top: 50%;\r\n      transform: translateY(-50%);\r\n      width: 16px;\r\n      height: 16px;\r\n      border: 2px solid #94a3b8;\r\n      background: transparent;\r\n      box-sizing: border-box;\r\n    }\r\n\r\n    &::after {\r\n      left: 4px;\r\n      top: 50%;\r\n      transform: translateY(-50%);\r\n      width: 8px;\r\n      height: 8px;\r\n      background-color: #00ae9a;\r\n      opacity: 0;\r\n      box-sizing: border-box;\r\n    }\r\n  }\r\n}",
+    "attributes": {},
     "children": [
       {
         "tag": "div",
@@ -18,11 +19,11 @@
             "style": "",
             "children": [],
             "attributes": {
-              "id": "10",
+              "id": "radio-10",
               "name": "a",
               "type": "radio",
               "value": "16-25",
-              "checked": ""
+              "checked": "checked"
             }
           },
           {
@@ -31,7 +32,7 @@
             "class": "",
             "style": "",
             "children": [],
-            "attributes": { "for": "10" }
+            "attributes": { "for": "radio-10" }
           }
         ],
         "attributes": {}
@@ -49,7 +50,7 @@
             "style": "",
             "children": [],
             "attributes": {
-              "id": "11",
+              "id": "radio-11",
               "name": "a",
               "type": "radio",
               "value": "26-35"
@@ -61,7 +62,7 @@
             "class": "",
             "style": "",
             "children": [],
-            "attributes": { "for": "11" }
+            "attributes": { "for": "radio-11" }
           }
         ],
         "attributes": {}
@@ -79,7 +80,7 @@
             "style": "",
             "children": [],
             "attributes": {
-              "id": "12",
+              "id": "radio-12",
               "name": "a",
               "type": "radio",
               "value": "36-45"
@@ -91,7 +92,7 @@
             "class": "",
             "style": "",
             "children": [],
-            "attributes": { "for": "12" }
+            "attributes": { "for": "radio-12" }
           }
         ],
         "attributes": {}
@@ -109,7 +110,7 @@
             "style": "",
             "children": [],
             "attributes": {
-              "id": "13",
+              "id": "radio-13",
               "name": "a",
               "type": "radio",
               "value": "55"
@@ -121,12 +122,11 @@
             "class": "",
             "style": "",
             "children": [],
-            "attributes": { "for": "13" }
+            "attributes": { "for": "radio-13" }
           }
         ],
         "attributes": {}
       }
-    ],
-    "attributes": {}
+    ]
   }
 ]

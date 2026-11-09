@@ -39,6 +39,7 @@ const AVAILABLE_TAGS = [
   "ul",
   "li",
   "i",
+  "fieldset",
 ] as const;
 
 export default function TracingWireframeOverlay({
@@ -234,56 +235,60 @@ export default function TracingWireframeOverlay({
       </div>
 
       {/* Рисуемая рамка в моменте */}
-      {currentBox && (() => {
-        const curLeft = Math.min(currentBox.startX, currentBox.curX);
-        const curTop = Math.min(currentBox.startY, currentBox.curY);
-        const curW = Math.abs(currentBox.curX - currentBox.startX);
-        const curH = Math.abs(currentBox.curY - currentBox.startY);
+      {currentBox &&
+        (() => {
+          const curLeft = Math.min(currentBox.startX, currentBox.curX);
+          const curTop = Math.min(currentBox.startY, currentBox.curY);
+          const curW = Math.abs(currentBox.curX - currentBox.startX);
+          const curH = Math.abs(currentBox.curY - currentBox.startY);
 
-        return (
-          <div
-            className="absolute border-2 border-dashed border-cyan-400 bg-cyan-500/15 pointer-events-none z-30"
-            style={{
-              left: curLeft,
-              top: curTop,
-              width: curW,
-              height: curH,
-            }}
-          >
-            {/* Бейдж ширины сверху */}
-            {curW >= 4 && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: curTop < 24 ? 4 : -22,
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  pointerEvents: "none",
-                }}
-                className="px-1.5 py-0.5 bg-zinc-950/90 text-cyan-300 border border-cyan-500/60 rounded text-[10px] font-mono font-medium shadow-md leading-none whitespace-nowrap"
-              >
-                {Math.round(curW)}px
-              </div>
-            )}
+          return (
+            <div
+              className="absolute border-2 border-dashed border-cyan-400 bg-cyan-500/15 pointer-events-none z-30"
+              style={{
+                left: curLeft,
+                top: curTop,
+                width: curW,
+                height: curH,
+              }}
+            >
+              {/* Бейдж ширины сверху */}
+              {curW >= 4 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: curTop < 24 ? 4 : -22,
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    pointerEvents: "none",
+                  }}
+                  className="px-1.5 py-0.5 bg-zinc-950/90 text-cyan-300 border border-cyan-500/60 rounded text-[10px] font-mono font-medium shadow-md leading-none whitespace-nowrap"
+                >
+                  {Math.round(curW)}px
+                </div>
+              )}
 
-            {/* Бейдж высоты слева */}
-            {curH >= 4 && (
-              <div
-                style={{
-                  position: "absolute",
-                  left: curLeft < 44 ? 4 : -6,
-                  top: "50%",
-                  transform: curLeft < 44 ? "translateY(-50%)" : "translate(-100%, -50%)",
-                  pointerEvents: "none",
-                }}
-                className="px-1.5 py-0.5 bg-zinc-950/90 text-cyan-300 border border-cyan-500/60 rounded text-[10px] font-mono font-medium shadow-md leading-none whitespace-nowrap"
-              >
-                {Math.round(curH)}px
-              </div>
-            )}
-          </div>
-        );
-      })()}
+              {/* Бейдж высоты слева */}
+              {curH >= 4 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: curLeft < 44 ? 4 : -6,
+                    top: "50%",
+                    transform:
+                      curLeft < 44
+                        ? "translateY(-50%)"
+                        : "translate(-100%, -50%)",
+                    pointerEvents: "none",
+                  }}
+                  className="px-1.5 py-0.5 bg-zinc-950/90 text-cyan-300 border border-cyan-500/60 rounded text-[10px] font-mono font-medium shadow-md leading-none whitespace-nowrap"
+                >
+                  {Math.round(curH)}px
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
       {/* Нарисованные коробки */}
       {boxes.map((box) => {
@@ -328,7 +333,8 @@ export default function TracingWireframeOverlay({
                 position: "absolute",
                 left: box.x < 44 ? 4 : -6,
                 top: "50%",
-                transform: box.x < 44 ? "translateY(-50%)" : "translate(-100%, -50%)",
+                transform:
+                  box.x < 44 ? "translateY(-50%)" : "translate(-100%, -50%)",
                 pointerEvents: "none",
               }}
               className="px-1.5 py-0.5 bg-zinc-950/90 text-cyan-300 border border-cyan-500/60 rounded text-[10px] font-mono font-medium shadow-md leading-none whitespace-nowrap z-30"
