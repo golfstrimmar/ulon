@@ -42,6 +42,8 @@ export function usePreviewArea() {
   const scriptsJsRef = useRef<Record<string, string>>({});
   const [scriptsJs, setScriptsJs] = useState<Record<string, string>>({});
 
+  const [currentBodyHtml, setCurrentBodyHtml] = useState<string>("");
+
   const colorVariablesRef = useRef<string[]>([]);
 
   // Полная пересборка srcDoc (только при старте или смене шрифтов/скриптов)
@@ -54,6 +56,7 @@ export function usePreviewArea() {
     colors = colorVariablesRef.current,
   ) => {
     currentBodyHtmlRef.current = bodyHtml;
+    setCurrentBodyHtml(bodyHtml);
     setIsEmpty(!bodyHtml.trim());
     setSrcDoc(
       buildDocument({
@@ -122,6 +125,7 @@ export function usePreviewArea() {
       }
 
       currentBodyHtmlRef.current = initialHtml;
+      setCurrentBodyHtml(initialHtml);
       setIsEmpty(!initialHtml.trim());
       setSrcDoc(
         buildDocument({
@@ -164,6 +168,7 @@ export function usePreviewArea() {
       }
 
       currentBodyHtmlRef.current = nextHtml;
+      setCurrentBodyHtml(nextHtml);
       setIsEmpty(!nextHtml.trim());
 
       const iframeDoc = iframeRef.current?.contentDocument;
@@ -398,6 +403,7 @@ export function usePreviewArea() {
     detectedFamilies,
     cssCount,
     scriptsCount,
+    currentBodyHtml,
     handleAddFont,
     handleRemoveFont,
     handleSetDefaultFont,

@@ -14,6 +14,7 @@ import TracingWireframeOverlay from "./components/TracingWireframeOverlay";
 
 import ButtonCss from "@/app/plaza/components/PreviewArea/components/ButtonCss";
 import ButtonJS from "@/app/plaza/components/PreviewArea/components/ButtonJS";
+import ButtonHtml from "@/app/plaza/components/PreviewArea/components/ButtonHtml";
 import ButtonFonts from "@/app/plaza/components/PreviewArea/components/ButtonFonts";
 import ButtonPixelPerfect from "@/app/plaza/components/PreviewArea/components/ButtonPixelPerfect";
 import ButtonJson from "@/app/plaza/components/PreviewArea/components/ButtonJson";
@@ -225,6 +226,7 @@ export function PreviewArea() {
             <ButtonPixelPerfect />
             <ButtonCss />
             <ButtonJS />
+            <ButtonHtml />
             <ButtonFonts />
             <BreakpointControls />
             <ButtonJson />
