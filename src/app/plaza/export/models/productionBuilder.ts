@@ -221,15 +221,177 @@ export async function extractAndProcessAssets(
   return { productionHtml, assets };
 }
 
+export interface SvgSpriteResult {
+  bodyHtml: string;
+  spriteContainer: string;
+  standaloneSpriteSvg: string;
+  symbolCount: number;
+}
+
+/**
+ * Извлекает все теги <svg>...</svg> из HTML-разметки,
+ * объединяет их в единый SVG-спрайт с тегами <symbol id="...">,
+ * заменяет использование на <svg ...><use href="#id" xlink:href="#id"></use></svg>,
+ * а также формирует контейнер спрайта для вставки в body и отдельный файл sprite.svg.
+ */
+export function extractAndProcessSvgSprite(html: string): SvgSpriteResult {
+  if (!html) {
+    return {
+      bodyHtml: "",
+      spriteContainer: "",
+      standaloneSpriteSvg: "",
+      symbolCount: 0,
+    };
+  }
+
+  const svgTagRegex = /<svg\b([^>]*?)>([\s\S]*?)<\/svg>/gi;
+  const symbols: string[] = [];
+  const contentToSymbolId = new Map<string, string>();
+  const usedIds = new Set<string>();
+
+  let lastIndex = 0;
+  let bodyHtml = "";
+  let match: RegExpExecArray | null;
+  let iconCounter = 1;
+
+  while ((match = svgTagRegex.exec(html)) !== null) {
+    const fullMatch = match[0];
+    const tagAttrs = match[1];
+    const innerContent = match[2];
+
+    // Добавляем HTML до текущего совпадения
+    bodyHtml += html.slice(lastIndex, match.index);
+    lastIndex = svgTagRegex.lastIndex;
+
+    // Если этот svg уже содержит <use>, оставляем как есть
+    if (/<use\b/i.test(innerContent)) {
+      bodyHtml += fullMatch;
+      continue;
+    }
+
+    // Извлекаем viewBox или строим его из width/height
+    let viewBox = "";
+    const viewBoxM = tagAttrs.match(/\bviewBox=(["'])(.*?)\1/i);
+    if (viewBoxM) {
+      viewBox = viewBoxM[2].trim();
+    } else {
+      const widthM = tagAttrs.match(/\bwidth=(["'])(.*?)\1/i);
+      const heightM = tagAttrs.match(/\bheight=(["'])(.*?)\1/i);
+      const w = widthM ? parseFloat(widthM[2]) : 0;
+      const h = heightM ? parseFloat(heightM[2]) : 0;
+      if (w > 0 && h > 0) {
+        viewBox = `0 0 ${w} ${h}`;
+      }
+    }
+
+    // Извлекаем fill и stroke на уровне <svg>
+    const fillM = tagAttrs.match(/\bfill=(["'])(.*?)\1/i);
+    const strokeM = tagAttrs.match(/\bstroke=(["'])(.*?)\1/i);
+    const symbolFill = fillM ? ` fill="${fillM[2]}"` : "";
+    const symbolStroke = strokeM ? ` stroke="${strokeM[2]}"` : "";
+
+    // Очищаем внутренний контент от xmlns и комментариев
+    const cleanInner = innerContent
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .replace(/\s*xmlns(:[a-z]+)?=(["'])[^"']*\2/gi, "")
+      .trim();
+
+    // Хэш для дедупликации повторяющихся иконок
+    const contentHash = (viewBox || "") + ":::" + cleanInner;
+
+    let symbolId: string;
+    if (contentToSymbolId.has(contentHash)) {
+      symbolId = contentToSymbolId.get(contentHash)!;
+    } else {
+      // Подбираем имя для symbol id
+      const idM = tagAttrs.match(/\bid=(["'])(.*?)\1/i);
+      const dataNameM = tagAttrs.match(/\bdata-name=(["'])(.*?)\1/i);
+      let candidate = (idM?.[2] || dataNameM?.[2] || "").trim();
+
+      if (candidate) {
+        candidate = candidate
+          .toLowerCase()
+          .replace(/[^a-z0-9_-]+/g, "-")
+          .replace(/^-+|-+$/g, "");
+      }
+      if (!candidate || candidate === "icon" || candidate === "svg") {
+        candidate = `icon-${iconCounter++}`;
+      } else if (!candidate.startsWith("icon-")) {
+        candidate = `icon-${candidate}`;
+      }
+
+      // Обеспечиваем уникальность id
+      let uniqueId = candidate;
+      let suffix = 2;
+      while (usedIds.has(uniqueId)) {
+        uniqueId = `${candidate}-${suffix++}`;
+      }
+      usedIds.add(uniqueId);
+      symbolId = uniqueId;
+      contentToSymbolId.set(contentHash, symbolId);
+
+      const viewBoxAttr = viewBox ? ` viewBox="${viewBox}"` : "";
+      symbols.push(
+        `<symbol id="${symbolId}"${viewBoxAttr}${symbolFill}${symbolStroke}>\n      ${cleanInner}\n    </symbol>`,
+      );
+    }
+
+    // Сохраняем ВСЕ оригинальные атрибуты <svg>, убирая только служебные data-node-key и id
+    let cleanAttrs = tagAttrs
+      .replace(/\s+data-node-key=(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+      .replace(/\s+id=(["'])?[^"'\s>]+\1?/gi, "")
+      .trim();
+
+    // Если viewBox не был указан в атрибутах, но был вычислен — добавляем его
+    if (viewBox && !/\bviewBox=/i.test(cleanAttrs)) {
+      cleanAttrs = cleanAttrs ? `${cleanAttrs} viewBox="${viewBox}"` : `viewBox="${viewBox}"`;
+    }
+
+    const attrsPrefix = cleanAttrs ? ` ${cleanAttrs}` : "";
+
+    // Формируем вызов иконки через локальный якорь спрайта
+    const replacement = `<svg${attrsPrefix}>\n    <use href="#${symbolId}" xlink:href="#${symbolId}"></use>\n  </svg>`;
+    bodyHtml += replacement;
+  }
+
+  // Добавляем оставшуюся часть HTML
+  bodyHtml += html.slice(lastIndex);
+
+  if (symbols.length === 0) {
+    return {
+      bodyHtml: html,
+      spriteContainer: "",
+      standaloneSpriteSvg: "",
+      symbolCount: 0,
+    };
+  }
+
+  // Контейнер спрайта для вставки в body документа (невидимый, не ломает верстку)
+  const spriteContainer = `<!-- SVG Sprite (Symbol Definitions) -->\n  <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" style="position: absolute; width: 0; height: 0; overflow: hidden;">\n    <defs>\n      ${symbols.join("\n      ")}\n    </defs>\n  </svg>`;
+
+  // Отдельный standalone файл для assets/sprite.svg
+  const standaloneSpriteSvg = `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">\n  <defs>\n    ${symbols.join("\n    ")}\n  </defs>\n</svg>`;
+
+  return {
+    bodyHtml,
+    spriteContainer,
+    standaloneSpriteSvg,
+    symbolCount: symbols.length,
+  };
+}
+
 function buildProductionHtml({
   bodyHtml,
   fontEntries,
   defaultFont,
+  colorVariables,
+  spriteContainer = "",
 }: {
   bodyHtml: string;
   fontEntries: string[];
   defaultFont: string;
   colorVariables: string[];
+  spriteContainer?: string;
 }): string {
   const fontsHtml = fontEntries
     .map(parseFontHeaderTag)
@@ -273,6 +435,7 @@ ${fontsHtml ? "\n  " + fontsHtml : ""}
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body class="bg-white text-zinc-900">
+${spriteContainer ? `  ${spriteContainer}\n` : ""}
 ${bodyHtml}
 
   <!-- Project scripts -->
@@ -291,12 +454,14 @@ function buildPreviewDoc({
   defaultFont,
   css,
   js,
+  spriteContainer = "",
 }: {
   bodyHtml: string;
   fontEntries: string[];
   defaultFont: string;
   css: string;
   js: string;
+  spriteContainer?: string;
 }): string {
   const fontsHtml = fontEntries
     .map(parseFontHeaderTag)
@@ -338,6 +503,7 @@ ${fontsHtml ? "\n  " + fontsHtml : ""}
 ${css ? `\n  <style>\n${css}\n  </style>` : ""}
 </head>
 <body class="bg-white text-zinc-900">
+${spriteContainer ? `  ${spriteContainer}\n` : ""}
 ${bodyHtml}
 ${js ? `\n<script>\n${js}\n</script>` : ""}
 </body>
@@ -490,9 +656,30 @@ export async function buildProductionBundle(
     if (nodes.length > 0) rawBodyHtml = stripEditorAttributes(renderTree(nodes));
   }
 
-  // Извлекаем картинки (blob: и data:) в папку assets/, формируем productionBodyHtml со ссылками
-  const { productionHtml: productionBodyHtml, assets } =
-    await extractAndProcessAssets(rawBodyHtml);
+  // 1. Извлекаем все <svg> в спрайт, заменяем на <use href="#id" xlink:href="#id"></use>
+  const {
+    bodyHtml: bodyHtmlWithSprite,
+    spriteContainer,
+    standaloneSpriteSvg,
+    symbolCount,
+  } = extractAndProcessSvgSprite(rawBodyHtml);
+
+  // 2. Извлекаем растровые картинки (blob: и data:image/) в папку assets/
+  const { productionHtml: productionBodyHtml, assets: imageAssets } =
+    await extractAndProcessAssets(bodyHtmlWithSprite);
+
+  // 3. Формируем список файлов для папки assets/ (растровые изображения + sprite.svg)
+  const allAssets: BundleAsset[] = [...imageAssets];
+  if (symbolCount > 0 && standaloneSpriteSvg) {
+    const spriteBlob = new Blob([standaloneSpriteSvg], { type: "image/svg+xml" });
+    allAssets.push({
+      name: "sprite.svg",
+      path: "assets/sprite.svg",
+      blob: spriteBlob,
+      size: spriteBlob.size,
+      mimeType: "image/svg+xml",
+    });
+  }
 
   // CSS
   const { css, purgeResult } = await buildProductionCss({
@@ -505,43 +692,45 @@ export async function buildProductionBundle(
     dedup: options.dedup,
   });
 
-  // HTML (ссылается на styles.css, scripts.js и assets/...)
+  // HTML (со встроенным спрайтом в body, чтобы иконки гарантированно работали везде)
   const html = buildProductionHtml({
     bodyHtml: productionBodyHtml,
     fontEntries,
     defaultFont,
     colorVariables,
+    spriteContainer,
   });
 
   // JS
   const js = buildProductionJs(rawJs || "");
 
-  // Preview doc (всё инлайн — для iframe на странице экспорта сохраняем исходные рабочие blob/data ссылки)
+  // Preview doc (со встроенным спрайтом для iframe и рабочими blob-ссылками)
   const previewDoc = buildPreviewDoc({
-    bodyHtml: rawBodyHtml,
+    bodyHtml: bodyHtmlWithSprite,
     fontEntries,
     defaultFont,
     css,
     js,
+    spriteContainer,
   });
 
   // Статистика
   const enc = (s: string) => new TextEncoder().encode(s).length;
   const lines = (s: string) => (s.trim() ? s.split("\n").length : 0);
-  const assetsBytes = assets.reduce((sum, a) => sum + a.size, 0);
+  const assetsBytes = allAssets.reduce((sum, a) => sum + a.size, 0);
 
   return {
     html,
     css,
     js,
     previewDoc,
-    assets,
+    assets: allAssets,
     stats: {
       htmlBytes: enc(html),
       cssBytes: enc(css),
       jsBytes: enc(js),
       assetsBytes,
-      assetsCount: assets.length,
+      assetsCount: allAssets.length,
       htmlLines: lines(html),
       cssLines: lines(css),
       jsLines: lines(js),
