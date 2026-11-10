@@ -7,6 +7,8 @@ interface ExportStatsProps {
     htmlBytes: number;
     cssBytes: number;
     jsBytes: number;
+    assetsBytes?: number;
+    assetsCount?: number;
     htmlLines: number;
     cssLines: number;
     jsLines: number;
@@ -42,14 +44,17 @@ export default function ExportStats({
 
   if (!stats) return null;
 
-  const totalBytes = stats.htmlBytes + stats.cssBytes + stats.jsBytes;
+  const totalBytes =
+    stats.htmlBytes +
+    stats.cssBytes +
+    stats.jsBytes +
+    (stats.assetsBytes || 0);
   const totalRules = stats.cssRulesKept + stats.cssRulesRemoved;
   const purgePercent =
     totalRules > 0 ? Math.round((stats.cssRulesRemoved / totalRules) * 100) : 0;
 
   return (
     <div className="flex items-center gap-2 flex-wrap text-[11px] font-mono">
-
       {/* Файлы */}
       {(
         [
@@ -68,6 +73,20 @@ export default function ExportStats({
           <span className="text-zinc-500">{lines} lines</span>
         </div>
       ))}
+
+      {/* Assets */}
+      {Boolean(stats.assetsCount && stats.assetsCount > 0) && (
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-zinc-900 border border-zinc-700/80">
+          <span className="text-zinc-500">Assets</span>
+          <span className="font-bold text-teal-300">
+            {formatBytes(stats.assetsBytes || 0)}
+          </span>
+          <span className="text-zinc-600">·</span>
+          <span className="text-zinc-500">
+            {stats.assetsCount} {stats.assetsCount === 1 ? "img" : "imgs"}
+          </span>
+        </div>
+      )}
 
       {/* Total */}
       <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-zinc-900 border border-zinc-600/80">

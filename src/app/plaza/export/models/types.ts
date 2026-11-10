@@ -11,5 +11,6 @@ export interface ExportTab {
 
 export type {
   BuildOptions,
+  BundleAsset,
   ProductionBundle,
 } from "./productionBuilder";

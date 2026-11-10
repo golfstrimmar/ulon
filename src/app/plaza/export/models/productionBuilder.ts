@@ -32,16 +32,27 @@ export interface BuildOptions {
   dedup: boolean; // дедуплицировать CSS-декларации
 }
 
+export interface BundleAsset {
+  name: string;
+  path: string;
+  blob: Blob;
+  size: number;
+  mimeType: string;
+}
+
 export interface ProductionBundle {
   html: string;
   css: string;
   js: string;
   /** Полный HTML для iframe-превью (css + js инлайн) */
   previewDoc: string;
+  assets: BundleAsset[];
   stats: {
     htmlBytes: number;
     cssBytes: number;
     jsBytes: number;
+    assetsBytes: number;
+    assetsCount: number;
     htmlLines: number;
     cssLines: number;
     jsLines: number;
@@ -53,6 +64,162 @@ export interface ProductionBundle {
 /* ============================================================================
    HTML-ГЕНЕРАТОР
    ============================================================================ */
+
+/**
+ * Удаляет служебные атрибуты редактора (data-node-key) из HTML-разметки
+ */
+export function stripEditorAttributes(html: string): string {
+  if (!html) return "";
+  return html.replace(/\s+data-node-key=(?:"[^"]*"|'[^']*'|[^\s>]+)/g, "");
+}
+
+function getExtensionFromMime(mimeType: string): string {
+  const mime = mimeType.toLowerCase();
+  if (mime.includes("jpeg") || mime.includes("jpg")) return "jpg";
+  if (mime.includes("png")) return "png";
+  if (mime.includes("webp")) return "webp";
+  if (mime.includes("svg")) return "svg";
+  if (mime.includes("gif")) return "gif";
+  if (mime.includes("avif")) return "avif";
+  if (mime.includes("icon") || mime.includes("ico")) return "ico";
+  return "png";
+}
+
+function dataUrlToBlob(dataUrl: string): Blob | null {
+  try {
+    const commaIndex = dataUrl.indexOf(",");
+    if (commaIndex === -1) return null;
+    const header = dataUrl.slice(0, commaIndex);
+    const base64 = dataUrl.slice(commaIndex + 1);
+    const mimeMatch = header.match(/^data:([^;]+)/);
+    const mimeType = mimeMatch ? mimeMatch[1] : "image/png";
+    const binary = atob(base64);
+    const len = binary.length;
+    const u8 = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      u8[i] = binary.charCodeAt(i);
+    }
+    return new Blob([u8], { type: mimeType });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Находит все изображения в html (в виде blob: или data:image/),
+ * конвертирует их в файлы папки assets/ и заменяет в разметке на относительные ссылки.
+ */
+export async function extractAndProcessAssets(
+  html: string,
+): Promise<{ productionHtml: string; assets: BundleAsset[] }> {
+  if (!html) return { productionHtml: "", assets: [] };
+
+  // Соответствие src -> alt
+  const imageSources = new Map<string, string>();
+
+  // 1. Поиск <img ...>
+  const imgTagRegex = /<img\b([^>]*?)>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = imgTagRegex.exec(html)) !== null) {
+    const tagAttrs = match[1];
+    const srcMatch = tagAttrs.match(
+      /\bsrc=(["'])(blob:[^"']+|data:image\/[^"']+)\1/i,
+    );
+    if (srcMatch) {
+      const src = srcMatch[2];
+      const altMatch = tagAttrs.match(/\balt=(["'])(.*?)\1/i);
+      const alt = altMatch ? altMatch[2].trim() : "";
+      if (!imageSources.has(src)) {
+        imageSources.set(src, alt);
+      }
+    }
+  }
+
+  // 2. Поиск inline url('blob:...') или url('data:image/...')
+  const cssUrlRegex = /url\((["']?)(blob:[^"')]+|data:image\/[^"')]+)\1\)/gi;
+  while ((match = cssUrlRegex.exec(html)) !== null) {
+    const src = match[2];
+    if (!imageSources.has(src)) {
+      imageSources.set(src, "");
+    }
+  }
+
+  if (imageSources.size === 0) {
+    return { productionHtml: html, assets: [] };
+  }
+
+  const assets: BundleAsset[] = [];
+  const replacements = new Map<string, string>();
+  const usedFilenames = new Set<string>();
+  let imageCounter = 1;
+
+  for (const [src, alt] of imageSources.entries()) {
+    let blob: Blob | null = null;
+    let mimeType = "image/png";
+
+    if (src.startsWith("data:")) {
+      blob = dataUrlToBlob(src);
+      if (blob?.type) mimeType = blob.type;
+    }
+
+    if (!blob && (src.startsWith("blob:") || src.startsWith("data:"))) {
+      try {
+        const response = await fetch(src);
+        if (response.ok) {
+          blob = await response.blob();
+          if (blob.type) mimeType = blob.type;
+        }
+      } catch (e) {
+        console.warn(
+          "[productionBuilder] Не удалось получить blob изображения:",
+          src,
+          e,
+        );
+      }
+    }
+
+    if (!blob) {
+      continue;
+    }
+
+    const ext = getExtensionFromMime(mimeType);
+    let baseName = "";
+    if (alt) {
+      baseName = alt
+        .toLowerCase()
+        .replace(/[^a-z0-9а-яё_-]+/gi, "-")
+        .replace(/^-+|-+$/g, "");
+    }
+    if (!baseName) {
+      baseName = `image-${imageCounter++}`;
+    }
+
+    let filename = `${baseName}.${ext}`;
+    let counter = 1;
+    while (usedFilenames.has(filename)) {
+      filename = `${baseName}-${counter++}.${ext}`;
+    }
+    usedFilenames.add(filename);
+
+    const assetPath = `assets/${filename}`;
+    assets.push({
+      name: filename,
+      path: assetPath,
+      blob,
+      size: blob.size,
+      mimeType,
+    });
+
+    replacements.set(src, assetPath);
+  }
+
+  let productionHtml = html;
+  for (const [origSrc, newPath] of replacements.entries()) {
+    productionHtml = productionHtml.replaceAll(origSrc, newPath);
+  }
+
+  return { productionHtml, assets };
+}
 
 function buildProductionHtml({
   bodyHtml,
@@ -316,12 +483,16 @@ export async function buildProductionBundle(
       ? (colorVars as any).variables
       : [];
 
-  // Body HTML из дерева нод
-  let bodyHtml = "";
+  // Body HTML из дерева нод (без служебных ключей data-node-key)
+  let rawBodyHtml = "";
   if (rawTree) {
     const nodes: HtmlNode[] = Array.isArray(rawTree) ? rawTree : [rawTree];
-    if (nodes.length > 0) bodyHtml = renderTree(nodes);
+    if (nodes.length > 0) rawBodyHtml = stripEditorAttributes(renderTree(nodes));
   }
+
+  // Извлекаем картинки (blob: и data:) в папку assets/, формируем productionBodyHtml со ссылками
+  const { productionHtml: productionBodyHtml, assets } =
+    await extractAndProcessAssets(rawBodyHtml);
 
   // CSS
   const { css, purgeResult } = await buildProductionCss({
@@ -329,14 +500,14 @@ export async function buildProductionBundle(
     colorVariables,
     fontEntries,
     defaultFont,
-    bodyHtml,
+    bodyHtml: productionBodyHtml,
     purge: options.purge,
     dedup: options.dedup,
   });
 
-  // HTML (ссылается на styles.css и scripts.js)
+  // HTML (ссылается на styles.css, scripts.js и assets/...)
   const html = buildProductionHtml({
-    bodyHtml,
+    bodyHtml: productionBodyHtml,
     fontEntries,
     defaultFont,
     colorVariables,
@@ -345,9 +516,9 @@ export async function buildProductionBundle(
   // JS
   const js = buildProductionJs(rawJs || "");
 
-  // Preview doc (всё инлайн — для iframe на странице экспорта)
+  // Preview doc (всё инлайн — для iframe на странице экспорта сохраняем исходные рабочие blob/data ссылки)
   const previewDoc = buildPreviewDoc({
-    bodyHtml,
+    bodyHtml: rawBodyHtml,
     fontEntries,
     defaultFont,
     css,
@@ -357,16 +528,20 @@ export async function buildProductionBundle(
   // Статистика
   const enc = (s: string) => new TextEncoder().encode(s).length;
   const lines = (s: string) => (s.trim() ? s.split("\n").length : 0);
+  const assetsBytes = assets.reduce((sum, a) => sum + a.size, 0);
 
   return {
     html,
     css,
     js,
     previewDoc,
+    assets,
     stats: {
       htmlBytes: enc(html),
       cssBytes: enc(css),
       jsBytes: enc(js),
+      assetsBytes,
+      assetsCount: assets.length,
       htmlLines: lines(html),
       cssLines: lines(css),
       jsLines: lines(js),

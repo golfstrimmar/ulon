@@ -27,6 +27,16 @@ export async function downloadZip(bundle: ProductionBundle): Promise<void> {
     zip.file("scripts.js", bundle.js);
   }
 
+  // Добавляем папку assets с изображениями
+  if (bundle.assets && bundle.assets.length > 0) {
+    const assetsFolder = zip.folder("assets");
+    if (assetsFolder) {
+      for (const asset of bundle.assets) {
+        assetsFolder.file(asset.name, asset.blob);
+      }
+    }
+  }
+
   const blob = await zip.generateAsync({
     type: "blob",
     compression: "DEFLATE",
