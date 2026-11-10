@@ -1,6 +1,6 @@
-/**
+﻿/**
  * @file scssCompiler.ts
- * @description Компиляция SCSS в CSS и обновление конкретного класса на месте.
+ * @description ÐšÐ¾Ð¼Ð¿Ð¸Ð»ÑÑ†Ð¸Ñ SCSS Ð² CSS Ð¸ Ð¾Ð±Ð½Ð¾Ð²Ð»ÐµÐ½Ð¸Ðµ ÐºÐ¾Ð½ÐºÑ€ÐµÑ‚Ð½Ð¾Ð³Ð¾ ÐºÐ»Ð°ÑÑÐ° Ð½Ð° Ð¼ÐµÑÑ‚Ðµ.
  */
 
 import { compileScssAction } from "@/actions/scss.actions";
@@ -10,20 +10,20 @@ export async function compileScssToCss(scss: string): Promise<string> {
   if (!code) return "";
 
   try {
-    // 🚀 Прямой вызов серверного экшена без всяких fetch('/api/compile-scss')!
+    // ðŸš€ ÐŸÑ€ÑÐ¼Ð¾Ð¹ Ð²Ñ‹Ð·Ð¾Ð² ÑÐµÑ€Ð²ÐµÑ€Ð½Ð¾Ð³Ð¾ ÑÐºÑˆÐµÐ½Ð° Ð±ÐµÐ· Ð²ÑÑÐºÐ¸Ñ… fetch('/api/compile-scss')!
     const res = await compileScssAction(code);
     if (res.success && res.css !== undefined) {
       return res.css;
     }
   } catch (e) {
-    console.warn("⚠️ [SCSS Action Network Error]:", e.message);
+    console.warn("âš ï¸ [SCSS Action Network Error]:", (e as any)?.message);
   }
 
   return code;
 }
 
 /**
- * Находит и возвращает блок класса из глобального SCSS
+ * ÐÐ°Ñ…Ð¾Ð´Ð¸Ñ‚ Ð¸ Ð²Ð¾Ð·Ð²Ñ€Ð°Ñ‰Ð°ÐµÑ‚ Ð±Ð»Ð¾Ðº ÐºÐ»Ð°ÑÑÐ° Ð¸Ð· Ð³Ð»Ð¾Ð±Ð°Ð»ÑŒÐ½Ð¾Ð³Ð¾ SCSS
  */
 export function extractClassSnippet(
   globalScss: string,
@@ -56,7 +56,7 @@ export function extractClassSnippet(
 }
 
 /**
- * Заменяет найденный блок .cls { ... } на новый. Если его нет — дописывает в конец.
+ * Ð—Ð°Ð¼ÐµÐ½ÑÐµÑ‚ Ð½Ð°Ð¹Ð´ÐµÐ½Ð½Ñ‹Ð¹ Ð±Ð»Ð¾Ðº .cls { ... } Ð½Ð° Ð½Ð¾Ð²Ñ‹Ð¹. Ð•ÑÐ»Ð¸ ÐµÐ³Ð¾ Ð½ÐµÑ‚ â€” Ð´Ð¾Ð¿Ð¸ÑÑ‹Ð²Ð°ÐµÑ‚ Ð² ÐºÐ¾Ð½ÐµÑ†.
  */
 export function updateClassInGlobalScss(
   globalScss: string,
@@ -68,7 +68,7 @@ export function updateClassInGlobalScss(
 
   const trimmedSnippet = newSnippet.trim();
 
-  // Ищем блок этого класса
+  // Ð˜Ñ‰ÐµÐ¼ Ð±Ð»Ð¾Ðº ÑÑ‚Ð¾Ð³Ð¾ ÐºÐ»Ð°ÑÑÐ°
   const regex = new RegExp(`(^|\\n)([ \\t]*\\.${cls}\\b[^{]*\\{)`);
   const match = regex.exec(globalScss);
 
@@ -87,7 +87,7 @@ export function updateClassInGlobalScss(
         pos++;
       }
 
-      // Заменяем строго этот найденный фрагмент
+      // Ð—Ð°Ð¼ÐµÐ½ÑÐµÐ¼ ÑÑ‚Ñ€Ð¾Ð³Ð¾ ÑÑ‚Ð¾Ñ‚ Ð½Ð°Ð¹Ð´ÐµÐ½Ð½Ñ‹Ð¹ Ñ„Ñ€Ð°Ð³Ð¼ÐµÐ½Ñ‚
       const before = globalScss.slice(0, fullMatchStart);
       const after = globalScss.slice(pos);
 
@@ -99,7 +99,7 @@ export function updateClassInGlobalScss(
     }
   }
 
-  // Если класса не было в файле — дописываем в конец
+  // Ð•ÑÐ»Ð¸ ÐºÐ»Ð°ÑÑÐ° Ð½Ðµ Ð±Ñ‹Ð»Ð¾ Ð² Ñ„Ð°Ð¹Ð»Ðµ â€” Ð´Ð¾Ð¿Ð¸ÑÑ‹Ð²Ð°ÐµÐ¼ Ð² ÐºÐ¾Ð½ÐµÑ†
   if (!trimmedSnippet) return globalScss;
   return globalScss.trim()
     ? `${globalScss.trim()}\n\n${trimmedSnippet}`
@@ -111,7 +111,7 @@ function escapeRegex(str: string): string {
 }
 
 /**
- * Извлекает вложенный блок (например, &:before, &:hover) из текста класса .cls { ... }
+ * Ð˜Ð·Ð²Ð»ÐµÐºÐ°ÐµÑ‚ Ð²Ð»Ð¾Ð¶ÐµÐ½Ð½Ñ‹Ð¹ Ð±Ð»Ð¾Ðº (Ð½Ð°Ð¿Ñ€Ð¸Ð¼ÐµÑ€, &:before, &:hover) Ð¸Ð· Ñ‚ÐµÐºÑÑ‚Ð° ÐºÐ»Ð°ÑÑÐ° .cls { ... }
  */
 export function extractNestedSnippet(
   classSnippet: string,
@@ -172,8 +172,8 @@ function mergeNestedBody(existingBody: string, newBody: string): string {
 }
 
 /**
- * Обновляет или добавляет вложенный псевдо-блок (например, &:before { ... })
- * внутри блока класса .cls { ... }
+ * ÐžÐ±Ð½Ð¾Ð²Ð»ÑÐµÑ‚ Ð¸Ð»Ð¸ Ð´Ð¾Ð±Ð°Ð²Ð»ÑÐµÑ‚ Ð²Ð»Ð¾Ð¶ÐµÐ½Ð½Ñ‹Ð¹ Ð¿ÑÐµÐ²Ð´Ð¾-Ð±Ð»Ð¾Ðº (Ð½Ð°Ð¿Ñ€Ð¸Ð¼ÐµÑ€, &:before { ... })
+ * Ð²Ð½ÑƒÑ‚Ñ€Ð¸ Ð±Ð»Ð¾ÐºÐ° ÐºÐ»Ð°ÑÑÐ° .cls { ... }
  */
 export function updateNestedSnippetInClass(
   classSnippet: string,
@@ -227,7 +227,7 @@ export function updateNestedSnippetInClass(
     }
   }
 
-  // Если вложенного блока ещё не было — вставляем перед закрывающей скобкой класса }
+  // Ð•ÑÐ»Ð¸ Ð²Ð»Ð¾Ð¶ÐµÐ½Ð½Ð¾Ð³Ð¾ Ð±Ð»Ð¾ÐºÐ° ÐµÑ‰Ñ‘ Ð½Ðµ Ð±Ñ‹Ð»Ð¾ â€” Ð²ÑÑ‚Ð°Ð²Ð»ÑÐµÐ¼ Ð¿ÐµÑ€ÐµÐ´ Ð·Ð°ÐºÑ€Ñ‹Ð²Ð°ÑŽÑ‰ÐµÐ¹ ÑÐºÐ¾Ð±ÐºÐ¾Ð¹ ÐºÐ»Ð°ÑÑÐ° }
   if (!trimmedSnippet) return classSnippet;
 
   const formatted = trimmedSnippet
