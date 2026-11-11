@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file scssCompiler.ts
  * @description ÐšÐ¾Ð¼Ð¿Ð¸Ð»ÑÑ†Ð¸Ñ SCSS Ð² CSS Ð¸ Ð¾Ð±Ð½Ð¾Ð²Ð»ÐµÐ½Ð¸Ðµ ÐºÐ¾Ð½ÐºÑ€ÐµÑ‚Ð½Ð¾Ð³Ð¾ ÐºÐ»Ð°ÑÑÐ° Ð½Ð° Ð¼ÐµÑÑ‚Ðµ.
  */
@@ -32,7 +32,8 @@ export function extractClassSnippet(
   const cls = className.trim().replace(/^\./, "");
   if (!globalScss || !cls) return `.${cls} {\n  \n}`;
 
-  const regex = new RegExp(`(^|\\n)[ \\t]*\\.${cls}\\b[^{]*\\{`);
+  const escaped = escapeRegex(cls);
+  const regex = new RegExp(`(^|\\n)[ \\t]*\\.${escaped}(?![a-zA-Z0-9_.-])[^{]*\\{`);
   const match = regex.exec(globalScss);
   if (!match) {
     return `.${cls} {\n  \n}`;
@@ -69,7 +70,10 @@ export function updateClassInGlobalScss(
   const trimmedSnippet = newSnippet.trim();
 
   // Ð˜Ñ‰ÐµÐ¼ Ð±Ð»Ð¾Ðº ÑÑ‚Ð¾Ð³Ð¾ ÐºÐ»Ð°ÑÑÐ°
-  const regex = new RegExp(`(^|\\n)([ \\t]*\\.${cls}\\b[^{]*\\{)`);
+  const escaped = escapeRegex(cls);
+  const regex = new RegExp(
+    `(^|\\n)([ \\t]*\\.${escaped}(?![a-zA-Z0-9_.-])[^{]*\\{)`,
+  );
   const match = regex.exec(globalScss);
 
   if (match) {
@@ -106,8 +110,18 @@ export function updateClassInGlobalScss(
     : trimmedSnippet;
 }
 
-function escapeRegex(str: string): string {
+export function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export function hasClassInScss(globalScss: string, className: string): boolean {
+  const cls = className.trim().replace(/^\./, "");
+  if (!globalScss || !cls) return false;
+  const escaped = escapeRegex(cls);
+  const regex = new RegExp(
+    `(^|\\n)[ \\t]*\\.${escaped}(?![a-zA-Z0-9_.-])[^{]*\\{`,
+  );
+  return regex.test(globalScss);
 }
 
 /**

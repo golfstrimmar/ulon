@@ -46,6 +46,8 @@ export interface ProductionBundle {
   js: string;
   /** Полный HTML для iframe-превью (css + js инлайн) */
   previewDoc: string;
+  /** Контейнер SVG-спрайта для встраивания в HTML */
+  spriteContainer: string;
   assets: BundleAsset[];
   stats: {
     htmlBytes: number;
@@ -724,6 +726,7 @@ export async function buildProductionBundle(
     css,
     js,
     previewDoc,
+    spriteContainer,
     assets: allAssets,
     stats: {
       htmlBytes: enc(html),

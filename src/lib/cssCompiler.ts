@@ -7,6 +7,8 @@
  * Автоматически лечит любые вложенные матрешки (.ttt { .ttt { ... } })
  * и превращает их в плоские правила (.ttt { ... } и .ttt:hover { ... })
  */
+import { escapeRegex } from "./scssCompiler";
+
 export function repairCss(className: string, rawCss: string): string {
   let css = (rawCss || "").trim();
   const cls = className.replace(/^\./, "");
@@ -23,7 +25,10 @@ export function repairCss(className: string, rawCss: string): string {
 
   // Срезаем все внешние дублирующиеся .cls { и закрывающие }
   const cleanDeclarations = css
-    .replace(new RegExp(`\\.${cls}\\s*\\{`, "g"), "")
+    .replace(
+      new RegExp(`\\.${escapeRegex(cls)}(?![a-zA-Z0-9_.-])\\s*\\{`, "g"),
+      "",
+    )
     .replace(/\}/g, "")
     .trim();
 
@@ -101,7 +106,7 @@ export function parseClassesCss(fullCss: string): Record<string, string> {
     if (!rawSelector) continue;
 
     // Ищем имя класса (например ".ttt:hover" -> "ttt")
-    const match = /\.([a-zA-Z0-9_-]+)/.exec(rawSelector);
+    const match = /\.([a-zA-Z0-9_.-]+?)(?=[:\s{]|$)/.exec(rawSelector);
     if (match && match[1]) {
       const className = match[1];
       const cleanSelector = rawSelector.replace(/\/\*[\s\S]*?\*\//g, "").trim();

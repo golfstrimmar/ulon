@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useLiveStyle } from "../hooks/useLiveStyle";
 
 type DisplayMode =
@@ -148,6 +148,10 @@ export function DisplayControl({
   const [gridCols, setGridCols] = useState<string | null>(null);
   const [gridRows, setGridRows] = useState<string | null>(null);
 
+  // 🔹 Flex basis / ratio percentage (например, flex: 0 0 16.7%)
+  const [flexPercent, setFlexPercent] = useState<number | null>(null);
+  const isDraggingFlexRef = useRef<boolean>(false);
+
   const { applyLiveStyle, removeLiveStyle } = useLiveStyle();
 
   const extractProp = useCallback(
@@ -171,7 +175,51 @@ export function DisplayControl({
     setFlexDir(extractProp("flex-direction", currentScssText));
     setGridCols(extractProp("grid-template-columns", currentScssText));
     setGridRows(extractProp("grid-template-rows", currentScssText));
+
+    if (!isDraggingFlexRef.current) {
+      const flexMatch = currentScssText.match(
+        /(?:^|\s|;)flex\s*:\s*(?:(?:0\s+0\s+)|(?:1\s+1\s+))?([0-9]+(?:\.[0-9]+)?)\s*%/i,
+      );
+      if (flexMatch) {
+        setFlexPercent(parseFloat(flexMatch[1]));
+        setOpenPane((prev) => prev ?? "flex");
+      } else {
+        setFlexPercent(null);
+      }
+    }
   }, [currentClass, currentScssText, extractProp]);
+
+  // 🔹 По живому регулируем flex: 0 0 X.X%
+  const handleFlexPercentChange = (val: number) => {
+    isDraggingFlexRef.current = true;
+    const clamped = Math.max(0.1, Math.min(100, Math.round(val * 10) / 10));
+    setFlexPercent(clamped);
+    const ruleVal = `0 0 ${clamped.toFixed(1)}%`;
+    applyLiveStyle(currentClass, "flex", ruleVal as any);
+  };
+
+  const handleFlexPercentCommit = () => {
+    isDraggingFlexRef.current = false;
+    if (flexPercent === null) return;
+    const ruleVal = `0 0 ${flexPercent.toFixed(1)}%`;
+    applyLiveStyle(currentClass, "flex", ruleVal as any);
+    onApplySnippet(`flex: ${ruleVal};`);
+  };
+
+  const handleFlexPresetClick = (val: number) => {
+    isDraggingFlexRef.current = false;
+    setFlexPercent(val);
+    const ruleVal = `0 0 ${val.toFixed(1)}%`;
+    applyLiveStyle(currentClass, "flex", ruleVal as any);
+    onApplySnippet(`flex: ${ruleVal};`);
+  };
+
+  const resetFlexPercent = () => {
+    isDraggingFlexRef.current = false;
+    setFlexPercent(null);
+    removeLiveStyle();
+    onApplySnippet("flex: initial;");
+  };
 
   /* ── применение sub-prop ──────────────────────────────── */
   const applyProp = (prop: string, value: string) => {
@@ -303,7 +351,88 @@ export function DisplayControl({
           />
         </div>
       )}
+      {/* 🔹 Ползунок flex: 0 0 16.7% (до десятых долей процента) */}
+      <div className="flex flex-col gap-1.5 pt-1.5 border-t border-zinc-800">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1 shrink-0">
+            <span className="text-[9px] font-mono text-zinc-400 w-14 truncate">
+              flex:
+            </span>
+            <button
+              type="button"
+              onClick={resetFlexPercent}
+              className={`w-3.5 h-3.5 flex items-center justify-center rounded text-[9px] border transition cursor-pointer ${
+                flexPercent !== null
+                  ? "border-zinc-700 text-zinc-400 hover:text-red-400"
+                  : "border-zinc-800 text-zinc-700 opacity-40 cursor-not-allowed"
+              }`}
+              title="Reset flex"
+            >
+              ✕
+            </button>
+          </div>
 
+          <code className="text-cyan-400 bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800 font-mono text-[9px] font-semibold">
+            {flexPercent !== null
+              ? `flex: 0 0 ${flexPercent.toFixed(1)}%;`
+              : "flex: none"}
+          </code>
+        </div>
+
+        {/* Слайдер и числовой инпут */}
+        <div className="flex items-center gap-2">
+          <input
+            type="range"
+            min={0.1}
+            max={100}
+            step={0.1}
+            value={flexPercent ?? 100}
+            onChange={(e) =>
+              handleFlexPercentChange(parseFloat(e.target.value))
+            }
+            onPointerUp={handleFlexPercentCommit}
+            onKeyUp={handleFlexPercentCommit}
+            className="flex-1 accent-cyan-500 cursor-pointer h-1.5 bg-zinc-800 rounded-lg"
+          />
+          <div className="flex items-center gap-0.5 bg-zinc-900 border border-zinc-800 rounded px-1.5 py-0.5 w-18 shrink-0">
+            <input
+              type="number"
+              min={0.1}
+              max={100}
+              step={0.1}
+              value={flexPercent !== null ? flexPercent : ""}
+              onChange={(e) => {
+                const v = parseFloat(e.target.value);
+                if (!isNaN(v)) {
+                  handleFlexPercentChange(v);
+                  handleFlexPercentCommit();
+                }
+              }}
+              placeholder="%"
+              className="w-full bg-transparent text-right text-[10px] font-mono text-white focus:outline-none"
+            />
+            <span className="text-[9px] font-mono text-zinc-500">%</span>
+          </div>
+        </div>
+
+        {/* Быстрые пресеты до десятых */}
+        <div className="flex items-center gap-1 flex-wrap">
+          {[16.7, 20, 25, 33.3, 50, 66.7, 100].map((preset) => (
+            <button
+              key={preset}
+              type="button"
+              onClick={() => handleFlexPresetClick(preset)}
+              className={`px-1.5 py-0.5 rounded text-[9px] font-mono border transition cursor-pointer ${
+                flexPercent !== null && Math.abs(flexPercent - preset) < 0.1
+                  ? "bg-cyan-600 border-cyan-400 text-white font-bold"
+                  : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+              }`}
+            >
+              {preset}%
+            </button>
+          ))}
+        </div>
+      </div>
       {/* Панель grid — отображается как tabs__pane _is-active */}
       {openPane === "grid" && (
         <div className="flex flex-col gap-1.5 pt-1.5 border-t border-zinc-800">

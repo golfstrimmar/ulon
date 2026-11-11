@@ -2,7 +2,19 @@ import { useState, useCallback, useEffect } from "react";
 import { buildProductionBundle } from "../models/productionBuilder";
 import type { TabId, ProductionBundle } from "../models/types";
 import { TABS } from "../lib/constants";
-import { downloadFile, downloadZip } from "../lib/downloadUtils";
+import { downloadFile, downloadZip, downloadReactZip } from "../lib/downloadUtils";
+import {
+  generateReactProjectAction,
+  type GeneratedComponent,
+} from "@/actions/reactGenerator.actions";
+
+export type ReactExportStatus =
+  | "idle"
+  | "analyzing"
+  | "generating"
+  | "packing"
+  | "done"
+  | "error";
 
 export function useExportController() {
   const [activeTab, setActiveTab] = useState<TabId>("preview");
@@ -11,6 +23,10 @@ export function useExportController() {
   const [isPurgeOn, setIsPurgeOn] = useState(true);
   const [isDedupOn, setIsDedupOn] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // React AI export state
+  const [reactStatus, setReactStatus] = useState<ReactExportStatus>("idle");
+  const [reactError, setReactError] = useState<string | null>(null);
 
   const runBuild = useCallback(async (purge: boolean, dedup: boolean) => {
     setIsBuilding(true);
@@ -65,6 +81,46 @@ export function useExportController() {
     [],
   );
 
+  // ─── React AI Export ───────────────────────────────────────────────
+
+  const handleReactExport = useCallback(async () => {
+    if (!bundle) return;
+    setReactError(null);
+    setReactStatus("analyzing");
+
+    try {
+      // Шаг 1: Отправляем разметку, JS и CSS в Gemini через Server Action
+      setReactStatus("generating");
+      const result = await generateReactProjectAction({
+        html: bundle.html,
+        js: bundle.js,
+        css: bundle.css,
+      });
+
+      if (!result.success || !result.appCode) {
+        setReactStatus("error");
+        setReactError(result.error || "AI did not return valid React code");
+        return;
+      }
+
+      // Шаг 2: Упаковываем проект в ZIP
+      setReactStatus("packing");
+      await downloadReactZip({
+        appCode: result.appCode,
+        components: result.components || [],
+        bundle,
+      });
+
+      setReactStatus("done");
+
+      // Через 3 секунды сбрасываем статус обратно
+      setTimeout(() => setReactStatus("idle"), 3000);
+    } catch (e) {
+      setReactStatus("error");
+      setReactError(String(e));
+    }
+  }, [bundle]);
+
   return {
     activeTab,
     setActiveTab,
@@ -81,5 +137,9 @@ export function useExportController() {
     handleDownloadActiveTab,
     handleDownloadZip,
     handleDownloadFile,
+    // React AI export
+    reactStatus,
+    reactError,
+    handleReactExport,
   };
 }

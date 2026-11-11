@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import ModalCustomStyles from "@/app/plaza/components/CanvasArea/components/ModalCustomStyles/ModalCustomStyles";
 import ButtonUndoRedoScss from "@/components/ButtonUndoRedoScss";
 import { useMonacoPropertiesEditor } from "./useMonacoPropertiesEditor";
+import { hasClassInScss } from "@/lib/scssCompiler";
 
 const Editor = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
@@ -61,7 +62,7 @@ export function MonacoPropertiesEditor(props: MonacoPropertiesEditorProps) {
           {nodeClasses.length > 0 ? (
             nodeClasses.map((cls) => {
               const isOpen = openTarget === cls;
-              const hasSnippet = globalScss.includes(`.${cls}`);
+              const hasSnippet = hasClassInScss(globalScss, cls);
 
               return (
                 <button

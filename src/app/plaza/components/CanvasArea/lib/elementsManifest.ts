@@ -102,6 +102,7 @@ export const ELEMENT_FOLDERS: ElementFolder[] = [
   {
     name: "sections",
     items: [
+      { name: "header", path: "/json/sections/header.json" },
       { name: "hero", path: "/json/sections/hero.json" },
       { name: "card", path: "/json/sections/card.json" },
       { name: "cards", path: "/json/sections/cards.json" },

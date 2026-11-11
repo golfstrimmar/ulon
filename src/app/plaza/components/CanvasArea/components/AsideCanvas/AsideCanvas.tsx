@@ -6,6 +6,7 @@ import {
   ELEMENT_FOLDERS,
 } from "@/app/plaza/components/CanvasArea/lib/elementsManifest";
 import ButtonAddImg from "@/app/plaza/components/CanvasArea/components/ButtonAddImg";
+import ButtonAddFlex from "@/app/plaza/components/CanvasArea/components/ButtonAddFlex";
 import { useAsideCanvas } from "@/app/plaza/components/CanvasArea/components/AsideCanvas/hooks/useAsideCanvas";
 
 export default function AsideCanvas() {
@@ -62,6 +63,7 @@ export default function AsideCanvas() {
           </div>
 
           <ButtonAddImg />
+          <ButtonAddFlex />
 
           <div className="space-y-1">
             {ELEMENT_FOLDERS.map((folder) => {

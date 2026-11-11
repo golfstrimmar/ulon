@@ -1,4 +1,5 @@
 import {
+  escapeRegex,
   extractClassSnippet,
   updateNestedSnippetInClass,
 } from "@/lib/scssCompiler";
@@ -47,7 +48,8 @@ export function ensureSelectorWrapper(className: string, code: string): string {
   if (!cls) return trimmed;
   if (!trimmed) return `.${cls} {\n  \n}`;
 
-  const regex = new RegExp(`^\\.${cls}[\\s\\{\\:\\.]`);
+  const escaped = escapeRegex(cls);
+  const regex = new RegExp(`^\\.${escaped}(?![a-zA-Z0-9_.-])`);
   if (regex.test(trimmed)) {
     return trimmed;
   }

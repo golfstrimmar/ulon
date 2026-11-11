@@ -7,6 +7,7 @@ import ExportStats from "@/app/plaza/export/components/ExportStats";
 import Toggle from "@/app/plaza/export/components/Toggle";
 import { TABS } from "@/app/plaza/export/lib/constants";
 import { useExportController } from "@/app/plaza/export/controllers/useExportController";
+import type { ReactExportStatus } from "@/app/plaza/export/controllers/useExportController";
 
 const ExportFilePanel = dynamic(
   () => import("@/app/plaza/export/components/ExportFilePanel"),
@@ -17,6 +18,15 @@ const ExportPreview = dynamic(
   () => import("@/app/plaza/export/components/ExportPreview"),
   { ssr: false },
 );
+
+const REACT_STATUS_LABELS: Record<ReactExportStatus, string> = {
+  idle: "⚛ React (AI)",
+  analyzing: "Analyzing layout…",
+  generating: "AI generating components…",
+  packing: "Packing ZIP…",
+  done: "✓ Done!",
+  error: "⚛ Retry",
+};
 
 export default function ExportPage() {
   const {
@@ -35,7 +45,15 @@ export default function ExportPage() {
     handleDownloadActiveTab,
     handleDownloadZip,
     handleDownloadFile,
+    reactStatus,
+    reactError,
+    handleReactExport,
   } = useExportController();
+
+  const isReactBusy =
+    reactStatus === "analyzing" ||
+    reactStatus === "generating" ||
+    reactStatus === "packing";
 
   return (
     <div className="flex flex-col h-screen bg-zinc-950 text-zinc-100 overflow-hidden">
@@ -95,13 +113,36 @@ export default function ExportPage() {
           </button>
 
           {bundle && (
-            <button
-              type="button"
-              onClick={handleDownloadZip}
-              className="px-4 py-1.5 rounded text-sm font-mono font-bold border transition cursor-pointer flex items-center gap-2 bg-emerald-700 hover:bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-900/30"
-            >
-              ↓ ZIP
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={handleDownloadZip}
+                className="px-4 py-1.5 rounded text-sm font-mono font-bold border transition cursor-pointer flex items-center gap-2 bg-emerald-700 hover:bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-900/30"
+              >
+                ↓ ZIP
+              </button>
+
+              {/* ⚛ React AI Export */}
+              <button
+                type="button"
+                onClick={handleReactExport}
+                disabled={isReactBusy}
+                className={`px-4 py-1.5 rounded text-sm font-mono font-bold border transition cursor-pointer flex items-center gap-2 ${
+                  reactStatus === "done"
+                    ? "bg-emerald-700 border-emerald-500 text-white"
+                    : reactStatus === "error"
+                      ? "bg-red-900/60 hover:bg-red-800/60 border-red-600 text-red-200"
+                      : isReactBusy
+                        ? "bg-cyan-900/40 border-cyan-700/40 text-cyan-400 cursor-wait"
+                        : "bg-cyan-700 hover:bg-cyan-600 border-cyan-500 text-white shadow-lg shadow-cyan-900/30"
+                }`}
+              >
+                {isReactBusy && (
+                  <span className="w-3 h-3 rounded-full border-2 border-cyan-300 border-t-transparent animate-spin" />
+                )}
+                {REACT_STATUS_LABELS[reactStatus]}
+              </button>
+            </>
           )}
         </div>
       </header>
@@ -110,6 +151,10 @@ export default function ExportPage() {
       <div className="shrink-0 flex items-center gap-3 px-4 py-2 border-b border-zinc-800/60 bg-zinc-900/30 min-h-[40px]">
         {error ? (
           <span className="text-xs font-mono text-red-400">⚠ {error}</span>
+        ) : reactError ? (
+          <span className="text-xs font-mono text-red-400">
+            ⚠ React AI: {reactError}
+          </span>
         ) : (
           <ExportStats
             stats={bundle?.stats ?? null}

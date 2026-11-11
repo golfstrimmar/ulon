@@ -89,7 +89,7 @@ function isAlwaysKept(selector: string): boolean {
  */
 function extractClassesFromSelector(selector: string): string[] {
   const classes: string[] = [];
-  const re = /\.([a-zA-Z0-9_-]+)/g;
+  const re = /\.([a-zA-Z0-9_.-]+?)(?=[:\s{]|$)/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(selector)) !== null) {
     classes.push(m[1]);
