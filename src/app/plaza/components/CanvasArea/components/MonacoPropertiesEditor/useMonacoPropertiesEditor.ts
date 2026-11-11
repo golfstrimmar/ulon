@@ -2,9 +2,14 @@
 
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import type { OnMount } from "@monaco-editor/react";
-import { updateClassInGlobalScss } from "@/lib/scssCompiler";
+import {
+  extractClassSnippet,
+  updateClassInGlobalScss,
+} from "@/lib/scssCompiler";
 import {
   getSnippetWithFallback,
+  buildAllClassesSnippet,
+  updateGlobalScssFromMultiClass,
   ensureSelectorWrapper,
   applySnippetToClassCss,
 } from "./propertiesEditorModel";
@@ -22,6 +27,8 @@ interface UseMonacoPropertiesEditorOptions {
   ) => Promise<void> | void;
 }
 
+export type EditorMode = "styles" | "attributes";
+
 export function useMonacoPropertiesEditor({
   nodeKey = "",
   nodeClasses = [],
@@ -32,26 +39,25 @@ export function useMonacoPropertiesEditor({
   onClearNodeStyle,
   onSaveAttributes,
 }: UseMonacoPropertiesEditorOptions) {
+  // Режим редактора: все стили ноды (styles) или атрибуты (attributes)
+  const [mode, setMode] = useState<EditorMode>("styles");
+
+  // Активный класс для визуального редактирования в модалке ModalCustomStyles (null по умолчанию)
+  const [activeModalClass, setActiveModalClass] = useState<string | null>(null);
+  const [isCustomStylesOpen, setIsCustomStylesOpen] = useState<boolean>(false);
+  const [activeScope, setActiveScope] = useState<string>("base");
+
   const getFallbackForTarget = useCallback(
     (target: string | null) => {
       if (!target || !nodeStyle || !nodeStyle.trim()) return undefined;
-      // fallbackStyle применим ТОЛЬКО к первому (базовому) классу ноды
       return target === nodeClasses[0] ? nodeStyle : undefined;
     },
     [nodeStyle, nodeClasses],
   );
 
-  const firstCls = nodeClasses[0] ?? null;
-  const [openTarget, setOpenTarget] = useState<string | null>(firstCls);
-  const [activeScope, setActiveScope] = useState<string>("base");
+  // Текст в Monaco (по умолчанию — все классы ноды разом, как во вкладке Styles браузера)
   const [currentText, setCurrentText] = useState<string>(() =>
-    firstCls
-      ? getSnippetWithFallback(
-          firstCls,
-          globalScss,
-          firstCls === nodeClasses[0] ? nodeStyle : undefined,
-        )
-      : "",
+    buildAllClassesSnippet(nodeClasses, globalScss, nodeStyle),
   );
 
   const currentTextRef = useRef<string>("");
@@ -63,265 +69,251 @@ export function useMonacoPropertiesEditor({
 
   const prevNodeKeyRef = useRef<string>(nodeKey);
 
-  const saveCurrentOpenTarget = useCallback(
-    (targetToSave: string | null = openTarget) => {
-      if (!targetToSave || !isDirtyRef.current) return;
+  // 🔹 Сохранение текущего текста редактора в зависимости от режима
+  const saveCurrentText = useCallback(() => {
+    if (!isDirtyRef.current) return;
 
-      if (targetToSave === "__attributes__") {
-        try {
-          const parsed = JSON.parse(currentTextRef.current || "{}");
-          if (
-            typeof parsed === "object" &&
-            parsed !== null &&
-            onSaveAttributes
-          ) {
-            onSaveAttributes(parsed);
-          }
-        } catch (err) {
-          console.warn(
-            "[useMonacoPropertiesEditor] Invalid JSON attributes:",
-            err,
-          );
+    if (mode === "attributes") {
+      try {
+        const parsed = JSON.parse(currentTextRef.current || "{}");
+        if (
+          typeof parsed === "object" &&
+          parsed !== null &&
+          onSaveAttributes
+        ) {
+          onSaveAttributes(parsed);
         }
-      } else {
-        const preparedCode = ensureSelectorWrapper(
-          targetToSave,
-          currentTextRef.current,
+      } catch (err) {
+        console.warn(
+          "[useMonacoPropertiesEditor] Invalid JSON attributes:",
+          err,
         );
-        let nextScss = updateClassInGlobalScss(
-          globalScssRef.current,
-          targetToSave,
-          preparedCode,
-        );
+      }
+    } else {
+      // mode === "styles": сохраняем все отредактированные классы в globalScss
+      const nextScss = updateGlobalScssFromMultiClass(
+        globalScssRef.current,
+        currentTextRef.current,
+        nodeClasses,
+      );
 
-        // Если у ноды был инлайн nodeStyle, переносим стили базового класса в SCSS (если их там нет) и очищаем style
-        if (nodeStyle && nodeStyle.trim() && onClearNodeStyle) {
-          const baseCls = nodeClasses[0];
-          if (
-            baseCls &&
-            baseCls !== targetToSave &&
-            !nextScss.includes(`.${baseCls}`)
-          ) {
-            const baseSnippet = getSnippetWithFallback(
-              baseCls,
-              nextScss,
-              nodeStyle,
-            );
-            if (baseSnippet) {
-              nextScss = updateClassInGlobalScss(
-                nextScss,
-                baseCls,
-                ensureSelectorWrapper(baseCls, baseSnippet),
-              );
-            }
-          }
-          onClearNodeStyle();
-        }
-
-        globalScssRef.current = nextScss;
-        onSaveGlobalScss(nextScss);
+      if (nodeStyle && nodeStyle.trim() && onClearNodeStyle) {
+        onClearNodeStyle();
       }
 
-      isDirtyRef.current = false;
-    },
-    [
-      openTarget,
-      nodeStyle,
-      nodeClasses,
-      onClearNodeStyle,
-      onSaveAttributes,
-      onSaveGlobalScss,
-    ],
-  );
+      globalScssRef.current = nextScss;
+      onSaveGlobalScss(nextScss);
+    }
 
-  // Reset and auto-open first class on active node change
+    isDirtyRef.current = false;
+  }, [
+    mode,
+    nodeClasses,
+    nodeStyle,
+    onClearNodeStyle,
+    onSaveAttributes,
+    onSaveGlobalScss,
+  ]);
+
+  // Смена ноды: сбрасываем состояние и загружаем все классы новой ноды
   useEffect(() => {
     if (prevNodeKeyRef.current !== nodeKey) {
-      if (isDirtyRef.current && openTarget) {
-        saveCurrentOpenTarget(openTarget);
+      if (isDirtyRef.current) {
+        saveCurrentText();
       }
       prevNodeKeyRef.current = nodeKey;
       isDirtyRef.current = false;
 
+      setActiveModalClass(null);
+      setIsCustomStylesOpen(false);
       setActiveScope("base");
-      if (nodeClasses.length > 0) {
-        const fallback = nodeClasses[0];
-        const snippet = getSnippetWithFallback(
-          fallback,
+
+      if (mode === "styles") {
+        const text = buildAllClassesSnippet(
+          nodeClasses,
           globalScssRef.current,
-          getFallbackForTarget(fallback),
+          getFallbackForTarget(nodeClasses[0]),
         );
-        setCurrentText(snippet);
-        currentTextRef.current = snippet;
-        setOpenTarget(fallback);
+        setCurrentText(text);
+        currentTextRef.current = text;
       } else {
-        setOpenTarget(null);
-        setCurrentText("");
-        currentTextRef.current = "";
+        const jsonStr = JSON.stringify(attributesValue || {}, null, 2);
+        setCurrentText(jsonStr);
+        currentTextRef.current = jsonStr;
       }
     }
   }, [
     nodeKey,
     nodeClasses,
-    nodeStyle,
-    openTarget,
-    saveCurrentOpenTarget,
+    mode,
+    attributesValue,
+    saveCurrentText,
     getFallbackForTarget,
   ]);
 
-  // Fallback to first available class if currently opened class was deleted
+  // Синхронизация с внешними обновлениями SCSS/атрибутов, когда Monaco не редактируется пользователем
   useEffect(() => {
-    if (openTarget && openTarget !== "__attributes__") {
-      if (!nodeClasses.includes(openTarget)) {
-        isDirtyRef.current = false;
-        setActiveScope("base");
-        if (nodeClasses.length > 0) {
-          const fallback = nodeClasses[0];
-          const snippet = getSnippetWithFallback(
-            fallback,
-            globalScssRef.current,
-            getFallbackForTarget(fallback),
-          );
-          setCurrentText(snippet);
-          currentTextRef.current = snippet;
-          setOpenTarget(fallback);
-        } else {
-          setOpenTarget(null);
-          setCurrentText("");
-          currentTextRef.current = "";
-        }
-      }
-    }
-  }, [nodeClasses, openTarget, nodeStyle, getFallbackForTarget]);
-
-  // Sync with external SCSS or attribute updates when editor is not dirty
-  useEffect(() => {
-    if (!openTarget) {
-      setCurrentText("");
-      currentTextRef.current = "";
-      isDirtyRef.current = false;
-      return;
-    }
-
     if (isDirtyRef.current) return;
 
-    if (openTarget === "__attributes__") {
+    if (mode === "attributes") {
       const formatted = JSON.stringify(attributesValue || {}, null, 2);
       if (formatted !== currentTextRef.current) {
         setCurrentText(formatted);
         currentTextRef.current = formatted;
       }
     } else {
-      const freshSnippet = getSnippetWithFallback(
-        openTarget,
+      const freshText = buildAllClassesSnippet(
+        nodeClasses,
         globalScss,
-        getFallbackForTarget(openTarget),
+        getFallbackForTarget(nodeClasses[0]),
       );
-      if (freshSnippet !== currentTextRef.current) {
-        setCurrentText(freshSnippet);
-        currentTextRef.current = freshSnippet;
+      if (freshText !== currentTextRef.current) {
+        setCurrentText(freshText);
+        currentTextRef.current = freshText;
       }
     }
-  }, [
-    globalScss,
-    openTarget,
-    attributesValue,
-    nodeStyle,
-    getFallbackForTarget,
-  ]);
+  }, [globalScss, mode, nodeClasses, attributesValue, getFallbackForTarget]);
 
-  const handleToggleClass = useCallback(
+  // Клик по кнопке класса — открывает/переключает модалку кастомизации для этого класса
+  const handleClassButtonClick = useCallback(
     (cls: string) => {
       const clean = cls.trim().replace(/^\./, "");
       if (!clean) return;
 
-      setActiveScope("base");
-      if (openTarget === clean) {
-        saveCurrentOpenTarget(clean);
-        setOpenTarget(null);
+      // Если нажали на уже активный класс — выключаем его
+      if (activeModalClass === clean) {
+        if (isCustomStylesOpen) {
+          setIsCustomStylesOpen(false);
+          setActiveModalClass(null);
+        } else {
+          setIsCustomStylesOpen(true);
+        }
         return;
       }
 
-      if (openTarget) {
-        saveCurrentOpenTarget(openTarget);
-      }
-
-      const snippet = getSnippetWithFallback(
-        clean,
-        globalScssRef.current,
-        getFallbackForTarget(clean),
-      );
-      setCurrentText(snippet);
-      currentTextRef.current = snippet;
-      isDirtyRef.current = false;
-      setOpenTarget(clean);
+      // Открываем модалку для нового выбранного класса
+      setActiveModalClass(clean);
+      setIsCustomStylesOpen(true);
+      setActiveScope("base");
     },
-    [openTarget, getFallbackForTarget, saveCurrentOpenTarget],
+    [activeModalClass],
   );
 
+  // Переключение во вкладку Styles (все классы)
+  const handleShowStylesTab = useCallback(() => {
+    if (mode === "styles") return;
+    if (isDirtyRef.current) {
+      saveCurrentText();
+    }
+    setMode("styles");
+    isDirtyRef.current = false;
+    const freshText = buildAllClassesSnippet(
+      nodeClasses,
+      globalScssRef.current,
+      getFallbackForTarget(nodeClasses[0]),
+    );
+    setCurrentText(freshText);
+    currentTextRef.current = freshText;
+  }, [mode, nodeClasses, saveCurrentText, getFallbackForTarget]);
+
+  // Закрытие модалки кастомных стилей и сброс активного класса
+  const handleCloseCustomStyles = useCallback(() => {
+    setIsCustomStylesOpen(false);
+    setActiveModalClass(null);
+  }, []);
+
+  // Переключение во вкладку Attributes
   const handleToggleAttributes = useCallback(() => {
-    setActiveScope("base");
-    if (openTarget === "__attributes__") {
-      saveCurrentOpenTarget("__attributes__");
-      setOpenTarget(null);
+    if (mode === "attributes") {
+      handleShowStylesTab();
       return;
     }
 
-    if (openTarget) {
-      saveCurrentOpenTarget(openTarget);
+    if (isDirtyRef.current) {
+      saveCurrentText();
     }
+
+    setMode("attributes");
+    setActiveModalClass(null);
+    setIsCustomStylesOpen(false);
+    isDirtyRef.current = false;
 
     const jsonStr = JSON.stringify(attributesValue || {}, null, 2);
     setCurrentText(jsonStr);
     currentTextRef.current = jsonStr;
-    isDirtyRef.current = false;
-    setOpenTarget("__attributes__");
-  }, [openTarget, attributesValue, saveCurrentOpenTarget]);
+  }, [mode, attributesValue, handleShowStylesTab, saveCurrentText]);
 
-  const handleDeleteCurrentClassCss = useCallback(() => {
-    if (!openTarget || openTarget === "__attributes__") return;
-    const targetToDelete = openTarget;
+  // Очистка CSS конкретного класса
+  const handleDeleteClassCss = useCallback(
+    (targetClass: string) => {
+      const clean = targetClass.trim().replace(/^\./, "");
+      if (!clean) return;
 
-    setCurrentText("");
-    currentTextRef.current = "";
-    isDirtyRef.current = false;
-
-    const nextScss = updateClassInGlobalScss(
-      globalScssRef.current,
-      targetToDelete,
-      "",
-    );
-    globalScssRef.current = nextScss;
-    onSaveGlobalScss(nextScss);
-    setOpenTarget(null);
-  }, [openTarget, onSaveGlobalScss]);
-
-  const handleApplySnippet = useCallback(
-    (snippetCss: string) => {
-      if (!openTarget || openTarget === "__attributes__") return;
-
-      const nextText = applySnippetToClassCss(
-        openTarget,
-        currentTextRef.current,
-        snippetCss,
-      );
-
-      setCurrentText(nextText);
-      currentTextRef.current = nextText;
-      isDirtyRef.current = false;
-
-      const preparedCode = ensureSelectorWrapper(openTarget, nextText);
       const nextScss = updateClassInGlobalScss(
         globalScssRef.current,
-        openTarget,
-        preparedCode,
+        clean,
+        "",
       );
       globalScssRef.current = nextScss;
       onSaveGlobalScss(nextScss);
+
+      if (mode === "styles") {
+        const freshText = buildAllClassesSnippet(
+          nodeClasses,
+          nextScss,
+          getFallbackForTarget(nodeClasses[0]),
+        );
+        setCurrentText(freshText);
+        currentTextRef.current = freshText;
+        isDirtyRef.current = false;
+      }
     },
-    [openTarget, onSaveGlobalScss],
+    [mode, nodeClasses, onSaveGlobalScss, getFallbackForTarget],
   );
 
+  // 🔹 Применение сниппета из ModalCustomStyles к выбранному классу
+  const handleApplySnippetForClass = useCallback(
+    (targetClass: string, snippetCss: string) => {
+      const clean = targetClass.trim().replace(/^\./, "");
+      if (!clean) return;
+
+      const currentClassCode = extractClassSnippet(
+        globalScssRef.current,
+        clean,
+      );
+
+      const updatedClassCode = applySnippetToClassCss(
+        clean,
+        currentClassCode,
+        snippetCss,
+      );
+
+      const preparedCode = ensureSelectorWrapper(clean, updatedClassCode);
+      const nextScss = updateClassInGlobalScss(
+        globalScssRef.current,
+        clean,
+        preparedCode,
+      );
+
+      globalScssRef.current = nextScss;
+      onSaveGlobalScss(nextScss);
+
+      // Обновляем отображение всех классов в Monaco
+      if (mode === "styles") {
+        const freshText = buildAllClassesSnippet(
+          nodeClasses,
+          nextScss,
+          getFallbackForTarget(nodeClasses[0]),
+        );
+        setCurrentText(freshText);
+        currentTextRef.current = freshText;
+        isDirtyRef.current = false;
+      }
+    },
+    [mode, nodeClasses, onSaveGlobalScss, getFallbackForTarget],
+  );
+
+  // Изменение текста пользователем в Monaco (ручной ввод)
   const handleTextChange = useCallback((val?: string) => {
     const text = val || "";
     setCurrentText(text);
@@ -329,17 +321,18 @@ export function useMonacoPropertiesEditor({
     isDirtyRef.current = true;
   }, []);
 
+  // Монтирование редактора (сохранение по blur и Ctrl+S)
   const handleEditorDidMount: OnMount = useCallback(
     (editor, monaco) => {
       editor.onDidBlurEditorText(() => {
-        saveCurrentOpenTarget();
+        saveCurrentText();
       });
 
       editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-        saveCurrentOpenTarget();
+        saveCurrentText();
       });
     },
-    [saveCurrentOpenTarget],
+    [saveCurrentText],
   );
 
   const attrsCount = useMemo(() => {
@@ -347,17 +340,22 @@ export function useMonacoPropertiesEditor({
   }, [attributesValue]);
 
   return {
-    openTarget,
+    mode,
+    activeModalClass,
+    isCustomStylesOpen,
     activeScope,
-    setActiveScope,
     currentText,
     attrsCount,
-    handleToggleClass,
+    setIsCustomStylesOpen,
+    setActiveScope,
+    handleClassButtonClick,
+    handleCloseCustomStyles,
+    handleShowStylesTab,
     handleToggleAttributes,
-    handleDeleteCurrentClassCss,
-    handleApplySnippet,
+    handleDeleteClassCss,
+    handleApplySnippetForClass,
     handleTextChange,
     handleEditorDidMount,
-    saveCurrentOpenTarget,
+    saveCurrentText,
   };
 }

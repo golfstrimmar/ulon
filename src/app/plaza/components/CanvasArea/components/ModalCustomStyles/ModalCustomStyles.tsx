@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { TypographyControl } from "./components/TypographyControl";
 import { PresetsList } from "./components/PresetsList";
 import { ColorControl } from "./components/ColorControl";
@@ -28,6 +28,8 @@ interface ModalCustomStylesProps {
   currentClass: string | null;
   currentScssText?: string;
   activeScope?: string;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
   onScopeChange?: (scope: string) => void;
   onApplySnippet: (snippetCss: string) => void;
 }
@@ -48,10 +50,26 @@ export default function ModalCustomStyles({
   currentClass,
   currentScssText = "",
   activeScope: externalScope,
+  isOpen: externalIsOpen,
+  onOpenChange,
   onScopeChange,
   onApplySnippet,
 }: ModalCustomStylesProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
+
+  const setIsOpen = useCallback(
+    (openOrFn: boolean | ((prev: boolean) => boolean)) => {
+      const nextOpen =
+        typeof openOrFn === "function" ? openOrFn(isOpen) : openOrFn;
+      setInternalIsOpen(nextOpen);
+      if (onOpenChange) {
+        onOpenChange(nextOpen);
+      }
+    },
+    [isOpen, onOpenChange],
+  );
+
   const [internalScope, setInternalScope] = useState<string>("base");
 
   // Дропдауны

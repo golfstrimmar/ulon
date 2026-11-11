@@ -2,7 +2,9 @@ import {
   escapeRegex,
   extractClassSnippet,
   updateNestedSnippetInClass,
+  updateClassInGlobalScss,
 } from "@/lib/scssCompiler";
+import { splitTopLevelCssBlocks } from "@/app/plaza/components/CanvasArea/models/canvasModel";
 
 /**
  * 🔹 Extracts snippet with fallback to inline style if SCSS block is empty
@@ -40,6 +42,28 @@ export function getSnippetWithFallback(
 }
 
 /**
+ * 🔹 Combines snippets for all classes into a single multi-class SCSS text (Browser DevTools style)
+ */
+export function buildAllClassesSnippet(
+  classes: string[],
+  scss: string,
+  fallbackStyle?: string,
+): string {
+  const uniqueClasses = Array.from(
+    new Set(classes.map((c) => c.trim().replace(/^\./, "")).filter(Boolean)),
+  );
+  if (uniqueClasses.length === 0) return "";
+
+  return uniqueClasses
+    .map((cls, idx) => {
+      const fb = idx === 0 ? fallbackStyle : undefined;
+      return getSnippetWithFallback(cls, scss, fb);
+    })
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+/**
  * 🔹 Guarantees that code is wrapped inside .className { ... } selector
  */
 export function ensureSelectorWrapper(className: string, code: string): string {
@@ -58,6 +82,48 @@ export function ensureSelectorWrapper(className: string, code: string): string {
     .split("\n")
     .map((l) => (l.trim() ? `  ${l}` : ""))
     .join("\n")}\n}`;
+}
+
+/**
+ * 🔹 Updates global SCSS from multi-class editor text
+ */
+export function updateGlobalScssFromMultiClass(
+  currentGlobalScss: string,
+  multiClassText: string,
+  nodeClasses: string[],
+): string {
+  let nextScss = currentGlobalScss;
+  const blocks = splitTopLevelCssBlocks(multiClassText);
+  const processedClasses = new Set<string>();
+
+  for (const block of blocks) {
+    if (block.classes.length > 0) {
+      for (const cls of block.classes) {
+        processedClasses.add(cls);
+        nextScss = updateClassInGlobalScss(nextScss, cls, block.full);
+      }
+    } else if (block.selector.startsWith(".")) {
+      const cls = block.selector.replace(/^\./, "").trim();
+      if (cls) {
+        processedClasses.add(cls);
+        nextScss = updateClassInGlobalScss(nextScss, cls, block.full);
+      }
+    }
+  }
+
+  // Если какой-то класс был полностью очищен из текста редактора
+  for (const rawCls of nodeClasses) {
+    const cls = rawCls.trim().replace(/^\./, "");
+    if (
+      cls &&
+      !processedClasses.has(cls) &&
+      !multiClassText.includes(`.${cls}`)
+    ) {
+      nextScss = updateClassInGlobalScss(nextScss, cls, "");
+    }
+  }
+
+  return nextScss;
 }
 
 /**
