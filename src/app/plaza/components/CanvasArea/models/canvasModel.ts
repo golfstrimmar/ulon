@@ -7,14 +7,23 @@ import {
   duplicateNodeInTree,
 } from "@/lib/htmlTree";
 
+/**
+ * Очищает тело CSS от некорректных точек с запятой перед закрывающими фигурными скобками ("};" -> "}")
+ * и удаляет лишние пробелы по краям.
+ */
 export function sanitizeCssBody(css: string): string {
   return css.replace(/\}\s*;/g, "}").trim();
 }
 
+/**
+ * Возвращает уникальный идентификатор узла (_key или id).
+ */
 export const getNodeKey = (node: HtmlNode | null | undefined): string =>
   node?._key || (node as any)?.id || "";
 
-/** Guarantees unique keys for all nodes */
+/**
+ * Гарантирует наличие уникальных ключей (_key) для всех узлов в дереве.
+ */
 export function ensureUniqueKeys(nodes: HtmlNode[]): HtmlNode[] {
   return nodes.map((node) => ({
     ...node,
@@ -27,7 +36,9 @@ export function ensureUniqueKeys(nodes: HtmlNode[]): HtmlNode[] {
   }));
 }
 
-/** Recursively collects keys of all container nodes */
+/**
+ * Рекурсивно собирает ключи всех узлов-контейнеров (узлов, имеющих дочерние элементы).
+ */
 export function getAllCollapsibleKeys(
   nodes: HtmlNode[] | null | undefined,
 ): string[] {
@@ -47,7 +58,9 @@ export function getAllCollapsibleKeys(
   return keys;
 }
 
-/** Finds a node by criteria */
+/**
+ * Находит узел по набору критериев (ключ, класс, тег, текстовое содержимое).
+ */
 export function findNodeByCriteria(
   nodes: HtmlNode[],
   criteria: {
@@ -99,7 +112,9 @@ export function findNodeByCriteria(
   return findFallback(nodes);
 }
 
-/** Recursively finds a node in the tree */
+/**
+ * Рекурсивно находит узел в дереве по его ключу.
+ */
 export function findNodeInTree(
   nodes: HtmlNode[],
   key: string,
@@ -115,7 +130,9 @@ export function findNodeInTree(
   return null;
 }
 
-/** Collects node key and all descendant keys */
+/**
+ * Собирает ключ самого узла и ключи всех его дочерних элементов (потомков).
+ */
 export function collectAllDescendantKeys(
   node: HtmlNode | null | undefined,
 ): string[] {
@@ -134,7 +151,9 @@ export function collectAllDescendantKeys(
   return keys;
 }
 
-/** Removes specified keys from tree */
+/**
+ * Удаляет из дерева узлы с указанными ключами.
+ */
 export function removeNodesByKeys(
   nodes: HtmlNode[],
   keys: Set<string>,
@@ -153,7 +172,9 @@ export function removeNodesByKeys(
     });
 }
 
-/** Extracts nodes by keys */
+/**
+ * Извлекает (находит и возвращает в плоском массиве) узлы по их ключам.
+ */
 export function extractNodesByKeys(
   nodes: HtmlNode[],
   keys: Set<string>,
@@ -173,6 +194,10 @@ export function extractNodesByKeys(
   return found;
 }
 
+/**
+ * Определяет, является ли контейнер строчным (горизонтальным flex-рядом или grid-контейнером),
+ * анализируя встроенные стили и CSS-классы.
+ */
 export function isRowContainer(node: HtmlNode): boolean {
   const rawClass = (node.class || "").toLowerCase();
   const rawStyle = (node.style || "").toLowerCase();
@@ -206,7 +231,10 @@ export function isRowContainer(node: HtmlNode): boolean {
   return rawClass.includes("flex") || rawStyle.includes("display: flex");
 }
 
-/** Extracts styles and scripts */
+/**
+ * Извлекает inline-стили и теги/свойства скриптов из дерева узлов,
+ * формируя чистые SCSS-правила и массив JS-скриптов.
+ */
 export function extractStylesAndScriptsFromNodes(nodes: HtmlNode[]): {
   cleanNodes: HtmlNode[];
   extractedScss: string;
@@ -307,6 +335,10 @@ export function extractStylesAndScriptsFromNodes(nodes: HtmlNode[]): {
   };
 }
 
+/**
+ * Разбивает CSS/SCSS строку на блоки верхнего уровня,
+ * возвращая селектор, полный текст блока и список классов.
+ */
 export function splitTopLevelCssBlocks(scss: string): {
   selector: string;
   full: string;
@@ -351,6 +383,9 @@ export function splitTopLevelCssBlocks(scss: string): {
   return blocks;
 }
 
+/**
+ * Объединяет текущие и входящие SCSS-стили, исключая дубликаты блоков и селекторов.
+ */
 export function mergeScssWithoutDuplicates(
   currentScss: string,
   incomingScss: string,
@@ -410,6 +445,10 @@ export function mergeScssWithoutDuplicates(
   return result.trim();
 }
 
+/**
+ * Объединяет JavaScript-код с новыми скриптами без дублирования,
+ * используя маркеры компонентов вида /* @component: name *\/ ... /* @end: name *\/.
+ */
 export function mergeScriptsWithoutDuplicates(
   currentBundle: string,
   incomingScripts: { name: string; code: string }[],
@@ -448,6 +487,9 @@ export function mergeScriptsWithoutDuplicates(
   return result.trim();
 }
 
+/**
+ * Нормализует набор выбранных ключей, возвращая их в порядке следования в DOM-дереве.
+ */
 export function normalizeSelectedKeys(
   tree: HtmlNode[],
   selectedKeys: Set<string>,
@@ -470,6 +512,9 @@ export function normalizeSelectedKeys(
   return result;
 }
 
+/**
+ * Вставляет массив узлов рядом с целевым узлом (до или после него) на том же уровне иерархии.
+ */
 export function insertNodesAdjacent(
   nodes: HtmlNode[],
   targetKey: string,
@@ -505,6 +550,9 @@ export function insertNodesAdjacent(
   return result;
 }
 
+/**
+ * Вставляет массив узлов внутрь целевого узла (в конец списка его дочерних элементов).
+ */
 export function insertNodesInside(
   nodes: HtmlNode[],
   targetKey: string,
@@ -530,6 +578,10 @@ export function insertNodesInside(
   });
 }
 
+/**
+ * Перемещает группу узлов в новую позицию относительно целевого узла (до, после или внутрь).
+ * Включает проверку на перемещение родителя внутрь собственного потомка.
+ */
 export function moveNodesGroup(
   tree: HtmlNode[],
   sourceKeys: string[],
@@ -566,6 +618,9 @@ export function moveNodesGroup(
   }
 }
 
+/**
+ * Дублирует группу узлов по их ключам в структуре дерева.
+ */
 export function duplicateNodesGroup(
   tree: HtmlNode[],
   sourceKeys: string[],
@@ -577,6 +632,10 @@ export function duplicateNodesGroup(
   return currentTree;
 }
 
+/**
+ * Объединяет данные узлов-доноров (текст, классы, атрибуты, детей) в целевой узел,
+ * после чего удаляет узлы-доноры из дерева.
+ */
 export function mergeDonorIntoTarget(
   tree: HtmlNode[],
   donorKeys: string[],
@@ -947,9 +1006,12 @@ export function applyBemClassesToSection(
 }
 
 // ============================================================================
-// TEMPLATE ENGINE / BATCH DONOR FILLING
+// ШАБЛОНИЗАТОР / ПАКЕТНОЕ НАПОЛНЕНИЕ ДОНОРАМИ
 // ============================================================================
 
+/**
+ * Сортирует список переданных ключей в соответствии с их физическим порядком появления в DOM-дереве.
+ */
 export function sortKeysByTreeOrder(
   tree: HtmlNode[],
   keys: Set<string> | string[],
@@ -973,6 +1035,10 @@ export function sortKeysByTreeOrder(
   return ordered;
 }
 
+/**
+ * Глубоко клонирует шаблон узла, присваивая элементам новые уникальные ключи
+ * и записывая соответствие старых ключей новым в Map.
+ */
 export function cloneTemplateWithKeyMapping(
   node: HtmlNode,
   keyMap: Map<string, string>,
@@ -992,6 +1058,9 @@ export function cloneTemplateWithKeyMapping(
   };
 }
 
+/**
+ * Находит узел по ключу в дереве и применяет к нему функцию-мутатор (обновление).
+ */
 export function mutateNodeInTree(
   nodes: HtmlNode[],
   targetKey: string,
@@ -1011,6 +1080,9 @@ export function mutateNodeInTree(
   });
 }
 
+/**
+ * Переносит контент, классы, стили и атрибуты из узла-донора в узел-слот шаблона.
+ */
 export function applyDonorToSlot(
   slotNode: HtmlNode,
   donorNode: HtmlNode,
@@ -1074,13 +1146,13 @@ export interface TemplateFillResult {
 }
 
 /**
- * 🔹 Single Template Population with Donors:
- * 1. Takes right pane template roots.
- * 2. Takes donor nodes sorted by DOM order.
- * 3. Uses donors up to the number of slots. Excess donors are untouched!
- * 4. Clones template with fresh keys and maps donor props to corresponding slots.
- * 5. Removes used donors from tree.
- * 6. Appends populated clone to the end of tree (Pane 1).
+ * 🔹 Заполнение одиночного шаблона донорами:
+ * 1. Берет корневые элементы шаблона из правой панели.
+ * 2. Берет узлы-доноры, отсортированные в порядке DOM-дерева.
+ * 3. Использует доноров в количестве, не превышающем число слотов. Лишние доноры не затрагиваются!
+ * 4. Клонирует шаблон с новыми ключами и переносит свойства доноров в соответствующие слоты.
+ * 5. Удаляет использованных доноров из дерева.
+ * 6. Добавляет заполненный клон в конец дерева (Панель 1).
  */
 export function fillTemplateWithDonors(
   tree: HtmlNode[],

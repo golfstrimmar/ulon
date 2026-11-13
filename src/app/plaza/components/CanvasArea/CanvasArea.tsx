@@ -306,6 +306,7 @@ export function CanvasArea() {
         </div>
 
         <ModalNodeProperties
+          key={clickedKey || "modal-props"}
           clickedKey={clickedKey}
           currentJson={currentJson}
           persist={persist}

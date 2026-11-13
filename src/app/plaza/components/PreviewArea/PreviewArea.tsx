@@ -1,6 +1,6 @@
-﻿"use client";
+"use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
 import { PencilSquareIcon } from "@heroicons/react/24/outline";
@@ -10,16 +10,16 @@ import { usePixelPerfect } from "@/app/plaza/components/PreviewArea/hooks/usePix
 import { useBreakpoint } from "@/app/plaza/components/PreviewArea/hooks/useBreakpoint";
 import { usePreviewHeight } from "@/app/plaza/components/PreviewArea/hooks/usePreviewHeight";
 import { usePreviewHighlight } from "@/app/plaza/components/PreviewArea/hooks/usePreviewHighlight";
-import TracingWireframeOverlay from "./components/TracingWireframeOverlay";
+import { useBoxModelHighlight } from "@/app/plaza/components/PreviewArea/hooks/useBoxModelHighlight";
 
+import BoxModelOverlay from "./components/BoxModelOverlay";
+import TracingWireframeOverlay from "./components/TracingWireframeOverlay";
 import ButtonCss from "@/app/plaza/components/PreviewArea/components/ButtonCss";
 import ButtonJS from "@/app/plaza/components/PreviewArea/components/ButtonJS";
-import ButtonHtml from "@/app/plaza/components/PreviewArea/components/ButtonHtml";
 import ButtonFonts from "@/app/plaza/components/PreviewArea/components/ButtonFonts";
 import ButtonPixelPerfect from "@/app/plaza/components/PreviewArea/components/ButtonPixelPerfect";
 import ButtonJson from "@/app/plaza/components/PreviewArea/components/ButtonJson";
 import BreakpointControls from "@/app/plaza/components/PreviewArea/components/BreakpointControls";
-import Link from "next/link";
 
 const ModalFonts = dynamic(
   () => import("@/app/plaza/components/PreviewArea/components/ModalFonts"),
@@ -60,8 +60,17 @@ export function PreviewArea() {
     isRotated,
   } = useBreakpoint();
 
-  // Ð ÐµÐ¶Ð¸Ð¼ ÐºÐ°Ð»ÑŒÐºÐ¸ (Ð¾Ð±Ð²Ð¾Ð´ÐºÐ¸ Ð¿Ð¾Ð²ÐµÑ€Ñ… Ð¼Ð°ÐºÐµÑ‚Ð°)
+  // Режим кальки поверх макета
   const [isTracingActive, setIsTracingActive] = useState(false);
+
+  // Реф экрана превью для точного позиционирования BoxModelOverlay
+  const screenContainerRef = useRef<HTMLDivElement>(null);
+
+  // 🔹 Контроллер Box Model (Margin / Padding / Размеры при ховере на ноду в холсте)
+  const { boxModelData } = useBoxModelHighlight({
+    iframeRef,
+    containerRef: screenContainerRef,
+  });
 
   const { effectiveHeight, initHeightMeasurement, setNaturalImgHeight } =
     usePreviewHeight({
@@ -118,7 +127,7 @@ export function PreviewArea() {
               </span>
             </div>
 
-            {/* ðŸš€ ÐšÐÐžÐŸÐšÐ ÐšÐÐ›Ð¬ÐšÐ˜ (TRACING MODE) */}
+            {/* Кнопка кальки (Tracing Mode) */}
             <button
               type="button"
               onClick={() => setIsTracingActive(!isTracingActive)}
@@ -183,7 +192,7 @@ export function PreviewArea() {
                     title="Move 1px Left"
                     className="w-4 h-4 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold flex items-center justify-center transition leading-none active:scale-95"
                   >
-                    âˆ’
+                    −
                   </button>
 
                   <span className="text-zinc-400 select-none">X:</span>
@@ -227,18 +236,9 @@ export function PreviewArea() {
             <ButtonPixelPerfect />
             <ButtonCss />
             <ButtonJS />
-            <ButtonHtml />
             <ButtonFonts />
             <BreakpointControls />
             <ButtonJson />
-            <Link
-              href="/plaza/export"
-              target="_blank"
-              title="Production Build — 3 clean files (HTML, CSS, JS)"
-              className="text-[10px] font-mono px-2 py-0.5 rounded border transition duration-200 cursor-pointer flex items-center gap-1.5 bg-indigo-950/70 border-indigo-500/60 text-indigo-300 hover:bg-indigo-900/70"
-            >
-              ?? Export
-            </Link>
           </div>
 
           <button
@@ -314,7 +314,7 @@ export function PreviewArea() {
 
                     {isRotated && (
                       <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/50 text-[10px] font-medium flex items-center gap-1">
-                        ðŸ”„ Landscape
+                        🔄 Landscape
                       </span>
                     )}
                   </div>
@@ -328,15 +328,15 @@ export function PreviewArea() {
                 </div>
               )}
 
-              {/* Viewport Screen with live Tracing Overlay Layer */}
+              {/* Viewport Screen with live Tracing Overlay & DevTools Box Model Overlay */}
               <div
+                ref={screenContainerRef}
                 className="relative w-full bg-white transition-[height] duration-200 ease-out overflow-hidden"
                 style={{
                   height: effectiveHeight,
                   minHeight: effectiveHeight,
                 }}
               >
-                {/* ðŸŽ¯ Ð¡Ð›ÐžÐ™-ÐšÐÐ›Ð¬ÐšÐ Ð”Ð›Ð¯ Ð Ð˜Ð¡ÐžÐ’ÐÐÐ˜Ð¯ Ð ÐÐœÐžÐš ÐŸÐžÐ’Ð•Ð Ð¥ ÐœÐÐšÐ•Ð¢Ð */}
                 <TracingWireframeOverlay
                   isActive={isTracingActive}
                   onClose={() => setIsTracingActive(false)}
@@ -344,7 +344,6 @@ export function PreviewArea() {
                   viewportHeight={effectiveHeight}
                 />
 
-                {/* Pixel Perfect Reference Overlay */}
                 {hasImage && isOverlayActive && (
                   <div
                     className="absolute top-0 pointer-events-none select-none z-0"
@@ -371,7 +370,6 @@ export function PreviewArea() {
                   </div>
                 )}
 
-                {/* Empty State or Live Iframe */}
                 {isEmpty ? (
                   <div
                     className="absolute inset-0 flex flex-col items-center justify-center text-zinc-300 gap-2 bg-white z-10"
@@ -381,12 +379,12 @@ export function PreviewArea() {
                       transition: "opacity 0.05s ease-out",
                     }}
                   >
-                    <span className="text-2xl">ðŸ–¼ï¸</span>
+                    <span className="text-2xl">🖼️</span>
                     <p className="text-sm font-medium text-zinc-400">
                       There are no elements to display
                     </p>
                     <p className="text-xs text-zinc-500">
-                      Add blocks to the canvas â€” they will appear here
+                      Add blocks to the canvas — they will appear here
                     </p>
                   </div>
                 ) : (
@@ -407,6 +405,7 @@ export function PreviewArea() {
                     }}
                   />
                 )}
+                <BoxModelOverlay data={boxModelData} />
               </div>
             </div>
           </motion.div>

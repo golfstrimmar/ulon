@@ -14,9 +14,17 @@ export interface UseNodeCardOptions {
   depth: number;
 }
 
+/**
+ * Пользовательский хук для управления состоянием, визуальным представлением и поведением карточки узла (NodeCard) на холсте.
+ *
+ * Вычисляет динамические стили (цвета границы, фон, свечение, бейджи тегов),
+ * распознаёт медиа-контент (картинки, SVG), а также предоставляет все необходимые
+ * обработчики событий (клик, двойной клик, перетаскивание, ховер, сворачивание).
+ */
 export function useNodeCard({ node, depth }: UseNodeCardOptions) {
   const key = node._key || "";
 
+  // Селекторы базового состояния узла
   const isClicked = useCanvasStore((s) => s.clickedKey === key);
   const isSelected = useCanvasStore((s) => s.selectedKeys.has(key));
   const isDragged = useCanvasStore((s) => s.draggedKeys.includes(key));
@@ -31,7 +39,7 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
   );
   const hasActiveDrag = useCanvasStore((s) => s.draggedKeys.length > 0);
 
-  // Template Mode selectors
+  // Селекторы режима шаблона
   const isTemplateMode = useCanvasStore((s) => s.isTemplateMode);
   const isRightPaneNode = useCanvasStore((s) => s.rightKeys.has(key));
   const slotIdx = useCanvasStore((s) => s.templateSlotKeys.indexOf(key));
@@ -47,6 +55,7 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
 
   const clickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Очистка таймера клика при размонтировании компонента
   useEffect(() => {
     return () => {
       if (clickTimeoutRef.current) {
@@ -55,7 +64,9 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
     };
   }, []);
 
-  // 🖼️ Детекция картинки <img>
+  /**
+   * 🖼️ Определение адреса изображения для тега <img>
+   */
   const imgSrc = useMemo(() => {
     const tag = (node.tag || "").toLowerCase();
     if (tag === "img" && node.attributes?.src) {
@@ -64,7 +75,9 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
     return null;
   }, [node]);
 
-  // ⚡ Детекция SVG
+  /**
+   * ⚡ Определение целевого SVG-узла (сам узел или его прямой дочерний элемент)
+   */
   const svgTargetNode = useMemo(() => {
     const tag = (node.tag || "").toLowerCase();
     if (tag === "svg") return node;
@@ -79,6 +92,10 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
     return null;
   }, [node]);
 
+  /**
+   * Динамическое вычисление стилей рамки, фона и тени в зависимости от приоритета состояний:
+   * слот шаблона > цель сброса (drop target) > кликнут > выбран > наведение курсора.
+   */
   const { borderStyle, bgStyle, shadowStyle } = useMemo(() => {
     let border = DEPTH_BORDER[depthIdx];
     let bg = DEPTH_BG[depthIdx];
@@ -126,6 +143,9 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
     hasActiveDrag,
   ]);
 
+  /**
+   * Подбор цветовой схемы бейджа тега в зависимости от типа HTML-элемента
+   */
   const tagBadgeClass = useMemo(() => {
     const tagLower = (node.tag || "div").toLowerCase();
     if (tagLower === "div") {
@@ -152,19 +172,23 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
     : "";
   const hasText = Boolean(node.text && node.text.trim());
 
+  /**
+   * Обработчик наведения курсора: сохраняет ключ узла под ховером в хранилище и генерирует событие
+   */
   const handlePointerEnter = useCallback(
     (e: React.PointerEvent) => {
       e.stopPropagation();
-      if (isClicked) return;
-
       useCanvasStore.getState().setHoveredKey(key);
       window.dispatchEvent(
         new CustomEvent("plaza-node-hovered", { detail: key }),
       );
     },
-    [isClicked, key],
+    [key],
   );
 
+  /**
+   * Обработчик ухода курсора: корректно передаёт ховер родительской карточке, если курсор остаётся над ней
+   */
   const handlePointerLeave = useCallback(
     (e: React.PointerEvent) => {
       e.stopPropagation();
@@ -174,17 +198,20 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
       const parentNode = nextTarget?.closest<HTMLElement>("[data-node-key]");
       const parentKey = parentNode?.getAttribute("data-node-key") || null;
 
-      const targetKey =
-        parentKey === (isClicked ? key : null) ? null : parentKey;
+      // Если мышь все еще внутри этой же карточки — не сбрасываем ховер
+      if (parentKey === key) return;
 
-      useCanvasStore.getState().setHoveredKey(targetKey);
+      useCanvasStore.getState().setHoveredKey(parentKey);
       window.dispatchEvent(
-        new CustomEvent("plaza-node-hovered", { detail: targetKey }),
+        new CustomEvent("plaza-node-hovered", { detail: parentKey }),
       );
     },
-    [isClicked, key],
+    [key],
   );
 
+  /**
+   * Обработчик нажатия кнопки мыши: инициирует начало перетаскивания (Drag & Drop) левой кнопкой
+   */
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
       if (e.button === 0) {
@@ -195,12 +222,17 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
     [key],
   );
 
+  /**
+   * Обработчик одиночного клика:
+   * - В режиме шаблона для правой панели переключает статус слота шаблона
+   * - В стандартном режиме с небольшой задержкой (для отсеивания даблклика) отмечает узел как активный
+   */
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
       if (hasActiveDrag) return;
 
-      // In Template mode, clicking Right Pane node toggles slot assignment
+      // В режиме шаблона клик по узлу правой панели переключает назначение слота
       if (isTemplateMode && isRightPaneNode) {
         useCanvasStore.getState().toggleTemplateSlot(key);
         return;
@@ -215,6 +247,9 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
     [hasActiveDrag, isTemplateMode, isRightPaneNode, key],
   );
 
+  /**
+   * Обработчик двойного клика: отменяет обработку одиночного клика и удаляет узел из дерева
+   */
   const handleDoubleClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -227,6 +262,9 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
     [key],
   );
 
+  /**
+   * Обработчик клика по иконке/кнопке сворачивания и разворачивания дочерних узлов
+   */
   const handleToggleCollapseClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();

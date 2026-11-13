@@ -165,7 +165,7 @@ function NodeCardComponent({
           {imgSrc && (
             <div
               title={`Image source: ${imgSrc.substring(0, 60)}...`}
-              className="size-5 rounded border border-zinc-700/80 bg-zinc-950 flex items-center justify-center overflow-hidden shrink-0 shadow-sm"
+              className="size-10 rounded border border-zinc-700/80 bg-zinc-950 flex items-center justify-center overflow-hidden shrink-0 shadow-sm"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -179,7 +179,7 @@ function NodeCardComponent({
           {svgTargetNode && (
             <div
               title="SVG Vector preview"
-              className="size-5 rounded border border-zinc-700/80 bg-zinc-950/90 p-0.5 flex items-center justify-center overflow-hidden shrink-0 shadow-sm"
+              className="size-8 rounded border border-zinc-700/80 bg-zinc-950/90 p-0.5 flex items-center justify-center overflow-hidden shrink-0 shadow-sm"
             >
               <MiniSvgPreview node={svgTargetNode} />
             </div>

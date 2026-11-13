@@ -96,18 +96,27 @@ export function updateGlobalScssFromMultiClass(
   const blocks = splitTopLevelCssBlocks(multiClassText);
   const processedClasses = new Set<string>();
 
+  const cleanNodeClasses = nodeClasses
+    .map((c) => c.trim().replace(/^\./, ""))
+    .filter(Boolean);
+
   for (const block of blocks) {
+    // Определяем целевой класс для этого блока:
+    // 1. Если среди классов селектора есть класс текущей ноды — выбираем его
+    // 2. Иначе берем первый класс селектора
+    // 3. Либо парсим селектор .className
+    let targetClass: string | null = null;
     if (block.classes.length > 0) {
-      for (const cls of block.classes) {
-        processedClasses.add(cls);
-        nextScss = updateClassInGlobalScss(nextScss, cls, block.full);
-      }
+      targetClass =
+        block.classes.find((c) => cleanNodeClasses.includes(c)) ||
+        block.classes[0];
     } else if (block.selector.startsWith(".")) {
-      const cls = block.selector.replace(/^\./, "").trim();
-      if (cls) {
-        processedClasses.add(cls);
-        nextScss = updateClassInGlobalScss(nextScss, cls, block.full);
-      }
+      targetClass = block.selector.replace(/^\./, "").trim();
+    }
+
+    if (targetClass) {
+      processedClasses.add(targetClass);
+      nextScss = updateClassInGlobalScss(nextScss, targetClass, block.full);
     }
   }
 

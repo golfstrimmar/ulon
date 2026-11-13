@@ -9,10 +9,10 @@ export const HIGHLIGHT_CSS = `
     outline-offset: -1px !important;
     box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.3) !important;
   }
-  .plaza-node-hovered:not(.plaza-node-selected) {
-    outline: 2px dashed rgba(52, 211, 153, 0.9) !important;
+  .plaza-node-hovered {
+    outline: 2px dashed rgba(52, 211, 153, 0.95) !important;
     outline-offset: -1px !important;
-    box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.25) !important;
+    box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.35) !important;
   }
 `;
 
@@ -90,14 +90,13 @@ export function usePreviewHighlight({
       }
 
       if (targetEl) {
-        targetEl.classList.remove("plaza-node-hovered");
         targetEl.classList.add("plaza-node-selected");
       }
     },
     [iframeRef, ensureStylesInjected],
   );
 
-  // Hover sync from canvas
+  // 🔹 Синхронизация зеленой пунктирной рамки ховера на ноде в iframe
   useEffect(() => {
     const handlePlazaNodeHovered = (event: Event) => {
       const customEvent = event as CustomEvent<string | null>;
@@ -108,14 +107,15 @@ export function usePreviewHighlight({
 
       ensureStylesInjected(doc);
 
+      // Снимаем предыдущий класс ховера
       doc.querySelectorAll(".plaza-node-hovered").forEach((el) => {
         el.classList.remove("plaza-node-hovered");
       });
 
-      if (!key || activeSelectionRef.current?.key === key) return;
+      if (!key) return;
 
       const targetEl = doc.querySelector(`[data-node-key="${key}"]`);
-      if (targetEl && !targetEl.classList.contains("plaza-node-selected")) {
+      if (targetEl) {
         targetEl.classList.add("plaza-node-hovered");
       }
     };
@@ -181,7 +181,10 @@ export function usePreviewHighlight({
           text: nodeEl.textContent?.trim() || "",
         };
 
-        nodeEl.classList.remove("plaza-node-hovered");
+        doc.querySelectorAll(".plaza-node-hovered").forEach((el) => {
+          el.classList.remove("plaza-node-hovered");
+        });
+
         setActiveSelection(payload);
         applyHighlight(payload);
 
@@ -191,7 +194,9 @@ export function usePreviewHighlight({
       };
 
       doc.addEventListener("click", handleDocClick);
-      return () => doc.removeEventListener("click", handleDocClick);
+      return () => {
+        doc.removeEventListener("click", handleDocClick);
+      };
     },
     [applyHighlight],
   );

@@ -75,61 +75,88 @@ export function useMonacoPropertiesEditor({
   const globalScssRef = useRef<string>(globalScss);
   globalScssRef.current = globalScss;
 
+  const nodeClassesRef = useRef<string[]>(nodeClasses);
+  nodeClassesRef.current = nodeClasses;
+  const prevNodeClassesRef = useRef<string[]>(nodeClasses);
+
+  const nodeStyleRef = useRef<string | undefined>(nodeStyle);
+  nodeStyleRef.current = nodeStyle;
+
+  const onSaveGlobalScssRef = useRef(onSaveGlobalScss);
+  onSaveGlobalScssRef.current = onSaveGlobalScss;
+
+  const onClearNodeStyleRef = useRef(onClearNodeStyle);
+  onClearNodeStyleRef.current = onClearNodeStyle;
+
+  const onSaveAttributesRef = useRef(onSaveAttributes);
+  onSaveAttributesRef.current = onSaveAttributes;
+
   const prevNodeKeyRef = useRef<string>(nodeKey);
 
   // 🔹 Сохранение текущего текста редактора в зависимости от режима
-  const saveCurrentText = useCallback(() => {
-    if (!isDirtyRef.current) return;
+  const saveCurrentText = useCallback(
+    (classesToSave?: string[]) => {
+      if (!isDirtyRef.current) return;
 
-    if (mode === "attributes") {
-      try {
-        const parsed = JSON.parse(currentTextRef.current || "{}");
-        if (
-          typeof parsed === "object" &&
-          parsed !== null &&
-          onSaveAttributes
-        ) {
-          onSaveAttributes(parsed);
+      if (mode === "attributes") {
+        try {
+          const parsed = JSON.parse(currentTextRef.current || "{}");
+          if (
+            typeof parsed === "object" &&
+            parsed !== null &&
+            onSaveAttributesRef.current
+          ) {
+            onSaveAttributesRef.current(parsed);
+          }
+        } catch (err) {
+          console.warn(
+            "[useMonacoPropertiesEditor] Invalid JSON attributes:",
+            err,
+          );
         }
-      } catch (err) {
-        console.warn(
-          "[useMonacoPropertiesEditor] Invalid JSON attributes:",
-          err,
+      } else {
+        // mode === "styles": сохраняем все отредактированные классы в globalScss
+        const targetClasses = classesToSave || nodeClassesRef.current;
+        const nextScss = updateGlobalScssFromMultiClass(
+          globalScssRef.current,
+          currentTextRef.current,
+          targetClasses,
         );
+
+        if (
+          nodeStyleRef.current &&
+          nodeStyleRef.current.trim() &&
+          onClearNodeStyleRef.current
+        ) {
+          onClearNodeStyleRef.current();
+        }
+
+        globalScssRef.current = nextScss;
+        onSaveGlobalScssRef.current?.(nextScss);
       }
-    } else {
-      // mode === "styles": сохраняем все отредактированные классы в globalScss
-      const nextScss = updateGlobalScssFromMultiClass(
-        globalScssRef.current,
-        currentTextRef.current,
-        nodeClasses,
-      );
 
-      if (nodeStyle && nodeStyle.trim() && onClearNodeStyle) {
-        onClearNodeStyle();
+      isDirtyRef.current = false;
+    },
+    [mode],
+  );
+
+  // Сохранение при размонтировании (например, при смене ноды или закрытии)
+  useEffect(() => {
+    return () => {
+      if (isDirtyRef.current) {
+        saveCurrentText(prevNodeClassesRef.current);
       }
-
-      globalScssRef.current = nextScss;
-      onSaveGlobalScss(nextScss);
-    }
-
-    isDirtyRef.current = false;
-  }, [
-    mode,
-    nodeClasses,
-    nodeStyle,
-    onClearNodeStyle,
-    onSaveAttributes,
-    onSaveGlobalScss,
-  ]);
+    };
+  }, [saveCurrentText]);
 
   // Смена ноды: сбрасываем состояние и загружаем все классы новой ноды
   useEffect(() => {
     if (prevNodeKeyRef.current !== nodeKey) {
       if (isDirtyRef.current) {
-        saveCurrentText();
+        saveCurrentText(prevNodeClassesRef.current);
       }
       prevNodeKeyRef.current = nodeKey;
+      prevNodeClassesRef.current = nodeClasses;
       isDirtyRef.current = false;
 
       userManuallyClosedRef.current = false;
@@ -153,6 +180,8 @@ export function useMonacoPropertiesEditor({
         setCurrentText(jsonStr);
         currentTextRef.current = jsonStr;
       }
+    } else {
+      prevNodeClassesRef.current = nodeClasses;
     }
   }, [
     nodeKey,
@@ -165,6 +194,13 @@ export function useMonacoPropertiesEditor({
 
   // Синхронизация с внешними обновлениями SCSS/атрибутов, когда Monaco не редактируется пользователем
   useEffect(() => {
+    const cleanClasses = nodeClasses
+      .map((c) => c.trim().replace(/^\./, ""))
+      .filter(Boolean);
+    if (activeModalClass && !cleanClasses.includes(activeModalClass)) {
+      setActiveModalClass(cleanClasses[0] || null);
+    }
+
     if (isDirtyRef.current) return;
 
     if (mode === "attributes") {
@@ -184,7 +220,14 @@ export function useMonacoPropertiesEditor({
         currentTextRef.current = freshText;
       }
     }
-  }, [globalScss, mode, nodeClasses, attributesValue, getFallbackForTarget]);
+  }, [
+    globalScss,
+    mode,
+    nodeClasses,
+    attributesValue,
+    getFallbackForTarget,
+    activeModalClass,
+  ]);
 
   // Автоматически открываем первый класс, если классы появились, а модалка еще не была вручную закрыта
   useEffect(() => {

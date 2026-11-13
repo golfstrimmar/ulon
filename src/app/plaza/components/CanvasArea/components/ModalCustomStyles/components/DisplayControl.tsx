@@ -33,6 +33,10 @@ const FLEX_DIR = [
   { id: "column", label: "col" },
   { id: "row-reverse", label: "row-rev" },
 ] as const;
+const FLEX_WRAP = [
+  { id: "wrap", label: "wrap" },
+  { id: "nowrap", label: "nowrap" },
+] as const;
 const FLEX_JUSTIFY = [
   { id: "flex-start", label: "start" },
   { id: "center", label: "center" },
@@ -60,6 +64,7 @@ const GRID_ALIGN = [
   { id: "end", label: "end" },
   { id: "stretch", label: "stretch" },
 ] as const;
+
 const GRID_COLS = [
   { id: "1fr", label: "1fr" },
   { id: "repeat(2, 1fr)", label: "2 col" },
@@ -93,7 +98,7 @@ function OptionRow({
   return (
     <div className="flex items-center justify-between gap-1">
       <div className="flex items-center gap-1 shrink-0">
-        <span className="text-[9px] font-mono  text-zinc-400 w-14 truncate">
+        <span className="text-[9px] font-mono text-zinc-400 w-14 truncate">
           {label}:
         </span>
         <button
@@ -141,10 +146,13 @@ export function DisplayControl({
   // Какая панель открыта — независимый тогл, как в JS-табах
   const [openPane, setOpenPane] = useState<PaneId | null>(null);
 
-  // Sub-props
+  // Flex sub-props
+  const [flexDir, setFlexDir] = useState<string | null>(null);
+  const [flexWrap, setFlexWrap] = useState<string | null>(null); // 👈 Добавлено
   const [justifyVal, setJustifyVal] = useState<string | null>(null);
   const [alignVal, setAlignVal] = useState<string | null>(null);
-  const [flexDir, setFlexDir] = useState<string | null>(null);
+
+  // Grid sub-props
   const [gridCols, setGridCols] = useState<string | null>(null);
   const [gridRows, setGridRows] = useState<string | null>(null);
 
@@ -164,15 +172,15 @@ export function DisplayControl({
     [],
   );
 
-  // Синхронизируем только подсветку кнопок и sub-props из SCSS
-  // Панель (openPane) НЕ трогаем — она управляется только кликами
+  // Синхронизируем подсветку кнопок и sub-props из SCSS
   useEffect(() => {
     setActiveDisplay(
       extractProp("display", currentScssText) as DisplayMode | null,
     );
+    setFlexDir(extractProp("flex-direction", currentScssText));
+    setFlexWrap(extractProp("flex-wrap", currentScssText)); // 👈 Добавлено
     setJustifyVal(extractProp("justify-content", currentScssText));
     setAlignVal(extractProp("align-items", currentScssText));
-    setFlexDir(extractProp("flex-direction", currentScssText));
     setGridCols(extractProp("grid-template-columns", currentScssText));
     setGridRows(extractProp("grid-template-rows", currentScssText));
 
@@ -226,6 +234,8 @@ export function DisplayControl({
     if (prop === "justify-content") setJustifyVal(value);
     else if (prop === "align-items") setAlignVal(value);
     else if (prop === "flex-direction") setFlexDir(value);
+    else if (prop === "flex-wrap")
+      setFlexWrap(value); // 👈 Добавлено
     else if (prop === "grid-template-columns") setGridCols(value);
     else if (prop === "grid-template-rows") setGridRows(value);
     applyLiveStyle(currentClass, prop, value as any);
@@ -236,36 +246,31 @@ export function DisplayControl({
     if (prop === "justify-content") setJustifyVal(null);
     else if (prop === "align-items") setAlignVal(null);
     else if (prop === "flex-direction") setFlexDir(null);
+    else if (prop === "flex-wrap")
+      setFlexWrap(null); // 👈 Добавлено
     else if (prop === "grid-template-columns") setGridCols(null);
     else if (prop === "grid-template-rows") setGridRows(null);
     removeLiveStyle();
     onApplySnippet(`${prop}: initial;`);
   };
 
-  /* ── клик по кнопке display (как tabs__btn) ─────────────
-     • flex / grid  — тоглят свою панель и применяют display
-     • остальные    — просто применяют display, панель закрывается
-  ─────────────────────────────────────────────────────── */
+  /* ── клик по кнопке display (как tabs__btn) ───────────── */
   const handleDisplayClick = (mode: DisplayMode) => {
     if (mode === "flex" || mode === "grid") {
       if (openPane === mode) {
-        // повторный клик — закрыть панель, сбросить display
         setOpenPane(null);
         setActiveDisplay(null);
         removeLiveStyle();
         onApplySnippet("display: initial;");
       } else {
-        // открыть панель и применить display
         setOpenPane(mode);
         setActiveDisplay(mode);
         applyLiveStyle(currentClass, "display", mode as any);
         onApplySnippet(`display: ${mode};`);
       }
     } else {
-      // none / inline-block / block / inline — без панели
       setOpenPane(null);
       if (activeDisplay === mode) {
-        // повторный клик — сброс
         setActiveDisplay(null);
         removeLiveStyle();
         onApplySnippet("display: initial;");
@@ -282,7 +287,7 @@ export function DisplayControl({
     <div className="bg-zinc-950/80 border border-zinc-800 rounded-md p-2 flex flex-col gap-2 shadow-inner select-none">
       {/* Шапка */}
       <div className="flex items-center justify-between">
-        <span className="text-[12px] font-mono  text-indigo-300 font-semibold tracking-wider">
+        <span className="text-[12px] font-mono text-indigo-300 font-semibold tracking-wider">
           Display:
         </span>
         {activeDisplay && (
@@ -333,6 +338,15 @@ export function DisplayControl({
             onApply={applyProp}
             onReset={resetProp}
           />
+          {/* 👈 Блок Wrap */}
+          <OptionRow
+            label="Wrap"
+            prop="flex-wrap"
+            value={flexWrap}
+            options={FLEX_WRAP}
+            onApply={applyProp}
+            onReset={resetProp}
+          />
           <OptionRow
             label="Justify"
             prop="justify-content"
@@ -351,6 +365,7 @@ export function DisplayControl({
           />
         </div>
       )}
+
       {/* 🔹 Ползунок flex: 0 0 16.7% (до десятых долей процента) */}
       <div className="flex flex-col gap-1.5 pt-1.5 border-t border-zinc-800">
         <div className="flex items-center justify-between">
@@ -433,6 +448,7 @@ export function DisplayControl({
           ))}
         </div>
       </div>
+
       {/* Панель grid — отображается как tabs__pane _is-active */}
       {openPane === "grid" && (
         <div className="flex flex-col gap-1.5 pt-1.5 border-t border-zinc-800">

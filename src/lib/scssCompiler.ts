@@ -33,8 +33,14 @@ export function extractClassSnippet(
   if (!globalScss || !cls) return `.${cls} {\n  \n}`;
 
   const escaped = escapeRegex(cls);
-  const regex = new RegExp(`(^|\\n)[ \\t]*\\.${escaped}(?![a-zA-Z0-9_.-])[^{]*\\{`);
-  const match = regex.exec(globalScss);
+  const exactRegex = new RegExp(`(^|\\n)([ \\t]*\\.${escaped}\\s*\\{)`);
+  let match = exactRegex.exec(globalScss);
+  if (!match) {
+    const fallbackRegex = new RegExp(
+      `(^|\\n)[ \\t]*\\.${escaped}(?![a-zA-Z0-9_.-])[^{]*\\{`,
+    );
+    match = fallbackRegex.exec(globalScss);
+  }
   if (!match) {
     return `.${cls} {\n  \n}`;
   }
@@ -70,11 +76,18 @@ export function updateClassInGlobalScss(
   const trimmedSnippet = newSnippet.trim();
 
   // Ð˜Ñ‰ÐµÐ¼ Ð±Ð»Ð¾Ðº ÑÑ‚Ð¾Ð³Ð¾ ÐºÐ»Ð°ÑÑÐ°
+  // Ищем блок этого класса: сначала точный блок .className { ... }
   const escaped = escapeRegex(cls);
-  const regex = new RegExp(
-    `(^|\\n)([ \\t]*\\.${escaped}(?![a-zA-Z0-9_.-])[^{]*\\{)`,
+  const exactRegex = new RegExp(
+    `(^|\\n)([ \\t]*\\.${escaped}\\s*\\{)`,
   );
-  const match = regex.exec(globalScss);
+  let match = exactRegex.exec(globalScss);
+  if (!match) {
+    const fallbackRegex = new RegExp(
+      `(^|\\n)([ \\t]*\\.${escaped}(?![a-zA-Z0-9_.-])[^{]*\\{)`,
+    );
+    match = fallbackRegex.exec(globalScss);
+  }
 
   if (match) {
     const fullMatchStart = match.index + (match[1] ? match[1].length : 0);

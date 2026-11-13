@@ -37,10 +37,31 @@ export function useModalNodeProperties({
   const currentJsonRef = useRef<HtmlNode[]>(currentJson);
   currentJsonRef.current = currentJson;
 
+  // ── Находим выбранную ноду ────────────────────────────────────────────────
+  let selectedNode: HtmlNode | null = null;
+  if (clickedKey) {
+    for (const root of currentJson) {
+      const found = findNodeByKey(root, clickedKey);
+      if (found) {
+        selectedNode = found;
+        break;
+      }
+    }
+  }
+
   // ── Поля редактирования ───────────────────────────────────────────────────
-  const [editTag, setEditTag] = useState<string>("div");
-  const [editClass, setEditClass] = useState<string>("");
-  const [editText, setEditText] = useState<string>("");
+  const [editTag, setEditTag] = useState<string>(() => selectedNode?.tag || "div");
+  const [editClass, setEditClass] = useState<string>(() => selectedNode?.class || "");
+  const [editText, setEditText] = useState<string>(() => selectedNode?.text || "");
+
+  // ── Мгновенная синхронизация при смене ноды (без задержки в 1 рендер) ─────
+  const [prevKey, setPrevKey] = useState<string | null>(clickedKey);
+  if (clickedKey !== prevKey) {
+    setPrevKey(clickedKey);
+    setEditTag(selectedNode?.tag || "div");
+    setEditClass(selectedNode?.class || "");
+    setEditText(selectedNode?.text || "");
+  }
 
   // ── Глобальные стили / скрипты ────────────────────────────────────────────
   const [globalScss, setGlobalScss] = useState<string>("");
@@ -93,27 +114,14 @@ export function useModalNodeProperties({
     };
   }, []);
 
-  // ── Находим выбранную ноду ────────────────────────────────────────────────
-  let selectedNode: HtmlNode | null = null;
-  if (clickedKey) {
-    for (const root of currentJson) {
-      const found = findNodeByKey(root, clickedKey);
-      if (found) {
-        selectedNode = found;
-        break;
-      }
-    }
-  }
-
-  // ── Синхронизируем поля при смене выбранной ноды ─────────────────────────
+  // ── Синхронизируем поля при изменении выбранной ноды ───────────────────
   useEffect(() => {
     if (selectedNode) {
       setEditTag(selectedNode.tag || "div");
       setEditClass(selectedNode.class || "");
       setEditText(selectedNode.text || "");
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clickedKey, selectedNode?._key]);
+  }, [clickedKey, selectedNode?._key, selectedNode?.tag, selectedNode?.class, selectedNode?.text]);
 
   // ─── Обработчики ─────────────────────────────────────────────────────────
 
