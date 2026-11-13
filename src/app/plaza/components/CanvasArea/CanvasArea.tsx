@@ -123,7 +123,7 @@ export function CanvasArea() {
       </div>
     );
   };
-
+  //  ─────🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹──────
   return (
     <div className="w-full flex gap-1 select-none">
       <AsideCanvas />

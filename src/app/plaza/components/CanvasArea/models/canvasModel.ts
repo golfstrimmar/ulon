@@ -792,38 +792,95 @@ function getSemanticBlockName(node: HtmlNode): string {
   return tag !== "div" ? tag : "block";
 }
 
-/**
- * 🔹 Подсчитывает общее количество тегов <ul> в поддереве
- */
-function countUlElements(node: HtmlNode): number {
-  let count = 0;
-  function walk(n: HtmlNode) {
-    const tag = (n.tag || "div").toLowerCase();
-    if (IGNORED_SVG_TAGS.has(tag)) return;
-    if (tag === "ul") count++;
-    if (Array.isArray(n.children)) {
-      n.children.forEach(walk);
+const SECTION_WRAPPER_NAMES = [
+  "prim",
+  "sec",
+  "tert",
+  "quat",
+  "quin",
+  "sext",
+  "sept",
+  "oct",
+  "non",
+  "dec",
+];
+
+const DIV_DEPTH_NAMES = ["inner", "box", "group", "sub"];
+
+function getOrdinalWrapperSuffix(index: number): string {
+  return SECTION_WRAPPER_NAMES[index] || `part-${index + 1}`;
+}
+
+function getDivDepthName(depth: number): string {
+  return DIV_DEPTH_NAMES[depth] || `lvl-${depth + 1}`;
+}
+
+function isWrapperDiv(node: HtmlNode): boolean {
+  const tag = (node.tag || "div").toLowerCase();
+  if (tag !== "div") return false;
+  const classes = (node.class || "").trim().split(/\s+/).filter(Boolean);
+  if (classes.includes("container")) return false;
+  return Array.isArray(node.children) && node.children.length > 0;
+}
+
+function appendBemClass(
+  existingClasses: string[],
+  generatedClass: string,
+): string {
+  if (!generatedClass) return existingClasses.join(" ");
+  const updated = new Set(existingClasses);
+  updated.add(generatedClass);
+  return Array.from(updated).join(" ");
+}
+
+function countDivsByDepth(
+  nodes: HtmlNode[],
+  depth = 0,
+  counts: Map<number, number> = new Map(),
+): Map<number, number> {
+  for (const node of nodes) {
+    const tag = (node.tag || "div").toLowerCase();
+    if (IGNORED_SVG_TAGS.has(tag)) continue;
+
+    let nextDepth = depth;
+    if (tag === "div") {
+      const classes = (node.class || "").trim().split(/\s+/).filter(Boolean);
+      if (!classes.includes("container")) {
+        counts.set(depth, (counts.get(depth) || 0) + 1);
+        nextDepth = depth + 1;
+      }
+    }
+
+    if (Array.isArray(node.children)) {
+      countDivsByDepth(node.children, nextDepth, counts);
     }
   }
-  walk(node);
-  return count;
+  return counts;
 }
 
 /**
- * 🔹 Интеллектуальное автоформирование БЭМ-классов:
+ * 🔹 Структурное автоформирование БЭМ-классов для секции:
  * 1. Игнорирует <i>, <svg> и всё их содержимое.
- * 2. Утилитарные классы шрифтов (font-montserrat-...) не становятся именем родителя.
- * 3. Если <ul> несколько в секции => нумеруются (__items-1, __items-2...)
- * 4. Все дочерние элементы получают индекс своего <ul>:
- *    - li        => родитель__item-1
- *    - a         => родитель__item-1_link
- *    - тег в a   => родитель__item-1_link_{tag}
- * 5. <p>         => родитель__p
- * 6. <span>      => родитель__span (вне ссылки)
- * 7. <h1>..<h6>  => родитель__title
- * 8. <button>    => родитель__button
- * 9. <img>       => родитель__img
- * 10. <div>      => родитель__ (неполный селектор)
+ * 2. Корень блока (например "red") сохраняется для всей секции (без переключения на вложенные классы Figma).
+ * 3. После .container (или сразу в секции, если .container нет):
+ *    - Если один общий div оборачивает ≥ 2 дочерних блоков-обёрток → он получает `red__wrap`.
+ *    - Дочерние обёртки (или если в контейнере сразу ≥ 2 обёрток без wrap) получают по порядку:
+ *      `red__prim`, `red__sec`, `red__tert`, `red__quat`, `red__quin`, `red__sext`, `red__sept`, `red__oct`, `red__non`, `red__dec`.
+ * 4. Все дочерние ноды внутри обёртки получают её модификатор в конец (`-prim`, `-sec`, `-tert`...):
+ *    - ul         → red__items-sec
+ *    - li         → red__item-sec
+ *    - a          → red__link-sec
+ *    - тег в a    → red__link-{tag}-sec (например red__link-span-sec)
+ *    - p          → red__p-sec
+ *    - span       → red__span-sec
+ *    - h1..h6     → red__title_{tag}-sec
+ *    - button     → red__button-sec
+ *    - img        → red__img-sec
+ *    - div (по глубине внутри обёртки):
+ *        уровень 1 → red__inner-sec (или red__inner-1-sec, red__inner-2-sec)
+ *        уровень 2 → red__box-sec   (или red__box-1-sec,   red__box-2-sec)
+ *        уровень 3 → red__group-sec (или red__group-1-sec, red__group-2-sec)
+ *        уровень 4 → red__sub-sec   (далее lvl-5...)
  */
 export function applyBemClassesToSection(
   tree: HtmlNode[],
@@ -854,141 +911,196 @@ export function applyBemClassesToSection(
   if (!rootNode) return tree;
 
   const rootKey = getNodeKey(rootNode);
-
-  // 2. Определяем смысловое имя родительского блока
   const rootBlockName = getSemanticBlockName(rootNode);
 
-  // 3. Считаем, сколько списков <ul> есть в этой секции
-  const totalUlCount = countUlElements(rootNode);
-  let ulCounter = 0; // Счётчик текущего списка
+  // 2. Рекурсивная обработка элементов внутри области с общим счётчиком глубины div
+  function processScopeElements(
+    nodes: HtmlNode[],
+    modifier: string,
+  ): HtmlNode[] {
+    const totalByDepth = countDivsByDepth(nodes, 0);
+    const seenByDepth = new Map<number, number>();
+    const mod = modifier ? `-${modifier}` : "";
 
-  // 4. Рекурсивная контекстная обработка
-  function processNode(
-    node: HtmlNode,
-    currentBlock: string,
-    currentUlItemPrefix: string | null = null,
-    isInLink = false,
-  ): HtmlNode {
-    const tag = (node.tag || "div").toLowerCase();
+    function walkElement(
+      node: HtmlNode,
+      divDepth: number,
+      isInLink: boolean,
+    ): HtmlNode {
+      const tag = (node.tag || "div").toLowerCase();
 
-    // ⛔ Игнорируем иконки и SVG целиком
-    if (IGNORED_SVG_TAGS.has(tag)) {
+      // ⛔ Игнорируем иконки и SVG целиком
+      if (IGNORED_SVG_TAGS.has(tag)) {
+        return node;
+      }
+
+      const existingClasses = (node.class || "")
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+
+      let generatedClass = "";
+      let nextIsInLink = isInLink;
+      let nextDivDepth = divDepth;
+
+      if (tag === "ul") {
+        generatedClass = `${rootBlockName}__items${mod}`;
+        nextIsInLink = false;
+      } else if (tag === "li") {
+        generatedClass = `${rootBlockName}__item${mod}`;
+        nextIsInLink = false;
+      } else if (tag === "a") {
+        generatedClass = `${rootBlockName}__link${mod}`;
+        nextIsInLink = true;
+      } else if (isInLink) {
+        generatedClass = `${rootBlockName}__link-${tag}${mod}`;
+      } else if (tag === "p") {
+        generatedClass = `${rootBlockName}__p${mod}`;
+      } else if (tag === "span") {
+        generatedClass = `${rootBlockName}__span${mod}`;
+      } else if (/^h[1-6]$/.test(tag)) {
+        generatedClass = `${rootBlockName}__title_${tag}${mod}`;
+      } else if (tag === "button") {
+        generatedClass = `${rootBlockName}__button${mod}`;
+      } else if (tag === "img") {
+        generatedClass = `${rootBlockName}__img${mod}`;
+      } else if (tag === "div") {
+        const isContainer = existingClasses.includes("container");
+        if (!isContainer) {
+          const currentIdx = (seenByDepth.get(divDepth) || 0) + 1;
+          seenByDepth.set(divDepth, currentIdx);
+          nextDivDepth = divDepth + 1;
+
+          const alreadyHasBem = existingClasses.some(
+            (cls) =>
+              cls === `${rootBlockName}__` ||
+              cls.startsWith(`${rootBlockName}__`),
+          );
+
+          if (!alreadyHasBem) {
+            const totalAtDepth = totalByDepth.get(divDepth) || 1;
+            const depthName = getDivDepthName(divDepth);
+            const indexPart = totalAtDepth > 1 ? `-${currentIdx}` : "";
+            generatedClass = `${rootBlockName}__${depthName}${indexPart}${mod}`;
+          }
+        }
+      }
+
       return {
         ...node,
+        class: appendBemClass(existingClasses, generatedClass),
         children: Array.isArray(node.children)
-          ? node.children.map((c) => processNode(c, currentBlock, null, false))
+          ? node.children.map((c) => walkElement(c, nextDivDepth, nextIsInLink))
           : node.children,
       };
     }
 
-    const existingClasses = (node.class || "")
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean);
-
-    // Если встречаем вложенный самостоятельный смысловой блок (например .card)
-    let activeBlock = currentBlock;
-    if (
-      tag !== "ul" &&
-      tag !== "li" &&
-      tag !== "a" &&
-      tag !== "span" &&
-      tag !== "p"
-    ) {
-      const subBlockClass = existingClasses.find(
-        (cls) => !isUtilityOrFontClass(cls),
-      );
-      if (subBlockClass) {
-        activeBlock = subBlockClass;
-      }
-    }
-
-    let generatedClass = "";
-    let nextUlItemPrefix = currentUlItemPrefix;
-    let nextIsInLink = isInLink;
-
-    if (tag === "ul") {
-      // Увеличиваем номер списка
-      ulCounter++;
-      // Если списков несколько — добавляем суффикс "-1", "-2"
-      const ulIndexSuffix = totalUlCount > 1 ? `-${ulCounter}` : "";
-      generatedClass = `${activeBlock}__items${ulIndexSuffix}`;
-
-      // Запоминаем базовый префикс для всех дочерних li и ссылок этого списка:
-      // например "section-frame-32__item-1" или "section-frame-32__item"
-      nextUlItemPrefix = `${activeBlock}__item${ulIndexSuffix}`;
-      nextIsInLink = false;
-    } else if (tag === "li") {
-      // <li> получает префикс своего <ul>
-      generatedClass = currentUlItemPrefix || `${activeBlock}__item`;
-      nextIsInLink = false;
-    } else if (tag === "a") {
-      // Ссылка внутри <li> или обычная ссылка
-      if (currentUlItemPrefix) {
-        generatedClass = `${currentUlItemPrefix}_link`;
-        nextIsInLink = true;
-      } else {
-        generatedClass = `${activeBlock}__link`;
-        nextIsInLink = true;
-      }
-    } else if (isInLink && currentUlItemPrefix) {
-      // 🎯 Тег внутри ссылки, которая внутри <li>
-      // => родитель__item-1_link_{tag} (напр. section-frame-32__item-1_link_span)
-      generatedClass = `${currentUlItemPrefix}_link_${tag}`;
-    } else if (tag === "p") {
-      // Обычный абзац
-      generatedClass = `${activeBlock}__p`;
-    } else if (tag === "span") {
-      // Обычный span (не в ссылке)
-      generatedClass = `${activeBlock}__span`;
-    } else if (/^h[1-6]$/.test(tag)) {
-      // Заголовок
-      generatedClass = `${activeBlock}__title_${tag}`;
-    } else if (tag === "button") {
-      // Кнопка
-      generatedClass = `${activeBlock}__button`;
-    } else if (tag === "img") {
-      // Картинка
-      generatedClass = `${activeBlock}__img`;
-    } else if (tag === "div") {
-      // 🎯 Для div формируем неполный селектор (например "www__"), исключая .container
-      const isContainer = existingClasses.includes("container");
-      const alreadyHasBem = existingClasses.some(
-        (cls) =>
-          cls === `${currentBlock}__` || cls.startsWith(`${currentBlock}__`),
-      );
-      if (!isContainer && !alreadyHasBem) {
-        generatedClass = `${currentBlock}__`;
-      }
-    }
-
-    // Добавляем сформированный класс без дубликатов
-    const updatedClassSet = new Set(existingClasses);
-    if (generatedClass && !updatedClassSet.has(generatedClass)) {
-      updatedClassSet.add(generatedClass);
-    }
-
-    return {
-      ...node,
-      class: Array.from(updatedClassSet).join(" "),
-      children: Array.isArray(node.children)
-        ? node.children.map((c) =>
-            processNode(c, activeBlock, nextUlItemPrefix, nextIsInLink),
-          )
-        : node.children,
-    };
+    return nodes.map((n) => walkElement(n, 0, false));
   }
 
-  // 5. Обновляем корень и запускаем обход
+  function processSingleNonWrapper(node: HtmlNode, modifier: string): HtmlNode {
+    return processScopeElements([node], modifier)[0];
+  }
+
+  // 3. Обработка уровня с обёртками (prim, sec, tert...)
+  function processBlocksLevel(children: HtmlNode[]): HtmlNode[] {
+    let blockIndex = 0;
+
+    return children.map((child) => {
+      if (isWrapperDiv(child)) {
+        const suffix = getOrdinalWrapperSuffix(blockIndex++);
+        const existingClasses = (child.class || "")
+          .trim()
+          .split(/\s+/)
+          .filter(Boolean);
+        const wrapperClass = `${rootBlockName}__${suffix}`;
+
+        return {
+          ...child,
+          class: appendBemClass(existingClasses, wrapperClass),
+          children: Array.isArray(child.children)
+            ? processScopeElements(child.children, suffix)
+            : child.children,
+        };
+      }
+
+      return processSingleNonWrapper(child, "");
+    });
+  }
+
+  // 4. Обработка содержимого layout-контейнера (.container или самой секции)
+  function processLayoutScope(children: HtmlNode[]): HtmlNode[] {
+    const topWrapperDivs = children.filter(isWrapperDiv);
+
+    if (topWrapperDivs.length === 1) {
+      const singleDiv = topWrapperDivs[0];
+      const innerWrapperDivs = (singleDiv.children || []).filter(isWrapperDiv);
+
+      // Если один общий div оборачивает несколько блоков → он становится __wrap
+      if (innerWrapperDivs.length >= 2) {
+        const singleDivKey = getNodeKey(singleDiv);
+
+        return children.map((child) => {
+          if (getNodeKey(child) === singleDivKey) {
+            const existingClasses = (child.class || "")
+              .trim()
+              .split(/\s+/)
+              .filter(Boolean);
+
+            return {
+              ...child,
+              class: appendBemClass(existingClasses, `${rootBlockName}__wrap`),
+              children: processBlocksLevel(child.children || []),
+            };
+          }
+          return processSingleNonWrapper(child, "");
+        });
+      }
+    }
+
+    // Если в контейнере сразу несколько обёрток (или один блок без внутренних обёрток)
+    if (topWrapperDivs.length >= 1) {
+      return processBlocksLevel(children);
+    }
+
+    return processScopeElements(children, "");
+  }
+
+  // 5. Обработка прямых детей секции (учитывая наличие .container)
+  function processSectionChildren(children: HtmlNode[]): HtmlNode[] {
+    const containerNode = children.find((child) => {
+      const tag = (child.tag || "div").toLowerCase();
+      if (tag !== "div") return false;
+      const classes = (child.class || "").trim().split(/\s+/).filter(Boolean);
+      return classes.includes("container");
+    });
+
+    if (containerNode) {
+      const containerKey = getNodeKey(containerNode);
+      return children.map((child) => {
+        if (getNodeKey(child) === containerKey) {
+          return {
+            ...child,
+            children: Array.isArray(child.children)
+              ? processLayoutScope(child.children)
+              : child.children,
+          };
+        }
+        return processSingleNonWrapper(child, "");
+      });
+    }
+
+    return processLayoutScope(children);
+  }
+
+  // 6. Обновляем корневую секцию в дереве
   function updateTree(list: HtmlNode[]): HtmlNode[] {
     return list.map((item) => {
       if (getNodeKey(item) === rootKey) {
         return {
           ...item,
           children: Array.isArray(item.children)
-            ? item.children.map((c) =>
-                processNode(c, rootBlockName, null, false),
-              )
+            ? processSectionChildren(item.children)
             : item.children,
         };
       }

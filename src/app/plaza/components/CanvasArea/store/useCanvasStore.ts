@@ -118,6 +118,7 @@ export interface CanvasState {
 
 let hudTimeout: ReturnType<typeof setTimeout> | null = null;
 
+//  ─────🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹──────
 export const useCanvasStore = create<CanvasState>((set, get) => ({
   currentJson: [],
   collapsedKeys: new Set<string>(),
