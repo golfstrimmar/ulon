@@ -68,6 +68,7 @@ export function CanvasArea() {
   const [isProjectsOpen, setIsProjectsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [isInteractingWindow, setIsInteractingWindow] = useState(false);
+  const [graphZoom, setGraphZoom] = useState<number>(1);
 
   const [floatingPos, setFloatingPos] = useState<{ x: number; y: number }>({
     x: 208,
@@ -106,6 +107,24 @@ export function CanvasArea() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Зум графа колёсиком мыши при зажатом Ctrl / Cmd
+  useEffect(() => {
+    const el = workspaceRef.current;
+    if (!el) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      setGraphZoom((prev) => {
+        const step = e.deltaY < 0 ? 0.1 : -0.1;
+        return Number(Math.min(1.4, Math.max(0.4, prev + step)).toFixed(2));
+      });
+    };
+
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    return () => el.removeEventListener("wheel", handleWheel);
+  }, [isCanvasFloating]);
 
   // Стартовая позиция и размеры при подъёме канваса поверх превью
   useEffect(() => {
@@ -313,27 +332,47 @@ export function CanvasArea() {
 
   const renderNodeList = (nodes: HtmlNode[], panePrefix: string) => {
     return (
-      <div className="w-full mx-auto flex flex-col min-h-full">
+      <div
+        style={{
+          transform: `scale(${graphZoom})`,
+          transformOrigin: "top left",
+        }}
+        className="w-max min-w-full flex flex-row flex-nowrap items-start gap-2 p-3"
+      >
         {nodes.map((node, index) => (
-          <React.Fragment key={`${panePrefix}-${getNodeKey(node) || index}`}>
+          <div
+            key={`${panePrefix}-${getNodeKey(node) || index}`}
+            className="relative flex flex-row items-start shrink-0 px-1.5"
+          >
             {index === 0 && (
+              <div className="absolute -left-1 top-0 h-[42px] flex items-stretch z-20">
+                <DropGap
+                  targetKey={getNodeKey(node)}
+                  position="before"
+                  orientation="vertical"
+                />
+              </div>
+            )}
+
+            <NodeCard node={node} depth={0} parentIsRow={true} />
+
+            <div className="absolute -right-1 top-0 h-[42px] flex items-stretch z-20">
               <DropGap
                 targetKey={getNodeKey(node)}
-                position="before"
-                orientation="horizontal"
+                position="after"
+                orientation="vertical"
               />
-            )}
-            <NodeCard node={node} depth={0} parentIsRow={false} />
-            <DropGap
-              targetKey={getNodeKey(node)}
-              position="after"
-              orientation="horizontal"
-            />
-          </React.Fragment>
+            </div>
+          </div>
         ))}
       </div>
     );
   };
+
+  const zoomOut = () =>
+    setGraphZoom((z) => Number(Math.max(0.4, z - 0.2).toFixed(2)));
+  const zoomIn = () =>
+    setGraphZoom((z) => Number(Math.min(1.4, z + 0.2).toFixed(2)));
 
   const workspaceContent = (
     <div
@@ -410,6 +449,35 @@ export function CanvasArea() {
               <ArrowUpCircleIcon className="size-4" />
             )}
           </button>
+
+          {/* MINI ZOOM */}
+          <div
+            title="Graph zoom (also Ctrl + Mouse Wheel)"
+            className="flex items-center bg-zinc-800 rounded border border-zinc-700/50 text-[10px] font-mono overflow-hidden"
+          >
+            <button
+              type="button"
+              onClick={zoomOut}
+              className="px-1.5 py-0.5 hover:bg-zinc-700 text-zinc-300 cursor-pointer"
+            >
+              −
+            </button>
+            <button
+              type="button"
+              onClick={() => setGraphZoom(1)}
+              title="Reset zoom to 100%"
+              className="px-1 py-0.5 hover:bg-zinc-700 text-zinc-200 cursor-pointer min-w-[34px] text-center"
+            >
+              {Math.round(graphZoom * 100)}%
+            </button>
+            <button
+              type="button"
+              onClick={zoomIn}
+              className="px-1.5 py-0.5 hover:bg-zinc-700 text-zinc-300 cursor-pointer"
+            >
+              +
+            </button>
+          </div>
         </div>
 
         <button
@@ -426,7 +494,7 @@ export function CanvasArea() {
           <button
             type="button"
             onClick={applyBemClasses}
-            title="Auto-generate BEM classes for section descendants"
+            title="Auto-generate BEM classes for selected parent"
             className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono transition-all pointer-pointer border bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border-zinc-700/50 hover:border-indigo-500/50"
           >
             <TagIcon className="size-3.5 text-indigo-400" />
@@ -439,7 +507,7 @@ export function CanvasArea() {
             onClick={toggleTemplateMode}
             title={
               isTemplateMode
-                ? "Template mode: ON (click right nodes to set slots [1], [2]..., marquee left nodes to fill)"
+                ? "Template mode: ON (click right nodes to set slots [1], [2]..., then click left nodes in any order to fill)"
                 : "Template mode: OFF"
             }
             className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono transition-all pointer-pointer border ${

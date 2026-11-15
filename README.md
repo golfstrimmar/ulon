@@ -147,78 +147,17 @@ D:\WEB\ulon\src\app\plaza\components\PreviewArea\components\ModalJsonHtml.tsx
 
 ------------------
 
-// Helper function to extract CSS variable names and values
-function parseCssVariables(css: string) {
-  const regex = /(--[\w-]+)\s*:\s*([^;]+);/g;
-  const tokens: { name: string; value: string }[] = [];
-  let match;
-  while ((match = regex.exec(css)) !== null) {
-    tokens.push({ name: match[1], value: match[2].trim() });
-  }
-  return tokens;
-}
- const rawUrl =
-    "https://raw.githubusercontent.com/golfstrimmar/ulon-design-tokens/main/colors.css";
+Если говорить честно, без прикрас — рынок сильно разделился:
+1. Что действительно почти ушло в ИИ и конструкторы
+Дешёвые и типовые заказы — простые лендинги, однотипные промо-страницы, шаблонные MVP, внутренние админки — действительно массово забирают AI-генераторы и конструкторы. Конкурировать руками в сегменте «сделайте простенький сайт недорого» сейчас уже почти бессмысленно.
+2. Где такие заказы всё ещё есть
+Заказы уровня «дорогой кастомный макет из Figma» никуда не исчезли, просто они сместились в сегмент, где цена ошибки или кривой вёрстки высокая:
+Проекты после сильных дизайн-студий: когда клиент заплатил за уникальный дизайн в Figma и требует 100% попадания в макет, нестандартную сетку, микроанимации и идеальный адаптив на всех экранах.
+Вёрстка под интеграцию в живой бизнес (e-commerce, порталы, WordPress / Bitrix / Laravel / Next.js): там нельзя просто скопировать то, что нагенерировал AI-агент «с нуля» — нужен чистый, предсказуемый HTML/SCSS/JS с понятными классами и без мусорных обёрток, чтобы бэкенд-команда смогла это без боли натянуть.
+Сложные интерфейсные секции (кастомные табы, конфигураторы, многоуровневые формы, нестандартные слайдеры), где ИИ по промпту начинает ломать соседние блоки при каждой мелкой правке.
+3. В чём тут главный вывод для твоего проекта
+Чисто руками верстать долго (падает маржа, заказчики ждут сроков быстрее из-за хайпа вокруг ИИ). А чисто ИИ — теряет точность и контроль.
+Поэтому в выигрыше остаётся не тот, кто отказывается от ИИ, и не тот, кто слепо полагается на промпты, а профессионал со скоростным станком.
 
-  let cssContent = "";
-  try {
-    const res = await fetch(rawUrl, {
-      next: { revalidate: 3600 }, // Cache for 1 hour
-    });
-
-    if (!res.ok) {
-      throw new Error(`Fetch error: ${res.statusText}`);
-    }
-
-    cssContent = await res.text();
-  } catch (error) {
-    return (
-      <div className="p-4 bg-red-950/40 border border-red-800 text-red-300 rounded-xl">
-        Failed to load tokens: {(error as Error).message}
-      </div>
-    );
-  }
-
-  const tokens = parseCssVariables(cssContent);
- {/* Color Swatches Grid */}
-      {/*<section>
-        <h2 className="text-xl font-semibold mb-4 text-zinc-200">
-          Color Palette ({tokens.length} tokens)
-        </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-          {tokens.map((token) => (
-            <div
-              key={token.name}
-              className="bg-zinc-900 border border-zinc-800/80 rounded-lg p-2.5 flex flex-col gap-2 shadow-sm"
-            >
-              <div
-                className="w-full h-16 rounded border border-white/10 shadow-inner"
-                style={{ backgroundColor: token.value }}
-              />
-              <div className="flex flex-col">
-                <span
-                  className="font-mono text-xs text-zinc-300 truncate"
-                  title={token.name}
-                >
-                  {token.name}
-                </span>
-                <span className="font-mono text-[11px] text-zinc-500 uppercase">
-                  {token.value}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>*/}
-
-      {/* Raw CSS Code */}
-      {/*<section>
-        <h2 className="text-xl font-semibold mb-4 text-zinc-200">Source CSS</h2>
-        <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-4 overflow-x-auto">
-          <pre className="font-mono text-xs text-zinc-300 leading-relaxed">
-            <code>{cssContent}</code>
-          </pre>
-        </div>
-      </section>*/}
-      ======================================= 
-      надо сделать шапку. отдельными блоками. в колонку. отдельно лого, отдеьно меню отдельно инфо ссылки отдельно впоиск отдельно кнопки ссылки. и потом собирать его как мозаику.
+Тогда у тебя будет и скорость почти как у ИИ, и качество дорогой ручной вёрстки.
+------------------

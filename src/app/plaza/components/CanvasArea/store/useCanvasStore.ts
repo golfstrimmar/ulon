@@ -1,9 +1,18 @@
 import { create } from "zustand";
 import type { HtmlNode } from "@/types/HtmlNode";
 import { deleteNodeFromArray } from "@/lib/htmlTree";
-import { saveHtmlJson, deleteHtmlJson } from "@/lib/htmlStorage";
 import { DB_KEY } from "@/app/plaza/components/CanvasArea/constants/theme";
 import type { BreakpointId } from "@/app/plaza/components/PreviewArea/types/breakpoints";
+
+import {
+  saveHtmlJson,
+  deleteHtmlJson,
+  getGlobalScss,
+  saveGlobalScss,
+  getGlobalJs,
+  saveGlobalJs,
+} from "@/lib/htmlStorage";
+
 import {
   findNodeInTree,
   collectAllDescendantKeys,
@@ -13,6 +22,10 @@ import {
   applyBemClassesToSection,
   fillTemplateWithDonors,
   fillSingleSlotInPlace,
+  computeToggledCollapsedKeys,
+  prepareAppendedNodes,
+  mergeScssWithoutDuplicates,
+  mergeScriptsWithoutDuplicates,
 } from "@/app/plaza/components/CanvasArea/models/canvasModel";
 
 export interface DropTarget {
@@ -98,6 +111,10 @@ export interface CanvasState {
   fillTemplateFromDonors: (donorKeys: string[]) => Promise<boolean>;
   fillNextTemplateSlot: (donorKey: string) => Promise<boolean>;
 
+  // ──
+  toggleCollapseAll: () => void;
+  clearCanvasTree: () => Promise<void>;
+  appendNodesFromPath: (path: string) => Promise<boolean>;
   // ── Breakpoints Actions ───────────────────────────────────────────────────
   selectBreakpoint: (id: BreakpointId) => void;
   setCustomBreakpointWidth: (width: number) => void;
@@ -485,6 +502,83 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     await get().persist(result.nextTree);
     return true;
   },
+
+  toggleCollapseAll: () => {
+    const { currentJson, collapsedKeys } = get();
+    set({
+      collapsedKeys: computeToggledCollapsedKeys(currentJson, collapsedKeys),
+    });
+  },
+
+  clearCanvasTree: async () => {
+    await deleteHtmlJson(DB_KEY);
+    set({
+      currentJson: [],
+      rightKeys: new Set(),
+      templateSlotKeys: [],
+      clickedKey: null,
+      hoveredKey: null,
+      selectedKeys: new Set(),
+      collapsedKeys: new Set(),
+    });
+    window.dispatchEvent(
+      new CustomEvent("plaza-tree-updated", {
+        detail: { nodes: [], source: "aside-canvas" },
+      }),
+    );
+  },
+
+  appendNodesFromPath: async (path: string) => {
+    try {
+      const res = await fetch(path);
+      if (!res.ok) return false;
+      const raw = await res.json();
+
+      const { currentJson, isSplit } = get();
+      const { nextTree, extractedScss, extractedScripts, addedRightKeys } =
+        prepareAppendedNodes(currentJson, raw, isSplit);
+
+      if (extractedScss) {
+        const currentScss = (await getGlobalScss().catch(() => "")) || "";
+        const nextScss = mergeScssWithoutDuplicates(currentScss, extractedScss);
+        if (nextScss !== currentScss) {
+          await saveGlobalScss(nextScss);
+          window.dispatchEvent(
+            new CustomEvent("plaza-styles-updated", { detail: nextScss }),
+          );
+        }
+      }
+
+      if (extractedScripts.length > 0) {
+        const currentJs = (await getGlobalJs().catch(() => "")) || "";
+        const nextBundle = mergeScriptsWithoutDuplicates(
+          currentJs,
+          extractedScripts,
+        );
+        if (nextBundle !== currentJs) {
+          await saveGlobalJs(nextBundle);
+          window.dispatchEvent(
+            new CustomEvent("plaza-scripts-updated", { detail: nextBundle }),
+          );
+        }
+      }
+
+      if (addedRightKeys.length > 0) {
+        set((state) => {
+          const next = new Set(state.rightKeys);
+          addedRightKeys.forEach((k) => next.add(k));
+          return { rightKeys: next };
+        });
+      }
+
+      await get().persist(nextTree);
+      return true;
+    } catch (e) {
+      console.error(`Error adding from ${path}:`, e);
+      return false;
+    }
+  },
+
   // ── Breakpoints Actions ───────────────────────────────────────────────────
   selectBreakpoint: (id: BreakpointId) => {
     set((state) => ({

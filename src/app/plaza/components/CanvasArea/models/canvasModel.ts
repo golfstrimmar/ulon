@@ -57,7 +57,76 @@ export function getAllCollapsibleKeys(
   traverse(nodes);
   return keys;
 }
+/**
+ * Переключает состояние сворачивания всех контейнеров:
+ * если все контейнеры уже свёрнуты — разворачивает всё, иначе сворачивает всё.
+ */
+export function computeToggledCollapsedKeys(
+  tree: HtmlNode[],
+  currentCollapsed: Set<string>,
+): Set<string> {
+  const allKeys = getAllCollapsibleKeys(tree);
+  if (allKeys.length === 0) return new Set();
+  const allCollapsed = allKeys.every((k) => currentCollapsed.has(k));
+  return allCollapsed ? new Set() : new Set(allKeys);
+}
 
+/**
+ * Иммутабельно переключает имя папки в Set открытых папок сайдбара.
+ */
+export function toggleFolderInSet(
+  prev: Set<string>,
+  folderName: string,
+): Set<string> {
+  const next = new Set(prev);
+  if (next.has(folderName)) next.delete(folderName);
+  else next.add(folderName);
+  return next;
+}
+
+/**
+ * Проверяет, содержит ли дерево хотя бы один узел.
+ */
+export function hasTreeNodes(nodes: unknown): boolean {
+  return Array.isArray(nodes) && nodes.length > 0;
+}
+
+/**
+ * Подготавливает ноды из JSON-шаблона к добавлению в дерево:
+ * извлекает inline-стили и скрипты, проставляет уникальные ключи
+ * и собирает ключи для правой панели при включённом сплит-режиме.
+ */
+export function prepareAppendedNodes(
+  currentTree: HtmlNode[],
+  rawData: HtmlNode | HtmlNode[],
+  isSplit: boolean,
+): {
+  nextTree: HtmlNode[];
+  extractedScss: string;
+  extractedScripts: { name: string; code: string }[];
+  addedRightKeys: string[];
+} {
+  const nodes: HtmlNode[] = Array.isArray(rawData) ? rawData : [rawData];
+  const { cleanNodes, extractedScss, extractedScripts } =
+    extractStylesAndScriptsFromNodes(nodes);
+
+  const nodesWithUniqueKeys = ensureUniqueKeys(cleanNodes);
+  const nextTree = [...currentTree, ...nodesWithUniqueKeys];
+
+  const addedRightKeys: string[] = [];
+  if (isSplit) {
+    for (const node of nodesWithUniqueKeys) {
+      addedRightKeys.push(...collectAllDescendantKeys(node));
+    }
+  }
+
+  return {
+    nextTree,
+    extractedScss,
+    extractedScripts,
+    addedRightKeys,
+  };
+}
 /**
  * Находит узел по набору критериев (ключ, класс, тег, текстовое содержимое).
  */

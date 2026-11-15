@@ -1,149 +1,39 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import type { HtmlNode } from "@/types/HtmlNode";
+import { useState, useCallback } from "react";
 import {
-  getHtmlJson,
-  deleteHtmlJson,
-  getGlobalScss,
-  saveGlobalScss,
-  getGlobalJs,
-  saveGlobalJs,
-} from "@/lib/htmlStorage";
-import { DB_KEY } from "@/app/plaza/components/CanvasArea/constants/theme";
-import {
-  extractStylesAndScriptsFromNodes,
-  mergeScssWithoutDuplicates,
-  mergeScriptsWithoutDuplicates,
-  ensureUniqueKeys,
-  collectAllDescendantKeys,
+  toggleFolderInSet,
+  hasTreeNodes,
 } from "@/app/plaza/components/CanvasArea/models/canvasModel";
 import { useCanvasStore } from "@/app/plaza/components/CanvasArea/store/useCanvasStore";
 
 export function useAsideCanvas() {
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
-  const [hasNodes, setHasNodes] = useState(false);
+  const hasNodes = useCanvasStore((s) => hasTreeNodes(s.currentJson));
 
-  // Синхронизируем наличие нод (чтобы кнопка Clear знала, когда отображаться)
-  useEffect(() => {
-    const checkTree = async () => {
-      const data = await getHtmlJson(DB_KEY).catch(() => null);
-      setHasNodes(Boolean(data && Array.isArray(data) && data.length > 0));
-    };
-    checkTree();
-
-    const handleTreeChange = (e: Event) => {
-      const customEvent = e as CustomEvent;
-      const nodes = Array.isArray(customEvent.detail)
-        ? customEvent.detail
-        : customEvent.detail?.nodes;
-      setHasNodes(Boolean(nodes && nodes.length > 0));
-    };
-
-    window.addEventListener("plaza-tree-updated", handleTreeChange);
-    return () =>
-      window.removeEventListener("plaza-tree-updated", handleTreeChange);
+  const toggleFolder = useCallback((folderName: string) => {
+    setOpenFolders((prev) => toggleFolderInSet(prev, folderName));
   }, []);
 
-  const toggleFolder = (folderName: string) => {
-    setOpenFolders((prev) => {
-      const next = new Set(prev);
-      if (next.has(folderName)) next.delete(folderName);
-      else next.add(folderName);
-      return next;
-    });
-  };
+  const handleClear = useCallback(async () => {
+    await useCanvasStore.getState().clearCanvasTree();
+  }, []);
 
-  // Команды, управляющие деревом из сайдбара
-  const handleClear = async () => {
-    await deleteHtmlJson(DB_KEY);
-    setHasNodes(false);
-    useCanvasStore.getState().setRightKeys(new Set());
-    window.dispatchEvent(
-      new CustomEvent("plaza-tree-updated", {
-        detail: { nodes: [], source: "aside-canvas" },
-      }),
-    );
-  };
+  const handleAppendFromPath = useCallback(async (path: string) => {
+    await useCanvasStore.getState().appendNodesFromPath(path);
+  }, []);
 
-  const handleAppendFromPath = async (path: string) => {
-    try {
-      const res = await fetch(path);
-      if (!res.ok) return;
-      const raw = await res.json();
-      const nodes: HtmlNode[] = Array.isArray(raw) ? raw : [raw];
+  const triggerUndo = useCallback(() => {
+    void useCanvasStore.getState().undo();
+  }, []);
 
-      const { cleanNodes, extractedScss, extractedScripts } =
-        extractStylesAndScriptsFromNodes(nodes);
+  const triggerRedo = useCallback(() => {
+    void useCanvasStore.getState().redo();
+  }, []);
 
-      // 1. Стили
-      if (extractedScss) {
-        const currentScss = (await getGlobalScss().catch(() => "")) || "";
-        const nextScss = mergeScssWithoutDuplicates(currentScss, extractedScss);
-        if (nextScss !== currentScss) {
-          await saveGlobalScss(nextScss);
-          window.dispatchEvent(
-            new CustomEvent("plaza-styles-updated", { detail: nextScss }),
-          );
-        }
-      }
-
-      // 2. Скрипты
-      if (extractedScripts.length > 0) {
-        const currentJs = (await getGlobalJs().catch(() => "")) || "";
-        const nextBundle = mergeScriptsWithoutDuplicates(
-          currentJs,
-          extractedScripts,
-        );
-        if (nextBundle !== currentJs) {
-          await saveGlobalJs(nextBundle);
-          window.dispatchEvent(
-            new CustomEvent("plaza-scripts-updated", { detail: nextBundle }),
-          );
-        }
-      }
-
-      // 3. Подготовка новых нод с уникальными ключами
-      const store = useCanvasStore.getState();
-      const currentTree = store.currentJson;
-      const nodesWithUniqueKeys = ensureUniqueKeys(cleanNodes);
-      const nextTree = [...currentTree, ...nodesWithUniqueKeys];
-
-      // 🎯 ЕСЛИ ВКЛЮЧЕН СПЛИТ-РЕЖИМ (PANE 2):
-      // Направляем все новые добавленные ноды сразу в правую панель!
-      if (store.isSplit) {
-        const newKeys: string[] = [];
-        for (const node of nodesWithUniqueKeys) {
-          newKeys.push(...collectAllDescendantKeys(node));
-        }
-
-        store.setRightKeys((prev) => {
-          const next = new Set(prev);
-          newKeys.forEach((k) => next.add(k));
-          return next;
-        });
-      }
-
-      // 4. Сохраняем в дерево через persist (для работы истории Undo/Redo)
-      await store.persist(nextTree);
-      setHasNodes(true);
-    } catch (e) {
-      console.error(`Error adding from ${path}:`, e);
-    }
-  };
-
-  // Прямой вызов undo/redo из стора
-  const triggerUndo = () => {
-    useCanvasStore.getState().undo();
-  };
-
-  const triggerRedo = () => {
-    useCanvasStore.getState().redo();
-  };
-
-  const triggerCollapseAll = () => {
-    window.dispatchEvent(new CustomEvent("plaza-toggle-collapse-all"));
-  };
+  const triggerCollapseAll = useCallback(() => {
+    useCanvasStore.getState().toggleCollapseAll();
+  }, []);
 
   return {
     openFolders,
