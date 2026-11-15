@@ -30,7 +30,7 @@ export function useCanvasMarquee({ containerRef }: UseCanvasMarqueeOptions) {
         target.closest("[role='dialog']") ||
         target.closest("[data-modal]") ||
         target.closest(".modal") ||
-        target.closest(".fixed")
+        target.closest(".fixed:not(.plaza-workspace)")
       ) {
         return;
       }
@@ -65,10 +65,6 @@ export function useCanvasMarquee({ containerRef }: UseCanvasMarqueeOptions) {
       }
 
       e.preventDefault();
-
-      const startPane = target
-        .closest("[data-pane]")
-        ?.getAttribute("data-pane");
 
       useCanvasStore.getState().clearSelection();
 
@@ -129,30 +125,11 @@ export function useCanvasMarquee({ containerRef }: UseCanvasMarqueeOptions) {
         useCanvasStore.getState().setSelectedKeys(new Set(normalized));
       };
 
-      const handlePointerUp = async () => {
+      const handlePointerUp = () => {
         window.removeEventListener("pointermove", handlePointerMove);
         window.removeEventListener("pointerup", handlePointerUp);
         window.removeEventListener("pointercancel", handlePointerUp);
         useCanvasStore.getState().setSelectionBox(null);
-
-        const state = useCanvasStore.getState();
-        const selected = Array.from(state.selectedKeys);
-
-        // 🚀 Template Mode Trigger: Left pane marquee release with active template slots
-        if (
-          state.isTemplateMode &&
-          startPane === "left" &&
-          selected.length > 0 &&
-          state.templateSlotKeys.length > 0
-        ) {
-          const isLeftDonor = (k: string) => !state.rightKeys.has(k);
-          const donorKeys = selected.filter(isLeftDonor);
-
-          if (donorKeys.length > 0) {
-            state.clearSelection();
-            await state.fillTemplateFromDonors(donorKeys);
-          }
-        }
       };
 
       window.addEventListener("pointermove", handlePointerMove);

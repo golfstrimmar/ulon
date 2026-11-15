@@ -12,6 +12,7 @@ import {
   mergeDonorIntoTarget,
   applyBemClassesToSection,
   fillTemplateWithDonors,
+  fillSingleSlotInPlace,
 } from "@/app/plaza/components/CanvasArea/models/canvasModel";
 
 export interface DropTarget {
@@ -95,6 +96,7 @@ export interface CanvasState {
   clearTemplateSlots: () => void;
   showHud: (text: string, type?: "info" | "warning" | "success") => void;
   fillTemplateFromDonors: (donorKeys: string[]) => Promise<boolean>;
+  fillNextTemplateSlot: (donorKey: string) => Promise<boolean>;
 
   // ── Breakpoints Actions ───────────────────────────────────────────────────
   selectBreakpoint: (id: BreakpointId) => void;
@@ -106,6 +108,13 @@ export interface CanvasState {
     keys: Set<string> | ((prev: Set<string>) => Set<string>),
   ) => void;
   clearSelection: () => void;
+
+  isAsideFloating: boolean;
+  isCanvasFloating: boolean;
+  toggleCanvasFloating: () => void;
+  setCanvasFloating: (val: boolean) => void;
+  toggleAsideFloating: () => void;
+  setAsideFloating: (val: boolean) => void;
 
   startDragNode: (key: string, clientX: number, clientY: number) => void;
   setPotentialDrag: (drag: PotentialDrag | null) => void;
@@ -122,7 +131,7 @@ let hudTimeout: ReturnType<typeof setTimeout> | null = null;
 export const useCanvasStore = create<CanvasState>((set, get) => ({
   currentJson: [],
   collapsedKeys: new Set<string>(),
-
+  isCanvasFloating: false,
   clickedKey: null,
   hoveredKey: null,
 
@@ -142,6 +151,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   selectionBox: null,
   selectedKeys: new Set<string>(),
 
+  isAsideFloating: false,
+
   potentialDrag: null,
   draggedKeys: [],
   dropTarget: null,
@@ -151,7 +162,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   futureStack: [],
   canUndo: false,
   canRedo: false,
+  toggleCanvasFloating: () =>
+    set((state) => ({ isCanvasFloating: !state.isCanvasFloating })),
 
+  setCanvasFloating: (val) => set({ isCanvasFloating: val }),
   setCurrentJson: (nodes) => set({ currentJson: nodes }),
 
   recordSnapshot: () => {
@@ -250,8 +264,18 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
 
   applyBemClasses: async () => {
-    const { currentJson, clickedKey } = get();
-    const updated = applyBemClassesToSection(currentJson, clickedKey);
+    const { currentJson, clickedKey, selectedKeys } = get();
+    const targetKeys =
+      selectedKeys.size > 0
+        ? Array.from(selectedKeys)
+        : clickedKey
+          ? [clickedKey]
+          : [null];
+
+    let updated = currentJson;
+    for (const key of targetKeys) {
+      updated = applyBemClassesToSection(updated, key);
+    }
     await get().persist(updated);
   },
 
@@ -350,6 +374,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
 
   toggleTemplateSlot: (key: string) => {
+    if (!key) return;
     set((state) => {
       const existingIdx = state.templateSlotKeys.indexOf(key);
       let updated: string[];
@@ -412,7 +437,54 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     await get().persist(result.nextTree);
     return true;
   },
+  fillNextTemplateSlot: async (donorKey: string) => {
+    const { currentJson, rightKeys, templateSlotKeys } = get();
 
+    if (templateSlotKeys.length === 0) {
+      get().showHud(
+        "No slots assigned! Click nodes in Right Pane first.",
+        "warning",
+      );
+      return false;
+    }
+
+    const targetSlotKey = templateSlotKeys[0];
+    const result = fillSingleSlotInPlace(
+      currentJson,
+      rightKeys,
+      targetSlotKey,
+      donorKey,
+    );
+
+    if (!result) return false;
+
+    const remainingSlots = templateSlotKeys.slice(1);
+
+    set((state) => {
+      const nextRight = new Set(state.rightKeys);
+      for (const k of result.addedRightKeys) {
+        nextRight.add(k);
+      }
+      return {
+        rightKeys: nextRight,
+        templateSlotKeys: remainingSlots,
+        clickedKey: state.clickedKey === donorKey ? null : state.clickedKey,
+        hoveredKey: state.hoveredKey === donorKey ? null : state.hoveredKey,
+      };
+    });
+
+    if (remainingSlots.length === 0) {
+      get().showHud("All template slots filled!", "success");
+    } else {
+      get().showHud(
+        `Filled slot! ${remainingSlots.length} slot(s) remaining`,
+        "info",
+      );
+    }
+
+    await get().persist(result.nextTree);
+    return true;
+  },
   // ── Breakpoints Actions ───────────────────────────────────────────────────
   selectBreakpoint: (id: BreakpointId) => {
     set((state) => ({
@@ -447,6 +519,11 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     })),
 
   clearSelection: () => set({ selectedKeys: new Set() }),
+
+  toggleAsideFloating: () =>
+    set((state) => ({ isAsideFloating: !state.isAsideFloating })),
+
+  setAsideFloating: (val) => set({ isAsideFloating: val }),
 
   startDragNode: (key, clientX, clientY) => {
     set({

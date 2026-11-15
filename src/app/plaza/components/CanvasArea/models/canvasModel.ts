@@ -292,11 +292,6 @@ export function extractStylesAndScriptsFromNodes(nodes: HtmlNode[]): {
           !c.includes(":") && !c.startsWith("flex") && !c.startsWith("grid"),
       );
 
-      if (!targetClass && !isSvgElement) {
-        targetClass = `${tag}-custom`;
-        classList.push(targetClass);
-      }
-
       if (targetClass) {
         if (cleanBody.startsWith(`.${targetClass}`)) {
           extractedRules.push(cleanBody);
@@ -773,6 +768,8 @@ function isUtilityOrFontClass(cls: string): boolean {
     lower.startsWith("grid") ||
     lower.includes(":") ||
     lower === "container" ||
+    lower === "is" ||
+    lower === "svg-wrapper" ||
     lower.includes("__")
   );
 }
@@ -815,11 +812,57 @@ function getDivDepthName(depth: number): string {
   return DIV_DEPTH_NAMES[depth] || `lvl-${depth + 1}`;
 }
 
+function getNodeClasses(node: HtmlNode): string[] {
+  return (node.class || "").trim().split(/\s+/).filter(Boolean);
+}
+
+function hasNodeClass(node: HtmlNode, targetClass: string): boolean {
+  return getNodeClasses(node).includes(targetClass);
+}
+
+function resolveBlockAndModifier(node: HtmlNode): {
+  blockName: string;
+  baseModifier: string;
+} {
+  const rawClasses = getNodeClasses(node);
+  const semanticClass = rawClasses.find((cls) => !isUtilityOrFontClass(cls));
+
+  if (semanticClass) {
+    return { blockName: semanticClass, baseModifier: "" };
+  }
+
+  // Если выбрали уже размеченный БЭМ-узел (например `bunner__prim` или `bunner__inner-sec`)
+  const bemClass = rawClasses.find((cls) => cls.includes("__"));
+  if (bemClass) {
+    const [blockPart, elemPart = ""] = bemClass.split("__");
+    const modMatch = new RegExp(
+      `(?:^|-)(${SECTION_WRAPPER_NAMES.join("|")}|part-\\d+)$`,
+    ).exec(elemPart);
+    if (blockPart) {
+      return {
+        blockName: blockPart,
+        baseModifier: modMatch ? modMatch[1] : "",
+      };
+    }
+  }
+
+  const tag = (node.tag || "div").toLowerCase();
+  return {
+    blockName: tag !== "div" ? tag : "block",
+    baseModifier: "",
+  };
+}
+
 function isWrapperDiv(node: HtmlNode): boolean {
   const tag = (node.tag || "div").toLowerCase();
   if (tag !== "div") return false;
-  const classes = (node.class || "").trim().split(/\s+/).filter(Boolean);
-  if (classes.includes("container")) return false;
+  if (
+    hasNodeClass(node, "container") ||
+    hasNodeClass(node, "is") ||
+    hasNodeClass(node, "svg-wrapper")
+  ) {
+    return false;
+  }
   return Array.isArray(node.children) && node.children.length > 0;
 }
 
@@ -833,19 +876,30 @@ function appendBemClass(
   return Array.from(updated).join(" ");
 }
 
+function joinBemParts(...parts: (string | undefined | null)[]): string {
+  return parts.filter(Boolean).join("-");
+}
+
+/**
+ * Подсчитывает количество не-служебных div по глубине внутри текущей области,
+ * не заходя внутрь <li> (у каждого <li> свой локальный подсчёт).
+ */
 function countDivsByDepth(
   nodes: HtmlNode[],
   depth = 0,
   counts: Map<number, number> = new Map(),
 ): Map<number, number> {
   for (const node of nodes) {
+    if (hasNodeClass(node, "is")) continue;
+
     const tag = (node.tag || "div").toLowerCase();
     if (IGNORED_SVG_TAGS.has(tag)) continue;
+    if (tag === "li") continue;
 
     let nextDepth = depth;
     if (tag === "div") {
-      const classes = (node.class || "").trim().split(/\s+/).filter(Boolean);
-      if (!classes.includes("container")) {
+      if (hasNodeClass(node, "svg-wrapper")) continue;
+      if (!hasNodeClass(node, "container")) {
         counts.set(depth, (counts.get(depth) || 0) + 1);
         nextDepth = depth + 1;
       }
@@ -859,28 +913,19 @@ function countDivsByDepth(
 }
 
 /**
- * 🔹 Структурное автоформирование БЭМ-классов для секции:
- * 1. Игнорирует <i>, <svg> и всё их содержимое.
- * 2. Корень блока (например "red") сохраняется для всей секции (без переключения на вложенные классы Figma).
- * 3. После .container (или сразу в секции, если .container нет):
- *    - Если один общий div оборачивает ≥ 2 дочерних блоков-обёрток → он получает `red__wrap`.
- *    - Дочерние обёртки (или если в контейнере сразу ≥ 2 обёрток без wrap) получают по порядку:
- *      `red__prim`, `red__sec`, `red__tert`, `red__quat`, `red__quin`, `red__sext`, `red__sept`, `red__oct`, `red__non`, `red__dec`.
- * 4. Все дочерние ноды внутри обёртки получают её модификатор в конец (`-prim`, `-sec`, `-tert`...):
- *    - ul         → red__items-sec
- *    - li         → red__item-sec
- *    - a          → red__link-sec
- *    - тег в a    → red__link-{tag}-sec (например red__link-span-sec)
- *    - p          → red__p-sec
- *    - span       → red__span-sec
- *    - h1..h6     → red__title_{tag}-sec
- *    - button     → red__button-sec
- *    - img        → red__img-sec
- *    - div (по глубине внутри обёртки):
- *        уровень 1 → red__inner-sec (или red__inner-1-sec, red__inner-2-sec)
- *        уровень 2 → red__box-sec   (или red__box-1-sec,   red__box-2-sec)
- *        уровень 3 → red__group-sec (или red__group-1-sec, red__group-2-sec)
- *        уровень 4 → red__sub-sec   (далее lvl-5...)
+ * 🔹 Контекстное автоформирование БЭМ-классов для любого родительского блока:
+ * 1. Узлы с классом `is` и всё их содержимое (включая <img>) пропускаются как есть.
+ * 2. Узлы с классом `svg-wrapper` помечаются контекстно (`red__svg-prim`, `red__item-svg-prim`, `red__link-svg-wrapper-prim`).
+ * 3. Остальные теги из IGNORED_SVG_TAGS (<i> без svg-wrapper, <svg>, <path>...) игнорируются.
+ * 4. Работает на любом родителе (`section`, `header`, `footer`, `div`, `ul`, и т.д. — в т.ч. на уже размеченных БЭМ-обёртках).
+ * 5. После .container (или сразу внутри родителя):
+ *    - общий div для ≥ 2 обёрток → `red__wrap`
+ *    - обёртки по порядку → `red__prim`, `red__sec`, `red__tert`, `red__quat`, ...
+ * 6. Контекстная специфичность вложенных нод:
+ *    - на одном уровне в родителе однотипные теги остаются одинаковыми (`red__p-prim`, `red__p-prim`)
+ *    - внутри h1..h6 / p / button / a: `red__title-span-prim`, `red__p-span-prim`, `red__button-span-prim`, `red__link-span-prim`
+ *    - внутри `li`: префикс `item-` (`red__item-svg-prim`, `red__item-inner-prim`, `red__item-title_h4-prim`, `red__item-p-prim`...)
+ *    - внутри обычных вложенных div (`inner`, `box`, `group`): префикс своей обёртки (`red__inner-p-prim`, `red__box-p-prim`...)
  */
 export function applyBemClassesToSection(
   tree: HtmlNode[],
@@ -888,35 +933,28 @@ export function applyBemClassesToSection(
 ): HtmlNode[] {
   if (!tree || tree.length === 0) return tree;
 
-  // 1. Находим целевую секцию или активную ноду
+  // 1. Находим целевого родителя по ключу, иначе берём первый корневой узел
   let rootNode: HtmlNode | null = null;
   if (targetKey) {
     rootNode = findNodeInTree(tree, targetKey);
   }
 
   if (!rootNode) {
-    function findSection(list: HtmlNode[]): HtmlNode | null {
-      for (const item of list) {
-        if ((item.tag || "").toLowerCase() === "section") return item;
-        if (Array.isArray(item.children)) {
-          const found = findSection(item.children);
-          if (found) return found;
-        }
-      }
-      return null;
-    }
-    rootNode = findSection(tree) || tree[0];
+    rootNode = tree[0];
   }
 
   if (!rootNode) return tree;
 
   const rootKey = getNodeKey(rootNode);
-  const rootBlockName = getSemanticBlockName(rootNode);
+  const { blockName: rootBlockName, baseModifier } =
+    resolveBlockAndModifier(rootNode);
 
-  // 2. Рекурсивная обработка элементов внутри области с общим счётчиком глубины div
+  // 2. Рекурсивная обработка элементов внутри области (обёртки или <li>)
   function processScopeElements(
     nodes: HtmlNode[],
     modifier: string,
+    initialScopePrefix = "",
+    inListItem = false,
   ): HtmlNode[] {
     const totalByDepth = countDivsByDepth(nodes, 0);
     const seenByDepth = new Map<number, number>();
@@ -925,51 +963,84 @@ export function applyBemClassesToSection(
     function walkElement(
       node: HtmlNode,
       divDepth: number,
-      isInLink: boolean,
+      scopePrefix: string,
+      inlineContext: "" | "title" | "p" | "button" | "link",
     ): HtmlNode {
-      const tag = (node.tag || "div").toLowerCase();
-
-      // ⛔ Игнорируем иконки и SVG целиком
-      if (IGNORED_SVG_TAGS.has(tag)) {
+      // ⛔ Служебный класс `is` — пропускаем ноду и всё содержимое как есть
+      if (hasNodeClass(node, "is")) {
         return node;
       }
 
-      const existingClasses = (node.class || "")
-        .trim()
-        .split(/\s+/)
-        .filter(Boolean);
+      const tag = (node.tag || "div").toLowerCase();
+      const existingClasses = getNodeClasses(node);
+      const isSvgWrapper = existingClasses.includes("svg-wrapper");
+
+      // ⛔ Игнорируем иконки и SVG (кроме .svg-wrapper)
+      if (!isSvgWrapper && IGNORED_SVG_TAGS.has(tag)) {
+        return node;
+      }
 
       let generatedClass = "";
-      let nextIsInLink = isInLink;
       let nextDivDepth = divDepth;
+      let nextScopePrefix = scopePrefix;
+      let nextInlineContext = inlineContext;
 
-      if (tag === "ul") {
-        generatedClass = `${rootBlockName}__items${mod}`;
-        nextIsInLink = false;
+      if (isSvgWrapper) {
+        generatedClass =
+          inlineContext === "link"
+            ? `${rootBlockName}__${joinBemParts(scopePrefix, "link-svg-wrapper")}${mod}`
+            : `${rootBlockName}__${joinBemParts(scopePrefix, "svg")}${mod}`;
+      } else if (tag === "ul") {
+        generatedClass = `${rootBlockName}__${joinBemParts(scopePrefix, "items")}${mod}`;
+        nextInlineContext = "";
       } else if (tag === "li") {
-        generatedClass = `${rootBlockName}__item${mod}`;
-        nextIsInLink = false;
+        generatedClass = `${rootBlockName}__${joinBemParts(scopePrefix, "item")}${mod}`;
+        return {
+          ...node,
+          class: appendBemClass(existingClasses, generatedClass),
+          children: Array.isArray(node.children)
+            ? processScopeElements(node.children, modifier, "item", true)
+            : node.children,
+        };
       } else if (tag === "a") {
-        generatedClass = `${rootBlockName}__link${mod}`;
-        nextIsInLink = true;
-      } else if (isInLink) {
-        generatedClass = `${rootBlockName}__link-${tag}${mod}`;
+        generatedClass = `${rootBlockName}__${joinBemParts(scopePrefix, "link")}${mod}`;
+        nextInlineContext = "link";
+      } else if (inlineContext && tag !== "div") {
+        generatedClass = `${rootBlockName}__${joinBemParts(scopePrefix, inlineContext, tag)}${mod}`;
       } else if (tag === "p") {
-        generatedClass = `${rootBlockName}__p${mod}`;
+        generatedClass = `${rootBlockName}__${joinBemParts(scopePrefix, "p")}${mod}`;
+        nextInlineContext = "p";
       } else if (tag === "span") {
-        generatedClass = `${rootBlockName}__span${mod}`;
+        generatedClass = `${rootBlockName}__${joinBemParts(scopePrefix, "span")}${mod}`;
       } else if (/^h[1-6]$/.test(tag)) {
-        generatedClass = `${rootBlockName}__title_${tag}${mod}`;
+        generatedClass = `${rootBlockName}__${joinBemParts(scopePrefix, `title_${tag}`)}${mod}`;
+        nextInlineContext = "title";
       } else if (tag === "button") {
-        generatedClass = `${rootBlockName}__button${mod}`;
+        generatedClass = `${rootBlockName}__${joinBemParts(scopePrefix, "button")}${mod}`;
+        nextInlineContext = "button";
       } else if (tag === "img") {
-        generatedClass = `${rootBlockName}__img${mod}`;
+        generatedClass = `${rootBlockName}__${joinBemParts(scopePrefix, "img")}${mod}`;
       } else if (tag === "div") {
         const isContainer = existingClasses.includes("container");
         if (!isContainer) {
           const currentIdx = (seenByDepth.get(divDepth) || 0) + 1;
           seenByDepth.set(divDepth, currentIdx);
           nextDivDepth = divDepth + 1;
+
+          const totalAtDepth = totalByDepth.get(divDepth) || 1;
+          const depthName = getDivDepthName(divDepth);
+          const indexPart = totalAtDepth > 1 ? `-${currentIdx}` : "";
+          const divName = `${depthName}${indexPart}`;
+
+          const divElementName = inListItem
+            ? joinBemParts("item", divName)
+            : divName;
+
+          nextScopePrefix = inListItem
+            ? divDepth === 0
+              ? "item"
+              : divElementName
+            : divName;
 
           const alreadyHasBem = existingClasses.some(
             (cls) =>
@@ -978,10 +1049,7 @@ export function applyBemClassesToSection(
           );
 
           if (!alreadyHasBem) {
-            const totalAtDepth = totalByDepth.get(divDepth) || 1;
-            const depthName = getDivDepthName(divDepth);
-            const indexPart = totalAtDepth > 1 ? `-${currentIdx}` : "";
-            generatedClass = `${rootBlockName}__${depthName}${indexPart}${mod}`;
+            generatedClass = `${rootBlockName}__${divElementName}${mod}`;
           }
         }
       }
@@ -990,12 +1058,14 @@ export function applyBemClassesToSection(
         ...node,
         class: appendBemClass(existingClasses, generatedClass),
         children: Array.isArray(node.children)
-          ? node.children.map((c) => walkElement(c, nextDivDepth, nextIsInLink))
+          ? node.children.map((c) =>
+              walkElement(c, nextDivDepth, nextScopePrefix, nextInlineContext),
+            )
           : node.children,
       };
     }
 
-    return nodes.map((n) => walkElement(n, 0, false));
+    return nodes.map((n) => walkElement(n, 0, initialScopePrefix, ""));
   }
 
   function processSingleNonWrapper(node: HtmlNode, modifier: string): HtmlNode {
@@ -1007,12 +1077,13 @@ export function applyBemClassesToSection(
     let blockIndex = 0;
 
     return children.map((child) => {
+      if (hasNodeClass(child, "is")) {
+        return child;
+      }
+
       if (isWrapperDiv(child)) {
         const suffix = getOrdinalWrapperSuffix(blockIndex++);
-        const existingClasses = (child.class || "")
-          .trim()
-          .split(/\s+/)
-          .filter(Boolean);
+        const existingClasses = getNodeClasses(child);
         const wrapperClass = `${rootBlockName}__${suffix}`;
 
         return {
@@ -1028,7 +1099,7 @@ export function applyBemClassesToSection(
     });
   }
 
-  // 4. Обработка содержимого layout-контейнера (.container или самой секции)
+  // 4. Обработка содержимого layout-контейнера (.container или самого родителя)
   function processLayoutScope(children: HtmlNode[]): HtmlNode[] {
     const topWrapperDivs = children.filter(isWrapperDiv);
 
@@ -1041,11 +1112,12 @@ export function applyBemClassesToSection(
         const singleDivKey = getNodeKey(singleDiv);
 
         return children.map((child) => {
+          if (hasNodeClass(child, "is")) {
+            return child;
+          }
+
           if (getNodeKey(child) === singleDivKey) {
-            const existingClasses = (child.class || "")
-              .trim()
-              .split(/\s+/)
-              .filter(Boolean);
+            const existingClasses = getNodeClasses(child);
 
             return {
               ...child,
@@ -1066,18 +1138,21 @@ export function applyBemClassesToSection(
     return processScopeElements(children, "");
   }
 
-  // 5. Обработка прямых детей секции (учитывая наличие .container)
+  // 5. Обработка прямых детей родителя (учитывая наличие .container)
   function processSectionChildren(children: HtmlNode[]): HtmlNode[] {
     const containerNode = children.find((child) => {
+      if (hasNodeClass(child, "is")) return false;
       const tag = (child.tag || "div").toLowerCase();
       if (tag !== "div") return false;
-      const classes = (child.class || "").trim().split(/\s+/).filter(Boolean);
-      return classes.includes("container");
+      return hasNodeClass(child, "container");
     });
 
     if (containerNode) {
       const containerKey = getNodeKey(containerNode);
       return children.map((child) => {
+        if (hasNodeClass(child, "is")) {
+          return child;
+        }
         if (getNodeKey(child) === containerKey) {
           return {
             ...child,
@@ -1093,14 +1168,19 @@ export function applyBemClassesToSection(
     return processLayoutScope(children);
   }
 
-  // 6. Обновляем корневую секцию в дереве
+  // 6. Обновляем целевой родительский узел в дереве
   function updateTree(list: HtmlNode[]): HtmlNode[] {
     return list.map((item) => {
       if (getNodeKey(item) === rootKey) {
+        if (hasNodeClass(item, "is")) {
+          return item;
+        }
         return {
           ...item,
           children: Array.isArray(item.children)
-            ? processSectionChildren(item.children)
+            ? baseModifier
+              ? processScopeElements(item.children, baseModifier)
+              : processSectionChildren(item.children)
             : item.children,
         };
       }
@@ -1325,5 +1405,61 @@ export function fillTemplateWithDonors(
       excessCount > 0
         ? `Filled ${donorsToUse.length} slots. ${excessCount} excess donor(s) skipped.`
         : undefined,
+  };
+}
+
+/**
+ * 🔹 Заполняет один конкретный слот в правой панели (in-place, без клонирования)
+ * данными выбранного донора с левой панели и удаляет донора из дерева.
+ */
+export function fillSingleSlotInPlace(
+  tree: HtmlNode[],
+  rightKeys: Set<string>,
+  targetSlotKey: string,
+  donorKey: string,
+): {
+  nextTree: HtmlNode[];
+  addedRightKeys: string[];
+} | null {
+  if (!tree || tree.length === 0 || !targetSlotKey || !donorKey) {
+    return null;
+  }
+  if (rightKeys.has(donorKey)) {
+    return null;
+  }
+
+  const slotNode = findNodeInTree(tree, targetSlotKey);
+  const donorNode = findNodeInTree(tree, donorKey);
+  if (!slotNode || !donorNode) {
+    return null;
+  }
+
+  if (
+    isDescendant(donorNode, targetSlotKey) ||
+    isDescendant(slotNode, donorKey)
+  ) {
+    return null;
+  }
+
+  const addedRightKeys: string[] = [];
+  let nextSlotNode = applyDonorToSlot(slotNode, donorNode);
+
+  // Если донор принес с собой новых детей, регистрируем их ключи для правой панели
+  if (
+    (!slotNode.children || slotNode.children.length === 0) &&
+    Array.isArray(nextSlotNode.children) &&
+    nextSlotNode.children.length > 0
+  ) {
+    for (const child of nextSlotNode.children) {
+      addedRightKeys.push(...collectAllDescendantKeys(child));
+    }
+  }
+
+  const updatedTree = mutateNodeInTree(tree, targetSlotKey, () => nextSlotNode);
+  const nextTree = removeNodesByKeys(updatedTree, new Set([donorKey]));
+
+  return {
+    nextTree,
+    addedRightKeys,
   };
 }

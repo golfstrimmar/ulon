@@ -2,7 +2,7 @@
   {
     "tag": "div",
     "text": "",
-    "class": "block__img",
+    "class": "",
     "style": "width: 100%; min-height: 100px; position: relative; ",
     "children": [
       {
