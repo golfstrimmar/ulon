@@ -16,6 +16,8 @@ import {
 import {
   findNodeInTree,
   collectAllDescendantKeys,
+  collectAllTreeKeys,
+  findNewCollapsibleRootKeys,
   moveNodesGroup,
   duplicateNodesGroup,
   mergeDonorIntoTarget,
@@ -646,7 +648,20 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         });
         await get().persist(updated);
       } else if (dropTarget.position === "self") {
+        const existingKeys = collectAllTreeKeys(currentJson);
         const updated = duplicateNodesGroup(currentJson, draggedKeys);
+        const clonedKeys = findNewCollapsibleRootKeys(updated, existingKeys);
+
+        if (clonedKeys.length > 0) {
+          set((state) => {
+            const nextCollapsed = new Set(state.collapsedKeys);
+            for (const k of clonedKeys) {
+              nextCollapsed.add(k);
+            }
+            return { collapsedKeys: nextCollapsed };
+          });
+        }
+
         await get().persist(updated);
       } else {
         const updated = moveNodesGroup(

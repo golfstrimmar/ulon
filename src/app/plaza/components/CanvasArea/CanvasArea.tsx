@@ -478,19 +478,17 @@ export function CanvasArea() {
               +
             </button>
           </div>
-        </div>
 
-        <button
-          type="button"
-          onClick={() => setIsProjectsOpen(true)}
-          title="Manage user projects and website folders in Neon DB"
-          className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono transition-all pointer-pointer border bg-blue-950/40 text-blue-300 hover:text-white hover:bg-blue-600/30 border-blue-700/50"
-        >
-          <CloudArrowUpIcon className="size-3.5 text-blue-400" />
-          <span>Projects</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setIsProjectsOpen(true)}
+            title="Manage user projects and website folders in Neon DB"
+            className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono transition-all pointer-pointer border bg-blue-950/40 text-blue-300 hover:text-white hover:bg-blue-600/30 border-blue-700/50"
+          >
+            <CloudArrowUpIcon className="size-3.5 text-blue-400" />
+            <span>Projects</span>
+          </button>
 
-        <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={applyBemClasses}
@@ -572,7 +570,6 @@ export function CanvasArea() {
           </button>
         </div>
       </div>
-
       {/* WORKSPACE PANELS */}
       <div
         ref={containerRef}

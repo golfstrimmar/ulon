@@ -695,7 +695,50 @@ export function duplicateNodesGroup(
   }
   return currentTree;
 }
+/**
+ * Собирает все ключи узлов в дереве.
+ */
+export function collectAllTreeKeys(nodes: HtmlNode[]): Set<string> {
+  const keys = new Set<string>();
+  function walk(list: HtmlNode[]) {
+    for (const node of list) {
+      const k = getNodeKey(node);
+      if (k) keys.add(k);
+      if (Array.isArray(node.children)) {
+        walk(node.children);
+      }
+    }
+  }
+  walk(nodes);
+  return keys;
+}
 
+/**
+ * Находит корневые ключи новых клонированных контейнеров (узлов с детьми),
+ * которых не было в исходном наборе ключей.
+ */
+export function findNewCollapsibleRootKeys(
+  nodes: HtmlNode[],
+  existingKeys: Set<string>,
+): string[] {
+  const result: string[] = [];
+  function walk(list: HtmlNode[]) {
+    for (const node of list) {
+      const k = getNodeKey(node);
+      if (k && !existingKeys.has(k)) {
+        if (Array.isArray(node.children) && node.children.length > 0) {
+          result.push(k);
+        }
+        continue;
+      }
+      if (Array.isArray(node.children)) {
+        walk(node.children);
+      }
+    }
+  }
+  walk(nodes);
+  return result;
+}
 /**
  * Объединяет данные узлов-доноров (текст, классы, атрибуты, детей) в целевой узел,
  * после чего удаляет узлы-доноры из дерева.

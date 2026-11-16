@@ -166,22 +166,22 @@ function NodeCardComponent({ node, depth, parentIsRow = true }: NodeCardProps) {
   const pastelTheme = getPastelTagTheme(node.tag);
 
   let stateRing = "";
-  if (isFirstSlot) {
-    stateRing =
-      "ring-2 ring-amber-300/90 shadow-[0_0_8px_rgba(252,211,77,0.75)]";
-  } else if (slotNumber !== null || isDropDonor) {
-    stateRing = "ring-2 ring-amber-300/60";
+  if (isTemplateMode && isFirstSlot) {
+    stateRing = "outline outline-2 outline-amber-300/95 outline-offset-1";
+  } else if ((isTemplateMode && slotNumber !== null) || isDropDonor) {
+    stateRing = "outline outline-2 outline-amber-400/70 outline-offset-1";
   } else if (isDropInside) {
-    stateRing = "ring-2 ring-sky-300/75";
+    stateRing = "outline outline-2 outline-sky-300/75 outline-offset-1";
   } else if (isClicked) {
-    stateRing = "ring-2 ring-indigo-300/80";
+    stateRing = "outline outline-2 outline-indigo-300/80 outline-offset-1";
   } else if (isSelected) {
-    stateRing = "ring-2 ring-sky-300/70";
+    stateRing = "outline outline-2 outline-sky-300/70 outline-offset-1";
   } else if (isHovered) {
-    stateRing = "ring-2 ring-emerald-300/60";
+    stateRing = "outline outline-2 outline-emerald-300/60 outline-offset-1";
   }
 
   const tooltipText = [
+    isTemplateMode && slotNumber !== null ? `[Slot #${slotNumber}]` : "",
     hasTag ? `<${node.tag}>` : "<empty>",
     hasClass ? classStr : "",
     hasText ? `"${node.text}"` : "",
@@ -193,11 +193,11 @@ function NodeCardComponent({ node, depth, parentIsRow = true }: NodeCardProps) {
 
   return (
     <div
-      className={`flex flex-col items-center shrink-0 transition-opacity ${
+      className={`flex flex-col items-start shrink-0 transition-opacity ${
         isDragged ? "opacity-35" : "opacity-100"
       }`}
     >
-      {/* Узел: 10px пастельная точка + плашка под ней */}
+      {/* Узел: плашка, строго слева от поддерева */}
       <div
         data-node-key={key}
         data-node-header="true"
@@ -208,7 +208,9 @@ function NodeCardComponent({ node, depth, parentIsRow = true }: NodeCardProps) {
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
         title={tooltipText}
-        className="relative flex flex-col items-center select-none cursor-pointer active:cursor-grabbing group"
+        className={`relative flex flex-col items-start select-none cursor-pointer group ${
+          isTemplateMode ? "" : "active:cursor-grabbing"
+        }`}
       >
         {isDropDonor && (
           <div className="absolute -inset-1 z-30 pointer-events-none rounded-md border-2 border-amber-400 bg-amber-500/20 flex items-center justify-center">
@@ -219,13 +221,33 @@ function NodeCardComponent({ node, depth, parentIsRow = true }: NodeCardProps) {
         )}
 
         <div
-          className="mt-1 px-1.5 py-1 rounded border transition-all flex flex-col items-center gap-0.5 min-w-[46px]"
+          className={`relative mt-1 px-1.5 py-1 rounded border transition-all flex flex-col items-center gap-0.5 min-w-[46px] ${stateRing}`}
           style={{
             backgroundColor: bgStyle,
             borderColor: borderStyle,
             boxShadow: shadowStyle,
           }}
         >
+          {/* Номерок очерёдности слота в режиме Template */}
+          {isTemplateMode && slotNumber !== null && (
+            <span
+              className={`pointer-events-none absolute -top-2 -right-1.5 z-30 min-w-[18px] h-[18px] px-1 rounded-full border font-mono text-[10px] font-bold flex items-center justify-center leading-none transition-all ${
+                isFirstSlot
+                  ? "bg-amber-300 text-zinc-950 border-amber-100 shadow-[0_0_12px_rgba(252,211,77,0.95)] scale-110"
+                  : "bg-amber-500 text-zinc-950 border-amber-200 shadow-[0_0_8px_rgba(245,158,11,0.75)]"
+              }`}
+            >
+              {slotNumber}
+            </span>
+          )}
+
+          {/* Подсказка при наведении на неназначенную ноду в правой панели */}
+          {isTemplateMode && isRightPaneNode && slotNumber === null && (
+            <span className="pointer-events-none absolute -top-2 -right-1.5 z-30 w-4 h-4 rounded-full border border-dashed border-amber-400/60 bg-zinc-900/90 text-amber-300 font-mono text-[10px] font-bold flex items-center justify-center leading-none opacity-0 group-hover:opacity-100 transition-opacity">
+              +
+            </span>
+          )}
+
           {/* Верхняя строка: галочка, тег, 16x16 превью, сворачивание */}
           <div className="flex items-center justify-center gap-1">
             {isSelected && (
@@ -254,7 +276,7 @@ function NodeCardComponent({ node, depth, parentIsRow = true }: NodeCardProps) {
             </span>
 
             {imgSrc && (
-              <div className="size-4 rounded border border-zinc-700/80 bg-zinc-950 flex items-center justify-center overflow-hidden shrink-0">
+              <div className="w-20 h-10 rounded border border-zinc-700/80 bg-zinc-950 flex items-center justify-center overflow-hidden shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={imgSrc}
@@ -265,7 +287,7 @@ function NodeCardComponent({ node, depth, parentIsRow = true }: NodeCardProps) {
             )}
 
             {svgTargetNode && (
-              <div className="size-4 rounded border border-zinc-700/80 bg-zinc-950/90 p-[1px] flex items-center justify-center overflow-hidden shrink-0">
+              <div className="size-6 rounded border border-zinc-700/80 bg-zinc-950/90 p-[1px] flex items-center justify-center overflow-hidden shrink-0">
                 <MiniSvgPreview node={svgTargetNode} />
               </div>
             )}
@@ -280,7 +302,7 @@ function NodeCardComponent({ node, depth, parentIsRow = true }: NodeCardProps) {
                     ? `Expand (${children.length})`
                     : `Collapse (${children.length})`
                 }
-                className="px-1 h-3.5 rounded bg-zinc-900/90 border border-zinc-700 hover:border-zinc-500 text-cyan-300 text-[9px] font-mono font-bold flex items-center justify-center shrink-0 transition leading-none"
+                className="px-2 h-6 cursor-pointer  rounded bg-zinc-900/90 border border-zinc-700 hover:border-zinc-500 text-cyan-300 text-[9px] font-mono font-bold flex items-center justify-center shrink-0 transition leading-none"
               >
                 {isCollapsed ? `+${children.length}` : "−"}
               </button>
@@ -289,7 +311,7 @@ function NodeCardComponent({ node, depth, parentIsRow = true }: NodeCardProps) {
 
           {/* Полные названия классов без обрезки */}
           {classTokens.length > 0 && (
-            <div className="flex flex-wrap items-center justify-center gap-x-1 gap-y-0.5">
+            <div className="flex flex-col items-center gap-y-0.5">
               {classTokens.map((cls, i) => (
                 <span
                   key={`${cls}-${i}`}
@@ -310,52 +332,64 @@ function NodeCardComponent({ node, depth, parentIsRow = true }: NodeCardProps) {
         </div>
       </div>
 
-      {/* Ортогональные связи + горизонтальный ряд дочерних узлов */}
+      {/* Ортогональные связи + сдвинутый вправо горизонтальный ряд дочерних узлов */}
       {hasChildren && !isCollapsed && (
-        <div className="flex flex-col items-center">
-          {/* Вертикальный стебель от родителя вниз */}
-          <div className="w-px h-3 bg-zinc-600/80 shrink-0" />
+        <div className="flex flex-col items-start">
+          {/* Вертикальный стебель от левой части родителя вниз */}
+          <div className="ml-4 w-px h-3 bg-zinc-600/80 shrink-0" />
 
-          <div className="flex flex-row flex-nowrap items-start">
-            {children.map((child: HtmlNode, idx: number) => (
-              <div
-                key={child._key || idx}
-                className="relative flex flex-col items-center pt-3 px-1.5"
-              >
-                {/* Горизонтальная перекладина над детьми */}
-                {children.length > 1 && idx > 0 && (
-                  <div className="pointer-events-none absolute top-0 left-0 right-1/2 h-px bg-zinc-600/80" />
-                )}
-                {children.length > 1 && idx < children.length - 1 && (
-                  <div className="pointer-events-none absolute top-0 left-1/2 right-0 h-px bg-zinc-600/80" />
-                )}
+          <div className="flex flex-row flex-nowrap items-start pl-5">
+            {children.map((child: HtmlNode, idx: number) => {
+              const isFirst = idx === 0;
+              const isLast = idx === children.length - 1;
+              const isSingle = children.length === 1;
 
-                {/* Вертикальная веточка в 10px точку ребёнка */}
-                <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 h-3 w-px bg-zinc-600/80" />
+              return (
+                <div
+                  key={child._key || idx}
+                  className="relative flex flex-col items-start pt-3 px-1.5"
+                >
+                  {/* Горизонтальная перекладина над детьми (ветвление только вправо) */}
+                  {isSingle && (
+                    <div className="pointer-events-none absolute top-0 left-[-4px] w-[27px] h-px bg-zinc-600/80" />
+                  )}
+                  {!isSingle && isFirst && (
+                    <div className="pointer-events-none absolute top-0 left-[-4px] right-0 h-px bg-zinc-600/80" />
+                  )}
+                  {!isSingle && !isFirst && !isLast && (
+                    <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-zinc-600/80" />
+                  )}
+                  {!isSingle && isLast && (
+                    <div className="pointer-events-none absolute top-0 left-0 w-[23px] h-px bg-zinc-600/80" />
+                  )}
 
-                {/* Вертикальный DropGap слева (для первого) */}
-                {idx === 0 && (
-                  <div className="absolute -left-1 top-3 h-[42px] flex items-stretch z-20">
+                  {/* Вертикальная веточка в ребёнка */}
+                  <div className="pointer-events-none absolute top-0 left-[22px] h-3 w-px bg-zinc-600/80" />
+
+                  {/* Вертикальный DropGap слева (для первого) */}
+                  {isFirst && (
+                    <div className="absolute -left-1 top-3 h-[42px] flex items-stretch z-20">
+                      <DropGap
+                        targetKey={child._key || ""}
+                        position="before"
+                        orientation="vertical"
+                      />
+                    </div>
+                  )}
+
+                  <NodeCard node={child} depth={depth + 1} parentIsRow={true} />
+
+                  {/* Вертикальный DropGap справа */}
+                  <div className="absolute -right-1 top-3 h-[42px] flex items-stretch z-20">
                     <DropGap
                       targetKey={child._key || ""}
-                      position="before"
+                      position="after"
                       orientation="vertical"
                     />
                   </div>
-                )}
-
-                <NodeCard node={child} depth={depth + 1} parentIsRow={true} />
-
-                {/* Вертикальный DropGap справа */}
-                <div className="absolute -right-1 top-3 h-[42px] flex items-stretch z-20">
-                  <DropGap
-                    targetKey={child._key || ""}
-                    position="after"
-                    orientation="vertical"
-                  />
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
