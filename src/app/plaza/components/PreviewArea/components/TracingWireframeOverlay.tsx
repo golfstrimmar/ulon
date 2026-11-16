@@ -1,14 +1,19 @@
 "use client";
 
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useMemo } from "react";
 import {
   XMarkIcon,
   CheckIcon,
   TrashIcon,
   ArrowsPointingOutIcon,
 } from "@heroicons/react/24/outline";
+import type { HtmlNode } from "@/types/HtmlNode";
 import { useCanvasStore } from "@/app/plaza/components/CanvasArea/store/useCanvasStore";
-import { collectAllDescendantKeys } from "@/app/plaza/components/CanvasArea/models/canvasModel";
+import {
+  collectAllDescendantKeys,
+  findNodeInTree,
+  removeNodesByKeys,
+} from "@/app/plaza/components/CanvasArea/models/canvasModel";
 import {
   compileWireframeBoxesToTree,
   type WireframeBox,
@@ -19,6 +24,10 @@ interface TracingWireframeOverlayProps {
   onClose: () => void;
   viewportWidth: number | string;
   viewportHeight: number;
+  boxes: WireframeBox[];
+  setBoxes: React.Dispatch<React.SetStateAction<WireframeBox[]>>;
+  selectedBoxId: string | null;
+  setSelectedBoxId: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
 const SNAP_GRID = 8;
@@ -47,9 +56,11 @@ export default function TracingWireframeOverlay({
   onClose,
   viewportWidth,
   viewportHeight,
+  boxes,
+  setBoxes,
+  selectedBoxId,
+  setSelectedBoxId,
 }: TracingWireframeOverlayProps) {
-  const [boxes, setBoxes] = useState<WireframeBox[]>([]);
-  const [selectedBoxId, setSelectedBoxId] = useState<string | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [useSnap, setUseSnap] = useState(true);
 
@@ -60,6 +71,21 @@ export default function TracingWireframeOverlay({
     curY: number;
   } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const currentJson = useCanvasStore((s) => s.currentJson);
+  const armedDonorKey = useCanvasStore((s) => s.armedDonorKey);
+  const setArmedDonorKey = useCanvasStore((s) => s.setArmedDonorKey);
+
+  const donorNodeByKey = useMemo(() => {
+    const map = new Map<string, HtmlNode>();
+    for (const box of boxes) {
+      if (box.donorKey) {
+        const found = findNodeInTree(currentJson, box.donorKey);
+        if (found) map.set(box.donorKey, found);
+      }
+    }
+    return map;
+  }, [boxes, currentJson]);
 
   const snap = useCallback(
     (val: number) =>
@@ -106,14 +132,19 @@ export default function TracingWireframeOverlay({
     setCurrentBox(null);
 
     if (width >= 16 && height >= 16) {
+      const currentArmed = useCanvasStore.getState().armedDonorKey;
       const newBox: WireframeBox = {
         id: `box_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
         x,
         y,
         width,
         height,
-        tag: "", // По умолчанию пустой
+        tag: "",
+        donorKey: currentArmed || undefined,
       };
+      if (currentArmed) {
+        setArmedDonorKey(null);
+      }
       setBoxes((prev) => [...prev, newBox]);
       setSelectedBoxId(newBox.id);
     }
@@ -129,13 +160,39 @@ export default function TracingWireframeOverlay({
     setBoxes((prev) => prev.map((b) => (b.id === id ? { ...b, tag } : b)));
   };
 
+  const detachBoxDonor = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setBoxes((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, donorKey: undefined } : b)),
+    );
+  };
+
   const handleCommitToCanvas = async () => {
     if (boxes.length === 0) return;
 
-    const generatedNodes = compileWireframeBoxesToTree(boxes);
     const store = useCanvasStore.getState();
     const currentTree = store.currentJson;
-    const nextTree = [...currentTree, ...generatedNodes];
+
+    const usedDonorKeys = new Set<string>();
+    const donorMap = new Map<string, HtmlNode>();
+
+    for (const box of boxes) {
+      if (box.donorKey) {
+        const donorNode = findNodeInTree(currentTree, box.donorKey);
+        if (donorNode) {
+          donorMap.set(box.donorKey, donorNode);
+          usedDonorKeys.add(box.donorKey);
+        }
+      }
+    }
+
+    const generatedNodes = compileWireframeBoxesToTree(boxes, donorMap);
+    const treeWithoutDonors =
+      usedDonorKeys.size > 0
+        ? removeNodesByKeys(currentTree, usedDonorKeys)
+        : currentTree;
+
+    const nextTree = [...treeWithoutDonors, ...generatedNodes];
 
     if (store.isSplit) {
       const newKeys: string[] = [];
@@ -144,17 +201,28 @@ export default function TracingWireframeOverlay({
       }
       store.setRightKeys((prev) => {
         const next = new Set(prev);
+        usedDonorKeys.forEach((k) => next.delete(k));
         newKeys.forEach((k) => next.add(k));
         return next;
       });
       store.showHud(
-        `Created ${boxes.length} frame(s) in Template Pane 2!`,
+        `Created ${boxes.length} frame(s)${
+          usedDonorKeys.size > 0 ? ` with ${usedDonorKeys.size} donor(s)` : ""
+        } in Template Pane 2!`,
         "success",
       );
     } else {
-      store.showHud(`Created ${boxes.length} frame(s) on Canvas!`, "success");
+      store.showHud(
+        `Created ${boxes.length} frame(s)${
+          usedDonorKeys.size > 0 ? ` with ${usedDonorKeys.size} donor(s)` : ""
+        } on Canvas!`,
+        "success",
+      );
     }
 
+    setArmedDonorKey(null);
+    setBoxes([]);
+    setSelectedBoxId(null);
     await store.persist(nextTree);
     onClose();
   };
@@ -175,7 +243,7 @@ export default function TracingWireframeOverlay({
         minHeight: viewportHeight,
       }}
     >
-      {/* Верхняя панель */}
+      {/* Панель Tracing */}
       <div
         data-wireframe-ui="true"
         className="absolute bottom-0 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 p-1.5 px-3 rounded-xl bg-zinc-950/90 border border-cyan-500/50 shadow-2xl backdrop-blur-md cursor-default text-xs font-mono"
@@ -204,7 +272,10 @@ export default function TracingWireframeOverlay({
         {boxes.length > 0 && (
           <button
             type="button"
-            onClick={() => setBoxes([])}
+            onClick={() => {
+              setBoxes([]);
+              setSelectedBoxId(null);
+            }}
             className="p-1 text-zinc-400 hover:text-red-400 rounded hover:bg-zinc-800 transition"
             title="Clear all"
           >
@@ -226,7 +297,10 @@ export default function TracingWireframeOverlay({
 
         <button
           type="button"
-          onClick={onClose}
+          onClick={() => {
+            setArmedDonorKey(null);
+            onClose();
+          }}
           className="p-1 text-zinc-400 hover:text-white rounded hover:bg-zinc-800 transition"
           title="Exit"
         >
@@ -252,7 +326,6 @@ export default function TracingWireframeOverlay({
                 height: curH,
               }}
             >
-              {/* Бейдж ширины сверху */}
               {curW >= 4 && (
                 <div
                   style={{
@@ -268,7 +341,6 @@ export default function TracingWireframeOverlay({
                 </div>
               )}
 
-              {/* Бейдж высоты слева */}
               {curH >= 4 && (
                 <div
                   style={{
@@ -293,18 +365,30 @@ export default function TracingWireframeOverlay({
       {/* Нарисованные коробки */}
       {boxes.map((box) => {
         const isSelected = box.id === selectedBoxId;
+        const donor = box.donorKey ? donorNodeByKey.get(box.donorKey) : null;
+        const effectiveTag = box.tag || donor?.tag || "";
 
         return (
           <div
             key={box.id}
             onClick={(e) => {
               e.stopPropagation();
+              if (armedDonorKey) {
+                setBoxes((prev) =>
+                  prev.map((b) =>
+                    b.id === box.id ? { ...b, donorKey: armedDonorKey } : b,
+                  ),
+                );
+                setArmedDonorKey(null);
+              }
               setSelectedBoxId(box.id);
             }}
             className={`absolute border-2 transition-all cursor-pointer ${
               isSelected
                 ? "border-cyan-400 bg-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.4)] z-30"
-                : "border-cyan-500/60 bg-cyan-950/20 hover:border-cyan-400/90 z-20"
+                : donor
+                  ? "border-amber-400/80 bg-amber-500/10 hover:border-amber-300 z-20"
+                  : "border-cyan-500/60 bg-cyan-950/20 hover:border-cyan-400/90 z-20"
             }`}
             style={{
               left: box.x,
@@ -342,20 +426,38 @@ export default function TracingWireframeOverlay({
               {Math.round(box.height)}px
             </div>
 
-            {/* Бейдж выбранного тега */}
-            <div className="absolute top-1 left-1 flex items-center gap-1 font-mono text-[10px]">
+            {/* Бейдж выбранного тега + привязанного донора */}
+            <div className="absolute top-1 left-1 right-1 flex items-center gap-1 font-mono text-[10px] overflow-hidden">
               <span
-                className={`px-1.5 py-0.2 rounded font-bold border ${
-                  box.tag
+                className={`px-1.5 py-0.2 rounded font-bold border shrink-0 ${
+                  effectiveTag
                     ? "bg-indigo-950 border-indigo-500 text-indigo-300"
                     : "bg-zinc-900/90 border-dashed border-zinc-500 text-zinc-400"
                 }`}
               >
-                {box.tag || "empty"}
+                {effectiveTag || "empty"}
               </span>
+
+              {donor && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-amber-950/90 border border-amber-500/70 text-amber-200 truncate max-w-full">
+                  <span className="truncate font-sans">
+                    {donor.text?.trim() ||
+                      (donor.tag === "img" ? "[img]" : `<${donor.tag}>`)}
+                  </span>
+                  <button
+                    type="button"
+                    data-wireframe-ui="true"
+                    onClick={(e) => detachBoxDonor(box.id, e)}
+                    className="text-amber-300 hover:text-white font-bold shrink-0 cursor-pointer"
+                    title="Detach donor"
+                  >
+                    ✕
+                  </button>
+                </span>
+              )}
             </div>
 
-            {/* 🎯 ПАНЕЛЬ ВЫБОРА ТЕГА НАД ВЫБРАННОЙ РАМКОЙ */}
+            {/* ПАНЕЛЬ ВЫБОРА ТЕГА */}
             {isSelected && (
               <div
                 data-wireframe-ui="true"

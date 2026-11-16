@@ -1,4 +1,5 @@
 import type { HtmlNode } from "@/types/HtmlNode";
+import { applyDonorToSlot } from "@/app/plaza/components/CanvasArea/models/canvasModel";
 
 export interface WireframeBox {
   id: string;
@@ -7,6 +8,7 @@ export interface WireframeBox {
   width: number;
   height: number;
   tag?: string;
+  donorKey?: string;
 }
 
 interface IntermediateNode {
@@ -15,9 +17,6 @@ interface IntermediateNode {
   parent: IntermediateNode | null;
 }
 
-/**
- * 🔹 Проверка геометрического включения: лежит ли коробка B внутри коробки A
- */
 function isContained(
   inner: WireframeBox,
   outer: WireframeBox,
@@ -31,10 +30,10 @@ function isContained(
   );
 }
 
-/**
- * 🔹 Компиляция рамок в чистые ноды без разметки, без классов и без стилей
- */
-export function compileWireframeBoxesToTree(boxes: WireframeBox[]): HtmlNode[] {
+export function compileWireframeBoxesToTree(
+  boxes: WireframeBox[],
+  donorMap?: Map<string, HtmlNode>,
+): HtmlNode[] {
   if (boxes.length === 0) return [];
 
   const nodes: IntermediateNode[] = boxes.map((box) => ({
@@ -43,10 +42,8 @@ export function compileWireframeBoxesToTree(boxes: WireframeBox[]): HtmlNode[] {
     parent: null,
   }));
 
-  // Сортировка по площади (внешние контейнеры первыми)
   nodes.sort((a, b) => b.box.width * b.box.height - a.box.width * a.box.height);
 
-  // Определение геометрической вложенности
   for (let i = 0; i < nodes.length; i++) {
     const current = nodes[i];
     let bestParent: IntermediateNode | null = null;
@@ -74,16 +71,24 @@ export function compileWireframeBoxesToTree(boxes: WireframeBox[]): HtmlNode[] {
   const rootNodes = nodes.filter((n) => n.parent === null);
 
   function convertToHtmlNode(node: IntermediateNode): HtmlNode {
-    // Естественный порядок следования в DOM (сверху вниз, слева направо)
     node.children.sort((a, b) => a.box.y - b.box.y || a.box.x - b.box.x);
 
-    return {
+    const baseNode: HtmlNode = {
       tag: node.box.tag ? node.box.tag : "",
       class: "",
       style: "",
       children: node.children.map(convertToHtmlNode),
       _key: `box_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
     };
+
+    if (node.box.donorKey && donorMap) {
+      const donorNode = donorMap.get(node.box.donorKey);
+      if (donorNode) {
+        return applyDonorToSlot(baseNode, donorNode);
+      }
+    }
+
+    return baseNode;
   }
 
   return rootNodes.map(convertToHtmlNode);

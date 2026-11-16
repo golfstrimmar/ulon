@@ -1,9 +1,8 @@
 import { create } from "zustand";
 import type { HtmlNode } from "@/types/HtmlNode";
-import { deleteNodeFromArray } from "@/lib/htmlTree";
 import { DB_KEY } from "@/app/plaza/components/CanvasArea/constants/theme";
 import type { BreakpointId } from "@/app/plaza/components/PreviewArea/types/breakpoints";
-
+import { deleteNodeFromArray, isDescendant } from "@/lib/htmlTree";
 import {
   saveHtmlJson,
   deleteHtmlJson,
@@ -18,12 +17,16 @@ import {
   collectAllDescendantKeys,
   collectAllTreeKeys,
   findNewCollapsibleRootKeys,
+  normalizeSelectedKeys,
   moveNodesGroup,
   duplicateNodesGroup,
   mergeDonorIntoTarget,
   applyBemClassesToSection,
   fillTemplateWithDonors,
   fillSingleSlotInPlace,
+  applyDonorToSlot,
+  mutateNodeInTree,
+  removeNodesByKeys,
   computeToggledCollapsedKeys,
   prepareAppendedNodes,
   mergeScssWithoutDuplicates,
@@ -142,6 +145,12 @@ export interface CanvasState {
   setDragMousePos: (pos: { x: number; y: number } | null) => void;
   commitDrop: () => Promise<void>;
   cancelDrag: () => void;
+
+  armedDonorKey: string | null;
+  setArmedDonorKey: (key: string | null) => void;
+  applyArmedDonorToTarget: (targetKey: string) => Promise<boolean>;
+
+  deleteSelectedNodes: () => Promise<void>;
 }
 
 let hudTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -223,11 +232,91 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   deleteNode: async (key: string) => {
     const current = get().currentJson;
+    const targetNode = findNodeInTree(current, key);
+    const removedSet = new Set(
+      targetNode ? collectAllDescendantKeys(targetNode) : [key],
+    );
+
     const next = deleteNodeFromArray(current, key);
-    if (get().clickedKey === key) {
-      set({ clickedKey: null });
+
+    set((state) => {
+      const nextSelected = new Set(state.selectedKeys);
+      const nextRight = new Set(state.rightKeys);
+      const nextCollapsed = new Set(state.collapsedKeys);
+      removedSet.forEach((k) => {
+        nextSelected.delete(k);
+        nextRight.delete(k);
+        nextCollapsed.delete(k);
+      });
+
+      return {
+        selectedKeys: nextSelected,
+        rightKeys: nextRight,
+        collapsedKeys: nextCollapsed,
+        templateSlotKeys: state.templateSlotKeys.filter(
+          (k) => !removedSet.has(k),
+        ),
+        clickedKey: removedSet.has(state.clickedKey || "")
+          ? null
+          : state.clickedKey,
+        hoveredKey: removedSet.has(state.hoveredKey || "")
+          ? null
+          : state.hoveredKey,
+        armedDonorKey: removedSet.has(state.armedDonorKey || "")
+          ? null
+          : state.armedDonorKey,
+      };
+    });
+
+    await get().persist(next);
+  },
+
+  deleteSelectedNodes: async () => {
+    const { currentJson, selectedKeys } = get();
+    if (selectedKeys.size === 0) return;
+
+    const orderedKeys = normalizeSelectedKeys(currentJson, selectedKeys);
+    if (orderedKeys.length === 0) return;
+
+    const removedAllKeys = new Set<string>();
+    for (const k of orderedKeys) {
+      const node = findNodeInTree(currentJson, k);
+      if (node) {
+        collectAllDescendantKeys(node).forEach((id) => removedAllKeys.add(id));
+      } else {
+        removedAllKeys.add(k);
+      }
     }
-    set({ hoveredKey: null });
+
+    const next = removeNodesByKeys(currentJson, new Set(orderedKeys));
+
+    set((state) => {
+      const nextRight = new Set(state.rightKeys);
+      const nextCollapsed = new Set(state.collapsedKeys);
+      removedAllKeys.forEach((k) => {
+        nextRight.delete(k);
+        nextCollapsed.delete(k);
+      });
+
+      return {
+        selectedKeys: new Set(),
+        rightKeys: nextRight,
+        collapsedKeys: nextCollapsed,
+        templateSlotKeys: state.templateSlotKeys.filter(
+          (k) => !removedAllKeys.has(k),
+        ),
+        clickedKey: removedAllKeys.has(state.clickedKey || "")
+          ? null
+          : state.clickedKey,
+        hoveredKey: removedAllKeys.has(state.hoveredKey || "")
+          ? null
+          : state.hoveredKey,
+        armedDonorKey: removedAllKeys.has(state.armedDonorKey || "")
+          ? null
+          : state.armedDonorKey,
+      };
+    });
+
     await get().persist(next);
   },
 
@@ -350,7 +439,75 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       return { rightKeys: next };
     });
   },
+  armedDonorKey: null,
 
+  setArmedDonorKey: (key) => set({ armedDonorKey: key }),
+
+  applyArmedDonorToTarget: async (targetKey: string) => {
+    const { currentJson, armedDonorKey, rightKeys } = get();
+    if (!armedDonorKey || !targetKey || armedDonorKey === targetKey) {
+      return false;
+    }
+
+    const donorNode = findNodeInTree(currentJson, armedDonorKey);
+    const targetNode = findNodeInTree(currentJson, targetKey);
+    if (!donorNode || !targetNode) {
+      set({ armedDonorKey: null });
+      return false;
+    }
+
+    if (
+      isDescendant(donorNode, targetKey) ||
+      isDescendant(targetNode, armedDonorKey)
+    ) {
+      get().showHud("Cannot merge parent with its own descendant", "warning");
+      return false;
+    }
+
+    const nextTargetNode = applyDonorToSlot(targetNode, donorNode);
+
+    const addedRightKeys: string[] = [];
+    if (
+      rightKeys.has(targetKey) &&
+      (!targetNode.children || targetNode.children.length === 0) &&
+      Array.isArray(nextTargetNode.children) &&
+      nextTargetNode.children.length > 0
+    ) {
+      for (const child of nextTargetNode.children) {
+        addedRightKeys.push(...collectAllDescendantKeys(child));
+      }
+    }
+
+    const updatedTree = mutateNodeInTree(
+      currentJson,
+      targetKey,
+      () => nextTargetNode,
+    );
+    const nextTree = removeNodesByKeys(updatedTree, new Set([armedDonorKey]));
+
+    set((state) => {
+      const nextRight = new Set(state.rightKeys);
+      nextRight.delete(armedDonorKey);
+      for (const k of addedRightKeys) {
+        nextRight.add(k);
+      }
+      return {
+        rightKeys: nextRight,
+        armedDonorKey: null,
+        templateSlotKeys: state.templateSlotKeys.filter(
+          (k) => k !== armedDonorKey,
+        ),
+        clickedKey:
+          state.clickedKey === armedDonorKey ? null : state.clickedKey,
+        hoveredKey:
+          state.hoveredKey === armedDonorKey ? null : state.hoveredKey,
+      };
+    });
+
+    get().showHud("Donor applied!", "success");
+    await get().persist(nextTree);
+    return true;
+  },
   moveKeysToLeftPane: (keys) => {
     const { currentJson } = get();
     const allSubtreeKeys: string[] = [];
@@ -633,7 +790,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   setDragMousePos: (pos) => set({ dragMousePos: pos }),
 
   commitDrop: async () => {
-    const { currentJson, draggedKeys, dropTarget } = get();
+    const { currentJson, draggedKeys, dropTarget, isSplit, rightKeys } = get();
     if (draggedKeys.length > 0 && dropTarget && dropTarget.key) {
       if (dropTarget.position === "donor") {
         const updated = mergeDonorIntoTarget(
@@ -650,17 +807,41 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       } else if (dropTarget.position === "self") {
         const existingKeys = collectAllTreeKeys(currentJson);
         const updated = duplicateNodesGroup(currentJson, draggedKeys);
-        const clonedKeys = findNewCollapsibleRootKeys(updated, existingKeys);
 
-        if (clonedKeys.length > 0) {
-          set((state) => {
-            const nextCollapsed = new Set(state.collapsedKeys);
-            for (const k of clonedKeys) {
-              nextCollapsed.add(k);
+        const clonedAllKeys: string[] = [];
+        const collectNewNodes = (nodes: HtmlNode[]) => {
+          for (const n of nodes) {
+            const k = n._key || "";
+            if (k && !existingKeys.has(k)) {
+              clonedAllKeys.push(...collectAllDescendantKeys(n));
+              continue;
             }
-            return { collapsedKeys: nextCollapsed };
-          });
-        }
+            if (Array.isArray(n.children)) collectNewNodes(n.children);
+          }
+        };
+        collectNewNodes(updated);
+
+        const shouldPutClonesInRight =
+          isSplit && draggedKeys.every((k) => rightKeys.has(k));
+
+        set((state) => {
+          const nextCollapsed = new Set(state.collapsedKeys);
+          for (const k of clonedAllKeys) {
+            nextCollapsed.delete(k);
+          }
+
+          const nextRight = new Set(state.rightKeys);
+          if (shouldPutClonesInRight) {
+            for (const k of clonedAllKeys) {
+              nextRight.add(k);
+            }
+          }
+
+          return {
+            collapsedKeys: nextCollapsed,
+            rightKeys: nextRight,
+          };
+        });
 
         await get().persist(updated);
       } else {

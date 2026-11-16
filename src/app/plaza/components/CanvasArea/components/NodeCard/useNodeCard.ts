@@ -254,8 +254,15 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
         clearTimeout(clickTimeoutRef.current);
         clickTimeoutRef.current = null;
       }
-      if (useCanvasStore.getState().isTemplateMode) return;
-      useCanvasStore.getState().deleteNode(key);
+      const state = useCanvasStore.getState();
+      if (state.isTemplateMode) return;
+
+      if (state.selectedKeys.has(key) && state.selectedKeys.size > 1) {
+        void state.deleteSelectedNodes();
+        return;
+      }
+
+      void state.deleteNode(key);
     },
     [key],
   );

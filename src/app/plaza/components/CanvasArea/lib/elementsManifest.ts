@@ -11,26 +11,28 @@ export interface ElementFolder {
 export const ROOT_TAGS: ElementItem[] = [
   { name: "div", path: "/json/div.json" },
   { name: "sec-con-wrap", path: "/json/section_container_wrap.json" },
+  { name: "container", path: "/json/container.json" },
+  { name: "header", path: "/json/header.json" },
   { name: "p", path: "/json/p.json" },
   { name: "span", path: "/json/span.json" },
   { name: "a", path: "/json/a.json" },
   { name: "button", path: "/json/button.json" },
+
+  { name: "is", path: "/json/is.json" },
+  { name: "img", path: "/json/img.json" },
+  { name: "svg", path: "/json/svg.json" },
+  { name: "i", path: "/json/i.json" },
+
   { name: "ul", path: "/json/ul.json" },
   { name: "li", path: "/json/li.json" },
+
   { name: "h1", path: "/json/h1.json" },
   { name: "h2", path: "/json/h2.json" },
   { name: "h3", path: "/json/h3.json" },
   { name: "h4", path: "/json/h4.json" },
   { name: "h5", path: "/json/h5.json" },
   { name: "h6", path: "/json/h6.json" },
-  { name: "header", path: "/json/header.json" },
-  { name: "footer", path: "/json/footer.json" },
-  { name: "main", path: "/json/main.json" },
-  { name: "section", path: "/json/section.json" },
-  { name: "nav", path: "/json/nav.json" },
-  { name: "article", path: "/json/article.json" },
-  { name: "aside", path: "/json/aside.json" },
-  { name: "container", path: "/json/container.json" },
+
   { name: "flex-col", path: "/json/flex-col.json" },
   { name: "flex-row", path: "/json/flex-row.json" },
   { name: "grid-3", path: "/json/grid-3.json" },
@@ -38,11 +40,16 @@ export const ROOT_TAGS: ElementItem[] = [
   { name: "grid-auto-col", path: "/json/grid-auto-col.json" },
   { name: "grid-minmax", path: "/json/grid-minmax.json" },
 
+  { name: "footer", path: "/json/footer.json" },
+
+  { name: "main", path: "/json/main.json" },
+  { name: "section", path: "/json/section.json" },
+  { name: "nav", path: "/json/nav.json" },
+  { name: "article", path: "/json/article.json" },
+  { name: "aside", path: "/json/aside.json" },
+
   { name: "ol", path: "/json/ol.json" },
 
-  { name: "img", path: "/json/img.json" },
-  { name: "is", path: "/json/is.json" },
-  { name: "svg", path: "/json/svg.json" },
   { name: "label", path: "/json/label.json" },
   { name: "table", path: "/json/table.json" },
   { name: "tr", path: "/json/tr.json" },
@@ -53,7 +60,6 @@ export const ROOT_TAGS: ElementItem[] = [
   { name: "hr", path: "/json/hr.json" },
   { name: "em", path: "/json/em.json" },
   { name: "strong", path: "/json/strong.json" },
-  { name: "i", path: "/json/i.json" },
 ];
 
 export const ELEMENT_FOLDERS: ElementFolder[] = [

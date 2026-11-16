@@ -574,7 +574,7 @@ export function CanvasArea() {
       <div
         ref={containerRef}
         onPointerDown={handleMarqueePointerDown}
-        className="flex-1 flex overflow-hidden"
+        className="flex-1 flex flex-col overflow-hidden"
       >
         {/* LEFT PANEL (PANE 1 - MAIN / DONORS) */}
         <div

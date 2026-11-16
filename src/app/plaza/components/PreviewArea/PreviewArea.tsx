@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
-import { PencilSquareIcon } from "@heroicons/react/24/outline";
+import { PencilSquareIcon, SparklesIcon } from "@heroicons/react/24/outline";
 
 import { usePreviewArea } from "@/app/plaza/components/PreviewArea/hooks/usePreviewArea";
 import { usePixelPerfect } from "@/app/plaza/components/PreviewArea/hooks/usePixelPerfect";
@@ -14,6 +14,10 @@ import { useBoxModelHighlight } from "@/app/plaza/components/PreviewArea/hooks/u
 
 import BoxModelOverlay from "./components/BoxModelOverlay";
 import TracingWireframeOverlay from "./components/TracingWireframeOverlay";
+import DonorTrayPanel from "./components/DonorTrayPanel";
+import type { WireframeBox } from "./models/wireframeTreeCompiler";
+import { useCanvasStore } from "@/app/plaza/components/CanvasArea/store/useCanvasStore";
+
 import ButtonCss from "@/app/plaza/components/PreviewArea/components/ButtonCss";
 import ButtonJS from "@/app/plaza/components/PreviewArea/components/ButtonJS";
 import ButtonFonts from "@/app/plaza/components/PreviewArea/components/ButtonFonts";
@@ -60,8 +64,33 @@ export function PreviewArea() {
     isRotated,
   } = useBreakpoint();
 
-  // Режим кальки поверх макета
+  // Режим кальки поверх макета + слот доноров
   const [isTracingActive, setIsTracingActive] = useState(false);
+  const [isDonorTrayOpen, setIsDonorTrayOpen] = useState(false);
+  const [tracingBoxes, setTracingBoxes] = useState<WireframeBox[]>([]);
+  const [selectedTracingBoxId, setSelectedTracingBoxId] = useState<
+    string | null
+  >(null);
+
+  const assignedDonorKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const box of tracingBoxes) {
+      if (box.donorKey) keys.add(box.donorKey);
+    }
+    return keys;
+  }, [tracingBoxes]);
+
+  const handleAssignDonorToSelectedBox = useCallback(
+    (donorKey: string) => {
+      if (!selectedTracingBoxId) return;
+      setTracingBoxes((prev) =>
+        prev.map((b) =>
+          b.id === selectedTracingBoxId ? { ...b, donorKey } : b,
+        ),
+      );
+    },
+    [selectedTracingBoxId],
+  );
 
   // Реф экрана превью для точного позиционирования BoxModelOverlay
   const screenContainerRef = useRef<HTMLDivElement>(null);
@@ -130,7 +159,15 @@ export function PreviewArea() {
             {/* Кнопка кальки (Tracing Mode) */}
             <button
               type="button"
-              onClick={() => setIsTracingActive(!isTracingActive)}
+              onClick={() => {
+                const next = !isTracingActive;
+                setIsTracingActive(next);
+                if (next) {
+                  setIsDonorTrayOpen(true);
+                } else {
+                  useCanvasStore.getState().setArmedDonorKey(null);
+                }
+              }}
               title={
                 isTracingActive
                   ? "Exit Tracing Mode"
@@ -144,6 +181,21 @@ export function PreviewArea() {
             >
               <PencilSquareIcon className="size-3.5 text-cyan-400" />
               <span>Trace</span>
+            </button>
+
+            {/* Кнопка слота доноров */}
+            <button
+              type="button"
+              onClick={() => setIsDonorTrayOpen((v) => !v)}
+              title="Open floating Donors slot for Preview & Tracing"
+              className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono font-bold transition cursor-pointer border ${
+                isDonorTrayOpen
+                  ? "bg-amber-500/20 text-amber-300 border-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.3)]"
+                  : "bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border-zinc-700/60"
+              }`}
+            >
+              <SparklesIcon className="size-3.5 text-amber-400" />
+              <span>Donors</span>
             </button>
 
             {hasImage && isOverlayActive && (
@@ -261,6 +313,15 @@ export function PreviewArea() {
       <ModalFonts />
       <ModalPixelPerfect />
 
+      <DonorTrayPanel
+        isOpen={isDonorTrayOpen}
+        onClose={() => setIsDonorTrayOpen(false)}
+        isTracingActive={isTracingActive}
+        selectedBoxId={selectedTracingBoxId}
+        assignedDonorKeys={assignedDonorKeys}
+        onAssignDonorToSelectedBox={handleAssignDonorToSelectedBox}
+      />
+
       <AnimatePresence>
         {!isCollapsed && (
           <motion.div
@@ -342,6 +403,10 @@ export function PreviewArea() {
                   onClose={() => setIsTracingActive(false)}
                   viewportWidth={isFullWidth ? "100%" : effectiveWidthStyle}
                   viewportHeight={effectiveHeight}
+                  boxes={tracingBoxes}
+                  setBoxes={setTracingBoxes}
+                  selectedBoxId={selectedTracingBoxId}
+                  setSelectedBoxId={setSelectedTracingBoxId}
                 />
 
                 {hasImage && isOverlayActive && (

@@ -53,7 +53,10 @@ export function useCanvasArea() {
           currentScss = mergeScssWithoutDuplicates(currentScss, extractedScss);
         }
         if (extractedScripts.length > 0) {
-          currentJs = mergeScriptsWithoutDuplicates(currentJs, extractedScripts);
+          currentJs = mergeScriptsWithoutDuplicates(
+            currentJs,
+            extractedScripts,
+          );
         }
 
         const nodesWithKeys = ensureUniqueKeys(cleanNodes);
@@ -72,7 +75,10 @@ export function useCanvasArea() {
         styleHistory.init(currentScss);
         scriptsHistory.init(currentJs);
 
-        await Promise.all([saveGlobalScss(currentScss), saveGlobalJs(currentJs)]);
+        await Promise.all([
+          saveGlobalScss(currentScss),
+          saveGlobalJs(currentJs),
+        ]);
       }
     } catch (err) {
       console.error("[useCanvasArea] Mount error:", err);
@@ -88,16 +94,26 @@ export function useCanvasArea() {
     const handleSelectFromPreview = (e: any) => {
       if (e.detail?.source === "modal-properties") return;
 
-      const currentTree = useCanvasStore.getState().currentJson;
+      const store = useCanvasStore.getState();
+      const currentTree = store.currentJson;
       const target = findNodeByCriteria(currentTree, e.detail || {});
-      if (target && target._key !== useCanvasStore.getState().clickedKey) {
-        useCanvasStore.getState().setClickedKey(target._key ?? null);
+
+      if (store.armedDonorKey && target?._key) {
+        void store.applyArmedDonorToTarget(target._key);
+        return;
+      }
+
+      if (target && target._key !== store.clickedKey) {
+        store.setClickedKey(target._key ?? null);
       }
     };
 
     window.addEventListener("plaza-node-selected", handleSelectFromPreview);
     return () =>
-      window.removeEventListener("plaza-node-selected", handleSelectFromPreview);
+      window.removeEventListener(
+        "plaza-node-selected",
+        handleSelectFromPreview,
+      );
   }, []);
 
   // ─────🔹 Внешние события обновления дерева и сворачивания
@@ -119,7 +135,9 @@ export function useCanvasArea() {
     };
 
     const handleExternalCollapseAll = () => {
-      const allKeys = getAllCollapsibleKeys(useCanvasStore.getState().currentJson);
+      const allKeys = getAllCollapsibleKeys(
+        useCanvasStore.getState().currentJson,
+      );
       useCanvasStore.getState().collapseAll(allKeys);
     };
 
@@ -150,12 +168,17 @@ export function useCanvasArea() {
         return;
       }
 
-      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "z") {
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        !e.shiftKey &&
+        e.key.toLowerCase() === "z"
+      ) {
         e.preventDefault();
         useCanvasStore.getState().undo();
       } else if (
         (e.ctrlKey || e.metaKey) &&
-        (e.key.toLowerCase() === "y" || (e.shiftKey && e.key.toLowerCase() === "z"))
+        (e.key.toLowerCase() === "y" ||
+          (e.shiftKey && e.key.toLowerCase() === "z"))
       ) {
         e.preventDefault();
         useCanvasStore.getState().redo();

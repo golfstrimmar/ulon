@@ -6,7 +6,15 @@ import {
   isDescendant,
   duplicateNodeInTree,
 } from "@/lib/htmlTree";
-
+export interface DonorItem {
+  key: string;
+  tag: string;
+  text: string;
+  className: string;
+  imgSrc: string | null;
+  isSvg: boolean;
+  node: HtmlNode;
+}
 /**
  * Очищает тело CSS от некорректных точек с запятой перед закрывающими фигурными скобками ("};" -> "}")
  * и удаляет лишние пробелы по краям.
@@ -262,7 +270,45 @@ export function extractNodesByKeys(
   walk(nodes);
   return found;
 }
+/**
+ * Извлекает плоский список контентных доноров (ноды с текстом, <img> или <svg>)
+ * без пустых контейнеров-обёрток и без внутренностей SVG.
+ */
+export function extractDonorNodes(nodes: HtmlNode[]): DonorItem[] {
+  if (!Array.isArray(nodes)) return [];
+  const items: DonorItem[] = [];
 
+  function walk(list: HtmlNode[]) {
+    for (const node of list) {
+      const key = getNodeKey(node);
+      const tag = (node.tag || "").trim().toLowerCase();
+      const text = (node.text || "").trim();
+      const imgSrc = tag === "img" ? node.attributes?.src || null : null;
+      const isSvg = tag === "svg";
+
+      if (key && (text || imgSrc || isSvg)) {
+        items.push({
+          key,
+          tag: tag || "div",
+          text,
+          className: (node.class || "").trim(),
+          imgSrc,
+          isSvg,
+          node,
+        });
+      }
+
+      if (isSvg) continue;
+
+      if (Array.isArray(node.children) && node.children.length > 0) {
+        walk(node.children);
+      }
+    }
+  }
+
+  walk(nodes);
+  return items;
+}
 /**
  * Определяет, является ли контейнер строчным (горизонтальным flex-рядом или grid-контейнером),
  * анализируя встроенные стили и CSS-классы.
@@ -683,17 +729,32 @@ export function moveNodesGroup(
 }
 
 /**
- * Дублирует группу узлов по их ключам в структуре дерева.
+ * Дублирует группу узлов одним цельным блоком сразу после последнего выделенного узла,
+ * чтобы клоны не чередовались со старыми узлами.
  */
 export function duplicateNodesGroup(
   tree: HtmlNode[],
   sourceKeys: string[],
 ): HtmlNode[] {
-  let currentTree = tree;
-  for (const key of sourceKeys) {
-    currentTree = duplicateNodeInTree(currentTree, key);
+  if (!tree || sourceKeys.length === 0) return tree;
+
+  const orderedKeys = sortKeysByTreeOrder(tree, sourceKeys);
+  if (orderedKeys.length === 0) return tree;
+
+  const keyMap = new Map<string, string>();
+  const clonedNodes: HtmlNode[] = [];
+
+  for (const key of orderedKeys) {
+    const orig = findNodeInTree(tree, key);
+    if (orig) {
+      clonedNodes.push(cloneTemplateWithKeyMapping(orig, keyMap));
+    }
   }
-  return currentTree;
+
+  if (clonedNodes.length === 0) return tree;
+
+  const anchorKey = orderedKeys[orderedKeys.length - 1];
+  return insertNodesAdjacent(tree, anchorKey, clonedNodes, "after");
 }
 /**
  * Собирает все ключи узлов в дереве.
