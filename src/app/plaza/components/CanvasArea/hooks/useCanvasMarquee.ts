@@ -120,16 +120,36 @@ export function useCanvasMarquee({ containerRef }: UseCanvasMarqueeOptions) {
           }
         });
 
-        const currentTree = useCanvasStore.getState().currentJson;
+        const store = useCanvasStore.getState();
+        const currentTree = store.currentJson;
+
+        if (store.isTemplateMode) {
+          for (const rk of store.rightKeys) {
+            hitKeys.delete(rk);
+          }
+        }
+
         const normalized = normalizeSelectedKeys(currentTree, hitKeys);
-        useCanvasStore.getState().setSelectedKeys(new Set(normalized));
+        store.setSelectedKeys(new Set(normalized));
       };
 
       const handlePointerUp = () => {
         window.removeEventListener("pointermove", handlePointerMove);
         window.removeEventListener("pointerup", handlePointerUp);
         window.removeEventListener("pointercancel", handlePointerUp);
-        useCanvasStore.getState().setSelectionBox(null);
+
+        const store = useCanvasStore.getState();
+        store.setSelectionBox(null);
+
+        if (
+          store.isTemplateMode &&
+          store.templateSlotKeys.length > 0 &&
+          store.selectedKeys.size > 0
+        ) {
+          const donorKeys = Array.from(store.selectedKeys);
+          store.clearSelection();
+          void store.fillTemplateSlotsBatch(donorKeys);
+        }
       };
 
       window.addEventListener("pointermove", handlePointerMove);

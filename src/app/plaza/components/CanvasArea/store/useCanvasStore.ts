@@ -16,7 +16,6 @@ import {
   findNodeInTree,
   collectAllDescendantKeys,
   collectAllTreeKeys,
-  findNewCollapsibleRootKeys,
   normalizeSelectedKeys,
   moveNodesGroup,
   duplicateNodesGroup,
@@ -24,6 +23,7 @@ import {
   applyBemClassesToSection,
   fillTemplateWithDonors,
   fillSingleSlotInPlace,
+  fillMultipleSlotsInPlace,
   applyDonorToSlot,
   mutateNodeInTree,
   removeNodesByKeys,
@@ -89,6 +89,7 @@ export interface CanvasState {
   persist: (next: HtmlNode[], recordHistory?: boolean) => Promise<void>;
   applyBemClasses: () => Promise<void>;
   deleteNode: (key: string) => Promise<void>;
+  deleteSelectedNodes: () => Promise<void>;
   recordSnapshot: () => void;
   undo: () => Promise<void>;
   redo: () => Promise<void>;
@@ -115,6 +116,12 @@ export interface CanvasState {
   showHud: (text: string, type?: "info" | "warning" | "success") => void;
   fillTemplateFromDonors: (donorKeys: string[]) => Promise<boolean>;
   fillNextTemplateSlot: (donorKey: string) => Promise<boolean>;
+  fillTemplateSlotsBatch: (donorKeys: string[]) => Promise<boolean>;
+
+  // ── Armed Donor (Preview & Tracing) ──────────────────────────────────────
+  armedDonorKey: string | null;
+  setArmedDonorKey: (key: string | null) => void;
+  applyArmedDonorToTarget: (targetKey: string) => Promise<boolean>;
 
   // ──
   toggleCollapseAll: () => void;
@@ -145,12 +152,6 @@ export interface CanvasState {
   setDragMousePos: (pos: { x: number; y: number } | null) => void;
   commitDrop: () => Promise<void>;
   cancelDrag: () => void;
-
-  armedDonorKey: string | null;
-  setArmedDonorKey: (key: string | null) => void;
-  applyArmedDonorToTarget: (targetKey: string) => Promise<boolean>;
-
-  deleteSelectedNodes: () => Promise<void>;
 }
 
 let hudTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -171,6 +172,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   templateSlotKeys: [],
   hudMessage: null,
 
+  armedDonorKey: null,
+
   // ── Breakpoints Default ──────────────────────────────────────────────────
   activeBreakpointId: "full",
   customBreakpointWidth: null,
@@ -190,6 +193,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   futureStack: [],
   canUndo: false,
   canRedo: false,
+
   toggleCanvasFloating: () =>
     set((state) => ({ isCanvasFloating: !state.isCanvasFloating })),
 
@@ -439,7 +443,6 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       return { rightKeys: next };
     });
   },
-  armedDonorKey: null,
 
   setArmedDonorKey: (key) => set({ armedDonorKey: key }),
 
@@ -508,6 +511,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     await get().persist(nextTree);
     return true;
   },
+
   moveKeysToLeftPane: (keys) => {
     const { currentJson } = get();
     const allSubtreeKeys: string[] = [];
@@ -613,6 +617,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     await get().persist(result.nextTree);
     return true;
   },
+
   fillNextTemplateSlot: async (donorKey: string) => {
     const { currentJson, rightKeys, templateSlotKeys } = get();
 
@@ -662,6 +667,64 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     return true;
   },
 
+  fillTemplateSlotsBatch: async (donorKeys: string[]) => {
+    const { currentJson, rightKeys, templateSlotKeys } = get();
+
+    if (templateSlotKeys.length === 0 || donorKeys.length === 0) {
+      return false;
+    }
+
+    const result = fillMultipleSlotsInPlace(
+      currentJson,
+      rightKeys,
+      templateSlotKeys,
+      donorKeys,
+    );
+
+    if (!result) return false;
+
+    const usedSet = new Set(result.usedDonorKeys);
+
+    set((state) => {
+      const nextRight = new Set(state.rightKeys);
+      for (const k of result.addedRightKeys) {
+        nextRight.add(k);
+      }
+      return {
+        rightKeys: nextRight,
+        templateSlotKeys: result.remainingSlotKeys,
+        clickedKey:
+          state.clickedKey && usedSet.has(state.clickedKey)
+            ? null
+            : state.clickedKey,
+        hoveredKey:
+          state.hoveredKey && usedSet.has(state.hoveredKey)
+            ? null
+            : state.hoveredKey,
+      };
+    });
+
+    if (result.excessCount > 0) {
+      get().showHud(
+        `Filled ${result.filledCount} slot(s). ${result.excessCount} excess donor(s) skipped.`,
+        "warning",
+      );
+    } else if (result.remainingSlotKeys.length === 0) {
+      get().showHud(
+        `Filled ${result.filledCount} slot(s). All template slots filled!`,
+        "success",
+      );
+    } else {
+      get().showHud(
+        `Filled ${result.filledCount} slot(s)! ${result.remainingSlotKeys.length} remaining`,
+        "info",
+      );
+    }
+
+    await get().persist(result.nextTree);
+    return true;
+  },
+
   toggleCollapseAll: () => {
     const { currentJson, collapsedKeys } = get();
     set({
@@ -677,6 +740,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       templateSlotKeys: [],
       clickedKey: null,
       hoveredKey: null,
+      armedDonorKey: null,
       selectedKeys: new Set(),
       collapsedKeys: new Set(),
     });
@@ -872,33 +936,3 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     });
   },
 }));
-
-// (function () {
-//   function initRew() {
-//     const container = document.querySelector('.more-text');
-//     if (!container) return;
-//     const rewSlides = [...document.querySelectorAll('.more-text')];
-//     rewSlides.forEach((foo) => {
-//       const btn = foo.querySelector("a.more-text_link");
-//       const span = btn.querySelector("span");
-//       const text = foo.querySelector(".more-text_p");
-//       const svg = btn.querySelector(".more-text_svg");
-//       btn.addEventListener("click", (e) => {
-//         e.preventDefault();
-//         text.classList.toggle("_is-active")
-//        text.classList.contains("_is-active")
-//   ? span.textContent = "Скрыть"
-//   : span.textContent = "Читать далее";
-
-// text.classList.contains("_is-active")
-//   ? svg.style.transform = "rotate(180deg)"
-//   : svg.style.transform = "rotate(0deg)";
-//       })
-//     })
-//   }
-//   if (document.readyState === 'loading') {
-//     document.addEventListener('DOMContentLoaded', initRew);
-//   } else {
-//     initRew();
-//   }
-// })();

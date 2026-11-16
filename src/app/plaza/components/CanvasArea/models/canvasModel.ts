@@ -1580,7 +1580,6 @@ export function fillTemplateWithDonors(
         : undefined,
   };
 }
-
 /**
  * 🔹 Заполняет один конкретный слот в правой панели (in-place, без клонирования)
  * данными выбранного донора с левой панели и удаляет донора из дерева.
@@ -1615,7 +1614,7 @@ export function fillSingleSlotInPlace(
   }
 
   const addedRightKeys: string[] = [];
-  let nextSlotNode = applyDonorToSlot(slotNode, donorNode);
+  const nextSlotNode = applyDonorToSlot(slotNode, donorNode);
 
   // Если донор принес с собой новых детей, регистрируем их ключи для правой панели
   if (
@@ -1634,5 +1633,90 @@ export function fillSingleSlotInPlace(
   return {
     nextTree,
     addedRightKeys,
+  };
+}
+/**
+ * 🔹 Заполняет сразу группу слотов в правой панели (in-place)
+ * массивом доноров из левой панели по порядку их следования в дереве.
+ */
+export function fillMultipleSlotsInPlace(
+  tree: HtmlNode[],
+  rightKeys: Set<string>,
+  slotKeys: string[],
+  rawDonorKeys: string[],
+): {
+  nextTree: HtmlNode[];
+  filledCount: number;
+  remainingSlotKeys: string[];
+  addedRightKeys: string[];
+  usedDonorKeys: string[];
+  excessCount: number;
+} | null {
+  if (!tree || tree.length === 0 || slotKeys.length === 0) {
+    return null;
+  }
+
+  const validDonorKeys = rawDonorKeys.filter((k) => !rightKeys.has(k));
+  if (validDonorKeys.length === 0) return null;
+
+  const orderedDonors = sortKeysByTreeOrder(tree, validDonorKeys);
+  if (orderedDonors.length === 0) return null;
+
+  const count = Math.min(slotKeys.length, orderedDonors.length);
+  const excessCount = Math.max(0, orderedDonors.length - slotKeys.length);
+
+  let currentTree = tree;
+  const addedRightKeys: string[] = [];
+  const usedDonorKeys: string[] = [];
+  const filledSlotSet = new Set<string>();
+
+  for (let i = 0; i < count; i++) {
+    const targetSlotKey = slotKeys[i];
+    const donorKey = orderedDonors[i];
+
+    const slotNode = findNodeInTree(currentTree, targetSlotKey);
+    const donorNode = findNodeInTree(currentTree, donorKey);
+    if (!slotNode || !donorNode) continue;
+
+    if (
+      isDescendant(donorNode, targetSlotKey) ||
+      isDescendant(slotNode, donorKey)
+    ) {
+      continue;
+    }
+
+    const nextSlotNode = applyDonorToSlot(slotNode, donorNode);
+
+    if (
+      (!slotNode.children || slotNode.children.length === 0) &&
+      Array.isArray(nextSlotNode.children) &&
+      nextSlotNode.children.length > 0
+    ) {
+      for (const child of nextSlotNode.children) {
+        addedRightKeys.push(...collectAllDescendantKeys(child));
+      }
+    }
+
+    currentTree = mutateNodeInTree(
+      currentTree,
+      targetSlotKey,
+      () => nextSlotNode,
+    );
+    usedDonorKeys.push(donorKey);
+    filledSlotSet.add(targetSlotKey);
+  }
+
+  if (usedDonorKeys.length === 0) return null;
+
+  const nextTree = removeNodesByKeys(currentTree, new Set(usedDonorKeys));
+  const remainingSlotKeys = slotKeys.filter((k) => !filledSlotSet.has(k));
+
+  return {
+    nextTree,
+    filledCount: usedDonorKeys.length,
+    remainingSlotKeys,
+    addedRightKeys,
+    usedDonorKeys,
+    excessCount,
   };
 }
