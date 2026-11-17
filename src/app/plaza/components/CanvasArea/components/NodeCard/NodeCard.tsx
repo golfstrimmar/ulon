@@ -5,7 +5,7 @@ import type { HtmlNode } from "@/types/HtmlNode";
 import { DropGap } from "@/app/plaza/components/CanvasArea/components/DropGap";
 import { useCanvasStore } from "@/app/plaza/components/CanvasArea/store/useCanvasStore";
 import type { NodeCardProps } from "./nodeCard.types";
-import { useNodeCard } from "./useNodeCard";
+import { useNodeCard } from "@/app/plaza/components/CanvasArea/components/NodeCard/useNodeCard";
 
 function MiniSvgChild({ node }: { node: HtmlNode }) {
   const Tag = (node.tag || "path").toLowerCase() as any;
@@ -178,6 +178,8 @@ function NodeCardComponent({ node, depth, parentIsRow = true }: NodeCardProps) {
     stateRing = "outline outline-2 outline-sky-300/70 outline-offset-1";
   } else if (isHovered) {
     stateRing = "outline outline-2 outline-emerald-300/60 outline-offset-1";
+  } else if (hasChildren && isCollapsed) {
+    stateRing = "outline outline-1 outline-cyan-400/75 outline-offset-1";
   }
 
   const tooltipText = [
@@ -221,7 +223,9 @@ function NodeCardComponent({ node, depth, parentIsRow = true }: NodeCardProps) {
         )}
 
         <div
-          className={`relative mt-1 px-1.5 py-1 rounded border transition-all flex flex-col items-center gap-0.5 min-w-[46px] ${stateRing}`}
+          className={`relative mt-1 px-1.5 py-1 rounded border ${
+            hasChildren ? "border-l-[3px]" : ""
+          } transition-all flex flex-col items-center gap-0.5 min-w-[46px] ${stateRing}`}
           style={{
             backgroundColor: bgStyle,
             borderColor: borderStyle,
@@ -248,7 +252,7 @@ function NodeCardComponent({ node, depth, parentIsRow = true }: NodeCardProps) {
             </span>
           )}
 
-          {/* Верхняя строка: галочка, тег, 16x16 превью, сворачивание */}
+          {/* Верхняя строка: галочка, тег, превью, сворачивание */}
           <div className="flex items-center justify-center gap-1">
             {isSelected && (
               <span className="w-3 h-3 rounded-sm bg-sky-500/30 border border-sky-400 flex items-center justify-center shrink-0">
@@ -302,7 +306,11 @@ function NodeCardComponent({ node, depth, parentIsRow = true }: NodeCardProps) {
                     ? `Expand (${children.length})`
                     : `Collapse (${children.length})`
                 }
-                className="px-2 h-6 cursor-pointer  rounded bg-zinc-900/90 border border-zinc-700 hover:border-zinc-500 text-cyan-300 text-[9px] font-mono font-bold flex items-center justify-center shrink-0 transition leading-none"
+                className={`px-2 h-6 cursor-pointer rounded border text-[10px] font-mono font-bold flex items-center justify-center shrink-0 transition leading-none ${
+                  isCollapsed
+                    ? "bg-cyan-400 text-zinc-950 border-cyan-200 shadow-[0_0_8px_rgba(34,211,238,0.65)] hover:bg-cyan-300"
+                    : "bg-violet-950/90 border-violet-500/60 hover:border-violet-400 text-violet-200"
+                }`}
               >
                 {isCollapsed ? `+${children.length}` : "−"}
               </button>

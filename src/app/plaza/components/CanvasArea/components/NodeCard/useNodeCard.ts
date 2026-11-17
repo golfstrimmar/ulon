@@ -113,6 +113,16 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
       border = "#34d399";
       bg = "rgba(52, 211, 153, 0.12)";
       shadow = "0 0 8px rgba(52, 211, 153, 0.25)";
+    } else if (hasChildren && isCollapsed) {
+      border = "#22d3ee";
+      bg = "rgba(8, 145, 178, 0.28)";
+      shadow =
+        "0 0 14px rgba(34, 211, 238, 0.38), inset 0 2px 0 rgba(103, 232, 249, 0.85)";
+    } else if (hasChildren) {
+      border = "rgba(139, 92, 246, 0.78)";
+      bg = "rgba(109, 40, 217, 0.16)";
+      shadow =
+        "inset 0 2px 0 rgba(167, 139, 250, 0.75), 0 2px 6px rgba(0, 0, 0, 0.45)";
     }
 
     return { borderStyle: border, bgStyle: bg, shadowStyle: shadow };
@@ -126,8 +136,9 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
     isSelected,
     isHovered,
     hasActiveDrag,
+    hasChildren,
+    isCollapsed,
   ]);
-
   const tagBadgeClass = useMemo(() => {
     const tagLower = (node.tag || "div").toLowerCase();
     if (tagLower === "div") {
