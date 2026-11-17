@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import type { HtmlNode } from "@/types/HtmlNode";
 import {
   getHtmlJson,
@@ -19,10 +19,32 @@ import {
   removeFont,
   toggleDefaultFont,
 } from "@/app/plaza/components/PreviewArea/lib/previewModel";
+import { useCanvasStore } from "@/app/plaza/components/CanvasArea/store/useCanvasStore";
+
+/**
+ * Скрывает из превью только корневые ноды (верхний уровень иерархии),
+ * если их ключ находится в collapsedKeys. Вложенные свёрнутые ноды остаются в разметке.
+ */
+function filterVisibleRootNodes(
+  nodes: HtmlNode[],
+  collapsedKeys: Set<string>,
+): HtmlNode[] {
+  if (!Array.isArray(nodes) || nodes.length === 0) return [];
+  if (!collapsedKeys || collapsedKeys.size === 0) return nodes;
+
+  return nodes.filter((node) => {
+    const key = node._key || (node as any)?.id || "";
+    return !key || !collapsedKeys.has(key);
+  });
+}
 
 export function usePreviewArea() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const currentBodyHtmlRef = useRef<string>("");
+  const latestFullNodesRef = useRef<HtmlNode[]>([]);
+  const isInitializedRef = useRef<boolean>(false);
+
+  const collapsedKeys = useCanvasStore((s) => s.collapsedKeys);
 
   const [srcDoc, setSrcDoc] = useState<string>("");
   const [isEmpty, setIsEmpty] = useState<boolean>(true);
@@ -46,29 +68,69 @@ export function usePreviewArea() {
 
   const colorVariablesRef = useRef<string[]>([]);
 
-  // Полная пересборка srcDoc (только при старте или смене шрифтов/скриптов)
-  const rebuildEntireIframe = (
-    bodyHtml: string,
-    fonts = fontEntriesRef.current,
-    defFont = defaultFontRef.current,
-    css = compiledCssRef.current,
-    scripts = scriptsJsRef.current,
-    colors = colorVariablesRef.current,
-  ) => {
-    currentBodyHtmlRef.current = bodyHtml;
-    setCurrentBodyHtml(bodyHtml);
-    setIsEmpty(!bodyHtml.trim());
-    setSrcDoc(
-      buildDocument({
-        bodyHtml,
-        fontEntries: fonts,
-        defaultFont: defFont,
-        globalCss: css,
-        scriptsJs: scripts,
-        colorVariables: colors,
-      }),
-    );
-  };
+  // Полная пересборка srcDoc (только при старте, смене шрифтов/скриптов или выходе из пустого состояния)
+  const rebuildEntireIframe = useCallback(
+    (
+      bodyHtml: string,
+      fonts = fontEntriesRef.current,
+      defFont = defaultFontRef.current,
+      css = compiledCssRef.current,
+      scripts = scriptsJsRef.current,
+      colors = colorVariablesRef.current,
+    ) => {
+      currentBodyHtmlRef.current = bodyHtml;
+      setCurrentBodyHtml(bodyHtml);
+      setIsEmpty(!bodyHtml.trim());
+      setSrcDoc(
+        buildDocument({
+          bodyHtml,
+          fontEntries: fonts,
+          defaultFont: defFont,
+          globalCss: css,
+          scriptsJs: scripts,
+          colorVariables: colors,
+        }),
+      );
+    },
+    [],
+  );
+
+  const applyNodesToPreview = useCallback(
+    (fullNodes: HtmlNode[], collapsed: Set<string>) => {
+      const visibleNodes = filterVisibleRootNodes(fullNodes, collapsed);
+      const nextHtml = visibleNodes.length > 0 ? renderTree(visibleNodes) : "";
+
+      if (nextHtml === currentBodyHtmlRef.current) {
+        return;
+      }
+
+      currentBodyHtmlRef.current = nextHtml;
+      setCurrentBodyHtml(nextHtml);
+      setIsEmpty(!nextHtml.trim());
+
+      const iframeDoc = iframeRef.current?.contentDocument;
+      if (iframeDoc && iframeDoc.body) {
+        iframeDoc.body.innerHTML = nextHtml;
+
+        const rawJs =
+          scriptsJsRef.current.__bundle__ ||
+          Object.values(scriptsJsRef.current).join("\n\n");
+        const code = (rawJs || "").trim();
+        if (code) {
+          iframeDoc.getElementById("compiled-bundle-scripts")?.remove();
+          const script = iframeDoc.createElement("script");
+          script.id = "compiled-bundle-scripts";
+          script.textContent = code;
+          iframeDoc.body.appendChild(script);
+        }
+
+        return;
+      }
+
+      rebuildEntireIframe(nextHtml);
+    },
+    [rebuildEntireIframe],
+  );
 
   /* ==========================================================================
      1. ПЕРВОНАЧАЛЬНАЯ ЗАГРУЗКА ПРИ СТАРТЕ
@@ -106,7 +168,6 @@ export function usePreviewArea() {
       setScriptsJs(loadedScripts);
       scriptsJsRef.current = loadedScripts;
 
-      // Учитываем переменные цветов Figma при компиляции SCSS на старте
       const colorDefs = loadedColors.join("\n");
       const scssWithColors = colorDefs
         ? `${colorDefs}\n${dbScss || ""}`
@@ -119,9 +180,16 @@ export function usePreviewArea() {
       let initialHtml = "";
       if (rawTree) {
         const nodes: HtmlNode[] = Array.isArray(rawTree) ? rawTree : [rawTree];
-        if (nodes.length > 0) {
-          initialHtml = renderTree(nodes);
+        latestFullNodesRef.current = nodes;
+        const visibleNodes = filterVisibleRootNodes(
+          nodes,
+          useCanvasStore.getState().collapsedKeys,
+        );
+        if (visibleNodes.length > 0) {
+          initialHtml = renderTree(visibleNodes);
         }
+      } else {
+        latestFullNodesRef.current = [];
       }
 
       currentBodyHtmlRef.current = initialHtml;
@@ -137,6 +205,7 @@ export function usePreviewArea() {
           colorVariables: loadedColors,
         }),
       );
+      isInitializedRef.current = true;
     } catch (err) {
       console.error("[usePreviewArea] IndexedDB init preview error:", err);
     }
@@ -154,52 +223,31 @@ export function usePreviewArea() {
       const customEvent = e as CustomEvent<any>;
       const detail = customEvent.detail;
 
-      // Корректно извлекаем массив нод из любого формата события
       const nodes: HtmlNode[] = Array.isArray(detail)
         ? detail
         : Array.isArray(detail?.nodes)
           ? detail.nodes
           : [];
 
-      const nextHtml = nodes.length > 0 ? renderTree(nodes) : "";
-
-      if (nextHtml === currentBodyHtmlRef.current) {
-        return;
-      }
-
-      currentBodyHtmlRef.current = nextHtml;
-      setCurrentBodyHtml(nextHtml);
-      setIsEmpty(!nextHtml.trim());
-
-      const iframeDoc = iframeRef.current?.contentDocument;
-      // 🚀 Вставляем HTML напрямую в body. iframe НЕ перезагружается, белого экрана нет!
-      if (iframeDoc && iframeDoc.body) {
-        iframeDoc.body.innerHTML = nextHtml;
-
-        // 🔁 После вставки HTML — перезапускаем актуальный JS-бандл,
-        // иначе слайдеры и другие скрипты не реинициализируются
-        const rawJs =
-          scriptsJsRef.current.__bundle__ ||
-          Object.values(scriptsJsRef.current).join("\n\n");
-        const code = (rawJs || "").trim();
-        if (code) {
-          iframeDoc.getElementById("compiled-bundle-scripts")?.remove();
-          const script = iframeDoc.createElement("script");
-          script.id = "compiled-bundle-scripts";
-          script.textContent = code;
-          iframeDoc.body.appendChild(script);
-        }
-
-        return;
-      }
-
-      rebuildEntireIframe(nextHtml);
+      latestFullNodesRef.current = nodes;
+      applyNodesToPreview(nodes, useCanvasStore.getState().collapsedKeys);
     };
 
     window.addEventListener("plaza-tree-updated", handleTreeUpdate);
     return () =>
       window.removeEventListener("plaza-tree-updated", handleTreeUpdate);
-  }, []);
+  }, [applyNodesToPreview]);
+
+  /* ==========================================================================
+     2.1. РЕАКЦИЯ НА СВОРАЧИВАНИЕ / РАЗВОРАЧИВАНИЕ КОРНЕВЫХ НОД
+     ========================================================================== */
+  useEffect(() => {
+    if (!isInitializedRef.current) return;
+    const storeNodes = useCanvasStore.getState().currentJson;
+    const fullNodes =
+      storeNodes.length > 0 ? storeNodes : latestFullNodesRef.current;
+    applyNodesToPreview(fullNodes, collapsedKeys);
+  }, [collapsedKeys, applyNodesToPreview]);
 
   /* ==========================================================================
      3. ОБНОВЛЕНИЕ SCSS
@@ -247,7 +295,7 @@ export function usePreviewArea() {
     window.addEventListener("plaza-styles-updated", handleStylesUpdate);
     return () =>
       window.removeEventListener("plaza-styles-updated", handleStylesUpdate);
-  }, []);
+  }, [rebuildEntireIframe]);
 
   /* ==========================================================================
      4. ОБНОВЛЕНИЕ JS — горячая замена без перезагрузки iframe
@@ -268,15 +316,12 @@ export function usePreviewArea() {
       setScriptsJs(nextScripts);
       scriptsJsRef.current = nextScripts;
 
-      // Собираем актуальный JS-бандл
       const rawJs =
         nextScripts.__bundle__ || Object.values(nextScripts).join("\n\n");
       const newCode = (rawJs || "").trim();
 
       const iframeDoc = iframeRef.current?.contentDocument;
 
-      // 🚀 Горячая замена: удаляем старый <script>, вставляем новый.
-      // Браузер немедленно выполняет код нового тега без перезагрузки iframe.
       if (iframeDoc && iframeDoc.body) {
         iframeDoc.getElementById("compiled-bundle-scripts")?.remove();
 
@@ -289,7 +334,6 @@ export function usePreviewArea() {
         return;
       }
 
-      // Fallback: если iframe ещё не готов — полная пересборка
       rebuildEntireIframe(
         currentBodyHtmlRef.current,
         undefined,
@@ -302,7 +346,7 @@ export function usePreviewArea() {
     window.addEventListener("plaza-scripts-updated", handleScriptsUpdate);
     return () =>
       window.removeEventListener("plaza-scripts-updated", handleScriptsUpdate);
-  }, []);
+  }, [rebuildEntireIframe]);
 
   // Обновление шрифтов
   useEffect(() => {
@@ -325,7 +369,7 @@ export function usePreviewArea() {
     window.addEventListener("plaza-fonts-updated", handleFontsSync);
     return () =>
       window.removeEventListener("plaza-fonts-updated", handleFontsSync);
-  }, []);
+  }, [rebuildEntireIframe]);
 
   const broadcastFonts = (fonts: string[], defFont: string) => {
     window.dispatchEvent(
