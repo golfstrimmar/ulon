@@ -174,7 +174,7 @@
           {
             "tag": "div",
             "class": "swiper-custom-pagination",
-            "style": "display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 8px; margin-top: 16px; .custom-bullet { width: 8px; height: 8px; border-radius: 50%; background: var(--slate-300); opacity: 0.6; cursor: pointer; transition: all 0.3s ease; &.is-active { width: 12px; height: 12px; background: var(--teal-500); opacity: 1; } &:hover:not(.is-active) { opacity: 0.9; } }",
+            "style": "display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 8px; margin-top: 16px;min-height: 12px; .custom-bullet { width: 8px; height: 8px; border-radius: 50%; background: var(--slate-300); opacity: 0.6; cursor: pointer; transition: all 0.3s ease; &.is-active { width: 12px; height: 12px; background: var(--teal-500); opacity: 1; } &:hover:not(.is-active) { opacity: 0.9; } }",
             "attributes": {},
             "children": []
           }

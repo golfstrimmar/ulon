@@ -14,6 +14,7 @@ import {
   ArrowDownCircleIcon,
   ArrowUpCircleIcon,
 } from "@heroicons/react/24/outline";
+import ButtonAddSwiper from "@/app/plaza/components/CanvasArea/components/ButtonAddSwiper";
 
 function getHeaderOffset(): number {
   if (typeof document === "undefined") return 56;
@@ -241,7 +242,7 @@ export default function AsideCanvas() {
 
         <ButtonAddImg />
         <ButtonAddFlex />
-
+        <ButtonAddSwiper />
         <div className="space-y-1">
           {ELEMENT_FOLDERS.map((folder) => {
             const isOpen = openFolders.has(folder.name);

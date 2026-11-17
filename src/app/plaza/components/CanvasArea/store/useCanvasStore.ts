@@ -127,6 +127,7 @@ export interface CanvasState {
   toggleCollapseAll: () => void;
   clearCanvasTree: () => Promise<void>;
   appendNodesFromPath: (path: string) => Promise<boolean>;
+  appendRawNodes: (raw: HtmlNode | HtmlNode[]) => Promise<boolean>;
   // ── Breakpoints Actions ───────────────────────────────────────────────────
   selectBreakpoint: (id: BreakpointId) => void;
   setCustomBreakpointWidth: (width: number) => void;
@@ -751,12 +752,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     );
   },
 
-  appendNodesFromPath: async (path: string) => {
+  appendRawNodes: async (raw: HtmlNode | HtmlNode[]) => {
     try {
-      const res = await fetch(path);
-      if (!res.ok) return false;
-      const raw = await res.json();
-
       const { currentJson, isSplit } = get();
       const { nextTree, extractedScss, extractedScripts, addedRightKeys } =
         prepareAppendedNodes(currentJson, raw, isSplit);
@@ -797,11 +794,22 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       await get().persist(nextTree);
       return true;
     } catch (e) {
-      console.error(`Error adding from ${path}:`, e);
+      console.error("[useCanvasStore] appendRawNodes error:", e);
       return false;
     }
   },
 
+  appendNodesFromPath: async (path: string) => {
+    try {
+      const res = await fetch(path);
+      if (!res.ok) return false;
+      const raw = await res.json();
+      return await get().appendRawNodes(raw);
+    } catch (e) {
+      console.error(`Error adding from ${path}:`, e);
+      return false;
+    }
+  },
   // ── Breakpoints Actions ───────────────────────────────────────────────────
   selectBreakpoint: (id: BreakpointId) => {
     set((state) => ({

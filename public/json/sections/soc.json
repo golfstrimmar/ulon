@@ -17,7 +17,7 @@
             "tag": "a",
             "text": "",
             "class": "soc-link",
-            "style": "color: var(--color-white); display: inline-block;",
+            "style": "display: inline-block; &:hover {color: var(--accent-hover);}",
             "attributes": {
               "rel": "noopener noreferrer",
               "href": "#!",
@@ -75,7 +75,7 @@
             "tag": "a",
             "text": "",
             "class": "soc-link",
-            "style": "color: var(--color-white); display: inline-block;",
+            "style": " ",
             "attributes": {
               "rel": "noopener noreferrer",
               "href": "#!",
@@ -144,7 +144,7 @@
             "tag": "a",
             "text": "",
             "class": "soc-link",
-            "style": "color: var(--color-white); display: inline-block;",
+            "style": "",
             "attributes": {
               "rel": "noopener noreferrer",
               "href": "#!",
@@ -202,7 +202,7 @@
             "tag": "a",
             "text": "",
             "class": "soc-link",
-            "style": "color: var(--color-white); display: inline-block;",
+            "style": "",
             "attributes": {
               "rel": "noopener noreferrer",
               "href": "#!",
@@ -260,7 +260,7 @@
             "tag": "a",
             "text": "",
             "class": "soc-link",
-            "style": "color: var(--color-white); display: inline-block;",
+            "style": "",
             "attributes": {
               "rel": "noopener noreferrer",
               "href": "#!",
