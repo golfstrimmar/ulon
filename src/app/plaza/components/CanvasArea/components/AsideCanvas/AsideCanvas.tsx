@@ -8,6 +8,7 @@ import {
 } from "@/app/plaza/components/CanvasArea/lib/elementsManifest";
 import ButtonAddImg from "@/app/plaza/components/CanvasArea/components/ButtonAddImg";
 import ButtonAddFlex from "@/app/plaza/components/CanvasArea/components/ButtonAddFlex";
+import ButtonAddContainer from "@/app/plaza/components/CanvasArea/components/ButtonAddContainer";
 import { useAsideCanvas } from "@/app/plaza/components/CanvasArea/components/AsideCanvas/hooks/useAsideCanvas";
 import { useCanvasStore } from "@/app/plaza/components/CanvasArea/store/useCanvasStore";
 import {
@@ -242,6 +243,7 @@ export default function AsideCanvas() {
 
         <ButtonAddImg />
         <ButtonAddFlex />
+        <ButtonAddContainer />
         <ButtonAddSwiper />
         <div className="space-y-1">
           {ELEMENT_FOLDERS.map((folder) => {

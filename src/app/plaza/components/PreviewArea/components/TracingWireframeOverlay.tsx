@@ -1,11 +1,18 @@
 "use client";
 
-import React, { useState, useRef, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useRef,
+  useCallback,
+  useMemo,
+  useEffect,
+} from "react";
 import {
   XMarkIcon,
   CheckIcon,
   TrashIcon,
   ArrowsPointingOutIcon,
+  BoltIcon,
 } from "@heroicons/react/24/outline";
 import type { HtmlNode } from "@/types/HtmlNode";
 import { useCanvasStore } from "@/app/plaza/components/CanvasArea/store/useCanvasStore";
@@ -14,10 +21,19 @@ import {
   findNodeInTree,
   removeNodesByKeys,
 } from "@/app/plaza/components/CanvasArea/models/canvasModel";
+import { getGlobalScss, saveGlobalScss } from "@/lib/htmlStorage";
+import { updateClassInGlobalScss } from "@/lib/scssCompiler";
+import { getColorVariables } from "@/lib/figmaColorStorage";
+import { buildColorMap } from "@/app/design/models/figmaTextNode.model";
 import {
   compileWireframeBoxesToTree,
+  buildWireframeBoxesFromTree,
+  countFigmaNodesInTree,
+  applySectionClassAndExtractScss,
+  isImageWrapperNode,
+  type OverlayMetrics,
   type WireframeBox,
-} from "../models/wireframeTreeCompiler";
+} from "@/app/plaza/components/PreviewArea/models/wireframeTreeCompiler";
 
 interface TracingWireframeOverlayProps {
   isActive: boolean;
@@ -28,6 +44,7 @@ interface TracingWireframeOverlayProps {
   setBoxes: React.Dispatch<React.SetStateAction<WireframeBox[]>>;
   selectedBoxId: string | null;
   setSelectedBoxId: React.Dispatch<React.SetStateAction<string | null>>;
+  overlayMetrics?: OverlayMetrics;
 }
 
 const SNAP_GRID = 8;
@@ -44,7 +61,7 @@ const AVAILABLE_TAGS = [
   "span",
   "a",
   "button",
-  "is",
+  "img",
   "ul",
   "li",
   "i",
@@ -60,9 +77,19 @@ export default function TracingWireframeOverlay({
   setBoxes,
   selectedBoxId,
   setSelectedBoxId,
+  overlayMetrics,
 }: TracingWireframeOverlayProps) {
   const [isDrawing, setIsDrawing] = useState(false);
   const [useSnap, setUseSnap] = useState(true);
+  const [figmaScaleMode, setFigmaScaleMode] = useState<"auto" | "1x" | "2x">(
+    "auto",
+  );
+
+  // Модалка запроса класса секции перед коммитом
+  const [isClassModalOpen, setIsClassModalOpen] = useState(false);
+  const [sectionClassInput, setSectionClassInput] = useState("");
+  const [isCommitting, setIsCommitting] = useState(false);
+  const classInputRef = useRef<HTMLInputElement>(null);
 
   const [currentBox, setCurrentBox] = useState<{
     startX: number;
@@ -75,6 +102,19 @@ export default function TracingWireframeOverlay({
   const currentJson = useCanvasStore((s) => s.currentJson);
   const armedDonorKey = useCanvasStore((s) => s.armedDonorKey);
   const setArmedDonorKey = useCanvasStore((s) => s.setArmedDonorKey);
+
+  useEffect(() => {
+    if (isClassModalOpen) {
+      setTimeout(() => {
+        classInputRef.current?.focus();
+      }, 40);
+    }
+  }, [isClassModalOpen]);
+
+  const figmaNodesCount = useMemo(
+    () => countFigmaNodesInTree(currentJson),
+    [currentJson],
+  );
 
   const donorNodeByKey = useMemo(() => {
     const map = new Map<string, HtmlNode>();
@@ -93,13 +133,19 @@ export default function TracingWireframeOverlay({
     [useSnap],
   );
 
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if (e.button !== 0) return;
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0 || isClassModalOpen) return;
     const target = e.target as HTMLElement;
     if (target.closest("[data-wireframe-ui]")) return;
 
     const container = containerRef.current;
     if (!container) return;
+
+    try {
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+    } catch {
+      // ignore if pointer capture is unsupported
+    }
 
     const rect = container.getBoundingClientRect();
     const x = snap(e.clientX - rect.left);
@@ -110,7 +156,7 @@ export default function TracingWireframeOverlay({
     setSelectedBoxId(null);
   };
 
-  const handlePointerMove = (e: React.PointerEvent) => {
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isDrawing || !currentBox || !containerRef.current) return;
 
     const rect = containerRef.current.getBoundingClientRect();
@@ -120,7 +166,17 @@ export default function TracingWireframeOverlay({
     setCurrentBox((prev) => (prev ? { ...prev, curX, curY } : null));
   };
 
-  const handlePointerUp = () => {
+  const finishDrawing = (e?: React.PointerEvent<HTMLDivElement>) => {
+    if (e) {
+      try {
+        if (e.currentTarget.hasPointerCapture?.(e.pointerId)) {
+          e.currentTarget.releasePointerCapture(e.pointerId);
+        }
+      } catch {
+        // ignore
+      }
+    }
+
     if (!isDrawing || !currentBox) return;
     setIsDrawing(false);
 
@@ -150,6 +206,44 @@ export default function TracingWireframeOverlay({
     }
   };
 
+  const handlePointerCancel = (e: React.PointerEvent<HTMLDivElement>) => {
+    try {
+      if (e.currentTarget.hasPointerCapture?.(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+    } catch {
+      // ignore
+    }
+    setIsDrawing(false);
+    setCurrentBox(null);
+  };
+
+  const handleAutoTraceFigma = () => {
+    const containerWidth =
+      containerRef.current?.clientWidth ||
+      (typeof viewportWidth === "number" ? viewportWidth : 1440);
+
+    const existingDonorKeys = new Set<string>();
+    for (const b of boxes) {
+      if (b.donorKey) existingDonorKeys.add(b.donorKey);
+      if (b.consumedDonorKeys) {
+        for (const ck of b.consumedDonorKeys) existingDonorKeys.add(ck);
+      }
+    }
+
+    const autoBoxes = buildWireframeBoxesFromTree(currentJson, {
+      containerWidth,
+      overlayMetrics,
+      scaleMode: figmaScaleMode,
+      existingDonorKeys,
+    });
+
+    if (autoBoxes.length === 0) return;
+
+    setBoxes((prev) => [...prev, ...autoBoxes]);
+    setSelectedBoxId(autoBoxes[0].id);
+  };
+
   const deleteBox = (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setBoxes((prev) => prev.filter((b) => b.id !== id));
@@ -160,6 +254,35 @@ export default function TracingWireframeOverlay({
     setBoxes((prev) => prev.map((b) => (b.id === id ? { ...b, tag } : b)));
   };
 
+  const toggleBoxFlex = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setBoxes((prev) =>
+      prev.map((b) => {
+        if (b.id !== id) return b;
+        const currentStyle = b.style || "";
+        const hasFlex = /display\s*:\s*flex/i.test(currentStyle);
+        if (hasFlex) {
+          const cleaned = currentStyle
+            .replace(/display\s*:\s*flex\s*;?/gi, "")
+            .replace(/flex-direction\s*:\s*row\s*;?/gi, "")
+            .replace(/align-items\s*:\s*[^;]+;?/gi, "")
+            .replace(/gap\s*:\s*[^;]+;?/gi, "")
+            .trim();
+          return { ...b, style: cleaned || undefined };
+        }
+        const prefix = currentStyle
+          ? `${currentStyle.replace(/;?$/, ";")} `
+          : "";
+        return {
+          ...b,
+          tag: b.tag || "div",
+          style:
+            `${prefix}display: flex; flex-direction: row; align-items: flex-start;`.trim(),
+        };
+      }),
+    );
+  };
+
   const detachBoxDonor = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setBoxes((prev) =>
@@ -167,64 +290,135 @@ export default function TracingWireframeOverlay({
     );
   };
 
-  const handleCommitToCanvas = async () => {
-    if (boxes.length === 0) return;
+  const executeCommit = async (sectionClassName: string) => {
+    if (boxes.length === 0 || isCommitting) return;
+    setIsCommitting(true);
 
-    const store = useCanvasStore.getState();
-    const currentTree = store.currentJson;
+    try {
+      const store = useCanvasStore.getState();
+      const currentTree = store.currentJson;
 
-    const usedDonorKeys = new Set<string>();
-    const donorMap = new Map<string, HtmlNode>();
+      const usedDonorKeys = new Set<string>();
+      const donorMap = new Map<string, HtmlNode>();
 
-    for (const box of boxes) {
-      if (box.donorKey) {
-        const donorNode = findNodeInTree(currentTree, box.donorKey);
-        if (donorNode) {
-          donorMap.set(box.donorKey, donorNode);
-          usedDonorKeys.add(box.donorKey);
+      for (const box of boxes) {
+        if (box.donorKey) {
+          const donorNode = findNodeInTree(currentTree, box.donorKey);
+          if (donorNode) {
+            donorMap.set(box.donorKey, donorNode);
+            usedDonorKeys.add(box.donorKey);
+          }
+        }
+        if (box.consumedDonorKeys) {
+          for (const ck of box.consumedDonorKeys) {
+            usedDonorKeys.add(ck);
+          }
         }
       }
-    }
 
-    const generatedNodes = compileWireframeBoxesToTree(boxes, donorMap);
-    const treeWithoutDonors =
-      usedDonorKeys.size > 0
-        ? removeNodesByKeys(currentTree, usedDonorKeys)
-        : currentTree;
+      let generatedNodes = compileWireframeBoxesToTree(boxes, donorMap);
 
-    const nextTree = [...treeWithoutDonors, ...generatedNodes];
-
-    if (store.isSplit) {
-      const newKeys: string[] = [];
-      for (const node of generatedNodes) {
-        newKeys.push(...collectAllDescendantKeys(node));
+      if (generatedNodes.length === 0) {
+        store.showHud("Compilation produced empty tree — aborted.", "warning");
+        setIsCommitting(false);
+        return;
       }
-      store.setRightKeys((prev) => {
-        const next = new Set(prev);
-        usedDonorKeys.forEach((k) => next.delete(k));
-        newKeys.forEach((k) => next.add(k));
-        return next;
-      });
-      store.showHud(
-        `Created ${boxes.length} frame(s)${
-          usedDonorKeys.size > 0 ? ` with ${usedDonorKeys.size} donor(s)` : ""
-        } in Template Pane 2!`,
-        "success",
-      );
-    } else {
-      store.showHud(
-        `Created ${boxes.length} frame(s)${
-          usedDonorKeys.size > 0 ? ` with ${usedDonorKeys.size} donor(s)` : ""
-        } on Canvas!`,
-        "success",
-      );
-    }
 
-    setArmedDonorKey(null);
-    setBoxes([]);
-    setSelectedBoxId(null);
-    await store.persist(nextTree);
-    onClose();
+      let generatedClassesCount = 0;
+
+      if (sectionClassName.trim()) {
+        const colorVars = await getColorVariables().catch(() => []);
+        const colorMap = buildColorMap(colorVars || []);
+
+        const { nodes: bemNodes, classStylesMap } =
+          applySectionClassAndExtractScss(
+            generatedNodes,
+            sectionClassName,
+            colorMap,
+          );
+        generatedNodes = bemNodes;
+        generatedClassesCount = classStylesMap.size;
+
+        if (classStylesMap.size > 0) {
+          let currentScss = (await getGlobalScss().catch(() => "")) || "";
+
+          if (colorVars.length > 0 && !currentScss.includes("$color-")) {
+            currentScss = `${colorVars.join("\n")}\n\n${currentScss}`;
+          }
+
+          for (const [cls, scssProps] of classStylesMap.entries()) {
+            const fullSnippet = `.${cls} {\n${scssProps}\n}`;
+            currentScss = updateClassInGlobalScss(
+              currentScss,
+              cls,
+              fullSnippet,
+            );
+          }
+
+          await saveGlobalScss(currentScss);
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(
+              new CustomEvent("plaza-styles-updated", { detail: currentScss }),
+            );
+          }
+        }
+      }
+
+      const treeWithoutDonors =
+        usedDonorKeys.size > 0
+          ? removeNodesByKeys(currentTree, usedDonorKeys)
+          : currentTree;
+
+      const nextTree = [...treeWithoutDonors, ...generatedNodes];
+
+      if (store.isSplit) {
+        const newKeys: string[] = [];
+        for (const node of generatedNodes) {
+          newKeys.push(...collectAllDescendantKeys(node));
+        }
+        store.setRightKeys((prev) => {
+          const next = new Set(prev);
+          usedDonorKeys.forEach((k) => next.delete(k));
+          newKeys.forEach((k) => next.add(k));
+          return next;
+        });
+        store.showHud(
+          `Created ${boxes.length} frame(s)${
+            generatedClassesCount > 0
+              ? ` + ${generatedClassesCount} SCSS class(es)`
+              : ""
+          } in Template Pane 2!`,
+          "success",
+        );
+      } else {
+        store.showHud(
+          `Created ${boxes.length} frame(s)${
+            generatedClassesCount > 0
+              ? ` + ${generatedClassesCount} SCSS class(es)`
+              : ""
+          } on Canvas!`,
+          "success",
+        );
+      }
+
+      setArmedDonorKey(null);
+      setBoxes([]);
+      setSelectedBoxId(null);
+      setIsClassModalOpen(false);
+      setSectionClassInput("");
+      await store.persist(nextTree);
+      onClose();
+    } catch (err) {
+      console.error("[TracingWireframeOverlay] Commit error:", err);
+    } finally {
+      setIsCommitting(false);
+    }
+  };
+
+  const handleOpenCommitModal = () => {
+    if (boxes.length === 0) return;
+    setSectionClassInput("");
+    setIsClassModalOpen(true);
   };
 
   if (!isActive) return null;
@@ -234,7 +428,8 @@ export default function TracingWireframeOverlay({
       ref={containerRef}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
+      onPointerUp={finishDrawing}
+      onPointerCancel={handlePointerCancel}
       className="absolute inset-0 z-40 select-none cursor-crosshair overflow-hidden bg-black/40 backdrop-blur-[1px]"
       style={{
         width: viewportWidth,
@@ -267,6 +462,38 @@ export default function TracingWireframeOverlay({
           {useSnap ? "Snap 8px: ON" : "Snap: OFF"}
         </button>
 
+        {figmaNodesCount > 0 && (
+          <>
+            <span className="w-px h-3.5 bg-zinc-800" />
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={handleAutoTraceFigma}
+                className="px-2.5 py-0.5 rounded bg-emerald-600/25 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/60 font-bold flex items-center gap-1 transition cursor-pointer"
+                title="Auto-create structured wireframe boxes (rows/flex & stacks) from Figma"
+              >
+                <BoltIcon className="w-3.5 h-3.5" />
+                <span>Auto Figma ({figmaNodesCount})</span>
+              </button>
+
+              <select
+                value={figmaScaleMode}
+                onChange={(e) =>
+                  setFigmaScaleMode(e.target.value as "auto" | "1x" | "2x")
+                }
+                className="bg-zinc-900 text-zinc-300 border border-zinc-700 rounded px-1 py-0.5 text-[10px] outline-none cursor-pointer"
+                title="Figma overlay scale"
+              >
+                <option value="auto">Auto</option>
+                <option value="1x">1x</option>
+                <option value="2x">2x</option>
+              </select>
+            </div>
+          </>
+        )}
+
+        <span className="w-px h-3.5 bg-zinc-800" />
+
         <span className="text-zinc-400">{boxes.length} box(es)</span>
 
         {boxes.length > 0 && (
@@ -288,7 +515,7 @@ export default function TracingWireframeOverlay({
         <button
           type="button"
           disabled={boxes.length === 0}
-          onClick={handleCommitToCanvas}
+          onClick={handleOpenCommitModal}
           className="px-3 py-1 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white font-bold rounded-lg transition shadow-md shadow-cyan-950 flex items-center gap-1 cursor-pointer"
         >
           <CheckIcon className="w-4 h-4" />
@@ -307,6 +534,75 @@ export default function TracingWireframeOverlay({
           <XMarkIcon className="w-4 h-4" />
         </button>
       </div>
+
+      {/* Модалка ввода класса секции и генерации БЭМ + GlobalScss */}
+      {isClassModalOpen && (
+        <div
+          data-wireframe-ui="true"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 cursor-default"
+        >
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!sectionClassInput.trim()) return;
+              executeCommit(sectionClassInput);
+            }}
+            className="w-full max-w-md bg-zinc-900 border border-cyan-500/50 rounded-2xl p-5 shadow-2xl flex flex-col gap-4 text-zinc-100"
+          >
+            <div className="flex flex-col gap-1">
+              <h3 className="text-sm font-bold text-white font-mono">
+                Класс секции (БЭМ-блок)
+              </h3>
+              <p className="text-xs text-zinc-400">
+                Сгенерирует БЭМ-классы для всей структуры (как{" "}
+                <code className="text-cyan-300">-- class</code>) и сохранит все{" "}
+                <code className="text-fuchsia-300">flex / border / bg</code>{" "}
+                стили в общий файл стилей под эти классы.
+              </p>
+            </div>
+
+            <input
+              ref={classInputRef}
+              type="text"
+              value={sectionClassInput}
+              onChange={(e) => setSectionClassInput(e.target.value)}
+              placeholder="Например: expert, hero, reviews, footer..."
+              className="w-full bg-zinc-950 border border-zinc-700 focus:border-cyan-400 rounded-xl px-3.5 py-2 text-sm font-mono text-white outline-none"
+              autoComplete="off"
+            />
+
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-zinc-800">
+              <button
+                type="button"
+                disabled={isCommitting}
+                onClick={() => executeCommit("")}
+                className="px-3 py-1.5 rounded-lg text-xs text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition cursor-pointer"
+                title="Сохранить ноды без генерации БЭМ-классов"
+              >
+                Без класса
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={isCommitting}
+                  onClick={() => setIsClassModalOpen(false)}
+                  className="px-3 py-1.5 rounded-lg text-xs border border-zinc-700 text-zinc-300 hover:bg-zinc-800 transition cursor-pointer"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  disabled={!sectionClassInput.trim() || isCommitting}
+                  className="px-4 py-1.5 rounded-lg text-xs font-bold bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white transition cursor-pointer"
+                >
+                  {isCommitting ? "Сохранение..." : "Создать + Стили"}
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Рисуемая рамка в моменте */}
       {currentBox &&
@@ -367,6 +663,15 @@ export default function TracingWireframeOverlay({
         const isSelected = box.id === selectedBoxId;
         const donor = box.donorKey ? donorNodeByKey.get(box.donorKey) : null;
         const effectiveTag = box.tag || donor?.tag || "";
+        const isFlexBox = Boolean(
+          box.style && /display\s*:\s*flex/i.test(box.style),
+        );
+        const donorLabel = donor
+          ? donor.text?.trim() ||
+            (donor.tag === "img" || isImageWrapperNode(donor)
+              ? "[img]"
+              : `<${donor.tag}>`)
+          : "";
 
         return (
           <div
@@ -383,12 +688,14 @@ export default function TracingWireframeOverlay({
               }
               setSelectedBoxId(box.id);
             }}
-            className={`absolute border-2 transition-all cursor-pointer ${
+            className={`group absolute border-2 transition-all cursor-pointer ${
               isSelected
                 ? "border-cyan-400 bg-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.4)] z-30"
-                : donor
-                  ? "border-amber-400/80 bg-amber-500/10 hover:border-amber-300 z-20"
-                  : "border-cyan-500/60 bg-cyan-950/20 hover:border-cyan-400/90 z-20"
+                : isFlexBox
+                  ? "border-fuchsia-400/80 bg-fuchsia-500/10 hover:border-fuchsia-300 z-20"
+                  : donor
+                    ? "border-amber-400/80 bg-amber-500/10 hover:border-amber-300 z-20"
+                    : "border-cyan-500/60 bg-cyan-950/20 hover:border-cyan-400/90 z-20"
             }`}
             style={{
               left: box.x,
@@ -406,7 +713,9 @@ export default function TracingWireframeOverlay({
                 transform: "translateX(-50%)",
                 pointerEvents: "none",
               }}
-              className="px-1.5 py-0.5 bg-zinc-950/90 text-cyan-300 border border-cyan-500/60 rounded text-[10px] font-mono font-medium shadow-md leading-none whitespace-nowrap z-30"
+              className={`px-1.5 py-0.5 bg-zinc-950/90 text-cyan-300 border border-cyan-500/60 rounded text-[10px] font-mono font-medium shadow-md leading-none whitespace-nowrap z-30 transition-opacity ${
+                isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+              }`}
             >
               {Math.round(box.width)}px
             </div>
@@ -421,15 +730,17 @@ export default function TracingWireframeOverlay({
                   box.x < 44 ? "translateY(-50%)" : "translate(-100%, -50%)",
                 pointerEvents: "none",
               }}
-              className="px-1.5 py-0.5 bg-zinc-950/90 text-cyan-300 border border-cyan-500/60 rounded text-[10px] font-mono font-medium shadow-md leading-none whitespace-nowrap z-30"
+              className={`px-1.5 py-0.5 bg-zinc-950/90 text-cyan-300 border border-cyan-500/60 rounded text-[10px] font-mono font-medium shadow-md leading-none whitespace-nowrap z-30 transition-opacity ${
+                isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+              }`}
             >
               {Math.round(box.height)}px
             </div>
 
-            {/* Бейдж выбранного тега + привязанного донора */}
+            {/* Бейдж выбранного тега + flex + привязанного донора */}
             <div className="absolute top-1 left-1 right-1 flex items-center gap-1 font-mono text-[10px] overflow-hidden">
               <span
-                className={`px-1.5 py-0.2 rounded font-bold border shrink-0 ${
+                className={`px-1.5 py-0.5 rounded font-bold border shrink-0 ${
                   effectiveTag
                     ? "bg-indigo-950 border-indigo-500 text-indigo-300"
                     : "bg-zinc-900/90 border-dashed border-zinc-500 text-zinc-400"
@@ -438,12 +749,15 @@ export default function TracingWireframeOverlay({
                 {effectiveTag || "empty"}
               </span>
 
+              {isFlexBox && (
+                <span className="px-1 py-0.5 rounded font-bold bg-fuchsia-950/90 border border-fuchsia-500/70 text-fuchsia-300 shrink-0">
+                  flex
+                </span>
+              )}
+
               {donor && (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-amber-950/90 border border-amber-500/70 text-amber-200 truncate max-w-full">
-                  <span className="truncate font-sans">
-                    {donor.text?.trim() ||
-                      (donor.tag === "img" ? "[img]" : `<${donor.tag}>`)}
-                  </span>
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-950/90 border border-amber-500/70 text-amber-200 truncate max-w-full">
+                  <span className="truncate font-sans">{donorLabel}</span>
                   <button
                     type="button"
                     data-wireframe-ui="true"
@@ -471,7 +785,7 @@ export default function TracingWireframeOverlay({
                       e.stopPropagation();
                       updateBoxTag(box.id, t);
                     }}
-                    className={`px-1.5 py-0.2 rounded border transition ${
+                    className={`px-1.5 py-0.5 rounded border transition ${
                       box.tag === t
                         ? "bg-cyan-600 text-white font-bold border-cyan-400"
                         : "bg-zinc-900 text-zinc-400 border-zinc-800 hover:bg-zinc-800 hover:text-white"
@@ -480,6 +794,19 @@ export default function TracingWireframeOverlay({
                     {t || "empty"}
                   </button>
                 ))}
+
+                <button
+                  type="button"
+                  onClick={(e) => toggleBoxFlex(box.id, e)}
+                  className={`px-1.5 py-0.5 rounded border transition ${
+                    isFlexBox
+                      ? "bg-fuchsia-600 text-white font-bold border-fuchsia-400"
+                      : "bg-zinc-900 text-fuchsia-300 border-zinc-800 hover:bg-zinc-800"
+                  }`}
+                  title="Toggle display: flex; flex-direction: row"
+                >
+                  flex
+                </button>
 
                 <button
                   type="button"

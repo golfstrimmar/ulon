@@ -12,6 +12,7 @@ const DEFAULT_TREE_ID = "plaza_tree";
 
 /**
  * Рекурсивный сбор классов и связанных CSS-свойств со всех переданных нод
+ * (с поддержкой вложенного SCSS внутри style, например у .is -> img { ... })
  */
 function extractNodeClassesAndStyles(
   node: HtmlNode,
@@ -23,12 +24,17 @@ function extractNodeClassesAndStyles(
       .map((c) => c.trim().replace(/^\./, ""))
       .filter(Boolean);
 
-    const scssProps = node.style
-      .split(";")
-      .map((s) => s.trim())
-      .filter(Boolean)
-      .map((s) => `  ${s};`)
-      .join("\n");
+    const trimmedStyle = node.style.trim();
+    const hasNestedScss = trimmedStyle.includes("{");
+
+    const scssProps = hasNestedScss
+      ? `  ${trimmedStyle}`
+      : trimmedStyle
+          .split(";")
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .map((s) => `  ${s};`)
+          .join("\n");
 
     if (scssProps) {
       for (const cls of classNames) {

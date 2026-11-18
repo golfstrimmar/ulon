@@ -6,6 +6,14 @@ export interface FigmaSvgItem {
   content: string; // Строка вида <svg ...>...</svg>
   width: number;
   height: number;
+  x?: number;
+  y?: number;
+  pageX?: number;
+  pageY?: number;
+  sectionId?: string;
+  section?: string;
+  sectionWidth?: number;
+  sectionHeight?: number;
 }
 
 export const SVG_TAG_CASING: Record<string, string> = {
@@ -81,7 +89,7 @@ export function extractSvgsFromJson(rawJson: string): FigmaSvgItem[] {
     }
 
     return [];
-  } catch (err) {
+  } catch {
     return [];
   }
 }

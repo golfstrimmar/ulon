@@ -1,6 +1,6 @@
-﻿"use client";
+"use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ButtonClose from "@/components/ButtonClose";
 import type { HtmlNode } from "@/types/HtmlNode";
@@ -9,6 +9,10 @@ import {
   svgStringToBase64,
   type FigmaSvgItem,
 } from "../models/figmaSvgNode.model";
+import {
+  buildFigmaBoundsAttributes,
+  type FigmaBoundsMeta,
+} from "../models/figmaImageNode.model";
 
 interface ProcessedSvgItem {
   id: string;
@@ -16,6 +20,7 @@ interface ProcessedSvgItem {
   rawClean: string;
   baseNode: HtmlNode;
   selected: boolean;
+  figmaMeta?: FigmaBoundsMeta;
 }
 
 interface ModalFigmaSvgBatchProps {
@@ -35,7 +40,7 @@ export default function ModalFigmaSvgBatch({
 }: ModalFigmaSvgBatchProps) {
   const [svgItems, setSvgItems] = useState<ProcessedSvgItem[]>([]);
 
-  // Ð ÐµÐ¶Ð¸Ð¼ ÑÐ¾Ñ…Ñ€Ð°Ð½ÐµÐ½Ð¸Ñ
+  // Режим сохранения
   const [outputMode, setOutputMode] = useState<
     "inline-wrapper" | "image-datauri"
   >("inline-wrapper");
@@ -44,16 +49,20 @@ export default function ModalFigmaSvgBatch({
   const [lockAspectRatio, setLockAspectRatio] = useState<boolean>(true);
   const [wrapperClass, setWrapperClass] = useState<string>("svg-wrapper");
 
-  // Ð¦Ð²ÐµÑ‚Ð¾Ð²Ð¾Ð¹ Ñ€ÐµÐ¶Ð¸Ð¼
+  // Цветовой режим
   const [colorMode, setColorMode] = useState<
     "original" | "currentcolor" | "custom"
   >("original");
   const [customColor, setCustomColor] = useState<string>("#2563eb");
   const [isSaving, setIsSaving] = useState(false);
 
-  // ÐŸÐ°Ñ€ÑÐ¸Ð½Ð³ Ð¾Ð´Ð½Ð¾Ð³Ð¾ SVG Ð¸Ð· Figma
+  // Парсинг одного SVG из Figma
   const parseFigmaSvg = useCallback(
-    (raw: string, name: string): ProcessedSvgItem | null => {
+    (
+      raw: string,
+      name: string,
+      figmaMeta?: FigmaBoundsMeta,
+    ): ProcessedSvgItem | null => {
       try {
         const parser = new DOMParser();
         let doc = parser.parseFromString(raw.trim(), "image/svg+xml");
@@ -90,6 +99,7 @@ export default function ModalFigmaSvgBatch({
           rawClean: cleanSerialized,
           baseNode: parsedNode,
           selected: true,
+          figmaMeta,
         };
       } catch {
         return null;
@@ -98,12 +108,24 @@ export default function ModalFigmaSvgBatch({
     [],
   );
 
-  // Ð˜Ð½Ð¸Ñ†Ð¸Ð°Ð»Ð¸Ð·Ð°Ñ†Ð¸Ñ Ð¿Ñ€Ð¸ Ð¾Ñ‚ÐºÑ€Ñ‹Ñ‚Ð¸Ð¸ Ð¼Ð¾Ð´Ð°Ð»ÐºÐ¸
+  // Инициализация при открытии модалки
   useEffect(() => {
     if (!isOpen || rawSvgs.length === 0) return;
 
     const parsedList: ProcessedSvgItem[] = rawSvgs
-      .map((item) => parseFigmaSvg(item.content, item.name))
+      .map((item) =>
+        parseFigmaSvg(item.content, item.name, {
+          x: item.x,
+          y: item.y,
+          width: item.width,
+          height: item.height,
+          pageX: item.pageX,
+          pageY: item.pageY,
+          sectionId: item.sectionId,
+          sectionWidth: item.sectionWidth,
+          sectionHeight: item.sectionHeight,
+        }),
+      )
       .filter(Boolean) as ProcessedSvgItem[];
 
     setSvgItems(parsedList);
@@ -121,24 +143,19 @@ export default function ModalFigmaSvgBatch({
     if (lockAspectRatio) setTargetHeight(w);
   };
 
-  const toggleItemSelect = (id: string) => {
-    setSvgItems((prev) =>
-      prev.map((it) => (it.id === id ? { ...it, selected: !it.selected } : it)),
-    );
-  };
-
   const selectAll = (val: boolean) => {
     setSvgItems((prev) => prev.map((it) => ({ ...it, selected: val })));
   };
 
-  // ÐŸÐ¾ÑÑ‚Ñ€Ð¾ÐµÐ½Ð¸Ðµ Ð³Ð¾Ñ‚Ð¾Ð²Ñ‹Ñ… HtmlNode Ñ ÑƒÑ‡ÐµÑ‚Ð¾Ð¼ Ð²Ñ‹Ð±Ñ€Ð°Ð½Ð½Ñ‹Ñ… ÑÑ‚Ð¸Ð»ÐµÐ¹ Ð¸ Ñ†Ð²ÐµÑ‚Ð¾Ð²
+  // Построение готовых HtmlNode с учётом выбранных стилей, цветов и Figma-координат
   const buildFinalNodes = (): HtmlNode[] => {
     const selected = svgItems.filter((i) => i.selected);
 
     return selected.map((item): HtmlNode => {
       const key = `svg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const boundsAttrs = buildFigmaBoundsAttributes(item.figmaMeta);
 
-      // 1. Ð ÐµÐ¶Ð¸Ð¼ <img src="data:image/svg+xml;base64,...">
+      // 1. Режим <img src="data:image/svg+xml;base64,...">
       if (outputMode === "image-datauri") {
         const dataUri = svgStringToBase64(item.rawClean);
         return {
@@ -149,13 +166,14 @@ export default function ModalFigmaSvgBatch({
           attributes: {
             src: dataUri,
             alt: item.name.replace(/\.svg$/i, ""),
+            ...boundsAttrs,
           },
           children: [],
           _key: key,
         };
       }
 
-      // 2. Ð ÐµÐ¶Ð¸Ð¼ Inline <i class="..."><svg></i>
+      // 2. Режим Inline <i class="..."><svg></i>
       const clonedNode: HtmlNode = JSON.parse(JSON.stringify(item.baseNode));
       clonedNode.attributes = clonedNode.attributes || {};
       clonedNode.attributes["width"] = "100%";
@@ -195,7 +213,9 @@ export default function ModalFigmaSvgBatch({
         text: "",
         class: wrapperClass.trim() || "svg-wrapper",
         style: `display: inline-block; line-height: 0; vertical-align: middle; width: ${targetWidth}px; height: ${targetHeight}px;`,
-        attributes: {},
+        attributes: {
+          ...boundsAttrs,
+        },
         children: [clonedNode],
         _key: key,
       };
@@ -348,7 +368,7 @@ export default function ModalFigmaSvgBatch({
                     }`}
                   >
                     <span className="text-xs font-semibold text-zinc-200">
-                      ðŸ§© Inline SVG (&lt;i&gt; + &lt;svg&gt;)
+                      🧩 Inline SVG (&lt;i&gt; + &lt;svg&gt;)
                     </span>
                     <span className="text-[10px] text-zinc-400">
                       Full node tree on canvas. Classes, hover states, and
@@ -366,7 +386,7 @@ export default function ModalFigmaSvgBatch({
                     }`}
                   >
                     <span className="text-xs font-semibold text-zinc-200">
-                      ðŸ–¼ï¸ Vector &lt;img&gt; (Data-URI)
+                      🖼️ Vector &lt;img&gt; (Data-URI)
                     </span>
                     <span className="text-[10px] text-zinc-400">
                       Compact single node with encoded vector SVG content.
@@ -389,10 +409,10 @@ export default function ModalFigmaSvgBatch({
                           : "bg-zinc-800 border-zinc-700 text-zinc-400"
                       }`}
                     >
-                      {lockAspectRatio ? "ðŸ”’ Square (1:1)" : "ðŸ”“ Free"}
+                      {lockAspectRatio ? "🔒 Square (1:1)" : "🔓 Free"}
                     </button>
                     <span className="font-mono text-amber-400 font-semibold">
-                      {targetWidth} Ã— {targetHeight} px
+                      {targetWidth} × {targetHeight} px
                     </span>
                   </div>
                 </div>
@@ -469,7 +489,7 @@ export default function ModalFigmaSvgBatch({
                         : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-zinc-200"
                     }`}
                   >
-                    ðŸŽ¨ Original (1:1)
+                    🎨 Original (1:1)
                   </button>
 
                   <button
@@ -481,7 +501,7 @@ export default function ModalFigmaSvgBatch({
                         : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-zinc-200"
                     }`}
                   >
-                    ðŸ”¤ currentColor
+                    🔤 currentColor
                   </button>
 
                   <button
@@ -493,7 +513,7 @@ export default function ModalFigmaSvgBatch({
                         : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-zinc-200"
                     }`}
                   >
-                    ðŸŽ¯ Custom Color
+                    🎯 Custom Color
                   </button>
                 </div>
 

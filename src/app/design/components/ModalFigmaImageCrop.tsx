@@ -6,6 +6,7 @@ import ButtonClose from "@/components/ButtonClose";
 import type { HtmlNode } from "@/types/HtmlNode";
 import {
   createHtmlNodeFromImage,
+  type FigmaBoundsMeta,
   type FigmaImageItem,
 } from "../models/figmaImageNode.model";
 
@@ -23,10 +24,12 @@ interface ProcessedImageItem {
   name: string;
   originalBase64: string;
   originalMeta: ImageMetadata;
+  croppedLosslessBase64?: string;
   activeBase64: string;
   activeMeta: ImageMetadata;
   selected: boolean;
   isCropped?: boolean;
+  figmaMeta?: FigmaBoundsMeta;
 }
 
 interface CropBox {
@@ -36,11 +39,24 @@ interface CropBox {
   height: number;
 }
 
+type AspectPreset = "free" | "1:1" | "16:9" | "4:3";
+
 interface ModalFigmaImageCropProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   rawImages: FigmaImageItem[];
   onSaveNodes: (nodes: HtmlNode[]) => Promise<void> | void;
+}
+
+const DEFAULT_CROP: CropBox = { x: 10, y: 10, width: 80, height: 80 };
+
+const round1 = (v: number) => Math.round(v * 10) / 10;
+
+function getNumericAspect(preset: AspectPreset): number | null {
+  if (preset === "1:1") return 1;
+  if (preset === "16:9") return 16 / 9;
+  if (preset === "4:3") return 4 / 3;
+  return null;
 }
 
 export default function ModalFigmaImageCrop({
@@ -55,19 +71,20 @@ export default function ModalFigmaImageCrop({
   const [quality, setQuality] = useState<number>(0.85);
   const [outputFormat, setOutputFormat] = useState<string>("image/webp");
 
-  const [crop, setCrop] = useState<CropBox>({
-    x: 10,
-    y: 10,
-    width: 80,
-    height: 80,
-  });
-  const [aspectRatio, setAspectRatio] = useState<
-    "free" | "1:1" | "16:9" | "4:3"
-  >("free");
+  const [crop, setCrop] = useState<CropBox>(DEFAULT_CROP);
+  const [aspectRatio, setAspectRatio] = useState<AspectPreset>("free");
   const [isCompressing, setIsCompressing] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
   const previewContainerRef = useRef<HTMLDivElement>(null);
+  const imageItemsRef = useRef<ProcessedImageItem[]>([]);
+  imageItemsRef.current = imageItems;
+
+  const qualityRef = useRef(quality);
+  qualityRef.current = quality;
+
+  const outputFormatRef = useRef(outputFormat);
+  outputFormatRef.current = outputFormat;
 
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return "0 B";
@@ -90,23 +107,23 @@ export default function ModalFigmaImageCrop({
     ): Promise<{ activeBase64: string; activeMeta: ImageMetadata }> => {
       return new Promise((resolve) => {
         const img = new Image();
-        img.src = srcBase64;
         img.onload = () => {
           const canvas = document.createElement("canvas");
-          canvas.width = img.naturalWidth;
-          canvas.height = img.naturalHeight;
+          canvas.width = Math.max(1, img.naturalWidth);
+          canvas.height = Math.max(1, img.naturalHeight);
           const ctx = canvas.getContext("2d");
 
           if (!ctx) {
+            const fallbackBytes = getBase64Size(srcBase64);
             resolve({
               activeBase64: srcBase64,
               activeMeta: {
                 format: "IMAGE",
-                bytes: getBase64Size(srcBase64),
-                sizeFormatted: formatFileSize(getBase64Size(srcBase64)),
-                dimensions: `${img.naturalWidth} × ${img.naturalHeight} px`,
-                width: img.naturalWidth,
-                height: img.naturalHeight,
+                bytes: fallbackBytes,
+                sizeFormatted: formatFileSize(fallbackBytes),
+                dimensions: `${canvas.width} × ${canvas.height} px`,
+                width: canvas.width,
+                height: canvas.height,
               },
             });
             return;
@@ -135,14 +152,35 @@ export default function ModalFigmaImageCrop({
             },
           });
         };
+        img.onerror = () => {
+          const fallbackBytes = getBase64Size(srcBase64);
+          resolve({
+            activeBase64: srcBase64,
+            activeMeta: {
+              format: "IMAGE",
+              bytes: fallbackBytes,
+              sizeFormatted: formatFileSize(fallbackBytes),
+              dimensions: "0 × 0 px",
+              width: 0,
+              height: 0,
+            },
+          });
+        };
+        img.src = srcBase64;
       });
     },
     [],
   );
 
-  // Load images from raw Figma array into processed state
+  // Загрузка rawImages при открытии
   useEffect(() => {
-    if (!isOpen || rawImages.length === 0) return;
+    if (!isOpen || rawImages.length === 0) {
+      setImageItems([]);
+      setActiveId(null);
+      setCrop(DEFAULT_CROP);
+      setAspectRatio("free");
+      return;
+    }
 
     let isMounted = true;
 
@@ -161,8 +199,8 @@ export default function ModalFigmaImageCrop({
 
           const { activeBase64, activeMeta } = await compressSingleImage(
             raw.data,
-            quality,
-            outputFormat,
+            qualityRef.current,
+            outputFormatRef.current,
           );
 
           return {
@@ -176,15 +214,26 @@ export default function ModalFigmaImageCrop({
             activeMeta,
             selected: true,
             isCropped: false,
+            figmaMeta: {
+              x: raw.x,
+              y: raw.y,
+              width: raw.width,
+              height: raw.height,
+              pageX: raw.pageX,
+              pageY: raw.pageY,
+              sectionId: raw.sectionId,
+              sectionWidth: raw.sectionWidth,
+              sectionHeight: raw.sectionHeight,
+            },
           };
         }),
       );
 
       if (isMounted) {
         setImageItems(processed);
-        if (processed.length > 0) {
-          setActiveId(processed[0].id);
-        }
+        setActiveId(processed[0]?.id ?? null);
+        setCrop(DEFAULT_CROP);
+        setAspectRatio("free");
       }
     };
 
@@ -195,34 +244,69 @@ export default function ModalFigmaImageCrop({
     };
   }, [isOpen, rawImages, compressSingleImage]);
 
-  // Recompress when Quality or Format changes
+  // Пересжатие при изменении quality или outputFormat
   useEffect(() => {
-    if (imageItems.length === 0) return;
+    if (!isOpen || imageItemsRef.current.length === 0) return;
+
+    let cancelled = false;
 
     const timeout = setTimeout(async () => {
+      const snapshot = imageItemsRef.current;
+      if (snapshot.length === 0 || cancelled) return;
+
       setIsCompressing(true);
-      const updated = await Promise.all(
-        imageItems.map(async (item) => {
-          const source = item.isCropped
-            ? item.activeBase64
-            : item.originalBase64;
-          const { activeBase64, activeMeta } = await compressSingleImage(
-            source,
-            quality,
-            outputFormat,
-          );
-          return { ...item, activeBase64, activeMeta };
-        }),
-      );
-      setImageItems(updated);
-      setIsCompressing(false);
+      try {
+        const results = await Promise.all(
+          snapshot.map(async (item) => {
+            const source =
+              item.isCropped && item.croppedLosslessBase64
+                ? item.croppedLosslessBase64
+                : item.originalBase64;
+            const { activeBase64, activeMeta } = await compressSingleImage(
+              source,
+              quality,
+              outputFormat,
+            );
+            return { id: item.id, activeBase64, activeMeta };
+          }),
+        );
+
+        if (cancelled) return;
+
+        const byId = new Map(results.map((r) => [r.id, r]));
+        setImageItems((prev) =>
+          prev.map((curr) => {
+            const updated = byId.get(curr.id);
+            if (!updated) return curr;
+            return {
+              ...curr,
+              activeBase64: updated.activeBase64,
+              activeMeta: updated.activeMeta,
+            };
+          }),
+        );
+      } finally {
+        if (!cancelled) {
+          setIsCompressing(false);
+        }
+      }
     }, 150);
 
-    return () => clearTimeout(timeout);
-  }, [quality, outputFormat]);
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  }, [isOpen, quality, outputFormat, compressSingleImage]);
 
   const activeItem =
     imageItems.find((it) => it.id === activeId) || imageItems[0] || null;
+
+  const selectActiveItem = (id: string) => {
+    if (id === activeId) return;
+    setActiveId(id);
+    setAspectRatio("free");
+    setCrop(DEFAULT_CROP);
+  };
 
   const toggleItemSelect = (id: string) => {
     setImageItems((prev) =>
@@ -233,18 +317,34 @@ export default function ModalFigmaImageCrop({
   const applyCrop = () => {
     if (!activeItem) return;
 
+    const targetId = activeItem.id;
+    const currentCrop = { ...crop };
+    const currentQuality = quality;
+    const currentFormat = outputFormat;
+
     const img = new Image();
-    img.src = activeItem.originalBase64;
     img.onload = () => {
-      const pixelX = Math.round((crop.x / 100) * img.naturalWidth);
-      const pixelY = Math.round((crop.y / 100) * img.naturalHeight);
+      const pixelX = Math.max(
+        0,
+        Math.round((currentCrop.x / 100) * img.naturalWidth),
+      );
+      const pixelY = Math.max(
+        0,
+        Math.round((currentCrop.y / 100) * img.naturalHeight),
+      );
       const pixelW = Math.max(
         1,
-        Math.round((crop.width / 100) * img.naturalWidth),
+        Math.min(
+          img.naturalWidth - pixelX,
+          Math.round((currentCrop.width / 100) * img.naturalWidth),
+        ),
       );
       const pixelH = Math.max(
         1,
-        Math.round((crop.height / 100) * img.naturalHeight),
+        Math.min(
+          img.naturalHeight - pixelY,
+          Math.round((currentCrop.height / 100) * img.naturalHeight),
+        ),
       );
 
       const canvas = document.createElement("canvas");
@@ -253,42 +353,83 @@ export default function ModalFigmaImageCrop({
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
-      if (outputFormat === "image/jpeg") {
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, pixelW, pixelH);
+      ctx.drawImage(img, pixelX, pixelY, pixelW, pixelH, 0, 0, pixelW, pixelH);
+      const croppedLosslessBase64 = canvas.toDataURL("image/png");
+
+      if (currentFormat === "image/jpeg") {
+        const jpegCanvas = document.createElement("canvas");
+        jpegCanvas.width = pixelW;
+        jpegCanvas.height = pixelH;
+        const jCtx = jpegCanvas.getContext("2d");
+        if (jCtx) {
+          jCtx.fillStyle = "#ffffff";
+          jCtx.fillRect(0, 0, pixelW, pixelH);
+          jCtx.drawImage(canvas, 0, 0);
+          const croppedBase64 = jpegCanvas.toDataURL(
+            currentFormat,
+            currentQuality,
+          );
+          const bytes = getBase64Size(croppedBase64);
+          const formatLabel = currentFormat.replace("image/", "").toUpperCase();
+
+          setImageItems((prev) =>
+            prev.map((it) =>
+              it.id === targetId
+                ? {
+                    ...it,
+                    croppedLosslessBase64,
+                    activeBase64: croppedBase64,
+                    activeMeta: {
+                      format: formatLabel,
+                      bytes,
+                      sizeFormatted: formatFileSize(bytes),
+                      dimensions: `${pixelW} × ${pixelH} px`,
+                      width: pixelW,
+                      height: pixelH,
+                    },
+                    isCropped: true,
+                  }
+                : it,
+            ),
+          );
+          return;
+        }
       }
 
-      ctx.drawImage(img, pixelX, pixelY, pixelW, pixelH, 0, 0, pixelW, pixelH);
-
-      const croppedBase64 = canvas.toDataURL(outputFormat, quality);
+      const croppedBase64 = canvas.toDataURL(currentFormat, currentQuality);
       const bytes = getBase64Size(croppedBase64);
-      const formatLabel = outputFormat.replace("image/", "").toUpperCase();
+      const formatLabel = currentFormat.replace("image/", "").toUpperCase();
 
       setImageItems((prev) =>
-        prev.map((it) => {
-          if (it.id === activeItem.id) {
-            return {
-              ...it,
-              activeBase64: croppedBase64,
-              activeMeta: {
-                format: formatLabel,
-                bytes,
-                sizeFormatted: formatFileSize(bytes),
-                dimensions: `${pixelW} × ${pixelH} px`,
-                width: pixelW,
-                height: pixelH,
-              },
-              isCropped: true,
-            };
-          }
-          return it;
-        }),
+        prev.map((it) =>
+          it.id === targetId
+            ? {
+                ...it,
+                croppedLosslessBase64,
+                activeBase64: croppedBase64,
+                activeMeta: {
+                  format: formatLabel,
+                  bytes,
+                  sizeFormatted: formatFileSize(bytes),
+                  dimensions: `${pixelW} × ${pixelH} px`,
+                  width: pixelW,
+                  height: pixelH,
+                },
+                isCropped: true,
+              }
+            : it,
+        ),
       );
     };
+    img.onerror = () => {
+      console.error("Failed to load original image for cropping.");
+    };
+    img.src = activeItem.originalBase64;
   };
 
   const resetCropToOriginal = async () => {
     if (!activeItem) return;
+    const targetId = activeItem.id;
     const { activeBase64, activeMeta } = await compressSingleImage(
       activeItem.originalBase64,
       quality,
@@ -296,20 +437,50 @@ export default function ModalFigmaImageCrop({
     );
     setImageItems((prev) =>
       prev.map((it) =>
-        it.id === activeItem.id
-          ? { ...it, activeBase64, activeMeta, isCropped: false }
+        it.id === targetId
+          ? {
+              ...it,
+              croppedLosslessBase64: undefined,
+              activeBase64,
+              activeMeta,
+              isCropped: false,
+            }
           : it,
       ),
     );
+    setAspectRatio("free");
     setCrop({ x: 0, y: 0, width: 100, height: 100 });
   };
 
-  const setCropPreset = (ratio: "free" | "1:1" | "16:9" | "4:3") => {
+  const setCropPreset = (ratio: AspectPreset) => {
     setAspectRatio(ratio);
-    if (ratio === "free") setCrop({ x: 10, y: 10, width: 80, height: 80 });
-    if (ratio === "1:1") setCrop({ x: 15, y: 15, width: 70, height: 70 });
-    if (ratio === "16:9") setCrop({ x: 10, y: 22, width: 80, height: 45 });
-    if (ratio === "4:3") setCrop({ x: 10, y: 20, width: 80, height: 60 });
+    const targetAspect = getNumericAspect(ratio);
+    if (!targetAspect) {
+      setCrop(DEFAULT_CROP);
+      return;
+    }
+
+    const origW = activeItem?.originalMeta.width || 1;
+    const origH = activeItem?.originalMeta.height || 1;
+    const imgAspect = origW / Math.max(1, origH);
+
+    let widthPct = 80;
+    let heightPct = (widthPct * imgAspect) / targetAspect;
+
+    if (heightPct > 80) {
+      heightPct = 80;
+      widthPct = (heightPct * targetAspect) / imgAspect;
+    }
+
+    widthPct = Math.max(10, Math.min(100, round1(widthPct)));
+    heightPct = Math.max(10, Math.min(100, round1(heightPct)));
+
+    setCrop({
+      x: round1((100 - widthPct) / 2),
+      y: round1((100 - heightPct) / 2),
+      width: widthPct,
+      height: heightPct,
+    });
   };
 
   const handleCropDrag = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -318,6 +489,8 @@ export default function ModalFigmaImageCrop({
     if (!container) return;
 
     const rect = container.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+
     const startX = e.clientX;
     const startY = e.clientY;
     const initialCrop = { ...crop };
@@ -326,16 +499,20 @@ export default function ModalFigmaImageCrop({
       const dx = ((moveEvt.clientX - startX) / rect.width) * 100;
       const dy = ((moveEvt.clientY - startY) / rect.height) * 100;
 
-      let nextX = Math.max(
+      const nextX = Math.max(
         0,
         Math.min(100 - initialCrop.width, initialCrop.x + dx),
       );
-      let nextY = Math.max(
+      const nextY = Math.max(
         0,
         Math.min(100 - initialCrop.height, initialCrop.y + dy),
       );
 
-      setCrop({ ...initialCrop, x: Math.round(nextX), y: Math.round(nextY) });
+      setCrop({
+        ...initialCrop,
+        x: round1(nextX),
+        y: round1(nextY),
+      });
     };
 
     const handlePointerUp = () => {
@@ -357,54 +534,91 @@ export default function ModalFigmaImageCrop({
     if (!container) return;
 
     const rect = container.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+
     const startX = e.clientX;
     const startY = e.clientY;
     const init = { ...crop };
+    const targetAspect = getNumericAspect(aspectRatio);
+    const imgAspect =
+      (activeItem?.originalMeta.width || rect.width) /
+      Math.max(1, activeItem?.originalMeta.height || rect.height);
 
     const handlePointerMove = (moveEvt: PointerEvent) => {
       const dx = ((moveEvt.clientX - startX) / rect.width) * 100;
       const dy = ((moveEvt.clientY - startY) / rect.height) * 100;
       let { x, y, width, height } = init;
 
-      if (handle === "se") {
-        width = Math.max(10, Math.min(100 - x, init.width + dx));
-        height = Math.max(10, Math.min(100 - y, init.height + dy));
-      } else if (handle === "sw") {
-        const nextX = Math.max(
-          0,
-          Math.min(init.x + init.width - 10, init.x + dx),
-        );
-        width = init.width - (nextX - init.x);
-        x = nextX;
-        height = Math.max(10, Math.min(100 - y, init.height + dy));
-      } else if (handle === "ne") {
-        const nextY = Math.max(
-          0,
-          Math.min(init.y + init.height - 10, init.y + dy),
-        );
-        height = init.height - (nextY - init.y);
-        y = nextY;
-        width = Math.max(10, Math.min(100 - x, init.width + dx));
-      } else if (handle === "nw") {
-        const nextX = Math.max(
-          0,
-          Math.min(init.x + init.width - 10, init.x + dx),
-        );
-        const nextY = Math.max(
-          0,
-          Math.min(init.y + init.height - 10, init.y + dy),
-        );
-        width = init.width - (nextX - init.x);
-        height = init.height - (nextY - init.y);
-        x = nextX;
-        y = nextY;
+      if (targetAspect) {
+        const pctRatio = imgAspect / targetAspect;
+        const minW = Math.max(10, 10 / pctRatio);
+
+        if (handle === "se") {
+          const maxW = Math.min(100 - init.x, (100 - init.y) / pctRatio);
+          width = Math.max(minW, Math.min(maxW, init.width + dx));
+          height = width * pctRatio;
+        } else if (handle === "sw") {
+          const right = init.x + init.width;
+          const maxW = Math.min(right, (100 - init.y) / pctRatio);
+          width = Math.max(minW, Math.min(maxW, init.width - dx));
+          height = width * pctRatio;
+          x = right - width;
+        } else if (handle === "ne") {
+          const bottom = init.y + init.height;
+          const maxW = Math.min(100 - init.x, bottom / pctRatio);
+          width = Math.max(minW, Math.min(maxW, init.width + dx));
+          height = width * pctRatio;
+          y = bottom - height;
+        } else if (handle === "nw") {
+          const right = init.x + init.width;
+          const bottom = init.y + init.height;
+          const maxW = Math.min(right, bottom / pctRatio);
+          width = Math.max(minW, Math.min(maxW, init.width - dx));
+          height = width * pctRatio;
+          x = right - width;
+          y = bottom - height;
+        }
+      } else {
+        if (handle === "se") {
+          width = Math.max(10, Math.min(100 - x, init.width + dx));
+          height = Math.max(10, Math.min(100 - y, init.height + dy));
+        } else if (handle === "sw") {
+          const nextX = Math.max(
+            0,
+            Math.min(init.x + init.width - 10, init.x + dx),
+          );
+          width = init.width - (nextX - init.x);
+          x = nextX;
+          height = Math.max(10, Math.min(100 - y, init.height + dy));
+        } else if (handle === "ne") {
+          const nextY = Math.max(
+            0,
+            Math.min(init.y + init.height - 10, init.y + dy),
+          );
+          height = init.height - (nextY - init.y);
+          y = nextY;
+          width = Math.max(10, Math.min(100 - x, init.width + dx));
+        } else if (handle === "nw") {
+          const nextX = Math.max(
+            0,
+            Math.min(init.x + init.width - 10, init.x + dx),
+          );
+          const nextY = Math.max(
+            0,
+            Math.min(init.y + init.height - 10, init.y + dy),
+          );
+          width = init.width - (nextX - init.x);
+          height = init.height - (nextY - init.y);
+          x = nextX;
+          y = nextY;
+        }
       }
 
       setCrop({
-        x: Math.round(x),
-        y: Math.round(y),
-        width: Math.round(width),
-        height: Math.round(height),
+        x: round1(x),
+        y: round1(y),
+        width: round1(width),
+        height: round1(height),
       });
     };
 
@@ -423,13 +637,24 @@ export default function ModalFigmaImageCrop({
 
     setIsSaving(true);
     try {
-      // Natural responsive dimensions without rigid HTML width/height
-      const generatedNodes: HtmlNode[] = selected.map((item) =>
-        createHtmlNodeFromImage({
+      const generatedNodes: HtmlNode[] = selected.map((item) => {
+        const syncedMeta =
+          item.figmaMeta && item.isCropped
+            ? {
+                ...item.figmaMeta,
+                width: item.activeMeta.width,
+                height: item.activeMeta.height,
+              }
+            : item.figmaMeta;
+
+        return createHtmlNodeFromImage({
           name: item.name,
           activeBase64: item.activeBase64,
-        }),
-      );
+          width: item.activeMeta.width,
+          height: item.activeMeta.height,
+          figmaMeta: syncedMeta,
+        });
+      });
 
       await onSaveNodes(generatedNodes);
       setIsOpen(false);
@@ -477,7 +702,7 @@ export default function ModalFigmaImageCrop({
               </h2>
               <p className="text-xs text-neutral-400 mt-0.5">
                 Crop & optimize images from current Figma JSON, then append as
-                &lt;img&gt; nodes
+                image blocks
               </p>
             </div>
             <ButtonClose setClose={setIsOpen} />
@@ -542,7 +767,7 @@ export default function ModalFigmaImageCrop({
                     {/* Crop Overlay */}
                     <div
                       onPointerDown={handleCropDrag}
-                      className="absolute border-2 border-blue-400 bg-blue-500/10 cursor-move"
+                      className="absolute border-2 border-blue-400 bg-blue-500/10 cursor-move touch-none"
                       style={{
                         left: `${crop.x}%`,
                         top: `${crop.y}%`,
@@ -553,19 +778,19 @@ export default function ModalFigmaImageCrop({
                     >
                       <div
                         onPointerDown={(e) => handleResizeHandle("nw", e)}
-                        className="absolute -top-1.5 -left-1.5 size-3.5 bg-white border-2 border-blue-600 rounded-sm cursor-nwse-resize shadow"
+                        className="absolute -top-1.5 -left-1.5 size-3.5 bg-white border-2 border-blue-600 rounded-sm cursor-nwse-resize shadow touch-none"
                       />
                       <div
                         onPointerDown={(e) => handleResizeHandle("ne", e)}
-                        className="absolute -top-1.5 -right-1.5 size-3.5 bg-white border-2 border-blue-600 rounded-sm cursor-nesw-resize shadow"
+                        className="absolute -top-1.5 -right-1.5 size-3.5 bg-white border-2 border-blue-600 rounded-sm cursor-nesw-resize shadow touch-none"
                       />
                       <div
                         onPointerDown={(e) => handleResizeHandle("sw", e)}
-                        className="absolute -bottom-1.5 -left-1.5 size-3.5 bg-white border-2 border-blue-600 rounded-sm cursor-nesw-resize shadow"
+                        className="absolute -bottom-1.5 -left-1.5 size-3.5 bg-white border-2 border-blue-600 rounded-sm cursor-nesw-resize shadow touch-none"
                       />
                       <div
                         onPointerDown={(e) => handleResizeHandle("se", e)}
-                        className="absolute -bottom-1.5 -right-1.5 size-3.5 bg-white border-2 border-blue-600 rounded-sm cursor-nwse-resize shadow"
+                        className="absolute -bottom-1.5 -right-1.5 size-3.5 bg-white border-2 border-blue-600 rounded-sm cursor-nwse-resize shadow touch-none"
                       />
                     </div>
                   </div>
@@ -583,7 +808,7 @@ export default function ModalFigmaImageCrop({
                       {activeItem.activeMeta.sizeFormatted}
                     </span>
                     {activeItem.isCropped && (
-                      <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold">
+                      <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold">
                         Cropped
                       </span>
                     )}
@@ -604,7 +829,7 @@ export default function ModalFigmaImageCrop({
                   return (
                     <div
                       key={item.id}
-                      onClick={() => setActiveId(item.id)}
+                      onClick={() => selectActiveItem(item.id)}
                       className={`p-2 rounded-xl border flex items-center justify-between gap-2 transition cursor-pointer ${
                         isCurrent
                           ? "bg-zinc-800/90 border-blue-500 shadow-md ring-1 ring-blue-500/40"

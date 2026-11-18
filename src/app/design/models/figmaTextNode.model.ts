@@ -1,4 +1,5 @@
 import type { HtmlNode } from "@/types/HtmlNode";
+import { buildFigmaBoundsAttributes } from "./figmaImageNode.model";
 
 export interface FigmaTextItem {
   id: string;
@@ -7,13 +8,22 @@ export interface FigmaTextItem {
   fontFamily: string;
   fontSize: number;
   fontWeight: number;
-  lineHeight: number;
-  letterSpacing: string;
+  lineHeight: number | string;
+  letterSpacing: string | number;
   textAlign: string;
   color: string;
   backgroundColor?: string;
   className: string;
   section?: string;
+  sectionId?: string;
+  sectionWidth?: number;
+  sectionHeight?: number;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  pageX?: number;
+  pageY?: number;
 }
 
 export interface FigmaStructureItem {
@@ -25,12 +35,21 @@ export interface FigmaStructureItem {
   fontSize?: number;
   fontWeight?: number;
   lineHeight?: number | string;
-  letterSpacing?: string;
+  letterSpacing?: string | number;
   textAlign?: string;
   color?: string;
   backgroundColor?: string;
   className?: string;
   section?: string;
+  sectionId?: string;
+  sectionWidth?: number;
+  sectionHeight?: number;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  pageX?: number;
+  pageY?: number;
   children?: FigmaStructureItem[];
 }
 
@@ -65,13 +84,11 @@ function sortByFigmaId(items: FigmaStructureItem[]): FigmaStructureItem[] {
   });
 }
 
-/**
- * Безопасная генерация ключа
- */
-function generateKey(): string {
-  return typeof crypto !== "undefined" && crypto.randomUUID
-    ? crypto.randomUUID()
-    : Date.now().toString();
+function formatLineHeight(lh: number | string): string {
+  if (typeof lh === "number") return `${lh}px`;
+  const trimmed = String(lh).trim();
+  if (/^\d+(\.\d+)?$/.test(trimmed)) return `${trimmed}px`;
+  return trimmed;
 }
 
 /**
@@ -88,7 +105,7 @@ export function buildTextStyleString(
     `font-family: '${item.fontFamily}', sans-serif`,
     `font-size: ${item.fontSize}px`,
     `font-weight: ${item.fontWeight}`,
-    `line-height: ${item.lineHeight}px`,
+    `line-height: ${formatLineHeight(item.lineHeight)}`,
     `letter-spacing: ${item.letterSpacing}`,
     `text-align: ${item.textAlign}`,
     `color: ${colorVar}`,
@@ -108,7 +125,7 @@ export function createHtmlNodeFromText(
 }
 
 /**
- * Рекурсивное создание HtmlNode из узла структуры Figma (сохраняя вложенность и порядок)
+ * Рекурсивное создание HtmlNode из узла структуры Figma (сохраняя вложенность, порядок и Figma-координаты)
  */
 export function createHtmlNodeFromStructureItem(
   item: FigmaStructureItem,
@@ -126,8 +143,7 @@ export function createHtmlNodeFromStructureItem(
     styles.push(`font-weight: ${item.fontWeight}`);
   }
   if (item.lineHeight !== undefined) {
-    const lh = typeof item.lineHeight === "number" ? `${item.lineHeight}px` : item.lineHeight;
-    styles.push(`line-height: ${lh}`);
+    styles.push(`line-height: ${formatLineHeight(item.lineHeight)}`);
   }
   if (item.letterSpacing !== undefined) {
     styles.push(`letter-spacing: ${item.letterSpacing}`);
@@ -141,15 +157,34 @@ export function createHtmlNodeFromStructureItem(
   const inlineStyles = styles.length > 0 ? styles.join("; ") + ";" : "";
 
   const children: HtmlNode[] = Array.isArray(item.children)
-    ? sortByFigmaId(item.children).map((child) => createHtmlNodeFromStructureItem(child, colorMap))
+    ? sortByFigmaId(item.children).map((child) =>
+        createHtmlNodeFromStructureItem(child, colorMap),
+      )
     : [];
+
+  const boundsAttrs = buildFigmaBoundsAttributes({
+    x: item.x,
+    y: item.y,
+    width: item.width,
+    height: item.height,
+    pageX: item.pageX,
+    pageY: item.pageY,
+    sectionId: item.sectionId,
+    sectionWidth: item.sectionWidth,
+    sectionHeight: item.sectionHeight,
+  });
+
+  const attributes: Record<string, string> = {
+    ...(item.name ? { "data-name": item.name } : {}),
+    ...boundsAttrs,
+  };
 
   return {
     tag: item.tag || (children.length > 0 ? "div" : "p"),
     text: item.text || "",
     class: item.className || "",
     style: inlineStyles,
-    attributes: item.name ? { "data-name": item.name } : {},
+    attributes,
     _key:
       item.id ||
       (typeof crypto !== "undefined" && crypto.randomUUID
@@ -163,12 +198,16 @@ export function createHtmlNodeFromStructureItem(
 /**
  * Парсинг блока structure из сырого Figma JSON
  */
-export function extractStructureFromJson(rawJson: string): FigmaStructureItem[] {
+export function extractStructureFromJson(
+  rawJson: string,
+): FigmaStructureItem[] {
   try {
     const parsed = JSON.parse(rawJson);
 
     if (Array.isArray(parsed)) {
-      const structBlock = parsed.find((block) => Array.isArray(block.structure));
+      const structBlock = parsed.find((block) =>
+        Array.isArray(block.structure),
+      );
       const list = structBlock?.structure ?? [];
       return sortByFigmaId(list);
     }
@@ -186,7 +225,9 @@ export function extractStructureFromJson(rawJson: string): FigmaStructureItem[] 
 /**
  * Рекурсивно собирает все текстовые элементы из дерева structure
  */
-export function flattenStructureTexts(items: FigmaStructureItem[]): FigmaTextItem[] {
+export function flattenStructureTexts(
+  items: FigmaStructureItem[],
+): FigmaTextItem[] {
   const result: FigmaTextItem[] = [];
 
   function traverse(item: FigmaStructureItem, currentSection?: string) {
@@ -199,8 +240,8 @@ export function flattenStructureTexts(items: FigmaStructureItem[]): FigmaTextIte
         fontFamily: item.fontFamily || "sans-serif",
         fontSize: item.fontSize || 16,
         fontWeight: item.fontWeight || 400,
-        lineHeight: typeof item.lineHeight === "number" ? item.lineHeight : 20,
-        letterSpacing: item.letterSpacing || "0%",
+        lineHeight: item.lineHeight ?? 20,
+        letterSpacing: item.letterSpacing ?? "0%",
         textAlign: item.textAlign || "left",
         color: item.color || "#000000",
         backgroundColor: item.backgroundColor,
@@ -217,6 +258,7 @@ export function flattenStructureTexts(items: FigmaStructureItem[]): FigmaTextIte
   items.forEach((item) => traverse(item));
   return result;
 }
+
 /**
  * Парсинг блока texts из сырого Figma JSON
  */
@@ -252,7 +294,7 @@ export function generateScssForTextItems(
   font-family: '${item.fontFamily}', sans-serif;
   font-size: ${item.fontSize}px;
   font-weight: ${item.fontWeight};
-  line-height: ${item.lineHeight}px;
+  line-height: ${formatLineHeight(item.lineHeight)};
   letter-spacing: ${item.letterSpacing};
   text-align: ${item.textAlign};
   color: ${colorVar};

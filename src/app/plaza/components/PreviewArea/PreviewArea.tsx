@@ -71,6 +71,7 @@ export function PreviewArea() {
   const [selectedTracingBoxId, setSelectedTracingBoxId] = useState<
     string | null
   >(null);
+  const [naturalImgWidth, setNaturalImgWidth] = useState<number>(0);
 
   const assignedDonorKeys = useMemo(() => {
     const keys = new Set<string>();
@@ -407,6 +408,13 @@ export function PreviewArea() {
                   setBoxes={setTracingBoxes}
                   selectedBoxId={selectedTracingBoxId}
                   setSelectedBoxId={setSelectedTracingBoxId}
+                  overlayMetrics={{
+                    hasActiveOverlay: Boolean(hasImage && isOverlayActive),
+                    imgWidth: naturalImgWidth,
+                    align,
+                    offsetX,
+                    offsetY,
+                  }}
                 />
 
                 {hasImage && isOverlayActive && (
@@ -427,6 +435,9 @@ export function PreviewArea() {
                       draggable={false}
                       style={{ opacity: overlayOpacity / 100 }}
                       onLoad={(e) => {
+                        if (e.currentTarget.naturalWidth) {
+                          setNaturalImgWidth(e.currentTarget.naturalWidth);
+                        }
                         if (e.currentTarget.naturalHeight) {
                           setNaturalImgHeight(e.currentTarget.naturalHeight);
                         }
