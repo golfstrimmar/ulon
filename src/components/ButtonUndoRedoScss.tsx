@@ -60,7 +60,7 @@ export default function ButtonUndoRedoScss() {
   };
 
   return (
-    <div className="flex items-center gap-1.5 bg-zinc-900/90 px-2 py-0.5 rounded-md border border-zinc-700/70">
+    <div className="flex items-center gap-1.5 bg-zinc-900/90 px-2 py-0.5 rounded-md border border-zinc-700/70 mx-2">
       <button
         type="button"
         onMouseEnter={handleUndoStyles}

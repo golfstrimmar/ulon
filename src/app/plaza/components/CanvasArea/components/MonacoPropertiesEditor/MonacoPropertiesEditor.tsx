@@ -143,6 +143,8 @@ export function MonacoPropertiesEditor(props: MonacoPropertiesEditorProps) {
               <span className="text-[11px] font-mono text-zinc-300 font-semibold flex items-center gap-1.5">
                 <span className="text-cyan-400">Styles</span>
                 <span className="text-zinc-500">|</span>
+                <ButtonUndoRedoScss />
+                <span className="text-zinc-500">|</span>
                 {activeModalClass ? (
                   <span className="text-emerald-400 flex items-center gap-1.5 bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-800/60">
                     <span>Active: .{activeModalClass}</span>
@@ -190,19 +192,16 @@ export function MonacoPropertiesEditor(props: MonacoPropertiesEditorProps) {
             </span>
           )}
 
-          <div className="flex items-center gap-2">
-            <ButtonUndoRedoScss />
-            {mode === "styles" && activeModalClass && (
-              <button
-                type="button"
-                onClick={() => handleDeleteClassCss(activeModalClass)}
-                className="text-[10px] font-mono text-zinc-400 hover:text-red-400 px-2 py-0.5 rounded bg-red-900/70 hover:bg-zinc-800/70 border border-zinc-700 transition cursor-pointer whitespace-nowrap ml-2"
-                title={`Clear CSS for .${activeModalClass}`}
-              >
-                ✕ Clear .{activeModalClass}
-              </button>
-            )}
-          </div>
+          {mode === "styles" && activeModalClass && (
+            <button
+              type="button"
+              onClick={() => handleDeleteClassCss(activeModalClass)}
+              className="text-[10px] font-mono text-zinc-400 hover:text-red-400 px-2 py-0.5 rounded bg-red-900/70 hover:bg-zinc-800/70 border border-zinc-700 transition cursor-pointer whitespace-nowrap ml-2"
+              title={`Clear CSS for .${activeModalClass}`}
+            >
+              ✕ Clear .{activeModalClass}
+            </button>
+          )}
         </div>
 
         {/* Monaco Editor: показывает все стили ноды по классам */}
