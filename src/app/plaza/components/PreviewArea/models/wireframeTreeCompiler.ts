@@ -6,6 +6,8 @@ import {
 } from "@/app/plaza/components/CanvasArea/models/canvasModel";
 import type { ColorVariableMap } from "@/app/design/models/figmaTextNode.model";
 
+export type ListItemPreset = "none" | "a" | "a-i" | "i-span" | "a-i-span";
+
 export interface WireframeBox {
   id: string;
   x: number;
@@ -18,6 +20,7 @@ export interface WireframeBox {
   donorKey?: string;
   consumedDonorKeys?: string[];
   sortPriority?: number;
+  listItemPreset?: ListItemPreset;
 }
 
 export interface OverlayMetrics {
@@ -186,6 +189,323 @@ function isContained(
     inner.x + inner.width <= outer.x + outer.width + tolerance &&
     inner.y + inner.height <= outer.y + outer.height + tolerance
   );
+}
+
+// ─── Применение структурного пресета к пунктам ul (a / a+i / i+span / a+i+span) ─
+
+const OUTER_LI_PROPS = new Set([
+  "margin",
+  "margin-top",
+  "margin-right",
+  "margin-bottom",
+  "margin-left",
+  "flex",
+  "flex-grow",
+  "flex-shrink",
+  "flex-basis",
+  "width",
+  "min-width",
+  "max-width",
+  "align-self",
+]);
+
+function splitLiStyles(style?: string): {
+  outerStyle: string;
+  innerStyle: string;
+} {
+  if (!style || !style.trim()) return { outerStyle: "", innerStyle: "" };
+  const outer: string[] = [];
+  const inner: string[] = [];
+
+  for (const raw of style.split(";")) {
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+    const colonIdx = trimmed.indexOf(":");
+    if (colonIdx === -1) continue;
+    const prop = trimmed.slice(0, colonIdx).trim().toLowerCase();
+    const val = trimmed.slice(colonIdx + 1).trim();
+    if (!prop || !val) continue;
+
+    if (OUTER_LI_PROPS.has(prop)) {
+      outer.push(`${prop}: ${val}`);
+    } else {
+      inner.push(`${prop}: ${val}`);
+    }
+  }
+
+  return {
+    outerStyle: outer.length > 0 ? `${outer.join("; ")};` : "",
+    innerStyle: inner.length > 0 ? `${inner.join("; ")};` : "",
+  };
+}
+
+function makeKey(prefix: string): string {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+}
+
+function isTextLikeNode(node: HtmlNode): boolean {
+  if (isSvgDonorNode(node) || isImageWrapperNode(node)) return false;
+  const tag = (node.tag || "").trim().toLowerCase();
+  if (tag === "img" || tag === "svg" || tag === "i") return false;
+  if (
+    tag === "p" ||
+    tag === "span" ||
+    tag === "a" ||
+    tag.startsWith("h") ||
+    tag === "label"
+  ) {
+    return true;
+  }
+  return Boolean(node.text && node.text.trim());
+}
+
+function normalizeToIconNode(node?: HtmlNode): HtmlNode {
+  if (!node) {
+    return {
+      tag: "i",
+      text: "",
+      class: "",
+      style: "",
+      children: [],
+      _key: makeKey("i"),
+    };
+  }
+  if ((node.tag || "").trim().toLowerCase() === "i") {
+    return node;
+  }
+  return {
+    tag: "i",
+    text: "",
+    class: "",
+    style: "",
+    children: [node],
+    _key: makeKey("i"),
+  };
+}
+
+function normalizeToSpanNode(node?: HtmlNode): HtmlNode {
+  if (!node) {
+    return {
+      tag: "span",
+      text: "",
+      class: "",
+      style: "",
+      children: [],
+      _key: makeKey("span"),
+    };
+  }
+  return {
+    ...node,
+    tag: "span",
+  };
+}
+
+function unwrapSingleSyntheticWrapper(liNode: HtmlNode): {
+  children: HtmlNode[];
+  extraInnerStyle: string;
+} {
+  let children = Array.isArray(liNode.children) ? [...liNode.children] : [];
+  let extraInnerStyle = "";
+
+  if (
+    children.length === 1 &&
+    (children[0].tag || "").trim().toLowerCase() === "div" &&
+    !(children[0].class || "").trim() &&
+    !(children[0].text || "").trim() &&
+    !isImageWrapperNode(children[0]) &&
+    !isSvgDonorNode(children[0])
+  ) {
+    extraInnerStyle = children[0].style || "";
+    children = Array.isArray(children[0].children)
+      ? [...children[0].children]
+      : [];
+  }
+
+  return { children, extraInnerStyle };
+}
+
+function applyListItemPresetToUl(
+  ulNode: HtmlNode,
+  preset?: ListItemPreset,
+): HtmlNode {
+  if (!preset || preset === "none" || !Array.isArray(ulNode.children)) {
+    return ulNode;
+  }
+
+  const nextChildren = ulNode.children.map((child) => {
+    if ((child.tag || "").trim().toLowerCase() !== "li") return child;
+
+    const { outerStyle, innerStyle: liInnerStyle } = splitLiStyles(child.style);
+    const { children: rawItems, extraInnerStyle } =
+      unwrapSingleSyntheticWrapper(child);
+    const innerStyle = mergeInlineStyles(liInnerStyle, extraInnerStyle);
+
+    // Если сам <li> является текстовым донором без children
+    const workingItems: HtmlNode[] =
+      rawItems.length === 0 && child.text && child.text.trim()
+        ? [
+            {
+              tag: "span",
+              text: child.text,
+              class: child.class || "",
+              style: "",
+              children: [],
+              _key: makeKey("txt"),
+            },
+          ]
+        : rawItems;
+
+    const iconIdx = workingItems.findIndex(
+      (n) => isSvgDonorNode(n) || (n.tag || "").trim().toLowerCase() === "i",
+    );
+    const textIdx = workingItems.findIndex(
+      (n, idx) => idx !== iconIdx && isTextLikeNode(n),
+    );
+
+    const iconSource = iconIdx !== -1 ? workingItems[iconIdx] : undefined;
+    const textSource = textIdx !== -1 ? workingItems[textIdx] : undefined;
+    const restItems = workingItems.filter(
+      (_, idx) => idx !== iconIdx && idx !== textIdx,
+    );
+
+    if (preset === "a") {
+      // ul > li > a (без пустого span)
+      if (
+        workingItems.length === 1 &&
+        (workingItems[0].tag || "").trim().toLowerCase() === "a"
+      ) {
+        const existingA = workingItems[0];
+        return {
+          ...child,
+          text: "",
+          style: outerStyle,
+          children: [
+            {
+              ...existingA,
+              style: mergeInlineStyles(innerStyle, existingA.style),
+              attributes: {
+                href: "#",
+                ...(existingA.attributes || {}),
+              },
+            },
+          ],
+        };
+      }
+
+      if (textSource && !iconSource && restItems.length === 0) {
+        return {
+          ...child,
+          text: "",
+          style: outerStyle,
+          children: [
+            {
+              ...textSource,
+              tag: "a",
+              style: mergeInlineStyles(innerStyle, textSource.style),
+              attributes: {
+                href: "#",
+                ...(textSource.attributes || {}),
+              },
+              _key: textSource._key || makeKey("a"),
+            },
+          ],
+        };
+      }
+
+      const linkNode: HtmlNode = {
+        tag: "a",
+        text: "",
+        class: "",
+        style: innerStyle,
+        attributes: { href: "#" },
+        children: workingItems,
+        _key: makeKey("a"),
+      };
+
+      return {
+        ...child,
+        text: "",
+        style: outerStyle,
+        children: [linkNode],
+      };
+    }
+
+    if (preset === "a-i") {
+      // ul > li > a > i (без лишнего span; если был текст — кладём прямо в a)
+      const iNode = normalizeToIconNode(iconSource);
+      const aChildren: HtmlNode[] = [iNode, ...restItems];
+      const aClass = textSource?.class || "";
+      const aText = textSource?.text || "";
+      const aStyle = mergeInlineStyles(
+        aText ? "display: flex; align-items: center;" : "",
+        mergeInlineStyles(innerStyle, textSource?.style),
+      );
+
+      const linkNode: HtmlNode = {
+        tag: "a",
+        text: aText,
+        class: aClass,
+        style: aStyle,
+        attributes: { href: "#" },
+        children: aChildren,
+        _key: makeKey("a"),
+      };
+
+      return {
+        ...child,
+        text: "",
+        style: outerStyle,
+        children: [linkNode],
+      };
+    }
+
+    if (preset === "i-span") {
+      // ul > li > i + span (без ссылки)
+      const iNode = normalizeToIconNode(iconSource);
+      const spanNode = normalizeToSpanNode(textSource);
+      const liFlexStyle = mergeInlineStyles(
+        "display: flex; align-items: center;",
+        mergeInlineStyles(outerStyle, innerStyle),
+      );
+
+      return {
+        ...child,
+        text: "",
+        style: liFlexStyle,
+        children: [iNode, spanNode, ...restItems],
+      };
+    }
+
+    // preset === "a-i-span": ul > li > a > i + span
+    const iNode = normalizeToIconNode(iconSource);
+    const spanNode = normalizeToSpanNode(textSource);
+    const aStyle = mergeInlineStyles(
+      "display: flex; align-items: center;",
+      innerStyle,
+    );
+
+    const linkNode: HtmlNode = {
+      tag: "a",
+      text: "",
+      class: "",
+      style: aStyle,
+      attributes: { href: "#" },
+      children: [iNode, spanNode, ...restItems],
+      _key: makeKey("a"),
+    };
+
+    return {
+      ...child,
+      text: "",
+      style: outerStyle,
+      children: [linkNode],
+    };
+  });
+
+  return {
+    ...ulNode,
+    children: nextChildren,
+  };
 }
 
 /**
@@ -428,6 +748,8 @@ export function compileWireframeBoxesToTree(
       _key: `box_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
     };
 
+    let resultNode: HtmlNode;
+
     if (node.box.donorKey && donorMap) {
       const donorNode = donorMap.get(node.box.donorKey);
       if (donorNode) {
@@ -466,11 +788,23 @@ export function compileWireframeBoxesToTree(
           merged.style = mergeInlineStyles(donorNode.style, finalBoxStyle);
         }
 
-        return stripFigmaAttributes(merged);
+        resultNode = stripFigmaAttributes(merged);
+      } else {
+        resultNode = stripFigmaAttributes(baseNode);
       }
+    } else {
+      resultNode = stripFigmaAttributes(baseNode);
     }
 
-    return stripFigmaAttributes(baseNode);
+    if (
+      (resultNode.tag || "").trim().toLowerCase() === "ul" &&
+      node.box.listItemPreset &&
+      node.box.listItemPreset !== "none"
+    ) {
+      resultNode = applyListItemPresetToUl(resultNode, node.box.listItemPreset);
+    }
+
+    return resultNode;
   }
 
   return rootNodes.map(convertToHtmlNode);
@@ -569,7 +903,6 @@ export function applySectionClassAndExtractScss(
         const trimmedStyle = nextStyle.trim();
 
         if (trimmedStyle.includes("{")) {
-          // Вложенный SCSS (например у .is: "... img { ... }") — сохраняем целиком без порчи скобок
           const finalBody = `  ${replaceHexColorsWithVars(trimmedStyle, colorMap)}`;
           if (!classStylesMap.has(bemClass)) {
             classStylesMap.set(bemClass, finalBody);

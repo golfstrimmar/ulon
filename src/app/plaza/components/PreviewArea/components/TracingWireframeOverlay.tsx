@@ -13,6 +13,7 @@ import {
   TrashIcon,
   ArrowsPointingOutIcon,
   BoltIcon,
+  ChevronDownIcon,
 } from "@heroicons/react/24/outline";
 import type { HtmlNode } from "@/types/HtmlNode";
 import { useCanvasStore } from "@/app/plaza/components/CanvasArea/store/useCanvasStore";
@@ -31,6 +32,7 @@ import {
   countFigmaNodesInTree,
   applySectionClassAndExtractScss,
   isImageWrapperNode,
+  type ListItemPreset,
   type OverlayMetrics,
   type WireframeBox,
 } from "@/app/plaza/components/PreviewArea/models/wireframeTreeCompiler";
@@ -61,12 +63,50 @@ const AVAILABLE_TAGS = [
   "span",
   "a",
   "button",
-  "img",
+  "is",
   "ul",
   "li",
   "i",
   "fieldset",
 ] as const;
+
+const LIST_ITEM_PRESETS: {
+  value: ListItemPreset;
+  label: string;
+  shortLabel: string;
+  hint: string;
+}[] = [
+  {
+    value: "none",
+    label: "ul › li",
+    shortLabel: "li",
+    hint: "как есть",
+  },
+  {
+    value: "a",
+    label: "ul › li › a",
+    shortLabel: "li › a",
+    hint: "ссылка без span",
+  },
+  {
+    value: "a-i",
+    label: "ul › li › a › i",
+    shortLabel: "li › a › i",
+    hint: "ссылка + иконка",
+  },
+  {
+    value: "i-span",
+    label: "ul › li › i + span",
+    shortLabel: "li › i+span",
+    hint: "иконка + текст",
+  },
+  {
+    value: "a-i-span",
+    label: "ul › li › a › i + span",
+    shortLabel: "li › a › i+span",
+    hint: "ссылка + иконка + текст",
+  },
+];
 
 export default function TracingWireframeOverlay({
   isActive,
@@ -83,6 +123,9 @@ export default function TracingWireframeOverlay({
   const [useSnap, setUseSnap] = useState(true);
   const [figmaScaleMode, setFigmaScaleMode] = useState<"auto" | "1x" | "2x">(
     "auto",
+  );
+  const [openListPresetBoxId, setOpenListPresetBoxId] = useState<string | null>(
+    null,
   );
 
   // Модалка запроса класса секции перед коммитом
@@ -111,6 +154,17 @@ export default function TracingWireframeOverlay({
     }
   }, [isClassModalOpen]);
 
+  useEffect(() => {
+    if (!openListPresetBoxId) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpenListPresetBoxId(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [openListPresetBoxId]);
+
   const figmaNodesCount = useMemo(
     () => countFigmaNodesInTree(currentJson),
     [currentJson],
@@ -137,6 +191,8 @@ export default function TracingWireframeOverlay({
     if (e.button !== 0 || isClassModalOpen) return;
     const target = e.target as HTMLElement;
     if (target.closest("[data-wireframe-ui]")) return;
+
+    setOpenListPresetBoxId(null);
 
     const container = containerRef.current;
     if (!container) return;
@@ -219,6 +275,7 @@ export default function TracingWireframeOverlay({
   };
 
   const handleAutoTraceFigma = () => {
+    setOpenListPresetBoxId(null);
     const containerWidth =
       containerRef.current?.clientWidth ||
       (typeof viewportWidth === "number" ? viewportWidth : 1440);
@@ -246,12 +303,34 @@ export default function TracingWireframeOverlay({
 
   const deleteBox = (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    if (openListPresetBoxId === id) setOpenListPresetBoxId(null);
     setBoxes((prev) => prev.filter((b) => b.id !== id));
     if (selectedBoxId === id) setSelectedBoxId(null);
   };
 
   const updateBoxTag = (id: string, tag: string) => {
-    setBoxes((prev) => prev.map((b) => (b.id === id ? { ...b, tag } : b)));
+    setBoxes((prev) =>
+      prev.map((b) =>
+        b.id === id
+          ? {
+              ...b,
+              tag,
+              listItemPreset: tag === "ul" ? b.listItemPreset : undefined,
+            }
+          : b,
+      ),
+    );
+  };
+
+  const updateBoxListPreset = (id: string, preset: ListItemPreset) => {
+    setBoxes((prev) =>
+      prev.map((b) =>
+        b.id === id
+          ? { ...b, listItemPreset: preset === "none" ? undefined : preset }
+          : b,
+      ),
+    );
+    setOpenListPresetBoxId(null);
   };
 
   const toggleBoxFlex = (id: string, e: React.MouseEvent) => {
@@ -402,6 +481,7 @@ export default function TracingWireframeOverlay({
       }
 
       setArmedDonorKey(null);
+      setOpenListPresetBoxId(null);
       setBoxes([]);
       setSelectedBoxId(null);
       setIsClassModalOpen(false);
@@ -417,6 +497,7 @@ export default function TracingWireframeOverlay({
 
   const handleOpenCommitModal = () => {
     if (boxes.length === 0) return;
+    setOpenListPresetBoxId(null);
     setSectionClassInput("");
     setIsClassModalOpen(true);
   };
@@ -500,6 +581,7 @@ export default function TracingWireframeOverlay({
           <button
             type="button"
             onClick={() => {
+              setOpenListPresetBoxId(null);
               setBoxes([]);
               setSelectedBoxId(null);
             }}
@@ -525,6 +607,7 @@ export default function TracingWireframeOverlay({
         <button
           type="button"
           onClick={() => {
+            setOpenListPresetBoxId(null);
             setArmedDonorKey(null);
             onClose();
           }}
@@ -661,8 +744,16 @@ export default function TracingWireframeOverlay({
       {/* Нарисованные коробки */}
       {boxes.map((box) => {
         const isSelected = box.id === selectedBoxId;
+        const isDropdownOpen = openListPresetBoxId === box.id;
         const donor = box.donorKey ? donorNodeByKey.get(box.donorKey) : null;
         const effectiveTag = box.tag || donor?.tag || "";
+        const isUlBox = effectiveTag.toLowerCase() === "ul";
+        const activeListPreset = box.listItemPreset || "none";
+        const hasActivePreset = activeListPreset !== "none";
+        const activePresetInfo =
+          LIST_ITEM_PRESETS.find((p) => p.value === activeListPreset) ||
+          LIST_ITEM_PRESETS[0];
+
         const isFlexBox = Boolean(
           box.style && /display\s*:\s*flex/i.test(box.style),
         );
@@ -678,6 +769,9 @@ export default function TracingWireframeOverlay({
             key={box.id}
             onClick={(e) => {
               e.stopPropagation();
+              if (openListPresetBoxId && openListPresetBoxId !== box.id) {
+                setOpenListPresetBoxId(null);
+              }
               if (armedDonorKey) {
                 setBoxes((prev) =>
                   prev.map((b) =>
@@ -689,13 +783,15 @@ export default function TracingWireframeOverlay({
               setSelectedBoxId(box.id);
             }}
             className={`group absolute border-2 transition-all cursor-pointer ${
-              isSelected
-                ? "border-cyan-400 bg-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.4)] z-30"
-                : isFlexBox
-                  ? "border-fuchsia-400/80 bg-fuchsia-500/10 hover:border-fuchsia-300 z-20"
-                  : donor
-                    ? "border-amber-400/80 bg-amber-500/10 hover:border-amber-300 z-20"
-                    : "border-cyan-500/60 bg-cyan-950/20 hover:border-cyan-400/90 z-20"
+              isDropdownOpen
+                ? "z-50 border-cyan-400 bg-cyan-500/15"
+                : isSelected
+                  ? "border-cyan-400 bg-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.4)] z-30"
+                  : isFlexBox
+                    ? "border-fuchsia-400/80 bg-fuchsia-500/10 hover:border-fuchsia-300 z-20"
+                    : donor
+                      ? "border-amber-400/80 bg-amber-500/10 hover:border-amber-300 z-20"
+                      : "border-cyan-500/60 bg-cyan-950/20 hover:border-cyan-400/90 z-20"
             }`}
             style={{
               left: box.x,
@@ -737,37 +833,104 @@ export default function TracingWireframeOverlay({
               {Math.round(box.height)}px
             </div>
 
-            {/* Бейдж выбранного тега + flex + привязанного донора */}
-            <div className="absolute top-1 left-1 right-1 flex items-center gap-1 font-mono text-[10px] overflow-hidden">
-              <span
-                className={`px-1.5 py-0.5 rounded font-bold border shrink-0 ${
-                  effectiveTag
-                    ? "bg-indigo-950 border-indigo-500 text-indigo-300"
-                    : "bg-zinc-900/90 border-dashed border-zinc-500 text-zinc-400"
-                }`}
-              >
-                {effectiveTag || "empty"}
-              </span>
-
-              {isFlexBox && (
-                <span className="px-1 py-0.5 rounded font-bold bg-fuchsia-950/90 border border-fuchsia-500/70 text-fuchsia-300 shrink-0">
-                  flex
+            {/* Верхняя строка бейджей + выпадашка структуры списка для ul */}
+            <div className="absolute top-1 left-1 right-1 flex items-center justify-between gap-1 font-mono text-[10px]">
+              <div className="flex items-center gap-1 min-w-0 overflow-hidden">
+                <span
+                  className={`px-1.5 py-0.5 rounded font-bold border shrink-0 ${
+                    effectiveTag
+                      ? "bg-indigo-950 border-indigo-500 text-indigo-300"
+                      : "bg-zinc-900/90 border-dashed border-zinc-500 text-zinc-400"
+                  }`}
+                >
+                  {effectiveTag || "empty"}
                 </span>
-              )}
 
-              {donor && (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-950/90 border border-amber-500/70 text-amber-200 truncate max-w-full">
-                  <span className="truncate font-sans">{donorLabel}</span>
+                {isFlexBox && (
+                  <span className="px-1 py-0.5 rounded font-bold bg-fuchsia-950/90 border border-fuchsia-500/70 text-fuchsia-300 shrink-0">
+                    flex
+                  </span>
+                )}
+
+                {donor && (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-950/90 border border-amber-500/70 text-amber-200 truncate max-w-full">
+                    <span className="truncate font-sans">{donorLabel}</span>
+                    <button
+                      type="button"
+                      data-wireframe-ui="true"
+                      onClick={(e) => detachBoxDonor(box.id, e)}
+                      className="text-amber-300 hover:text-white font-bold shrink-0 cursor-pointer"
+                      title="Detach donor"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )}
+              </div>
+
+              {isUlBox && (
+                <div className="relative shrink-0" data-wireframe-ui="true">
                   <button
                     type="button"
-                    data-wireframe-ui="true"
-                    onClick={(e) => detachBoxDonor(box.id, e)}
-                    className="text-amber-300 hover:text-white font-bold shrink-0 cursor-pointer"
-                    title="Detach donor"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedBoxId(box.id);
+                      setOpenListPresetBoxId((prev) =>
+                        prev === box.id ? null : box.id,
+                      );
+                    }}
+                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] font-mono transition cursor-pointer shadow-sm ${
+                      hasActivePreset
+                        ? "bg-emerald-950/95 border-emerald-400 text-emerald-200 font-bold"
+                        : "bg-zinc-950/90 border-cyan-400/70 text-cyan-200 hover:border-cyan-300 animate-pulse shadow-[0_0_10px_rgba(34,211,238,0.35)]"
+                    }`}
+                    title="Шаблон структуры для всех <li> в этом списке (можно пропустить)"
                   >
-                    ✕
+                    <span>
+                      {hasActivePreset
+                        ? `✦ ${activePresetInfo.shortLabel}`
+                        : "✦ шаблон li"}
+                    </span>
+                    <ChevronDownIcon className="w-2.5 h-2.5 shrink-0" />
                   </button>
-                </span>
+
+                  {isDropdownOpen && (
+                    <div
+                      data-wireframe-ui="true"
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute right-0 top-full mt-1 w-56 rounded-lg bg-zinc-950/95 border border-cyan-500/50 shadow-2xl p-1 flex flex-col gap-0.5 z-50 backdrop-blur-md"
+                    >
+                      <div className="px-2 py-0.5 text-[9px] text-zinc-400 border-b border-zinc-800 mb-0.5">
+                        Применить ко всем пунктам списка:
+                      </div>
+                      {LIST_ITEM_PRESETS.map((preset) => {
+                        const isPresetActive =
+                          activeListPreset === preset.value;
+                        return (
+                          <button
+                            key={preset.value}
+                            type="button"
+                            onClick={() =>
+                              updateBoxListPreset(box.id, preset.value)
+                            }
+                            className={`w-full text-left px-2 py-1 rounded flex items-center justify-between gap-2 transition cursor-pointer ${
+                              isPresetActive
+                                ? "bg-cyan-600/30 text-cyan-200 border border-cyan-500/60 font-bold"
+                                : "text-zinc-300 hover:bg-zinc-800/90 border border-transparent"
+                            }`}
+                          >
+                            <span className="text-[10px] font-mono">
+                              {preset.label}
+                            </span>
+                            <span className="text-[9px] text-zinc-400 font-sans shrink-0">
+                              {preset.hint}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
