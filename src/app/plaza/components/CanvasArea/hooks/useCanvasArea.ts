@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useMemo } from "react";
 import {
   getHtmlJson,
   getGlobalScss,
@@ -8,7 +8,6 @@ import {
   saveGlobalScss,
   saveGlobalJs,
   saveHtmlJson,
-  deleteHtmlJson,
 } from "@/lib/htmlStorage";
 import {
   extractStylesAndScriptsFromNodes,
@@ -17,6 +16,8 @@ import {
   ensureUniqueKeys,
   getAllCollapsibleKeys,
   findNodeByCriteria,
+  isPointInsideElement,
+  splitWorkspaceNodes,
 } from "@/app/plaza/components/CanvasArea/models/canvasModel";
 import { DB_KEY } from "@/app/plaza/components/CanvasArea/constants/theme";
 import { styleHistory } from "@/lib/styleHistory";
@@ -27,10 +28,22 @@ import { useCanvasMarquee } from "./useCanvasMarquee";
 
 export function useCanvasArea() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const leftPaneRef = useRef<HTMLDivElement>(null);
+  const rightPaneRef = useRef<HTMLDivElement>(null);
+
+  const currentJson = useCanvasStore((s) => s.currentJson);
+  const isSplit = useCanvasStore((s) => s.isSplit);
+  const rightKeys = useCanvasStore((s) => s.rightKeys);
 
   // ─────🔹 Контроллеры DnD и Marquee
   useCanvasDnD();
   const marquee = useCanvasMarquee({ containerRef });
+
+  // ─────🔹 Разделение узлов на Pane 1 / Pane 2 в split-режиме
+  const { leftNodes, rightNodes } = useMemo(
+    () => splitWorkspaceNodes(currentJson, rightKeys, isSplit),
+    [currentJson, rightKeys, isSplit],
+  );
 
   // ─────🔹 Загрузка при монтировании
   const jsonDownload = async () => {
@@ -88,6 +101,34 @@ export function useCanvasArea() {
   useEffect(() => {
     jsonDownload();
   }, []);
+
+  // ─────🔹 Перенос перетаскиваемых узлов между левой и правой панелями в split-режиме
+  useEffect(() => {
+    if (!isSplit) return;
+
+    const handlePointerUp = (e: PointerEvent) => {
+      const state = useCanvasStore.getState();
+      const activeKeys = state.draggedKeys;
+      if (activeKeys.length === 0) return;
+
+      if (state.dropTarget?.position === "donor") {
+        return;
+      }
+
+      if (isPointInsideElement(rightPaneRef.current, e.clientX, e.clientY)) {
+        state.moveKeysToRightPane(activeKeys);
+      } else if (
+        isPointInsideElement(leftPaneRef.current, e.clientX, e.clientY)
+      ) {
+        state.moveKeysToLeftPane(activeKeys);
+      }
+    };
+
+    window.addEventListener("pointerup", handlePointerUp, true);
+    return () => {
+      window.removeEventListener("pointerup", handlePointerUp, true);
+    };
+  }, [isSplit]);
 
   // ─────🔹 Слушаем клики из PreviewArea
   useEffect(() => {
@@ -191,6 +232,10 @@ export function useCanvasArea() {
 
   return {
     containerRef,
+    leftPaneRef,
+    rightPaneRef,
+    leftNodes,
+    rightNodes,
     handleMarqueePointerDown: marquee.handleMarqueePointerDown,
   };
 }

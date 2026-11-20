@@ -6,6 +6,7 @@ import {
   isDescendant,
   duplicateNodeInTree,
 } from "@/lib/htmlTree";
+
 export interface DonorItem {
   key: string;
   tag: string;
@@ -15,6 +16,7 @@ export interface DonorItem {
   isSvg: boolean;
   node: HtmlNode;
 }
+
 /**
  * Очищает тело CSS от некорректных точек с запятой перед закрывающими фигурными скобками ("};" -> "}")
  * и удаляет лишние пробелы по краям.
@@ -65,6 +67,7 @@ export function getAllCollapsibleKeys(
   traverse(nodes);
   return keys;
 }
+
 /**
  * Переключает состояние сворачивания всех контейнеров:
  * если все контейнеры уже свёрнуты — разворачивает всё, иначе сворачивает всё.
@@ -135,6 +138,7 @@ export function prepareAppendedNodes(
     addedRightKeys,
   };
 }
+
 /**
  * Находит узел по набору критериев (ключ, класс, тег, текстовое содержимое).
  */
@@ -270,6 +274,7 @@ export function extractNodesByKeys(
   walk(nodes);
   return found;
 }
+
 /**
  * Извлекает плоский список контентных доноров (ноды с текстом, <img> или <svg>)
  * без пустых контейнеров-обёрток и без внутренностей SVG.
@@ -309,6 +314,7 @@ export function extractDonorNodes(nodes: HtmlNode[]): DonorItem[] {
   walk(nodes);
   return items;
 }
+
 /**
  * Определяет, является ли контейнер строчным (горизонтальным flex-рядом или grid-контейнером),
  * анализируя встроенные стили и CSS-классы.
@@ -361,7 +367,7 @@ export function extractStylesAndScriptsFromNodes(nodes: HtmlNode[]): {
   function processNode(node: HtmlNode): HtmlNode | null {
     const key = node._key || generateNodeKey();
     const tag = (node.tag || "div").toLowerCase();
-    let classList = (node.class || "").split(/\s+/).filter(Boolean);
+    const classList = (node.class || "").split(/\s+/).filter(Boolean);
 
     if (tag === "script") {
       const code = (node.text || "").trim();
@@ -392,17 +398,8 @@ export function extractStylesAndScriptsFromNodes(nodes: HtmlNode[]): {
 
     if (node.style && node.style.trim()) {
       const cleanBody = node.style.trim();
-      const isSvgElement = [
-        "svg",
-        "path",
-        "g",
-        "circle",
-        "rect",
-        "polygon",
-        "polyline",
-      ].includes(tag);
 
-      let targetClass = classList.find(
+      const targetClass = classList.find(
         (c) =>
           !c.includes(":") && !c.startsWith("flex") && !c.startsWith("grid"),
       );
@@ -569,7 +566,7 @@ export function mergeScriptsWithoutDuplicates(
 
   for (const script of incomingScripts) {
     const name = script.name.trim();
-    let cleanCode = script.code
+    const cleanCode = script.code
       .replace(/\/\*\s*@component:\s*.*?\*\//g, "")
       .replace(/\/\*\s*@end:\s*.*?\*\//g, "")
       .trim();
@@ -756,6 +753,7 @@ export function duplicateNodesGroup(
   const anchorKey = orderedKeys[orderedKeys.length - 1];
   return insertNodesAdjacent(tree, anchorKey, clonedNodes, "after");
 }
+
 /**
  * Собирает все ключи узлов в дереве.
  */
@@ -800,6 +798,7 @@ export function findNewCollapsibleRootKeys(
   walk(nodes);
   return result;
 }
+
 /**
  * Объединяет данные узлов-доноров (текст, классы, атрибуты, детей) в целевой узел,
  * после чего удаляет узлы-доноры из дерева.
@@ -947,21 +946,6 @@ function isUtilityOrFontClass(cls: string): boolean {
   );
 }
 
-/**
- * 🔹 Извлекает чистое смысловое имя блока (например "card", "services", "section-frame-32")
- */
-function getSemanticBlockName(node: HtmlNode): string {
-  const rawClasses = (node.class || "").trim().split(/\s+/).filter(Boolean);
-  const semanticClass = rawClasses.find((cls) => !isUtilityOrFontClass(cls));
-
-  if (semanticClass) {
-    return semanticClass;
-  }
-
-  const tag = (node.tag || "div").toLowerCase();
-  return tag !== "div" ? tag : "block";
-}
-
 const SECTION_WRAPPER_NAMES = [
   "prim",
   "sec",
@@ -1004,7 +988,6 @@ function resolveBlockAndModifier(node: HtmlNode): {
     return { blockName: semanticClass, baseModifier: "" };
   }
 
-  // Если выбрали уже размеченный БЭМ-узел (например `bunner__prim` или `bunner__inner-sec`)
   const bemClass = rawClasses.find((cls) => cls.includes("__"));
   if (bemClass) {
     const [blockPart, elemPart = ""] = bemClass.split("__");
@@ -1053,10 +1036,6 @@ function joinBemParts(...parts: (string | undefined | null)[]): string {
   return parts.filter(Boolean).join("-");
 }
 
-/**
- * Подсчитывает количество не-служебных div по глубине внутри текущей области,
- * не заходя внутрь <li> (у каждого <li> свой локальный подсчёт).
- */
 function countDivsByDepth(
   nodes: HtmlNode[],
   depth = 0,
@@ -1086,19 +1065,7 @@ function countDivsByDepth(
 }
 
 /**
- * 🔹 Контекстное автоформирование БЭМ-классов для любого родительского блока:
- * 1. Узлы с классом `is` и всё их содержимое (включая <img>) пропускаются как есть.
- * 2. Узлы с классом `svg-wrapper` помечаются контекстно (`red__svg-prim`, `red__item-svg-prim`, `red__link-svg-wrapper-prim`).
- * 3. Остальные теги из IGNORED_SVG_TAGS (<i> без svg-wrapper, <svg>, <path>...) игнорируются.
- * 4. Работает на любом родителе (`section`, `header`, `footer`, `div`, `ul`, и т.д. — в т.ч. на уже размеченных БЭМ-обёртках).
- * 5. После .container (или сразу внутри родителя):
- *    - общий div для ≥ 2 обёрток → `red__wrap`
- *    - обёртки по порядку → `red__prim`, `red__sec`, `red__tert`, `red__quat`, ...
- * 6. Контекстная специфичность вложенных нод:
- *    - на одном уровне в родителе однотипные теги остаются одинаковыми (`red__p-prim`, `red__p-prim`)
- *    - внутри h1..h6 / p / button / a: `red__title-span-prim`, `red__p-span-prim`, `red__button-span-prim`, `red__link-span-prim`
- *    - внутри `li`: префикс `item-` (`red__item-svg-prim`, `red__item-inner-prim`, `red__item-title_h4-prim`, `red__item-p-prim`...)
- *    - внутри обычных вложенных div (`inner`, `box`, `group`): префикс своей обёртки (`red__inner-p-prim`, `red__box-p-prim`...)
+ * 🔹 Контекстное автоформирование БЭМ-классов для любого родительского блока
  */
 export function applyBemClassesToSection(
   tree: HtmlNode[],
@@ -1106,7 +1073,6 @@ export function applyBemClassesToSection(
 ): HtmlNode[] {
   if (!tree || tree.length === 0) return tree;
 
-  // 1. Находим целевого родителя по ключу, иначе берём первый корневой узел
   let rootNode: HtmlNode | null = null;
   if (targetKey) {
     rootNode = findNodeInTree(tree, targetKey);
@@ -1122,7 +1088,6 @@ export function applyBemClassesToSection(
   const { blockName: rootBlockName, baseModifier } =
     resolveBlockAndModifier(rootNode);
 
-  // 2. Рекурсивная обработка элементов внутри области (обёртки или <li>)
   function processScopeElements(
     nodes: HtmlNode[],
     modifier: string,
@@ -1139,7 +1104,6 @@ export function applyBemClassesToSection(
       scopePrefix: string,
       inlineContext: "" | "title" | "p" | "button" | "link",
     ): HtmlNode {
-      // ⛔ Служебный класс `is` — пропускаем ноду и всё содержимое как есть
       if (hasNodeClass(node, "is")) {
         return node;
       }
@@ -1148,7 +1112,6 @@ export function applyBemClassesToSection(
       const existingClasses = getNodeClasses(node);
       const isSvgWrapper = existingClasses.includes("svg-wrapper");
 
-      // ⛔ Игнорируем иконки и SVG (кроме .svg-wrapper)
       if (!isSvgWrapper && IGNORED_SVG_TAGS.has(tag)) {
         return node;
       }
@@ -1245,7 +1208,6 @@ export function applyBemClassesToSection(
     return processScopeElements([node], modifier)[0];
   }
 
-  // 3. Обработка уровня с обёртками (prim, sec, tert...)
   function processBlocksLevel(children: HtmlNode[]): HtmlNode[] {
     let blockIndex = 0;
 
@@ -1272,7 +1234,6 @@ export function applyBemClassesToSection(
     });
   }
 
-  // 4. Обработка содержимого layout-контейнера (.container или самого родителя)
   function processLayoutScope(children: HtmlNode[]): HtmlNode[] {
     const topWrapperDivs = children.filter(isWrapperDiv);
 
@@ -1280,7 +1241,6 @@ export function applyBemClassesToSection(
       const singleDiv = topWrapperDivs[0];
       const innerWrapperDivs = (singleDiv.children || []).filter(isWrapperDiv);
 
-      // Если один общий div оборачивает несколько блоков → он становится __wrap
       if (innerWrapperDivs.length >= 2) {
         const singleDivKey = getNodeKey(singleDiv);
 
@@ -1303,7 +1263,6 @@ export function applyBemClassesToSection(
       }
     }
 
-    // Если в контейнере сразу несколько обёрток (или один блок без внутренних обёрток)
     if (topWrapperDivs.length >= 1) {
       return processBlocksLevel(children);
     }
@@ -1311,7 +1270,6 @@ export function applyBemClassesToSection(
     return processScopeElements(children, "");
   }
 
-  // 5. Обработка прямых детей родителя (учитывая наличие .container)
   function processSectionChildren(children: HtmlNode[]): HtmlNode[] {
     const containerNode = children.find((child) => {
       if (hasNodeClass(child, "is")) return false;
@@ -1341,7 +1299,6 @@ export function applyBemClassesToSection(
     return processLayoutScope(children);
   }
 
-  // 6. Обновляем целевой родительский узел в дереве
   function updateTree(list: HtmlNode[]): HtmlNode[] {
     return list.map((item) => {
       if (getNodeKey(item) === rootKey) {
@@ -1374,9 +1331,6 @@ export function applyBemClassesToSection(
 // ШАБЛОНИЗАТОР / ПАКЕТНОЕ НАПОЛНЕНИЕ ДОНОРАМИ
 // ============================================================================
 
-/**
- * Сортирует список переданных ключей в соответствии с их физическим порядком появления в DOM-дереве.
- */
 export function sortKeysByTreeOrder(
   tree: HtmlNode[],
   keys: Set<string> | string[],
@@ -1400,10 +1354,6 @@ export function sortKeysByTreeOrder(
   return ordered;
 }
 
-/**
- * Глубоко клонирует шаблон узла, присваивая элементам новые уникальные ключи
- * и записывая соответствие старых ключей новым в Map.
- */
 export function cloneTemplateWithKeyMapping(
   node: HtmlNode,
   keyMap: Map<string, string>,
@@ -1423,9 +1373,6 @@ export function cloneTemplateWithKeyMapping(
   };
 }
 
-/**
- * Находит узел по ключу в дереве и применяет к нему функцию-мутатор (обновление).
- */
 export function mutateNodeInTree(
   nodes: HtmlNode[],
   targetKey: string,
@@ -1445,14 +1392,10 @@ export function mutateNodeInTree(
   });
 }
 
-/**
- * Переносит контент, классы, стили и атрибуты из узла-донора в узел-слот шаблона.
- */
 export function applyDonorToSlot(
   slotNode: HtmlNode,
   donorNode: HtmlNode,
 ): HtmlNode {
-  // 🎯 ЕСЛИ У СЛОТА ТЕГ ПУСТОЙ ("", null, undefined) — ОН ЗАБИРАЕТ ТЕГ ДОНОРА!
   const nextTag =
     slotNode.tag && slotNode.tag.trim() ? slotNode.tag : donorNode.tag || "div";
 
@@ -1494,7 +1437,7 @@ export function applyDonorToSlot(
 
   return {
     ...slotNode,
-    tag: nextTag, // 👈 Тег обновлен от донора, если был пустым!
+    tag: nextTag,
     text: nextText,
     class: nextClass,
     attributes: nextAttributes,
@@ -1510,15 +1453,6 @@ export interface TemplateFillResult {
   warning?: string;
 }
 
-/**
- * 🔹 Заполнение одиночного шаблона донорами:
- * 1. Берет корневые элементы шаблона из правой панели.
- * 2. Берет узлы-доноры, отсортированные в порядке DOM-дерева.
- * 3. Использует доноров в количестве, не превышающем число слотов. Лишние доноры не затрагиваются!
- * 4. Клонирует шаблон с новыми ключами и переносит свойства доноров в соответствующие слоты.
- * 5. Удаляет использованных доноров из дерева.
- * 6. Добавляет заполненный клон в конец дерева (Панель 1).
- */
 export function fillTemplateWithDonors(
   tree: HtmlNode[],
   rightKeys: Set<string>,
@@ -1580,10 +1514,7 @@ export function fillTemplateWithDonors(
         : undefined,
   };
 }
-/**
- * 🔹 Заполняет один конкретный слот в правой панели (in-place, без клонирования)
- * данными выбранного донора с левой панели и удаляет донора из дерева.
- */
+
 export function fillSingleSlotInPlace(
   tree: HtmlNode[],
   rightKeys: Set<string>,
@@ -1616,7 +1547,6 @@ export function fillSingleSlotInPlace(
   const addedRightKeys: string[] = [];
   const nextSlotNode = applyDonorToSlot(slotNode, donorNode);
 
-  // Если донор принес с собой новых детей, регистрируем их ключи для правой панели
   if (
     (!slotNode.children || slotNode.children.length === 0) &&
     Array.isArray(nextSlotNode.children) &&
@@ -1635,10 +1565,7 @@ export function fillSingleSlotInPlace(
     addedRightKeys,
   };
 }
-/**
- * 🔹 Заполняет сразу группу слотов в правой панели (in-place)
- * массивом доноров из левой панели по порядку их следования в дереве.
- */
+
 export function fillMultipleSlotsInPlace(
   tree: HtmlNode[],
   rightKeys: Set<string>,
@@ -1718,5 +1645,110 @@ export function fillMultipleSlotsInPlace(
     addedRightKeys,
     usedDonorKeys,
     excessCount,
+  };
+}
+
+// ============================================================================
+// МОДЕЛЬ РАБОЧЕЙ ОБЛАСТИ (FLOATING-ОКНО, ЗУМ, СПЛИТ-ПАНЕЛИ)
+// ============================================================================
+
+export interface FloatingPos {
+  x: number;
+  y: number;
+}
+
+export interface FloatingSize {
+  w: number;
+  h: number;
+}
+
+export const MIN_GRAPH_ZOOM = 0.4;
+export const MAX_GRAPH_ZOOM = 1.4;
+export const MIN_FLOATING_WIDTH = 360;
+export const MIN_FLOATING_HEIGHT = 220;
+
+export function clampGraphZoom(zoom: number): number {
+  return Number(
+    Math.min(MAX_GRAPH_ZOOM, Math.max(MIN_GRAPH_ZOOM, zoom)).toFixed(2),
+  );
+}
+
+export function getHeaderOffset(): number {
+  if (typeof document === "undefined") return 56;
+  const header = document.querySelector("header");
+  if (!header) return 12;
+  const rect = header.getBoundingClientRect();
+  return Math.max(8, Math.round(rect.bottom + 8));
+}
+
+export function computeInitialFloatingBounds(
+  viewportW: number,
+  viewportH: number,
+  isAsideFloating: boolean,
+): { pos: FloatingPos; size: FloatingSize } {
+  const headerTop = getHeaderOffset();
+  const w = Math.min(760, Math.max(MIN_FLOATING_WIDTH, viewportW - 230));
+  const h = Math.min(460, Math.max(240, viewportH - headerTop - 24));
+  const x = isAsideFloating
+    ? Math.min(208, Math.max(8, viewportW - w - 8))
+    : Math.max(8, Math.round((viewportW - w) / 2));
+
+  return {
+    pos: { x, y: headerTop },
+    size: { w, h },
+  };
+}
+
+export function clampFloatingPosition(
+  x: number,
+  y: number,
+  minTop: number,
+  maxX: number,
+  maxY: number,
+): FloatingPos {
+  return {
+    x: Math.min(maxX, Math.max(8, x)),
+    y: Math.min(maxY, Math.max(minTop, y)),
+  };
+}
+
+export function clampFloatingSize(
+  w: number,
+  h: number,
+  maxW: number,
+  maxH: number,
+): FloatingSize {
+  return {
+    w: Math.min(maxW, Math.max(MIN_FLOATING_WIDTH, w)),
+    h: Math.min(maxH, Math.max(MIN_FLOATING_HEIGHT, h)),
+  };
+}
+
+export function isPointInsideElement(
+  el: HTMLElement | null,
+  clientX: number,
+  clientY: number,
+): boolean {
+  if (!el) return false;
+  const r = el.getBoundingClientRect();
+  return (
+    clientX >= r.left &&
+    clientX <= r.right &&
+    clientY >= r.top &&
+    clientY <= r.bottom
+  );
+}
+
+export function splitWorkspaceNodes(
+  currentJson: HtmlNode[],
+  rightKeys: Set<string>,
+  isSplit: boolean,
+): { leftNodes: HtmlNode[]; rightNodes: HtmlNode[] } {
+  if (!isSplit || rightKeys.size === 0) {
+    return { leftNodes: currentJson, rightNodes: [] };
+  }
+  return {
+    leftNodes: removeNodesByKeys(currentJson, rightKeys),
+    rightNodes: extractNodesByKeys(currentJson, rightKeys),
   };
 }
