@@ -161,3 +161,4 @@ D:\WEB\ulon\src\app\plaza\components\PreviewArea\components\ModalJsonHtml.tsx
 
 Тогда у тебя будет и скорость почти как у ИИ, и качество дорогой ручной вёрстки.
 ------------------
+D:\WEB\ulon\src\app\plaza\components\PreviewArea\components\TracingWireframeOverlay.tsx--- работать с ul
