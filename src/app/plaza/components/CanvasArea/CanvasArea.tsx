@@ -30,12 +30,26 @@ export function CanvasArea() {
   const setClickedKey = useCanvasStore((s) => s.setClickedKey);
   const persist = useCanvasStore((s) => s.persist);
   const isCanvasFloating = useCanvasStore((s) => s.isCanvasFloating);
+  const isArmingMarker = useCanvasStore((s) => s.isArmingMarker);
 
   const [isProjectsOpen, setIsProjectsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (useCanvasStore.getState().isArmingMarker) {
+          useCanvasStore.getState().setArmingMarker(false);
+          useCanvasStore.getState().showHud("Режим маркера отменен", "info");
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   const {
@@ -81,7 +95,7 @@ export function CanvasArea() {
             node={node}
             depth={0}
             parentIsRow={true}
-            showBeforeGap={index === 0}
+            showBeforeGap={true}
             showAfterGap={true}
           />
         </div>
@@ -105,8 +119,16 @@ export function CanvasArea() {
       }
       className={
         isCanvasFloating
-          ? "plaza-workspace fixed z-[43] bg-zinc-950 border border-indigo-500/40 rounded-xl overflow-hidden shadow-2xl flex flex-col select-none will-change-transform"
-          : "plaza-workspace flex-1 relative bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl flex flex-col"
+          ? `plaza-workspace fixed z-[43] bg-zinc-950 border ${
+              isArmingMarker
+                ? "border-rose-500 shadow-[0_0_30px_rgba(244,63,94,0.3)]"
+                : "border-indigo-500/40 shadow-2xl"
+            } rounded-xl overflow-hidden flex flex-col select-none will-change-transform transition-colors`
+          : `plaza-workspace flex-1 relative bg-zinc-950 border ${
+              isArmingMarker
+                ? "border-rose-500/80 shadow-[0_0_25px_rgba(244,63,94,0.25)]"
+                : "border-zinc-800 shadow-2xl"
+            } rounded-xl overflow-hidden flex flex-col transition-colors`
       }
     >
       {/* HUD TOAST NOTIFICATION */}
@@ -137,6 +159,23 @@ export function CanvasArea() {
         onDragMove={handleWindowDragMove}
         onDragEnd={handleWindowDragEnd}
       />
+
+      {/* ПЛАШКА РЕЖИМА РАССТАНОВКИ МАРКЕРА */}
+      {isArmingMarker && (
+        <div className="bg-rose-950/90 border-b border-rose-500/60 px-3 py-1 flex items-center justify-between text-xs font-mono text-rose-200 shrink-0">
+          <span className="flex items-center gap-1.5 font-semibold">
+            <span className="animate-pulse">📍</span>
+            <span>Режим расстановки маркера: кликните по ноде на канвасе</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => useCanvasStore.getState().setArmingMarker(false)}
+            className="px-2 py-0.5 rounded bg-rose-900/60 hover:bg-rose-800 text-[11px] border border-rose-500/40 text-rose-300 cursor-pointer"
+          >
+            Отмена (Esc)
+          </button>
+        </div>
+      )}
 
       {/* WORKSPACE PANELS */}
       <div

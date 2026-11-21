@@ -47,6 +47,10 @@ export function useCanvasMarquee({ containerRef }: UseCanvasMarqueeOptions) {
         return;
       }
 
+      if (useCanvasStore.getState().isArmingMarker) {
+        useCanvasStore.getState().setArmingMarker(false);
+      }
+
       const scrollable = target.closest(".plaza-inner") as HTMLElement | null;
       if (scrollable) {
         const rect = scrollable.getBoundingClientRect();

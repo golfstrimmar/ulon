@@ -199,11 +199,12 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
     (e: React.PointerEvent) => {
       if (e.button === 0) {
         e.stopPropagation();
-        // В Template-режиме не запускаем drag при кликах по нодам
-        if (useCanvasStore.getState().isTemplateMode) {
+        const state = useCanvasStore.getState();
+        // В Template-режиме и при выборе места маркера не запускаем drag при кликах по нодам
+        if (state.isTemplateMode || state.isArmingMarker) {
           return;
         }
-        useCanvasStore.getState().startDragNode(key, e.clientX, e.clientY);
+        state.startDragNode(key, e.clientX, e.clientY);
       }
     },
     [key],
@@ -215,6 +216,17 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
       if (hasActiveDrag || !key) return;
 
       const state = useCanvasStore.getState();
+
+      // 📍 Если активен режим расстановки маркера: ставим маркер без открытия модалки свойств
+      if (state.isArmingMarker) {
+        if (clickTimeoutRef.current) {
+          clearTimeout(clickTimeoutRef.current);
+          clickTimeoutRef.current = null;
+        }
+        void state.placeMarkerAtNode(key);
+        return;
+      }
+
       if ((e.ctrlKey || e.metaKey) && !state.isTemplateMode) {
         if (clickTimeoutRef.current) {
           clearTimeout(clickTimeoutRef.current);

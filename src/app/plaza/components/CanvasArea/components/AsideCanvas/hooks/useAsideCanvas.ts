@@ -12,6 +12,7 @@ export function useAsideCanvas() {
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
   const currentJson = useCanvasStore((s) => s.currentJson);
   const keepMarkerAfterInsert = useCanvasStore((s) => s.keepMarkerAfterInsert);
+  const isArmingMarker = useCanvasStore((s) => s.isArmingMarker);
 
   const hasNodes = useMemo(() => hasTreeNodes(currentJson), [currentJson]);
   const hasMarker = useMemo(
@@ -47,6 +48,10 @@ export function useAsideCanvas() {
     await useCanvasStore.getState().insertMarkerNode();
   }, []);
 
+  const handleToggleArmMarker = useCallback(() => {
+    useCanvasStore.getState().toggleArmingMarker();
+  }, []);
+
   const handleRemoveMarker = useCallback(async () => {
     await useCanvasStore.getState().removeMarkerNode();
   }, []);
@@ -59,6 +64,7 @@ export function useAsideCanvas() {
     openFolders,
     hasNodes,
     hasMarker,
+    isArmingMarker,
     keepMarkerAfterInsert,
     toggleFolder,
     handleClear,
@@ -67,6 +73,7 @@ export function useAsideCanvas() {
     triggerRedo,
     triggerCollapseAll,
     handleInsertMarker,
+    handleToggleArmMarker,
     handleRemoveMarker,
     handleToggleKeepMarker,
   };

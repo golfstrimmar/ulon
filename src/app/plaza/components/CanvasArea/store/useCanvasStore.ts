@@ -71,6 +71,10 @@ export interface CanvasState {
   hudMessage: { text: string; type: "info" | "warning" | "success" } | null;
 
   // ── Insertion Marker ─────────────────────────────────────────────────────
+  isArmingMarker: boolean;
+  toggleArmingMarker: () => void;
+  setArmingMarker: (val: boolean) => void;
+  placeMarkerAtNode: (targetKey: string) => Promise<void>;
   keepMarkerAfterInsert: boolean;
   toggleKeepMarkerAfterInsert: () => void;
   insertMarkerNode: () => Promise<void>;
@@ -182,6 +186,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   templateSlotKeys: [],
   hudMessage: null,
 
+  isArmingMarker: false,
   keepMarkerAfterInsert: false,
 
   armedDonorKey: null,
@@ -213,6 +218,76 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   toggleKeepMarkerAfterInsert: () =>
     set((state) => ({ keepMarkerAfterInsert: !state.keepMarkerAfterInsert })),
+
+  setArmingMarker: (val) =>
+    set({
+      isArmingMarker: val,
+      clickedKey: val ? null : get().clickedKey,
+    }),
+
+  toggleArmingMarker: () => {
+    const { currentJson, isArmingMarker } = get();
+    if (!currentJson || currentJson.length === 0) {
+      void get().insertMarkerNode();
+      return;
+    }
+    const next = !isArmingMarker;
+    set({
+      isArmingMarker: next,
+      clickedKey: next ? null : get().clickedKey,
+    });
+    if (next) {
+      get().showHud("📍 Кликните по ноде, чтобы поставить маркер", "info");
+    }
+  },
+
+  placeMarkerAtNode: async (targetKey: string) => {
+    const { currentJson, isSplit, rightKeys } = get();
+    let tree = currentJson;
+    const existingMarkerKey = findMarkerKeyInTree(tree);
+    if (existingMarkerKey) {
+      tree = deleteNodeFromArray(tree, existingMarkerKey);
+    }
+
+    const marker = createMarkerNode();
+    const markerKey = marker._key!;
+    let nextTree: HtmlNode[];
+    let putInRight = false;
+
+    if (targetKey && findNodeInTree(tree, targetKey)) {
+      nextTree = insertNodesAdjacent(
+        tree,
+        targetKey,
+        [marker],
+        "after",
+      );
+      putInRight = isSplit && rightKeys.has(targetKey);
+    } else {
+      nextTree = [...tree, marker];
+      putInRight = false;
+    }
+
+    set((state) => {
+      const nextRight = new Set(state.rightKeys);
+      if (existingMarkerKey) {
+        nextRight.delete(existingMarkerKey);
+      }
+      if (putInRight) {
+        nextRight.add(markerKey);
+      }
+      return {
+        rightKeys: nextRight,
+        isArmingMarker: false,
+        clickedKey: null,
+      };
+    });
+
+    get().showHud(
+      "Маркер установлен — жмите кнопку в Aside для вставки",
+      "success",
+    );
+    await get().persist(nextTree);
+  },
 
   insertMarkerNode: async () => {
     const { currentJson, clickedKey, isSplit, rightKeys } = get();

@@ -154,6 +154,7 @@ function NodeCardComponent({ node, depth, parentIsRow = true, showBeforeGap = fa
   } = useNodeCard({ node, depth });
 
   const isMarker = isMarkerNode(node);
+  const isArmingMarker = useCanvasStore((s) => s.isArmingMarker);
 
   const isClicked = useCanvasStore((s) => s.clickedKey === key);
   const isHovered = useCanvasStore(
@@ -169,7 +170,10 @@ function NodeCardComponent({ node, depth, parentIsRow = true, showBeforeGap = fa
   const pastelTheme = getPastelTagTheme(node.tag);
 
   let stateRing = "";
-  if (isTemplateMode && isFirstSlot) {
+  if (isArmingMarker && isHovered) {
+    stateRing =
+      "outline outline-2 outline-rose-400 outline-offset-1 shadow-[0_0_12px_rgba(244,63,94,0.6)]";
+  } else if (isTemplateMode && isFirstSlot) {
     stateRing = "outline outline-2 outline-amber-300/95 outline-offset-1";
   } else if ((isTemplateMode && slotNumber !== null) || isDropDonor) {
     stateRing = "outline outline-2 outline-amber-400/70 outline-offset-1";
@@ -185,16 +189,18 @@ function NodeCardComponent({ node, depth, parentIsRow = true, showBeforeGap = fa
     stateRing = "outline outline-1 outline-cyan-400/75 outline-offset-1";
   }
 
-  const tooltipText = isMarker
-    ? "Маркер вставки: перетащи в нужное место и нажми любую кнопку в AsideCanvas (двойной клик удаляет)"
-    : [
-        isTemplateMode && slotNumber !== null ? `[Slot #${slotNumber}]` : "",
-        hasTag ? `<${node.tag}>` : "<empty>",
-        hasClass ? classStr : "",
-        hasText ? `"${node.text}"` : "",
-      ]
-        .filter(Boolean)
-        .join("  |  ");
+  const tooltipText = isArmingMarker
+    ? "Кликните, чтобы поставить маркер после этой ноды"
+    : isMarker
+      ? "Маркер вставки: перетащи в нужное место и нажми любую кнопку в AsideCanvas (двойной клик удаляет)"
+      : [
+          isTemplateMode && slotNumber !== null ? `[Slot #${slotNumber}]` : "",
+          hasTag ? `<${node.tag}>` : "<empty>",
+          hasClass ? classStr : "",
+          hasText ? `"${node.text}"` : "",
+        ]
+          .filter(Boolean)
+          .join("  |  ");
 
   const classTokens = hasClass ? classStr.split(/\s+/).filter(Boolean) : [];
 
@@ -215,17 +221,27 @@ function NodeCardComponent({ node, depth, parentIsRow = true, showBeforeGap = fa
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
         title={tooltipText}
-        className={`relative flex flex-col items-start select-none cursor-pointer group ${
-          isTemplateMode ? "" : "active:cursor-grabbing"
+        className={`relative flex flex-col items-start select-none group ${
+          isArmingMarker
+            ? "cursor-crosshair"
+            : isTemplateMode
+              ? "cursor-pointer"
+              : "cursor-pointer active:cursor-grabbing"
         }`}
       >
+        {isArmingMarker && isHovered && (
+          <div className="pointer-events-none absolute -top-3.5 -right-2 z-30 px-1.5 py-0.5 rounded bg-rose-600 text-white font-mono text-[9px] font-bold shadow-lg flex items-center gap-1 animate-bounce">
+            <span>📍</span>
+            <span>Сюда</span>
+          </div>
+        )}
         {showBeforeGap && (
-          <div className="absolute -left-4 inset-y-0 flex items-stretch z-20">
+          <div className="absolute -left-3.5 top-1 bottom-1 w-3 flex items-center justify-center z-20 pointer-events-auto">
             <DropGap targetKey={key} position="before" orientation="vertical" />
           </div>
         )}
         {showAfterGap && (
-          <div className="absolute -right-4 inset-y-0 flex items-stretch z-20">
+          <div className="absolute -right-3.5 top-1 bottom-1 w-3 flex items-center justify-center z-20 pointer-events-auto">
             <DropGap targetKey={key} position="after" orientation="vertical" />
           </div>
         )}
@@ -401,7 +417,7 @@ function NodeCardComponent({ node, depth, parentIsRow = true, showBeforeGap = fa
                     node={child}
                     depth={depth + 1}
                     parentIsRow={true}
-                    showBeforeGap={isFirst}
+                    showBeforeGap={true}
                     showAfterGap={true}
                   />
                 </div>

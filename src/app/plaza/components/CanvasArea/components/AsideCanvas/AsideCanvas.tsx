@@ -30,6 +30,7 @@ export default function AsideCanvas() {
     openFolders,
     hasNodes,
     hasMarker,
+    isArmingMarker,
     keepMarkerAfterInsert,
     toggleFolder,
     handleClear,
@@ -37,7 +38,7 @@ export default function AsideCanvas() {
     triggerUndo,
     triggerRedo,
     triggerCollapseAll,
-    handleInsertMarker,
+    handleToggleArmMarker,
     handleRemoveMarker,
     handleToggleKeepMarker,
   } = useAsideCanvas();
@@ -249,20 +250,30 @@ export default function AsideCanvas() {
         <div className="flex items-center gap-1">
           <button
             type="button"
-            onClick={hasMarker ? handleRemoveMarker : handleInsertMarker}
+            onClick={hasMarker ? handleRemoveMarker : handleToggleArmMarker}
             title={
               hasMarker
                 ? "Убрать маркер с канваса (при нажатии кнопок ниже маркер заменится)"
-                : "Поставить маркер на канвас (новые ноды вставятся на его место)"
+                : isArmingMarker
+                  ? "Отменить выбор места для маркера (Esc)"
+                  : "Поставить маркер: нажмите, затем кликните по любой ноде на канвасе"
             }
             className={`flex-1 px-2 py-1 rounded text-[11px] font-mono font-bold border transition cursor-pointer flex items-center justify-center gap-1 ${
               hasMarker
                 ? "bg-rose-950/70 border-rose-400 text-rose-200 shadow-[0_0_10px_rgba(251,113,133,0.35)]"
-                : "bg-zinc-800 hover:bg-zinc-700 border-zinc-700 hover:border-rose-400/60 text-zinc-200"
+                : isArmingMarker
+                  ? "bg-rose-600 border-rose-300 text-white shadow-[0_0_12px_rgba(244,63,94,0.6)] animate-pulse"
+                  : "bg-zinc-800 hover:bg-zinc-700 border-zinc-700 hover:border-rose-400/60 text-zinc-200"
             }`}
           >
             <span>📍</span>
-            <span>{hasMarker ? "Marker ON ✕" : "+ Marker"}</span>
+            <span>
+              {hasMarker
+                ? "Marker ON ✕"
+                : isArmingMarker
+                  ? "Кликни ноду ✕"
+                  : "+ Marker"}
+            </span>
           </button>
 
           <button
