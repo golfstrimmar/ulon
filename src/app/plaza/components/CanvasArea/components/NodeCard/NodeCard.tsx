@@ -4,6 +4,7 @@ import React, { memo } from "react";
 import type { HtmlNode } from "@/types/HtmlNode";
 import { DropGap } from "@/app/plaza/components/CanvasArea/components/DropGap";
 import { useCanvasStore } from "@/app/plaza/components/CanvasArea/store/useCanvasStore";
+import { isMarkerNode } from "@/app/plaza/components/CanvasArea/models/canvasModel";
 import type { NodeCardProps } from "./nodeCard.types";
 import { useNodeCard } from "@/app/plaza/components/CanvasArea/components/NodeCard/useNodeCard";
 
@@ -152,6 +153,8 @@ function NodeCardComponent({ node, depth, parentIsRow = true }: NodeCardProps) {
     handleToggleCollapseClick,
   } = useNodeCard({ node, depth });
 
+  const isMarker = isMarkerNode(node);
+
   const isClicked = useCanvasStore((s) => s.clickedKey === key);
   const isHovered = useCanvasStore(
     (s) =>
@@ -182,14 +185,16 @@ function NodeCardComponent({ node, depth, parentIsRow = true }: NodeCardProps) {
     stateRing = "outline outline-1 outline-cyan-400/75 outline-offset-1";
   }
 
-  const tooltipText = [
-    isTemplateMode && slotNumber !== null ? `[Slot #${slotNumber}]` : "",
-    hasTag ? `<${node.tag}>` : "<empty>",
-    hasClass ? classStr : "",
-    hasText ? `"${node.text}"` : "",
-  ]
-    .filter(Boolean)
-    .join("  |  ");
+  const tooltipText = isMarker
+    ? "Маркер вставки: перетащи в нужное место и нажми любую кнопку в AsideCanvas (двойной клик удаляет)"
+    : [
+        isTemplateMode && slotNumber !== null ? `[Slot #${slotNumber}]` : "",
+        hasTag ? `<${node.tag}>` : "<empty>",
+        hasClass ? classStr : "",
+        hasText ? `"${node.text}"` : "",
+      ]
+        .filter(Boolean)
+        .join("  |  ");
 
   const classTokens = hasClass ? classStr.split(/\s+/).filter(Boolean) : [];
 
@@ -222,128 +227,138 @@ function NodeCardComponent({ node, depth, parentIsRow = true }: NodeCardProps) {
           </div>
         )}
 
-        <div
-          className={`relative mt-1 px-1.5 py-1 rounded border ${
-            hasChildren ? "border-l-[3px]" : ""
-          } transition-all flex flex-col items-center gap-0.5 min-w-[46px] ${stateRing}`}
-          style={{
-            backgroundColor: bgStyle,
-            borderColor: borderStyle,
-            boxShadow: shadowStyle,
-          }}
-        >
-          {/* Номерок очерёдности слота в режиме Template */}
-          {isTemplateMode && slotNumber !== null && (
-            <span
-              className={`pointer-events-none absolute -top-2 -right-1.5 z-30 min-w-[18px] h-[18px] px-1 rounded-full border font-mono text-[10px] font-bold flex items-center justify-center leading-none transition-all ${
-                isFirstSlot
-                  ? "bg-amber-300 text-zinc-950 border-amber-100 shadow-[0_0_12px_rgba(252,211,77,0.95)] scale-110"
-                  : "bg-amber-500 text-zinc-950 border-amber-200 shadow-[0_0_8px_rgba(245,158,11,0.75)]"
-              }`}
-            >
-              {slotNumber}
+        {isMarker ? (
+          <div
+            className={`relative mt-1 px-2 py-1.5 rounded border-2 border-dashed border-rose-400 bg-rose-950/55 shadow-[0_0_14px_rgba(251,113,133,0.45)] animate-pulse flex items-center gap-1.5 min-w-[82px] ${stateRing}`}
+          >
+            <span className="text-[11px] leading-none">📍</span>
+            <span className="text-[10px] font-mono font-bold text-rose-200 tracking-wide whitespace-nowrap leading-none">
+              MARKER
             </span>
-          )}
-
-          {/* Подсказка при наведении на неназначенную ноду в правой панели */}
-          {isTemplateMode && isRightPaneNode && slotNumber === null && (
-            <span className="pointer-events-none absolute -top-2 -right-1.5 z-30 w-4 h-4 rounded-full border border-dashed border-amber-400/60 bg-zinc-900/90 text-amber-300 font-mono text-[10px] font-bold flex items-center justify-center leading-none opacity-0 group-hover:opacity-100 transition-opacity">
-              +
-            </span>
-          )}
-
-          {/* Верхняя строка: галочка, тег, превью, сворачивание */}
-          <div className="flex items-center justify-center gap-1">
-            {isSelected && (
-              <span className="w-3 h-3 rounded-sm bg-sky-500/30 border border-sky-400 flex items-center justify-center shrink-0">
-                <svg viewBox="0 0 12 12" className="w-2 h-2 text-sky-300">
-                  <path
-                    d="M2.5 6l2.5 2.5 4.5-5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+          </div>
+        ) : (
+          <div
+            className={`relative mt-1 px-1.5 py-1 rounded border ${
+              hasChildren ? "border-l-[3px]" : ""
+            } transition-all flex flex-col items-center gap-0.5 min-w-[46px] ${stateRing}`}
+            style={{
+              backgroundColor: bgStyle,
+              borderColor: borderStyle,
+              boxShadow: shadowStyle,
+            }}
+          >
+            {/* Номерок очерёдности слота в режиме Template */}
+            {isTemplateMode && slotNumber !== null && (
+              <span
+                className={`pointer-events-none absolute -top-2 -right-1.5 z-30 min-w-[18px] h-[18px] px-1 rounded-full border font-mono text-[10px] font-bold flex items-center justify-center leading-none transition-all ${
+                  isFirstSlot
+                    ? "bg-amber-300 text-zinc-950 border-amber-100 shadow-[0_0_12px_rgba(252,211,77,0.95)] scale-110"
+                    : "bg-amber-500 text-zinc-950 border-amber-200 shadow-[0_0_8px_rgba(245,158,11,0.75)]"
+                }`}
+              >
+                {slotNumber}
               </span>
             )}
 
-            <span
-              className={`px-1 py-[1px] rounded text-[10px] font-mono tracking-tight border shrink-0 leading-none ${
-                hasTag
-                  ? pastelTheme.badge
-                  : "border-dashed border-zinc-600 bg-zinc-900/90 text-zinc-400"
-              }`}
-            >
-              {hasTag ? node.tag : "empty"}
-            </span>
-
-            {imgSrc && (
-              <div className="w-20 h-10 rounded border border-zinc-700/80 bg-zinc-950 flex items-center justify-center overflow-hidden shrink-0">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={imgSrc}
-                  alt=""
-                  className="max-w-full max-h-full object-contain pointer-events-none"
-                />
-              </div>
+            {/* Подсказка при наведении на неназначенную ноду в правой панели */}
+            {isTemplateMode && isRightPaneNode && slotNumber === null && (
+              <span className="pointer-events-none absolute -top-2 -right-1.5 z-30 w-4 h-4 rounded-full border border-dashed border-amber-400/60 bg-zinc-900/90 text-amber-300 font-mono text-[10px] font-bold flex items-center justify-center leading-none opacity-0 group-hover:opacity-100 transition-opacity">
+                +
+              </span>
             )}
 
-            {svgTargetNode && (
-              <div className="size-6 rounded border border-zinc-700/80 bg-zinc-950/90 p-[1px] flex items-center justify-center overflow-hidden shrink-0">
-                <MiniSvgPreview node={svgTargetNode} />
-              </div>
-            )}
+            {/* Верхняя строка: галочка, тег, превью, сворачивание */}
+            <div className="flex items-center justify-center gap-1">
+              {isSelected && (
+                <span className="w-3 h-3 rounded-sm bg-sky-500/30 border border-sky-400 flex items-center justify-center shrink-0">
+                  <svg viewBox="0 0 12 12" className="w-2 h-2 text-sky-300">
+                    <path
+                      d="M2.5 6l2.5 2.5 4.5-5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </span>
+              )}
 
-            {hasChildren && (
-              <button
-                type="button"
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={handleToggleCollapseClick}
-                title={
-                  isCollapsed
-                    ? `Expand (${children.length})`
-                    : `Collapse (${children.length})`
-                }
-                className={`px-2 h-6 cursor-pointer rounded border text-[10px] font-mono font-bold flex items-center justify-center shrink-0 transition leading-none ${
-                  isCollapsed
-                    ? "bg-cyan-400 text-zinc-950 border-cyan-200 shadow-[0_0_8px_rgba(34,211,238,0.65)] hover:bg-cyan-300"
-                    : "bg-violet-950/90 border-violet-500/60 hover:border-violet-400 text-violet-200"
+              <span
+                className={`px-1 py-[1px] rounded text-[10px] font-mono tracking-tight border shrink-0 leading-none ${
+                  hasTag
+                    ? pastelTheme.badge
+                    : "border-dashed border-zinc-600 bg-zinc-900/90 text-zinc-400"
                 }`}
               >
-                {isCollapsed ? `+${children.length}` : "−"}
-              </button>
+                {hasTag ? node.tag : "empty"}
+              </span>
+
+              {imgSrc && (
+                <div className="w-20 h-10 rounded border border-zinc-700/80 bg-zinc-950 flex items-center justify-center overflow-hidden shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={imgSrc}
+                    alt=""
+                    className="max-w-full max-h-full object-contain pointer-events-none"
+                  />
+                </div>
+              )}
+
+              {svgTargetNode && (
+                <div className="size-6 rounded border border-zinc-700/80 bg-zinc-950/90 p-[1px] flex items-center justify-center overflow-hidden shrink-0">
+                  <MiniSvgPreview node={svgTargetNode} />
+                </div>
+              )}
+
+              {hasChildren && (
+                <button
+                  type="button"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={handleToggleCollapseClick}
+                  title={
+                    isCollapsed
+                      ? `Expand (${children.length})`
+                      : `Collapse (${children.length})`
+                  }
+                  className={`px-2 h-6 cursor-pointer rounded border text-[10px] font-mono font-bold flex items-center justify-center shrink-0 transition leading-none ${
+                    isCollapsed
+                      ? "bg-cyan-400 text-zinc-950 border-cyan-200 shadow-[0_0_8px_rgba(34,211,238,0.65)] hover:bg-cyan-300"
+                      : "bg-violet-950/90 border-violet-500/60 hover:border-violet-400 text-violet-200"
+                  }`}
+                >
+                  {isCollapsed ? `+${children.length}` : "−"}
+                </button>
+              )}
+            </div>
+
+            {/* Полные названия классов без обрезки */}
+            {classTokens.length > 0 && (
+              <div className="flex flex-col items-center gap-y-0.5">
+                {classTokens.map((cls, i) => (
+                  <span
+                    key={`${cls}-${i}`}
+                    className="text-[9px] font-mono text-emerald-200/90 whitespace-nowrap leading-tight"
+                  >
+                    {cls}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Подрезанный текст */}
+            {hasText && (
+              <span className="text-[9px] text-zinc-300 truncate max-w-[130px] leading-tight font-sans">
+                &quot;{node.text}&quot;
+              </span>
             )}
           </div>
-
-          {/* Полные названия классов без обрезки */}
-          {classTokens.length > 0 && (
-            <div className="flex flex-col items-center gap-y-0.5">
-              {classTokens.map((cls, i) => (
-                <span
-                  key={`${cls}-${i}`}
-                  className="text-[9px] font-mono text-emerald-200/90 whitespace-nowrap leading-tight"
-                >
-                  {cls}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {/* Подрезанный текст */}
-          {hasText && (
-            <span className="text-[9px] text-zinc-300 truncate max-w-[130px] leading-tight font-sans">
-              &quot;{node.text}&quot;
-            </span>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Ортогональные связи + сдвинутый вправо горизонтальный ряд дочерних узлов */}
       {hasChildren && !isCollapsed && (
         <div className="flex flex-col items-start">
-          {/* Вертикальный стебель от левой части родителя вниз */}
           <div className="ml-4 w-px h-3 bg-zinc-600/80 shrink-0" />
 
           <div className="flex flex-row flex-nowrap items-start pl-5">
@@ -357,7 +372,6 @@ function NodeCardComponent({ node, depth, parentIsRow = true }: NodeCardProps) {
                   key={child._key || idx}
                   className="relative flex flex-col items-start pt-3 px-1.5"
                 >
-                  {/* Горизонтальная перекладина над детьми (ветвление только вправо) */}
                   {isSingle && (
                     <div className="pointer-events-none absolute top-0 left-[-4px] w-[27px] h-px bg-zinc-600/80" />
                   )}
@@ -371,10 +385,8 @@ function NodeCardComponent({ node, depth, parentIsRow = true }: NodeCardProps) {
                     <div className="pointer-events-none absolute top-0 left-0 w-[23px] h-px bg-zinc-600/80" />
                   )}
 
-                  {/* Вертикальная веточка в ребёнка */}
                   <div className="pointer-events-none absolute top-0 left-[22px] h-3 w-px bg-zinc-600/80" />
 
-                  {/* Вертикальный DropGap слева (для первого) */}
                   {isFirst && (
                     <div className="absolute -left-1 top-3 h-[42px] flex items-stretch z-20">
                       <DropGap
@@ -387,7 +399,6 @@ function NodeCardComponent({ node, depth, parentIsRow = true }: NodeCardProps) {
 
                   <NodeCard node={child} depth={depth + 1} parentIsRow={true} />
 
-                  {/* Вертикальный DropGap справа */}
                   <div className="absolute -right-1 top-3 h-[42px] flex items-stretch z-20">
                     <DropGap
                       targetKey={child._key || ""}

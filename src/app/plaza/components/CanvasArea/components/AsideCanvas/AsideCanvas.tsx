@@ -29,12 +29,17 @@ export default function AsideCanvas() {
   const {
     openFolders,
     hasNodes,
+    hasMarker,
+    keepMarkerAfterInsert,
     toggleFolder,
     handleClear,
     handleAppendFromPath,
     triggerUndo,
     triggerRedo,
     triggerCollapseAll,
+    handleInsertMarker,
+    handleRemoveMarker,
+    handleToggleKeepMarker,
   } = useAsideCanvas();
 
   const isAsideFloating = useCanvasStore((s) => s.isAsideFloating);
@@ -65,7 +70,6 @@ export default function AsideCanvas() {
     setMounted(true);
   }, []);
 
-  // При включении плавающего режима вычисляем стартовую позицию сразу под шапкой
   useEffect(() => {
     if (!isAsideFloating) {
       hasManualDragRef.current = false;
@@ -239,6 +243,44 @@ export default function AsideCanvas() {
               <span>↷</span> Redo
             </button>
           </div>
+        </div>
+
+        {/* 📍 Маркер места вставки */}
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={hasMarker ? handleRemoveMarker : handleInsertMarker}
+            title={
+              hasMarker
+                ? "Убрать маркер с канваса (при нажатии кнопок ниже маркер заменится)"
+                : "Поставить маркер на канвас (новые ноды вставятся на его место)"
+            }
+            className={`flex-1 px-2 py-1 rounded text-[11px] font-mono font-bold border transition cursor-pointer flex items-center justify-center gap-1 ${
+              hasMarker
+                ? "bg-rose-950/70 border-rose-400 text-rose-200 shadow-[0_0_10px_rgba(251,113,133,0.35)]"
+                : "bg-zinc-800 hover:bg-zinc-700 border-zinc-700 hover:border-rose-400/60 text-zinc-200"
+            }`}
+          >
+            <span>📍</span>
+            <span>{hasMarker ? "Marker ON ✕" : "+ Marker"}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleToggleKeepMarker}
+            title={
+              keepMarkerAfterInsert
+                ? "Закреплено: маркер остаётся после вставки (можно вставлять подряд)"
+                : "Одноразовый: маркер исчезает после вставки ноды"
+            }
+            className={`px-1.5 py-1 rounded text-[11px] border transition cursor-pointer ${
+              keepMarkerAfterInsert
+                ? "bg-amber-950/80 border-amber-400 text-amber-200"
+                : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-zinc-200"
+            }`}
+          >
+            📌
+          </button>
         </div>
 
         <ButtonAddImg />

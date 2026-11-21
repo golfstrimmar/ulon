@@ -31,6 +31,9 @@ import {
   prepareAppendedNodes,
   mergeScssWithoutDuplicates,
   mergeScriptsWithoutDuplicates,
+  findMarkerKeyInTree,
+  createMarkerNode,
+  insertNodesAdjacent,
 } from "@/app/plaza/components/CanvasArea/models/canvasModel";
 
 export interface DropTarget {
@@ -66,6 +69,12 @@ export interface CanvasState {
   isTemplateMode: boolean;
   templateSlotKeys: string[];
   hudMessage: { text: string; type: "info" | "warning" | "success" } | null;
+
+  // ── Insertion Marker ─────────────────────────────────────────────────────
+  keepMarkerAfterInsert: boolean;
+  toggleKeepMarkerAfterInsert: () => void;
+  insertMarkerNode: () => Promise<void>;
+  removeMarkerNode: () => Promise<void>;
 
   // ── Breakpoints State (Zustand only) ─────────────────────────────────────
   activeBreakpointId: BreakpointId;
@@ -128,6 +137,7 @@ export interface CanvasState {
   clearCanvasTree: () => Promise<void>;
   appendNodesFromPath: (path: string) => Promise<boolean>;
   appendRawNodes: (raw: HtmlNode | HtmlNode[]) => Promise<boolean>;
+
   // ── Breakpoints Actions ───────────────────────────────────────────────────
   selectBreakpoint: (id: BreakpointId) => void;
   setCustomBreakpointWidth: (width: number) => void;
@@ -157,7 +167,6 @@ export interface CanvasState {
 
 let hudTimeout: ReturnType<typeof setTimeout> | null = null;
 
-//  ─────🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹──────
 export const useCanvasStore = create<CanvasState>((set, get) => ({
   currentJson: [],
   collapsedKeys: new Set<string>(),
@@ -173,9 +182,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   templateSlotKeys: [],
   hudMessage: null,
 
+  keepMarkerAfterInsert: false,
+
   armedDonorKey: null,
 
-  // ── Breakpoints Default ──────────────────────────────────────────────────
   activeBreakpointId: "full",
   customBreakpointWidth: null,
   isBreakpointRotated: false,
@@ -200,6 +210,62 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   setCanvasFloating: (val) => set({ isCanvasFloating: val }),
   setCurrentJson: (nodes) => set({ currentJson: nodes }),
+
+  toggleKeepMarkerAfterInsert: () =>
+    set((state) => ({ keepMarkerAfterInsert: !state.keepMarkerAfterInsert })),
+
+  insertMarkerNode: async () => {
+    const { currentJson, clickedKey, isSplit, rightKeys } = get();
+    const existingMarkerKey = findMarkerKeyInTree(currentJson);
+
+    if (existingMarkerKey) {
+      set({ clickedKey: existingMarkerKey });
+      get().showHud(
+        "Маркер уже на канвасе — перетащи его в нужное место",
+        "info",
+      );
+      return;
+    }
+
+    const marker = createMarkerNode();
+    const markerKey = marker._key!;
+    let nextTree: HtmlNode[];
+    let putInRight = false;
+
+    if (clickedKey && findNodeInTree(currentJson, clickedKey)) {
+      nextTree = insertNodesAdjacent(
+        currentJson,
+        clickedKey,
+        [marker],
+        "after",
+      );
+      putInRight = isSplit && rightKeys.has(clickedKey);
+    } else {
+      nextTree = [...currentJson, marker];
+      putInRight = false;
+    }
+
+    if (putInRight) {
+      set((state) => {
+        const next = new Set(state.rightKeys);
+        next.add(markerKey);
+        return { rightKeys: next };
+      });
+    }
+
+    get().showHud(
+      "Маркер добавлен — перетащи куда нужно и жми кнопку в Aside",
+      "success",
+    );
+    await get().persist(nextTree);
+  },
+
+  removeMarkerNode: async () => {
+    const { currentJson } = get();
+    const markerKey = findMarkerKeyInTree(currentJson);
+    if (!markerKey) return;
+    await get().deleteNode(markerKey);
+  },
 
   recordSnapshot: () => {
     const current = get().currentJson;
@@ -536,7 +602,6 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     });
   },
 
-  // ── Template Mode Actions ─────────────────────────────────────────────────
   toggleTemplateMode: () => {
     const nextMode = !get().isTemplateMode;
     set((state) => ({
@@ -558,13 +623,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     if (!key) return;
     set((state) => {
       const existingIdx = state.templateSlotKeys.indexOf(key);
-      let updated: string[];
-
-      if (existingIdx !== -1) {
-        updated = state.templateSlotKeys.filter((k) => k !== key);
-      } else {
-        updated = [...state.templateSlotKeys, key];
-      }
+      const updated =
+        existingIdx !== -1
+          ? state.templateSlotKeys.filter((k) => k !== key)
+          : [...state.templateSlotKeys, key];
 
       return { templateSlotKeys: updated };
     });
@@ -754,9 +816,21 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   appendRawNodes: async (raw: HtmlNode | HtmlNode[]) => {
     try {
-      const { currentJson, isSplit } = get();
-      const { nextTree, extractedScss, extractedScripts, addedRightKeys } =
-        prepareAppendedNodes(currentJson, raw, isSplit);
+      const { currentJson, isSplit, rightKeys, keepMarkerAfterInsert } = get();
+      const markerKey = findMarkerKeyInTree(currentJson);
+      const markerInRightPane = Boolean(markerKey && rightKeys.has(markerKey));
+
+      const {
+        nextTree,
+        extractedScss,
+        extractedScripts,
+        addedRightKeys,
+        replacedMarkerKey,
+      } = prepareAppendedNodes(currentJson, raw, isSplit, {
+        markerKey,
+        keepMarker: keepMarkerAfterInsert,
+        markerInRightPane,
+      });
 
       if (extractedScss) {
         const currentScss = (await getGlobalScss().catch(() => "")) || "";
@@ -783,12 +857,35 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         }
       }
 
-      if (addedRightKeys.length > 0) {
+      if (
+        addedRightKeys.length > 0 ||
+        (replacedMarkerKey && !keepMarkerAfterInsert)
+      ) {
         set((state) => {
           const next = new Set(state.rightKeys);
+          if (replacedMarkerKey && !keepMarkerAfterInsert) {
+            next.delete(replacedMarkerKey);
+          }
           addedRightKeys.forEach((k) => next.add(k));
-          return { rightKeys: next };
+          return {
+            rightKeys: next,
+            clickedKey:
+              replacedMarkerKey &&
+              !keepMarkerAfterInsert &&
+              state.clickedKey === replacedMarkerKey
+                ? null
+                : state.clickedKey,
+          };
         });
+      }
+
+      if (replacedMarkerKey) {
+        get().showHud(
+          keepMarkerAfterInsert
+            ? "Вставлено перед маркером!"
+            : "Маркер заменён новой нодой!",
+          "success",
+        );
       }
 
       await get().persist(nextTree);
@@ -810,7 +907,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       return false;
     }
   },
-  // ── Breakpoints Actions ───────────────────────────────────────────────────
+
   selectBreakpoint: (id: BreakpointId) => {
     set((state) => ({
       activeBreakpointId: id,

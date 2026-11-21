@@ -1,15 +1,23 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   toggleFolderInSet,
   hasTreeNodes,
+  findMarkerKeyInTree,
 } from "@/app/plaza/components/CanvasArea/models/canvasModel";
 import { useCanvasStore } from "@/app/plaza/components/CanvasArea/store/useCanvasStore";
 
 export function useAsideCanvas() {
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
-  const hasNodes = useCanvasStore((s) => hasTreeNodes(s.currentJson));
+  const currentJson = useCanvasStore((s) => s.currentJson);
+  const keepMarkerAfterInsert = useCanvasStore((s) => s.keepMarkerAfterInsert);
+
+  const hasNodes = useMemo(() => hasTreeNodes(currentJson), [currentJson]);
+  const hasMarker = useMemo(
+    () => Boolean(findMarkerKeyInTree(currentJson)),
+    [currentJson],
+  );
 
   const toggleFolder = useCallback((folderName: string) => {
     setOpenFolders((prev) => toggleFolderInSet(prev, folderName));
@@ -35,14 +43,31 @@ export function useAsideCanvas() {
     useCanvasStore.getState().toggleCollapseAll();
   }, []);
 
+  const handleInsertMarker = useCallback(async () => {
+    await useCanvasStore.getState().insertMarkerNode();
+  }, []);
+
+  const handleRemoveMarker = useCallback(async () => {
+    await useCanvasStore.getState().removeMarkerNode();
+  }, []);
+
+  const handleToggleKeepMarker = useCallback(() => {
+    useCanvasStore.getState().toggleKeepMarkerAfterInsert();
+  }, []);
+
   return {
     openFolders,
     hasNodes,
+    hasMarker,
+    keepMarkerAfterInsert,
     toggleFolder,
     handleClear,
     handleAppendFromPath,
     triggerUndo,
     triggerRedo,
     triggerCollapseAll,
+    handleInsertMarker,
+    handleRemoveMarker,
+    handleToggleKeepMarker,
   };
 }

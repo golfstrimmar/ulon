@@ -7,6 +7,8 @@ import {
   duplicateNodeInTree,
 } from "@/lib/htmlTree";
 
+export const PLAZA_MARKER_ATTR = "data-plaza-marker";
+
 export interface DonorItem {
   key: string;
   tag: string;
@@ -30,6 +32,81 @@ export function sanitizeCssBody(css: string): string {
  */
 export const getNodeKey = (node: HtmlNode | null | undefined): string =>
   node?._key || (node as any)?.id || "";
+
+/**
+ * Проверяет, является ли узел маркером места вставки.
+ */
+export function isMarkerNode(node: HtmlNode | null | undefined): boolean {
+  return Boolean(node?.attributes?.[PLAZA_MARKER_ATTR] === "true");
+}
+
+/**
+ * Ищет ключ активного маркера в дереве.
+ */
+export function findMarkerKeyInTree(nodes: HtmlNode[]): string | null {
+  if (!Array.isArray(nodes)) return null;
+  for (const node of nodes) {
+    if (isMarkerNode(node)) {
+      return getNodeKey(node) || null;
+    }
+    if (Array.isArray(node.children)) {
+      const found = findMarkerKeyInTree(node.children);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+/**
+ * Создаёт новую ноду-маркер.
+ */
+export function createMarkerNode(): HtmlNode {
+  return {
+    tag: "div",
+    text: "",
+    class: "",
+    style: "",
+    attributes: { [PLAZA_MARKER_ATTR]: "true" },
+    children: [],
+    _key: `marker_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+  };
+}
+
+/**
+ * Заменяет узел-маркер на новые ноды (либо оставляет маркер сразу после них при keepMarker = true).
+ */
+export function replaceMarkerWithNodes(
+  nodes: HtmlNode[],
+  markerKey: string,
+  replacementNodes: HtmlNode[],
+  keepMarker = false,
+): { nextTree: HtmlNode[]; replaced: boolean } {
+  let replaced = false;
+
+  function walk(list: HtmlNode[]): HtmlNode[] {
+    const nextList: HtmlNode[] = [];
+    for (const node of list) {
+      if (!replaced && getNodeKey(node) === markerKey) {
+        replaced = true;
+        nextList.push(...replacementNodes);
+        if (keepMarker) {
+          nextList.push(node);
+        }
+      } else if (Array.isArray(node.children)) {
+        nextList.push({
+          ...node,
+          children: walk(node.children),
+        });
+      } else {
+        nextList.push(node);
+      }
+    }
+    return nextList;
+  }
+
+  const nextTree = walk(nodes);
+  return { nextTree, replaced };
+}
 
 /**
  * Гарантирует наличие уникальных ключей (_key) для всех узлов в дереве.
@@ -104,28 +181,57 @@ export function hasTreeNodes(nodes: unknown): boolean {
 
 /**
  * Подготавливает ноды из JSON-шаблона к добавлению в дерево:
- * извлекает inline-стили и скрипты, проставляет уникальные ключи
- * и собирает ключи для правой панели при включённом сплит-режиме.
+ * извлекает inline-стили и скрипты, проставляет уникальные ключи,
+ * заменяет маркер (если он есть) и собирает ключи для правой панели при сплит-режиме.
  */
 export function prepareAppendedNodes(
   currentTree: HtmlNode[],
   rawData: HtmlNode | HtmlNode[],
   isSplit: boolean,
+  markerOptions?: {
+    markerKey?: string | null;
+    keepMarker?: boolean;
+    markerInRightPane?: boolean;
+  },
 ): {
   nextTree: HtmlNode[];
   extractedScss: string;
   extractedScripts: { name: string; code: string }[];
   addedRightKeys: string[];
+  replacedMarkerKey: string | null;
 } {
   const nodes: HtmlNode[] = Array.isArray(rawData) ? rawData : [rawData];
   const { cleanNodes, extractedScss, extractedScripts } =
     extractStylesAndScriptsFromNodes(nodes);
 
   const nodesWithUniqueKeys = ensureUniqueKeys(cleanNodes);
-  const nextTree = [...currentTree, ...nodesWithUniqueKeys];
+
+  let nextTree: HtmlNode[];
+  let replacedMarkerKey: string | null = null;
+
+  if (markerOptions?.markerKey) {
+    const res = replaceMarkerWithNodes(
+      currentTree,
+      markerOptions.markerKey,
+      nodesWithUniqueKeys,
+      Boolean(markerOptions.keepMarker),
+    );
+    if (res.replaced) {
+      nextTree = res.nextTree;
+      replacedMarkerKey = markerOptions.markerKey;
+    } else {
+      nextTree = [...currentTree, ...nodesWithUniqueKeys];
+    }
+  } else {
+    nextTree = [...currentTree, ...nodesWithUniqueKeys];
+  }
+
+  const shouldAddToRight = replacedMarkerKey
+    ? Boolean(markerOptions?.markerInRightPane)
+    : isSplit;
 
   const addedRightKeys: string[] = [];
-  if (isSplit) {
+  if (shouldAddToRight) {
     for (const node of nodesWithUniqueKeys) {
       addedRightKeys.push(...collectAllDescendantKeys(node));
     }
@@ -136,6 +242,7 @@ export function prepareAppendedNodes(
     extractedScss,
     extractedScripts,
     addedRightKeys,
+    replacedMarkerKey,
   };
 }
 
@@ -323,7 +430,6 @@ export function isRowContainer(node: HtmlNode): boolean {
   const rawClass = (node.class || "").toLowerCase();
   const rawStyle = (node.style || "").toLowerCase();
 
-  // 1. Проверка через нативный CSS в style
   if (rawStyle.includes("flex-direction: row")) {
     return true;
   }
@@ -331,7 +437,6 @@ export function isRowContainer(node: HtmlNode): boolean {
     return false;
   }
 
-  // 2. Проверка через классы
   const cls = rawClass.replace(/[-_]/g, " ");
   if (
     rawClass.includes("flex-col") ||
@@ -442,10 +547,6 @@ export function extractStylesAndScriptsFromNodes(nodes: HtmlNode[]): {
   };
 }
 
-/**
- * Разбивает CSS/SCSS строку на блоки верхнего уровня,
- * возвращая селектор, полный текст блока и список классов.
- */
 export function splitTopLevelCssBlocks(scss: string): {
   selector: string;
   full: string;
@@ -490,9 +591,6 @@ export function splitTopLevelCssBlocks(scss: string): {
   return blocks;
 }
 
-/**
- * Объединяет текущие и входящие SCSS-стили, исключая дубликаты блоков и селекторов.
- */
 export function mergeScssWithoutDuplicates(
   currentScss: string,
   incomingScss: string,
@@ -552,10 +650,6 @@ export function mergeScssWithoutDuplicates(
   return result.trim();
 }
 
-/**
- * Объединяет JavaScript-код с новыми скриптами без дублирования,
- * используя маркеры компонентов вида /* @component: name *\/ ... /* @end: name *\/.
- */
 export function mergeScriptsWithoutDuplicates(
   currentBundle: string,
   incomingScripts: { name: string; code: string }[],
@@ -594,9 +688,6 @@ export function mergeScriptsWithoutDuplicates(
   return result.trim();
 }
 
-/**
- * Нормализует набор выбранных ключей, возвращая их в порядке следования в DOM-дереве.
- */
 export function normalizeSelectedKeys(
   tree: HtmlNode[],
   selectedKeys: Set<string>,
@@ -619,9 +710,6 @@ export function normalizeSelectedKeys(
   return result;
 }
 
-/**
- * Вставляет массив узлов рядом с целевым узлом (до или после него) на том же уровне иерархии.
- */
 export function insertNodesAdjacent(
   nodes: HtmlNode[],
   targetKey: string,
@@ -657,9 +745,6 @@ export function insertNodesAdjacent(
   return result;
 }
 
-/**
- * Вставляет массив узлов внутрь целевого узла (в конец списка его дочерних элементов).
- */
 export function insertNodesInside(
   nodes: HtmlNode[],
   targetKey: string,
@@ -685,10 +770,6 @@ export function insertNodesInside(
   });
 }
 
-/**
- * Перемещает группу узлов в новую позицию относительно целевого узла (до, после или внутрь).
- * Включает проверку на перемещение родителя внутрь собственного потомка.
- */
 export function moveNodesGroup(
   tree: HtmlNode[],
   sourceKeys: string[],
@@ -725,10 +806,6 @@ export function moveNodesGroup(
   }
 }
 
-/**
- * Дублирует группу узлов одним цельным блоком сразу после последнего выделенного узла,
- * чтобы клоны не чередовались со старыми узлами.
- */
 export function duplicateNodesGroup(
   tree: HtmlNode[],
   sourceKeys: string[],
@@ -754,9 +831,6 @@ export function duplicateNodesGroup(
   return insertNodesAdjacent(tree, anchorKey, clonedNodes, "after");
 }
 
-/**
- * Собирает все ключи узлов в дереве.
- */
 export function collectAllTreeKeys(nodes: HtmlNode[]): Set<string> {
   const keys = new Set<string>();
   function walk(list: HtmlNode[]) {
@@ -772,10 +846,6 @@ export function collectAllTreeKeys(nodes: HtmlNode[]): Set<string> {
   return keys;
 }
 
-/**
- * Находит корневые ключи новых клонированных контейнеров (узлов с детьми),
- * которых не было в исходном наборе ключей.
- */
 export function findNewCollapsibleRootKeys(
   nodes: HtmlNode[],
   existingKeys: Set<string>,
@@ -799,10 +869,6 @@ export function findNewCollapsibleRootKeys(
   return result;
 }
 
-/**
- * Объединяет данные узлов-доноров (текст, классы, атрибуты, детей) в целевой узел,
- * после чего удаляет узлы-доноры из дерева.
- */
 export function mergeDonorIntoTarget(
   tree: HtmlNode[],
   donorKeys: string[],
@@ -886,7 +952,6 @@ export function mergeDonorIntoTarget(
   return updateTargetInList(treeWithoutDonors);
 }
 
-// ── Теги SVG и иконок, которые вообще не трогаем ──
 const IGNORED_SVG_TAGS = new Set([
   "i",
   "svg",
@@ -922,9 +987,6 @@ const IGNORED_SVG_TAGS = new Set([
   "fedropshadow",
 ]);
 
-/**
- * 🔹 Проверка на утилитарные классы шрифтов/отступов/цветов из Figma
- */
 function isUtilityOrFontClass(cls: string): boolean {
   const lower = cls.toLowerCase();
   return (
@@ -1064,9 +1126,6 @@ function countDivsByDepth(
   return counts;
 }
 
-/**
- * 🔹 Контекстное автоформирование БЭМ-классов для любого родительского блока
- */
 export function applyBemClassesToSection(
   tree: HtmlNode[],
   targetKey?: string | null,
@@ -1326,10 +1385,6 @@ export function applyBemClassesToSection(
 
   return updateTree(tree);
 }
-
-// ============================================================================
-// ШАБЛОНИЗАТОР / ПАКЕТНОЕ НАПОЛНЕНИЕ ДОНОРАМИ
-// ============================================================================
 
 export function sortKeysByTreeOrder(
   tree: HtmlNode[],
