@@ -6,7 +6,6 @@ import dynamic from "next/dynamic";
 import { useCanvasArea } from "@/app/plaza/components/CanvasArea/hooks/useCanvasArea";
 import { useCanvasFloatingWindow } from "@/app/plaza/components/CanvasArea/hooks/useCanvasFloatingWindow";
 import { NodeCard } from "@/app/plaza/components/CanvasArea/components/NodeCard";
-import { DropGap } from "@/app/plaza/components/CanvasArea/components/DropGap";
 import { CanvasMarqueeOverlay } from "@/app/plaza/components/CanvasArea/components/CanvasMarqueeOverlay";
 import { CanvasDragGhost } from "@/app/plaza/components/CanvasArea/components/CanvasDragGhost";
 import { CanvasToolbar } from "@/app/plaza/components/CanvasArea/components/CanvasToolbar";
@@ -78,25 +77,13 @@ export function CanvasArea() {
           key={`${panePrefix}-${getNodeKey(node) || index}`}
           className="relative flex flex-row items-start shrink-0 px-1.5"
         >
-          {index === 0 && (
-            <div className="absolute -left-1 top-0 h-[42px] flex items-stretch z-20">
-              <DropGap
-                targetKey={getNodeKey(node)}
-                position="before"
-                orientation="vertical"
-              />
-            </div>
-          )}
-
-          <NodeCard node={node} depth={0} parentIsRow={true} />
-
-          <div className="absolute -right-1 top-0 h-[42px] flex items-stretch z-20">
-            <DropGap
-              targetKey={getNodeKey(node)}
-              position="after"
-              orientation="vertical"
-            />
-          </div>
+          <NodeCard
+            node={node}
+            depth={0}
+            parentIsRow={true}
+            showBeforeGap={index === 0}
+            showAfterGap={true}
+          />
         </div>
       ))}
     </div>

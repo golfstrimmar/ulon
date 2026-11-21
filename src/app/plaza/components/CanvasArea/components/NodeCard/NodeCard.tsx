@@ -125,7 +125,7 @@ function getPastelTagTheme(rawTag?: string): {
   };
 }
 
-function NodeCardComponent({ node, depth, parentIsRow = true }: NodeCardProps) {
+function NodeCardComponent({ node, depth, parentIsRow = true, showBeforeGap = false, showAfterGap = false }: NodeCardProps) {
   const {
     key,
     children,
@@ -219,6 +219,16 @@ function NodeCardComponent({ node, depth, parentIsRow = true }: NodeCardProps) {
           isTemplateMode ? "" : "active:cursor-grabbing"
         }`}
       >
+        {showBeforeGap && (
+          <div className="absolute -left-4 inset-y-0 flex items-stretch z-20">
+            <DropGap targetKey={key} position="before" orientation="vertical" />
+          </div>
+        )}
+        {showAfterGap && (
+          <div className="absolute -right-4 inset-y-0 flex items-stretch z-20">
+            <DropGap targetKey={key} position="after" orientation="vertical" />
+          </div>
+        )}
         {isDropDonor && (
           <div className="absolute -inset-1 z-30 pointer-events-none rounded-md border-2 border-amber-400 bg-amber-500/20 flex items-center justify-center">
             <span className="px-1.5 py-0.5 rounded bg-amber-500 text-zinc-950 font-mono font-bold text-[9px] shadow">
@@ -387,25 +397,13 @@ function NodeCardComponent({ node, depth, parentIsRow = true }: NodeCardProps) {
 
                   <div className="pointer-events-none absolute top-0 left-[22px] h-3 w-px bg-zinc-600/80" />
 
-                  {isFirst && (
-                    <div className="absolute -left-1 top-3 h-[42px] flex items-stretch z-20">
-                      <DropGap
-                        targetKey={child._key || ""}
-                        position="before"
-                        orientation="vertical"
-                      />
-                    </div>
-                  )}
-
-                  <NodeCard node={child} depth={depth + 1} parentIsRow={true} />
-
-                  <div className="absolute -right-1 top-3 h-[42px] flex items-stretch z-20">
-                    <DropGap
-                      targetKey={child._key || ""}
-                      position="after"
-                      orientation="vertical"
-                    />
-                  </div>
+                  <NodeCard
+                    node={child}
+                    depth={depth + 1}
+                    parentIsRow={true}
+                    showBeforeGap={isFirst}
+                    showAfterGap={true}
+                  />
                 </div>
               );
             })}

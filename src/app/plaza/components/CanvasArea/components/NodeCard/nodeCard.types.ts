@@ -5,4 +5,6 @@ export interface NodeCardProps {
   node: HtmlNode;
   depth: number;
   parentIsRow?: boolean;
+  showBeforeGap?: boolean;
+  showAfterGap?: boolean;
 }
