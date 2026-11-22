@@ -210,10 +210,6 @@ export function buildDocument({
     })
     .join(",\n          ");
 
-  const defaultFontRule = defaultFont
-    ? `font-family: '${defaultFont}', sans-serif !important;`
-    : `font-family: Arial, Helvetica, sans-serif;`;
-
   // Сливаем все переменные цветов в один тег <style>
   const figmaColorsStyle = formatColorVariablesToCss(colorVariables);
 
@@ -252,7 +248,6 @@ export function buildDocument({
        padding: 0;
        background: #ffffff;
        color: #171717;
-       ${defaultFontRule}
        min-height: 100%;
      }
      ${helperClasses}

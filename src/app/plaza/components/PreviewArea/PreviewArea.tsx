@@ -18,6 +18,7 @@ import DonorTrayPanel from "./components/DonorTrayPanel";
 import type { WireframeBox } from "./models/wireframeTreeCompiler";
 import { useCanvasStore } from "@/app/plaza/components/CanvasArea/store/useCanvasStore";
 
+import ButtonHtml from "@/app/plaza/components/PreviewArea/components/ButtonHtml";
 import ButtonCss from "@/app/plaza/components/PreviewArea/components/ButtonCss";
 import ButtonJS from "@/app/plaza/components/PreviewArea/components/ButtonJS";
 import ButtonFonts from "@/app/plaza/components/PreviewArea/components/ButtonFonts";
@@ -287,6 +288,7 @@ export function PreviewArea() {
             )}
 
             <ButtonPixelPerfect />
+            <ButtonHtml />
             <ButtonCss />
             <ButtonJS />
             <ButtonFonts />

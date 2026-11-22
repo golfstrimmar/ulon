@@ -89,16 +89,25 @@ export function replaceMarkerWithNodes(
   return { nextTree, replaced };
 }
 
-export function ensureUniqueKeys(nodes: HtmlNode[]): HtmlNode[] {
-  return nodes.map((node) => ({
-    ...node,
-    _key:
-      node._key ||
-      `${node.tag || "node"}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-    children: Array.isArray(node.children)
-      ? ensureUniqueKeys(node.children)
-      : node.children,
-  }));
+export function ensureUniqueKeys(
+  nodes: HtmlNode[],
+  seen: Set<string> = new Set(),
+): HtmlNode[] {
+  return nodes.map((node) => {
+    let nextKey = node._key;
+    if (!nextKey || seen.has(nextKey)) {
+      nextKey = generateNodeKey();
+    }
+    seen.add(nextKey);
+
+    return {
+      ...node,
+      _key: nextKey,
+      children: Array.isArray(node.children)
+        ? ensureUniqueKeys(node.children, seen)
+        : node.children,
+    };
+  });
 }
 
 export function getAllCollapsibleKeys(
@@ -496,7 +505,10 @@ export function splitTopLevelCssBlocks(scss: string): {
 
     if (char === "{") {
       if (depth === 0) {
-        selector = scss.slice(startIdx, i).trim();
+        selector = scss
+          .slice(startIdx, i)
+          .replace(/\/\*[\s\S]*?\*\//g, "")
+          .trim();
       }
       depth++;
     } else if (char === "}") {
@@ -1782,7 +1794,8 @@ export function applyDonorToSlot(
     tag: nextTag,
     text: nextText,
     class: nextClass,
-    attributes: nextAttributes,
+    attributes:
+      Object.keys(nextAttributes).length > 0 ? nextAttributes : undefined,
     style: donorNode.style || slotNode.style,
     children: nextChildren,
   };

@@ -1,6 +1,6 @@
 import type { HtmlNode } from "@/types/HtmlNode";
 import { buildFigmaBoundsAttributes } from "./figmaImageNode.model";
-
+import { generateNodeKey } from "@/lib/htmlTree";
 export interface FigmaTextItem {
   id: string;
   tag: string;
@@ -407,11 +407,7 @@ export function createHtmlNodeFromStructureItem(
     class: item.className || "",
     style: inlineStyles,
     attributes,
-    _key:
-      item.id ||
-      (typeof crypto !== "undefined" && crypto.randomUUID
-        ? crypto.randomUUID()
-        : Date.now().toString()),
+    _key: generateNodeKey(),
     _isNew: true,
     children,
   };
@@ -538,12 +534,20 @@ export function generateScssForTextItems(
   items: FigmaTextItem[],
   colorMap: ColorVariableMap,
 ): string {
-  return items
-    .filter((item) => Boolean(item.className))
-    .map((item) => {
-      const hex = item.color.trim().toLowerCase();
-      const colorVar = colorMap.get(hex) || item.color; // переменная $color-N
-      return `.${item.className} {\n  font-family: '${item.fontFamily}', sans-serif;\n  font-size: ${item.fontSize}px;\n  font-weight: ${item.fontWeight};\n  line-height: ${formatLineHeight(item.lineHeight)};\n  letter-spacing: ${item.letterSpacing};\n  text-align: ${item.textAlign};\n  color: ${colorVar};\n}`;
-    })
-    .join("\n\n");
+  const seenClasses = new Set<string>();
+  const blocks: string[] = [];
+
+  for (const item of items) {
+    const cls = item.className?.trim();
+    if (!cls || seenClasses.has(cls)) continue;
+    seenClasses.add(cls);
+
+    const hex = item.color.trim().toLowerCase();
+    const colorVar = colorMap.get(hex) || item.color;
+    blocks.push(
+      `.${cls} {\n  font-family: '${item.fontFamily}', sans-serif;\n  font-size: ${item.fontSize}px;\n  font-weight: ${item.fontWeight};\n  line-height: ${formatLineHeight(item.lineHeight)};\n  letter-spacing: ${item.letterSpacing};\n  text-align: ${item.textAlign};\n  color: ${colorVar};\n}`,
+    );
+  }
+
+  return blocks.join("\n\n");
 }

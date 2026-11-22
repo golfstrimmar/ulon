@@ -1,6 +1,6 @@
 /**
  * @file scssCompiler.ts
- * @description ÐšÐ¾Ð¼Ð¿Ð¸Ð»ÑÑ†Ð¸Ñ SCSS Ð² CSS Ð¸ Ð¾Ð±Ð½Ð¾Ð²Ð»ÐµÐ½Ð¸Ðµ ÐºÐ¾Ð½ÐºÑ€ÐµÑ‚Ð½Ð¾Ð³Ð¾ ÐºÐ»Ð°ÑÑÐ° Ð½Ð° Ð¼ÐµÑÑ‚Ðµ.
+ * @description Компиляция SCSS в CSS и обновление конкретного класса на месте.
  */
 
 import { compileScssAction } from "@/actions/scss.actions";
@@ -10,20 +10,33 @@ export async function compileScssToCss(scss: string): Promise<string> {
   if (!code) return "";
 
   try {
-    // ðŸš€ ÐŸÑ€ÑÐ¼Ð¾Ð¹ Ð²Ñ‹Ð·Ð¾Ð² ÑÐµÑ€Ð²ÐµÑ€Ð½Ð¾Ð³Ð¾ ÑÐºÑˆÐµÐ½Ð° Ð±ÐµÐ· Ð²ÑÑÐºÐ¸Ñ… fetch('/api/compile-scss')!
     const res = await compileScssAction(code);
     if (res.success && res.css !== undefined) {
       return res.css;
     }
   } catch (e) {
-    console.warn("âš ï¸ [SCSS Action Network Error]:", (e as any)?.message);
+    console.warn("⚠️ [SCSS Action Network Error]:", (e as any)?.message);
   }
 
   return code;
 }
 
+function findMatchingBraceEnd(source: string, openBraceIdx: number): number {
+  let braceCount = 1;
+  let pos = openBraceIdx + 1;
+  const len = source.length;
+
+  while (pos < len && braceCount > 0) {
+    if (source[pos] === "{") braceCount++;
+    else if (source[pos] === "}") braceCount--;
+    pos++;
+  }
+
+  return pos;
+}
+
 /**
- * ÐÐ°Ñ…Ð¾Ð´Ð¸Ñ‚ Ð¸ Ð²Ð¾Ð·Ð²Ñ€Ð°Ñ‰Ð°ÐµÑ‚ Ð±Ð»Ð¾Ðº ÐºÐ»Ð°ÑÑÐ° Ð¸Ð· Ð³Ð»Ð¾Ð±Ð°Ð»ÑŒÐ½Ð¾Ð³Ð¾ SCSS
+ * Находит и возвращает блок класса из глобального SCSS
  */
 export function extractClassSnippet(
   globalScss: string,
@@ -49,21 +62,13 @@ export function extractClassSnippet(
   const openBraceIdx = globalScss.indexOf("{", startIdx);
   if (openBraceIdx === -1) return `.${cls} {\n  \n}`;
 
-  let braceCount = 1;
-  let pos = openBraceIdx + 1;
-  const len = globalScss.length;
-
-  while (pos < len && braceCount > 0) {
-    if (globalScss[pos] === "{") braceCount++;
-    else if (globalScss[pos] === "}") braceCount--;
-    pos++;
-  }
-
-  return globalScss.slice(startIdx, pos).trim();
+  const endIdx = findMatchingBraceEnd(globalScss, openBraceIdx);
+  return globalScss.slice(startIdx, endIdx).trim();
 }
 
 /**
- * Ð—Ð°Ð¼ÐµÐ½ÑÐµÑ‚ Ð½Ð°Ð¹Ð´ÐµÐ½Ð½Ñ‹Ð¹ Ð±Ð»Ð¾Ðº .cls { ... } Ð½Ð° Ð½Ð¾Ð²Ñ‹Ð¹. Ð•ÑÐ»Ð¸ ÐµÐ³Ð¾ Ð½ÐµÑ‚ â€” Ð´Ð¾Ð¿Ð¸ÑÑ‹Ð²Ð°ÐµÑ‚ Ð² ÐºÐ¾Ð½ÐµÑ†.
+ * Заменяет найденный блок .cls { ... } на новый и удаляет дубли того же точного класса ниже.
+ * Если класса нет — дописывает в конец.
  */
 export function updateClassInGlobalScss(
   globalScss: string,
@@ -74,49 +79,60 @@ export function updateClassInGlobalScss(
   if (!cls) return globalScss;
 
   const trimmedSnippet = newSnippet.trim();
-
-  // Ð˜Ñ‰ÐµÐ¼ Ð±Ð»Ð¾Ðº ÑÑ‚Ð¾Ð³Ð¾ ÐºÐ»Ð°ÑÑÐ°
-  // Ищем блок этого класса: сначала точный блок .className { ... }
   const escaped = escapeRegex(cls);
-  const exactRegex = new RegExp(
-    `(^|\\n)([ \\t]*\\.${escaped}\\s*\\{)`,
-  );
-  let match = exactRegex.exec(globalScss);
-  if (!match) {
-    const fallbackRegex = new RegExp(
-      `(^|\\n)([ \\t]*\\.${escaped}(?![a-zA-Z0-9_.-])[^{]*\\{)`,
-    );
-    match = fallbackRegex.exec(globalScss);
+  const exactRegex = new RegExp(`(^|\\n)([ \\t]*\\.${escaped}\\s*\\{)`, "g");
+
+  const exactRanges: { start: number; end: number }[] = [];
+  let match: RegExpExecArray | null;
+
+  while ((match = exactRegex.exec(globalScss)) !== null) {
+    const start = match.index + (match[1] ? match[1].length : 0);
+    const braceStart = globalScss.indexOf("{", start);
+    if (braceStart === -1) break;
+    const end = findMatchingBraceEnd(globalScss, braceStart);
+    exactRanges.push({ start, end });
+    exactRegex.lastIndex = end;
   }
 
-  if (match) {
-    const fullMatchStart = match.index + (match[1] ? match[1].length : 0);
+  if (exactRanges.length > 0) {
+    let result = "";
+    let cursor = 0;
+
+    exactRanges.forEach((range, idx) => {
+      result += globalScss.slice(cursor, range.start);
+      if (idx === 0 && trimmedSnippet) {
+        result += trimmedSnippet;
+      }
+      cursor = range.end;
+    });
+    result += globalScss.slice(cursor);
+
+    return result.replace(/\n{3,}/g, "\n\n").trim();
+  }
+
+  const fallbackRegex = new RegExp(
+    `(^|\\n)([ \\t]*\\.${escaped}(?![a-zA-Z0-9_.-])[^{]*\\{)`,
+  );
+  const fallbackMatch = fallbackRegex.exec(globalScss);
+
+  if (fallbackMatch) {
+    const fullMatchStart =
+      fallbackMatch.index + (fallbackMatch[1] ? fallbackMatch[1].length : 0);
     const braceStart = globalScss.indexOf("{", fullMatchStart);
 
     if (braceStart !== -1) {
-      let braceCount = 1;
-      let pos = braceStart + 1;
-      const len = globalScss.length;
-
-      while (pos < len && braceCount > 0) {
-        if (globalScss[pos] === "{") braceCount++;
-        else if (globalScss[pos] === "}") braceCount--;
-        pos++;
-      }
-
-      // Ð—Ð°Ð¼ÐµÐ½ÑÐµÐ¼ ÑÑ‚Ñ€Ð¾Ð³Ð¾ ÑÑ‚Ð¾Ñ‚ Ð½Ð°Ð¹Ð´ÐµÐ½Ð½Ñ‹Ð¹ Ñ„Ñ€Ð°Ð³Ð¼ÐµÐ½Ñ‚
+      const pos = findMatchingBraceEnd(globalScss, braceStart);
       const before = globalScss.slice(0, fullMatchStart);
       const after = globalScss.slice(pos);
 
       if (!trimmedSnippet) {
-        return (before + after).trim();
+        return (before + after).replace(/\n{3,}/g, "\n\n").trim();
       }
 
       return (before + trimmedSnippet + after).trim();
     }
   }
 
-  // Ð•ÑÐ»Ð¸ ÐºÐ»Ð°ÑÑÐ° Ð½Ðµ Ð±Ñ‹Ð»Ð¾ Ð² Ñ„Ð°Ð¹Ð»Ðµ â€” Ð´Ð¾Ð¿Ð¸ÑÑ‹Ð²Ð°ÐµÐ¼ Ð² ÐºÐ¾Ð½ÐµÑ†
   if (!trimmedSnippet) return globalScss;
   return globalScss.trim()
     ? `${globalScss.trim()}\n\n${trimmedSnippet}`
@@ -138,7 +154,7 @@ export function hasClassInScss(globalScss: string, className: string): boolean {
 }
 
 /**
- * Ð˜Ð·Ð²Ð»ÐµÐºÐ°ÐµÑ‚ Ð²Ð»Ð¾Ð¶ÐµÐ½Ð½Ñ‹Ð¹ Ð±Ð»Ð¾Ðº (Ð½Ð°Ð¿Ñ€Ð¸Ð¼ÐµÑ€, &:before, &:hover) Ð¸Ð· Ñ‚ÐµÐºÑÑ‚Ð° ÐºÐ»Ð°ÑÑÐ° .cls { ... }
+ * Извлекает вложенный блок (например, &:before, &:hover) из текста класса .cls { ... }
  */
 export function extractNestedSnippet(
   classSnippet: string,
@@ -156,16 +172,7 @@ export function extractNestedSnippet(
   const openBrace = classSnippet.indexOf("{", fullMatchStart);
   if (openBrace === -1) return null;
 
-  let braceCount = 1;
-  let pos = openBrace + 1;
-  const len = classSnippet.length;
-
-  while (pos < len && braceCount > 0) {
-    if (classSnippet[pos] === "{") braceCount++;
-    else if (classSnippet[pos] === "}") braceCount--;
-    pos++;
-  }
-
+  const pos = findMatchingBraceEnd(classSnippet, openBrace);
   return classSnippet.slice(fullMatchStart, pos).trim();
 }
 
@@ -199,8 +206,8 @@ function mergeNestedBody(existingBody: string, newBody: string): string {
 }
 
 /**
- * ÐžÐ±Ð½Ð¾Ð²Ð»ÑÐµÑ‚ Ð¸Ð»Ð¸ Ð´Ð¾Ð±Ð°Ð²Ð»ÑÐµÑ‚ Ð²Ð»Ð¾Ð¶ÐµÐ½Ð½Ñ‹Ð¹ Ð¿ÑÐµÐ²Ð´Ð¾-Ð±Ð»Ð¾Ðº (Ð½Ð°Ð¿Ñ€Ð¸Ð¼ÐµÑ€, &:before { ... })
- * Ð²Ð½ÑƒÑ‚Ñ€Ð¸ Ð±Ð»Ð¾ÐºÐ° ÐºÐ»Ð°ÑÑÐ° .cls { ... }
+ * Обновляет или добавляет вложенный псевдо-блок (например, &:before { ... })
+ * внутри блока класса .cls { ... }
  */
 export function updateNestedSnippetInClass(
   classSnippet: string,
@@ -222,15 +229,7 @@ export function updateNestedSnippetInClass(
     const braceStart = classSnippet.indexOf("{", fullMatchStart);
 
     if (braceStart !== -1) {
-      let braceCount = 1;
-      let pos = braceStart + 1;
-      const len = classSnippet.length;
-
-      while (pos < len && braceCount > 0) {
-        if (classSnippet[pos] === "{") braceCount++;
-        else if (classSnippet[pos] === "}") braceCount--;
-        pos++;
-      }
+      const pos = findMatchingBraceEnd(classSnippet, braceStart);
 
       const before = classSnippet.slice(0, fullMatchStart);
       const after = classSnippet.slice(pos);
@@ -254,7 +253,6 @@ export function updateNestedSnippetInClass(
     }
   }
 
-  // Ð•ÑÐ»Ð¸ Ð²Ð»Ð¾Ð¶ÐµÐ½Ð½Ð¾Ð³Ð¾ Ð±Ð»Ð¾ÐºÐ° ÐµÑ‰Ñ‘ Ð½Ðµ Ð±Ñ‹Ð»Ð¾ â€” Ð²ÑÑ‚Ð°Ð²Ð»ÑÐµÐ¼ Ð¿ÐµÑ€ÐµÐ´ Ð·Ð°ÐºÑ€Ñ‹Ð²Ð°ÑŽÑ‰ÐµÐ¹ ÑÐºÐ¾Ð±ÐºÐ¾Ð¹ ÐºÐ»Ð°ÑÑÐ° }
   if (!trimmedSnippet) return classSnippet;
 
   const formatted = trimmedSnippet

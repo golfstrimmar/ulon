@@ -1,4 +1,5 @@
 import type { HtmlNode } from "@/types/HtmlNode";
+import { generateNodeKey } from "@/lib/htmlTree";
 import {
   applyBemClassesToSection,
   applyDonorToSlot,
@@ -715,7 +716,7 @@ export function compileWireframeBoxesToTree(
       class: "",
       style: finalBoxStyle,
       children: compiledChildren,
-      _key: `box_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+      _key: generateNodeKey(),
     };
 
     let resultNode: HtmlNode;
@@ -796,15 +797,7 @@ function replaceHexColorsWithVars(
   });
 }
 
-const FONT_CSS_PROPS = new Set([
-  "font-family",
-  "font-size",
-  "font-weight",
-  "line-height",
-  "letter-spacing",
-  "text-align",
-  "color",
-]);
+const FONT_CSS_PROPS = new Set(["font-family", "font-size", "font-weight"]);
 
 export function applySectionClassAndExtractScss(
   nodes: HtmlNode[],
@@ -847,7 +840,7 @@ export function applySectionClassAndExtractScss(
         class: sectionClass,
         style: "",
         children: nodes,
-        _key: `sec_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+        _key: generateNodeKey(),
       },
     ];
   }
