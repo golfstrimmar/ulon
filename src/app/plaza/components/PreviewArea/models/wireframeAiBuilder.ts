@@ -2,7 +2,7 @@ import type { HtmlNode } from "@/types/HtmlNode";
 import type {
   AiLayoutGroup,
   AiLayoutInputNode,
-} from "@/app/plaza/actions/generateWireframeLayoutAction";
+} from "@/actions/generateWireframeLayoutAction";
 import {
   computeBoundingRect,
   isContained,
@@ -203,6 +203,24 @@ function getTextPreview(node: HtmlNode): string {
     }
   }
   return "";
+}
+
+export function findFigmaPreviewImage(tree: HtmlNode[]): string | undefined {
+  let found: string | undefined;
+  function walk(list: HtmlNode[]) {
+    for (const node of list) {
+      if (node.attributes && node.attributes["data-figma-preview"]) {
+        found = node.attributes["data-figma-preview"];
+        return;
+      }
+      if (Array.isArray(node.children)) {
+        walk(node.children);
+        if (found) return;
+      }
+    }
+  }
+  walk(tree);
+  return found;
 }
 
 export function prepareAiLayoutInput(

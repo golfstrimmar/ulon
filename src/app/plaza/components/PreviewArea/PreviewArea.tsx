@@ -414,6 +414,7 @@ export function PreviewArea() {
                     align,
                     offsetX,
                     offsetY,
+                    overlayImage: hasImage ? overlayImage : undefined,
                   }}
                 />
 

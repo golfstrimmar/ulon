@@ -50,6 +50,7 @@ export interface FigmaStructureItem {
   height?: number;
   pageX?: number;
   pageY?: number;
+  preview?: string;
   children?: FigmaStructureItem[];
 }
 
@@ -176,6 +177,7 @@ export function createHtmlNodeFromStructureItem(
 
   const attributes: Record<string, string> = {
     ...(item.name ? { "data-name": item.name } : {}),
+    ...(item.preview ? { "data-figma-preview": item.preview } : {}),
     ...boundsAttrs,
   };
 
@@ -219,6 +221,30 @@ export function extractStructureFromJson(
     return [];
   } catch {
     return [];
+  }
+}
+
+/**
+ * Извлекает превью секции из сырого Figma JSON (structure[0].preview)
+ */
+export function extractPreviewFromJson(rawJson: string): string | undefined {
+  try {
+    const parsed = JSON.parse(rawJson);
+    if (Array.isArray(parsed)) {
+      const structBlock = parsed.find((block) => Array.isArray(block?.structure));
+      const first = structBlock?.structure?.[0];
+      if (first?.preview && typeof first.preview === "string") {
+        return first.preview;
+      }
+    } else if (parsed && Array.isArray(parsed?.structure)) {
+      const first = parsed.structure[0];
+      if (first?.preview && typeof first.preview === "string") {
+        return first.preview;
+      }
+    }
+    return undefined;
+  } catch {
+    return undefined;
   }
 }
 

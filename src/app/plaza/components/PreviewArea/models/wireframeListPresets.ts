@@ -5,6 +5,7 @@ import {
   makeNodeKey,
   mergeInlineStyles,
   type LayoutNode,
+  type LayoutRect,
   type ListItemPreset,
 } from "./wireframeTypes";
 import { isSvgDonorNode } from "./wireframeFigmaCollector";

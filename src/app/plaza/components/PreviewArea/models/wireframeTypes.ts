@@ -26,6 +26,7 @@ export interface OverlayMetrics {
   align: string;
   offsetX: number;
   offsetY: number;
+  overlayImage?: string;
 }
 
 export interface IntermediateNode {

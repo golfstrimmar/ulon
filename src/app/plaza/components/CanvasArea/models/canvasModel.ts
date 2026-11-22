@@ -1298,7 +1298,8 @@ export function applyBemClassesToSection(
 
     if (topWrapperDivs.length === 1) {
       const singleDiv = topWrapperDivs[0];
-      const innerWrapperDivs = (singleDiv.children || []).filter(isWrapperDiv);
+      const innerChildren = Array.isArray(singleDiv.children) ? singleDiv.children : [];
+      const innerWrapperDivs = innerChildren.filter(isWrapperDiv);
 
       if (innerWrapperDivs.length >= 2) {
         const singleDivKey = getNodeKey(singleDiv);
@@ -1314,7 +1315,7 @@ export function applyBemClassesToSection(
             return {
               ...child,
               class: appendBemClass(existingClasses, `${rootBlockName}__wrap`),
-              children: processBlocksLevel(child.children || []),
+              children: processBlocksLevel(Array.isArray(child.children) ? child.children : []),
             };
           }
           return processSingleNonWrapper(child, "");

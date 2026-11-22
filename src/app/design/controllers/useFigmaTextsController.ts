@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { HtmlNode } from "@/types/HtmlNode";
 import { getColorVariables } from "@/lib/figmaColorStorage";
-import { getGlobalScss, saveGlobalScss } from "@/lib/htmlStorage";
+import { getGlobalScss, saveGlobalScss, savePixelPerfectSettings } from "@/lib/htmlStorage";
 import {
   buildColorMap,
   createHtmlNodeFromText,
@@ -77,6 +77,22 @@ export function useFigmaTextsController() {
           const generatedNodes = structureItems.map((item) =>
             createHtmlNodeFromStructureItem(item, colorMap),
           );
+
+          // Если в structure есть превью секции — сохраняем в PixelPerfect для оверлея
+          const sectionPreview = structureItems.find((s) => s.preview)?.preview;
+          if (sectionPreview) {
+            savePixelPerfectSettings({
+              image: sectionPreview,
+              fileName: structureItems[0]?.name || "Figma Section Preview",
+              previewOpacity: 50,
+              overlayOpacity: 100,
+              offsetX: 0,
+              offsetY: 0,
+              isVisible: true,
+              align: "center",
+              fitHeight: true,
+            }).catch(() => {});
+          }
 
           // Для SCSS сохраняем тексты: из блока texts или рекурсивно из structure
           currentTextItemsRef.current =

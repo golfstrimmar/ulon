@@ -24,6 +24,21 @@ export interface AiLayoutGroup {
 export interface GenerateWireframeLayoutParams {
   nodes: AiLayoutInputNode[];
   containerWidth?: number;
+  previewImage?: string;
+}
+
+function parseBase64Image(dataUri: string): { mimeType: string; data: string } | null {
+  const commaIdx = dataUri.indexOf(",");
+  if (dataUri.startsWith("data:") && commaIdx !== -1) {
+    const meta = dataUri.slice(5, commaIdx);
+    const mimeType = meta.split(";")[0] || "image/jpeg";
+    const data = dataUri.slice(commaIdx + 1).trim();
+    return { mimeType, data };
+  }
+  if (/^[A-Za-z0-9+/=]+$/.test(dataUri.trim().slice(0, 100))) {
+    return { mimeType: "image/jpeg", data: dataUri.trim() };
+  }
+  return null;
 }
 
 export interface GenerateWireframeLayoutResult {
@@ -35,6 +50,7 @@ export interface GenerateWireframeLayoutResult {
 const SYSTEM_PROMPT = `
 You are a Senior Frontend & UI Layout Architect.
 Your job is to group flat Figma elements (with 1x screen coordinates x, y, w, h, tag, role, text, fontClass) into a clean semantic HTML layout tree.
+When a visual preview screenshot of the section is provided in the input, examine the image to visually verify layout containers, rows, columns, grids, lists (<ul> / <li>), cards, and button placements, and use both the visual image and the geometric nodes list to group elements into an optimal semantic HTML layout tree.
 
 RULES:
 1. Output a FLAT array "groups" representing containers using "id" (e.g. "g1", "g2") and "parentId" ("" for root).
@@ -78,14 +94,30 @@ export async function generateWireframeLayoutAction(
     };
   }
 
+  const parts: any[] = [];
+
+  if (params.previewImage) {
+    const imgInfo = parseBase64Image(params.previewImage);
+    if (imgInfo) {
+      parts.push({
+        inlineData: {
+          mimeType: imgInfo.mimeType,
+          data: imgInfo.data,
+        },
+      });
+    }
+  }
+
   const userPrompt = `
 Viewport/container width: ${params.containerWidth || 1440}px.
-Total nodes: ${params.nodes.length}.
+Total nodes: ${params.nodes.length}.${params.previewImage ? "\nA visual preview screenshot of the section is attached above. Use it to verify visual grouping, card boundaries, columns, headers, and list arrangements." : ""}
 
 Analyze these Figma nodes and group them into semantic layout containers (section, div, ul, li, nav, etc.):
 
 ${JSON.stringify(params.nodes)}
 `;
+
+  parts.push({ text: userPrompt });
 
   try {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
@@ -94,7 +126,7 @@ ${JSON.stringify(params.nodes)}
       contents: [
         {
           role: "user",
-          parts: [{ text: userPrompt }],
+          parts,
         },
       ],
       systemInstruction: {

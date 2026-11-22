@@ -24,7 +24,7 @@ import {
   findNodeInTree,
   removeNodesByKeys,
 } from "@/app/plaza/components/CanvasArea/models/canvasModel";
-import { getGlobalScss, saveGlobalScss } from "@/lib/htmlStorage";
+import { getGlobalScss, saveGlobalScss, getPixelPerfectSettings } from "@/lib/htmlStorage";
 import { updateClassInGlobalScss } from "@/lib/scssCompiler";
 import { getColorVariables } from "@/lib/figmaColorStorage";
 import { buildColorMap } from "@/app/design/models/figmaTextNode.model";
@@ -42,6 +42,7 @@ import {
 import {
   prepareAiLayoutInput,
   buildWireframeBoxesFromAiPlan,
+  findFigmaPreviewImage,
 } from "@/app/plaza/components/PreviewArea/models/wireframeAiBuilder";
 import { generateWireframeLayoutAction } from "@/actions/generateWireframeLayoutAction";
 import WireframeListPresetsModal, {
@@ -306,9 +307,23 @@ export default function TracingWireframeOverlay({
     const store = useCanvasStore.getState();
     setIsAiTracing(true);
     try {
+      let previewImage = findFigmaPreviewImage(currentJson);
+      if (!previewImage && overlayMetrics?.overlayImage) {
+        previewImage = overlayMetrics.overlayImage;
+      }
+      if (!previewImage) {
+        try {
+          const pp = await getPixelPerfectSettings();
+          if (pp?.image) previewImage = pp.image;
+        } catch {
+          // ignore
+        }
+      }
+
       const res = await generateWireframeLayoutAction({
         nodes: aiNodes,
         containerWidth,
+        previewImage,
       });
 
       if (!res.success || !res.groups || res.groups.length === 0) {

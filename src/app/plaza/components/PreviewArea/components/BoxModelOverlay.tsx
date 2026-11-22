@@ -78,8 +78,8 @@ export const BoxModelOverlay = memo(function BoxModelOverlay({
   const classList = safeClassName
     .trim()
     .split(/\s+/)
-    .map((c) => c.replace(/^\./, "").trim())
-    .filter((c) => Boolean(c) && !c.startsWith("plaza-"))
+    .map((c: string) => c.replace(/^\./, "").trim())
+    .filter((c: string) => Boolean(c) && !c.startsWith("plaza-"))
     .slice(0, 2);
   const clsStr = classList.length > 0 ? "." + classList.join(".") : "";
 
