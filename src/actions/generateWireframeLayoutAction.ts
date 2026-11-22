@@ -27,13 +27,17 @@ export interface GenerateWireframeLayoutParams {
   previewImage?: string;
 }
 
-function parseBase64Image(dataUri: string): { mimeType: string; data: string } | null {
+function parseBase64Image(
+  dataUri: string,
+): { mimeType: string; data: string } | null {
   const commaIdx = dataUri.indexOf(",");
   if (dataUri.startsWith("data:") && commaIdx !== -1) {
     const meta = dataUri.slice(5, commaIdx);
-    const mimeType = meta.split(";")[0] || "image/jpeg";
+    const mimeType = (meta.split(";")[0] || "image/jpeg").toLowerCase();
+    // Gemini inlineData не принимает image/svg+xml
+    if (mimeType === "image/svg+xml") return null;
     const data = dataUri.slice(commaIdx + 1).trim();
-    return { mimeType, data };
+    return data ? { mimeType, data } : null;
   }
   if (/^[A-Za-z0-9+/=]+$/.test(dataUri.trim().slice(0, 100))) {
     return { mimeType: "image/jpeg", data: dataUri.trim() };
@@ -212,7 +216,11 @@ ${JSON.stringify(params.nodes)}
     }
 
     const data = await response.json();
-    const rawJson = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const partsList = data?.candidates?.[0]?.content?.parts;
+    const rawJson = Array.isArray(partsList)
+      ? (partsList.find((p: any) => !p?.thought && typeof p?.text === "string")
+          ?.text ?? partsList[0]?.text)
+      : undefined;
 
     if (!rawJson) {
       return {

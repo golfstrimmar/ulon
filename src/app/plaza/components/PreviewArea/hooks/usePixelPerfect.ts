@@ -129,6 +129,50 @@ async function initFromDb() {
   }
 }
 
+/**
+ * Немедленная установка картинки подложки PixelPerfect из base64 DataURL
+ * Синхронно обновляет состояние оверлея и сохраняет в IndexedDB
+ */
+export function setPixelPerfectImage(
+  dataUrl: string,
+  name: string = "Figma Section Preview",
+): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined" || !dataUrl) {
+      resolve();
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      updateState({
+        image: dataUrl,
+        fileName: name,
+        imageWidth: img.naturalWidth,
+        imageHeight: img.naturalHeight,
+        previewOpacity:
+          currentState.previewOpacity === 100 ? 50 : currentState.previewOpacity,
+        overlayOpacity: 100,
+        align: "center",
+        offsetX: 0,
+        offsetY: 0,
+        isVisible: true,
+      });
+      resolve();
+    };
+    img.onerror = () => {
+      updateState({
+        image: dataUrl,
+        fileName: name,
+        imageWidth: 0,
+        imageHeight: 0,
+        isVisible: true,
+      });
+      resolve();
+    };
+    img.src = dataUrl;
+  });
+}
+
 export function usePixelPerfect() {
   const state = useSyncExternalStore(
     (onStoreChange) => {
@@ -192,6 +236,10 @@ export function usePixelPerfect() {
       reader.onerror = (e) => reject(e);
       reader.readAsDataURL(file);
     });
+  };
+
+  const loadBase64Image = (dataUrl: string, name?: string) => {
+    return setPixelPerfectImage(dataUrl, name);
   };
 
   const removeImage = async () => {
@@ -264,6 +312,7 @@ export function usePixelPerfect() {
     hasImage: Boolean(state.image),
     isOverlayActive: Boolean(state.image) && state.isVisible,
     loadImageFile,
+    loadBase64Image,
     removeImage,
     setPreviewOpacity,
     setOverlayOpacity,

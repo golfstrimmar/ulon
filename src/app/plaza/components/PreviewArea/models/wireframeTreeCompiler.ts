@@ -4,7 +4,10 @@ import {
   applyDonorToSlot,
   getNodeKey,
 } from "@/app/plaza/components/CanvasArea/models/canvasModel";
-import type { ColorVariableMap } from "@/app/design/models/figmaTextNode.model";
+import {
+  resolveHeadingTagByFontSize,
+  type ColorVariableMap,
+} from "@/app/design/models/figmaTextNode.model";
 import {
   canBeParentContainer,
   computeBoundingRect,
@@ -32,6 +35,93 @@ export {
 } from "./wireframeTypes";
 export { countFigmaNodesInTree } from "./wireframeFigmaCollector";
 export { buildWireframeBoxesFromTree } from "./wireframeBoxBuilder";
+
+// ─── Повышение текстов с толщиной >= 500 до заголовков h2-h6 ────────────────
+
+function extractFontWeightNumber(style?: string, className?: string): number {
+  if (style) {
+    const match = /font-weight\s*:\s*([^;]+)/i.exec(style);
+    if (match) {
+      const raw = match[1].trim().toLowerCase();
+      if (raw === "bold" || raw === "bolder") return 700;
+      if (raw === "medium") return 500;
+      if (raw === "normal" || raw === "lighter") return 400;
+      const num = parseFloat(raw);
+      if (!isNaN(num)) return num;
+    }
+  }
+
+  if (className) {
+    const tokens = className.toLowerCase().split(/\s+/).filter(Boolean);
+    for (const t of tokens) {
+      if (t === "font-black") return 900;
+      if (t === "font-extrabold") return 800;
+      if (t === "font-bold") return 700;
+      if (t === "font-semibold") return 600;
+      if (t === "font-medium") return 500;
+      const m = /(?:^|-)([5-9]00)(?:-|$)/.exec(t);
+      if (m) return parseInt(m[1], 10);
+    }
+  }
+
+  return 400;
+}
+
+function extractFontSizeNumber(
+  style?: string,
+  className?: string,
+): number | undefined {
+  if (style) {
+    const match = /font-size\s*:\s*([\d.]+)\s*px/i.exec(style);
+    if (match) {
+      const n = parseFloat(match[1]);
+      if (!isNaN(n) && n > 0) return n;
+    }
+  }
+
+  if (className) {
+    const tokens = className.toLowerCase().split(/\s+/).filter(Boolean);
+    for (const t of tokens) {
+      if (!t.startsWith("font-") && !t.startsWith("text-")) continue;
+      const parts = t.split("-");
+      for (const p of parts) {
+        if (/^\d{2}$/.test(p)) {
+          const n = parseInt(p, 10);
+          if (n >= 10 && n <= 96) return n;
+        }
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function promoteBoldTextTagIfNeeded(
+  node: HtmlNode,
+  fallbackStyle?: string,
+): HtmlNode {
+  const tag = (node.tag || "").trim().toLowerCase();
+  if (/^h[1-6]$/.test(tag)) return node;
+
+  const hasChildren = Array.isArray(node.children) && node.children.length > 0;
+  if (hasChildren) return node;
+
+  if (tag !== "" && tag !== "p" && tag !== "span") {
+    return node;
+  }
+
+  const combinedStyle = mergeInlineStyles(fallbackStyle, node.style);
+  const weight = extractFontWeightNumber(combinedStyle, node.class);
+  if (weight >= 500) {
+    const fontSize = extractFontSizeNumber(combinedStyle, node.class);
+    return {
+      ...node,
+      tag: resolveHeadingTagByFontSize(fontSize),
+    };
+  }
+
+  return node;
+}
 
 // ─── Перегруппировка элементов <ul> по явному выбору направления из модалки ─
 
@@ -136,12 +226,11 @@ function wrapGroupIntoLi(
   };
 
   let liStyle = "";
-  let orderedGroup = [...group];
+  const orderedGroup = [...group];
 
   if (group.length === 2) {
     const { dx, dy } = rectGapDistance(group[0].box, group[1].box);
     if (dy === 0 || dx > dy) {
-      // Стоят рядом по горизонтали (например Icon + Text)
       orderedGroup.sort((a, b) => a.box.x - b.box.x || a.box.y - b.box.y);
       const gapPx = Math.max(0, Math.round(dx / (scale || 1)));
       liStyle =
@@ -149,7 +238,6 @@ function wrapGroupIntoLi(
           ? `display: flex; flex-direction: row; align-items: center; gap: ${gapPx}px;`
           : "display: flex; flex-direction: row; align-items: center;";
     } else {
-      // Стоят друг над другом (например Img + Title)
       orderedGroup.sort((a, b) => a.box.y - b.box.y || a.box.x - b.box.x);
       const gapPx = Math.max(0, Math.round(dy / (scale || 1)));
       liStyle =
@@ -173,12 +261,6 @@ function wrapGroupIntoLi(
   return liNode;
 }
 
-/**
- * Гарантирует правило «1 текст = 1 <li>»:
- * - Контейнерные ноды (с детьми) идут как отдельные <li>.
- * - Каждый текстовый узел становится отдельным <li> (никогда не сливает два текста в один <li>).
- * - Иконки/картинки привязываются 1-к-1 к ближайшему тексту (в радиусе 80px), если он есть.
- */
 function buildOneTextPerLiNodes(
   items: IntermediateNode[],
   ulNode: IntermediateNode,
@@ -344,9 +426,6 @@ function applyManualDirectionToUls(
   }
 }
 
-/**
- * Рассчитывает padding для контейнеров и margin-отступы между дочерними нодами
- */
 function applySpacingToTree(nodes: IntermediateNode[]) {
   const NOISE_THRESHOLD = 2;
   const cleanPx = (rawPx: number, scale: number): number => {
@@ -558,7 +637,6 @@ export function compileWireframeBoxesToTree(
     return false;
   };
 
-  // 1. Явная привязка по parentId (из Auto Figma)
   for (const current of nodes) {
     const pid = current.box.parentId;
     if (!pid) continue;
@@ -573,7 +651,6 @@ export function compileWireframeBoxesToTree(
     }
   }
 
-  // 2. Фолбэк по геометрии (для ручных рамок или если обёртку удалили)
   for (let i = 0; i < nodes.length; i++) {
     const current = nodes[i];
     if (current.parent !== null) continue;
@@ -604,10 +681,7 @@ export function compileWireframeBoxesToTree(
   const rootNodes = nodes.filter((n) => n.parent === null);
   rootNodes.sort((a, b) => a.box.y - b.box.y || a.box.x - b.box.x);
 
-  // Сначала применяем ручной выбор направления для списков (1 текст = 1 <li>)
   applyManualDirectionToUls(rootNodes, donorMap);
-
-  // Затем пересчитываем padding и margin/gap
   applySpacingToTree(rootNodes);
 
   function convertToHtmlNode(node: IntermediateNode): HtmlNode {
@@ -684,12 +758,15 @@ export function compileWireframeBoxesToTree(
           merged.style = mergeInlineStyles(donorNode.style, finalBoxStyle);
         }
 
-        resultNode = stripFigmaAttributes(merged);
+        resultNode = promoteBoldTextTagIfNeeded(
+          stripFigmaAttributes(merged),
+          donorNode.style,
+        );
       } else {
-        resultNode = stripFigmaAttributes(baseNode);
+        resultNode = promoteBoldTextTagIfNeeded(stripFigmaAttributes(baseNode));
       }
     } else {
-      resultNode = stripFigmaAttributes(baseNode);
+      resultNode = promoteBoldTextTagIfNeeded(stripFigmaAttributes(baseNode));
     }
 
     if (
@@ -776,7 +853,9 @@ export function applySectionClassAndExtractScss(
   }
 
   const rootKey = getNodeKey(preparedRoots[0]);
-  const bemNodes = applyBemClassesToSection(preparedRoots, rootKey);
+  const bemNodes = applyBemClassesToSection(preparedRoots, rootKey, {
+    forceSectionStructure: true,
+  });
 
   const classStylesMap = new Map<string, string>();
   const classOccurrenceCounter = new Map<string, number>();

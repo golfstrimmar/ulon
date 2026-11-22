@@ -3,6 +3,7 @@ import type {
   AiLayoutGroup,
   AiLayoutInputNode,
 } from "@/actions/generateWireframeLayoutAction";
+import { getNodeKey } from "@/app/plaza/components/CanvasArea/models/canvasModel";
 import {
   computeBoundingRect,
   isContained,
@@ -32,6 +33,39 @@ interface PreparedFigmaContext {
   originY: number;
   usePageCoords: boolean;
   toScreenRect: (e: RawFigmaNodeEntry) => LayoutRect;
+}
+
+const CONTAINER_VISUAL_PROPS = new Set([
+  "background",
+  "background-color",
+  "background-image",
+  "border",
+  "border-top",
+  "border-right",
+  "border-bottom",
+  "border-left",
+  "border-color",
+  "border-width",
+  "border-style",
+  "border-radius",
+  "box-shadow",
+]);
+
+function extractVisualContainerStyles(style?: string): string {
+  if (!style || !style.trim()) return "";
+  const kept: string[] = [];
+  for (const raw of style.split(";")) {
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+    const idx = trimmed.indexOf(":");
+    if (idx === -1) continue;
+    const prop = trimmed.slice(0, idx).trim().toLowerCase();
+    const val = trimmed.slice(idx + 1).trim();
+    if (prop && val && CONTAINER_VISUAL_PROPS.has(prop)) {
+      kept.push(`${prop}: ${val}`);
+    }
+  }
+  return kept.length > 0 ? `${kept.join("; ")};` : "";
 }
 
 function prepareFigmaContext(
@@ -121,7 +155,6 @@ function prepareFigmaContext(
   >();
   const containerEntries = entries.filter((e) => e.isContainerNode);
 
-  // Определяем фоновые SVG-прямоугольники (подложки карточек и секций)
   for (const item of entries) {
     if (!item.isSvgShape) continue;
     const itemRect = toScreenRect(item);
@@ -144,7 +177,6 @@ function prepareFigmaContext(
       continue;
     }
 
-    // Если это SVG-фон карточки (охватывает другие листовые элементы) — превращаем его в стили контейнера
     const containedCount = entries.filter((other) => {
       if (
         other === item ||
@@ -205,11 +237,19 @@ function getTextPreview(node: HtmlNode): string {
   return "";
 }
 
-export function findFigmaPreviewImage(tree: HtmlNode[]): string | undefined {
+export function findFigmaPreviewImage(
+  tree: HtmlNode[],
+  excludeKeys?: Set<string>,
+): string | undefined {
   let found: string | undefined;
   function walk(list: HtmlNode[]) {
     for (const node of list) {
-      if (node.attributes && node.attributes["data-figma-preview"]) {
+      const key = getNodeKey(node);
+      if (
+        (!key || !excludeKeys?.has(key)) &&
+        node.attributes &&
+        node.attributes["data-figma-preview"]
+      ) {
         found = node.attributes["data-figma-preview"];
         return;
       }
@@ -221,6 +261,53 @@ export function findFigmaPreviewImage(tree: HtmlNode[]): string | undefined {
   }
   walk(tree);
   return found;
+}
+
+/**
+ * Сжимает превью-картинку перед отправкой в Server Action (чтобы не упереться
+ * в лимит Next.js 1 MB и перевести PNG/SVG в компактный JPEG).
+ */
+export function compressPreviewImageForAi(
+  dataUrl?: string,
+  maxWidth = 1024,
+  quality = 0.72,
+): Promise<string | undefined> {
+  if (!dataUrl || typeof window === "undefined") {
+    return Promise.resolve(undefined);
+  }
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const natW = Math.max(1, img.naturalWidth || 1024);
+        const natH = Math.max(1, img.naturalHeight || 768);
+        const ratio = natW > maxWidth ? maxWidth / natW : 1;
+        const targetW = Math.max(1, Math.round(natW * ratio));
+        const targetH = Math.max(1, Math.round(natH * ratio));
+
+        const canvas = document.createElement("canvas");
+        canvas.width = targetW;
+        canvas.height = targetH;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(undefined);
+          return;
+        }
+
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, targetW, targetH);
+        ctx.drawImage(img, 0, 0, targetW, targetH);
+
+        const jpegUrl = canvas.toDataURL("image/jpeg", quality);
+        resolve(jpegUrl);
+      } catch {
+        resolve(undefined);
+      }
+    };
+    img.onerror = () => resolve(undefined);
+    img.src = dataUrl;
+  });
 }
 
 export function prepareAiLayoutInput(
@@ -285,11 +372,6 @@ export function buildWireframeBoxesFromAiPlan(
   const nextId = (prefix: string) =>
     `${prefix}_${stamp}_${seq++}_${Math.random().toString(36).substring(2, 6)}`;
 
-  const leafEntryByKey = new Map<string, RawFigmaNodeEntry>();
-  for (const e of ctx.leafEntries) {
-    leafEntryByKey.set(e.key, e);
-  }
-
   // 1. Создаём WireframeBox для всех листовых элементов
   const leafBoxByKey = new Map<string, WireframeBox>();
   for (const e of ctx.leafEntries) {
@@ -307,7 +389,7 @@ export function buildWireframeBoxesFromAiPlan(
     });
   }
 
-  // 2. Создаём маппинг ID групп от ИИ в уникальные WireframeBox ID
+  // 2. Маппинг ID групп от ИИ в уникальные WireframeBox ID
   const groupIdMap = new Map<string, string>();
   const validGroups: AiLayoutGroup[] = [];
   for (const g of aiGroups) {
@@ -389,7 +471,7 @@ export function buildWireframeBoxesFromAiPlan(
     groupBoxByRealId.set(realId, groupBox);
   }
 
-  // 3. Страховка от пропущенных нод: если ИИ пропустил какой-то лист, прикрепляем к ближайшему родителю
+  // 3. Страховка от пропущенных нод
   const groupBoxesList = Array.from(groupBoxByRealId.values());
   const rootGroups = groupBoxesList.filter((b) => !b.parentId);
 
@@ -454,12 +536,16 @@ export function buildWireframeBoxesFromAiPlan(
     computeGroupBounds(gb.id);
   }
 
-  // Отфильтровываем пустые группы, в которые ничего не попало
   const nonEmptyGroupBoxes = groupBoxesList.filter((gb) =>
     resolvedBounds.has(gb.id),
   );
 
-  // 5. Подтягиваем стили фоновых SVG-подложек и помечаем все старые контейнеры на удаление (consumedDonorKeys)
+  const fallbackAnchor =
+    nonEmptyGroupBoxes.find((b) => !b.parentId) ||
+    nonEmptyGroupBoxes[0] ||
+    Array.from(leafBoxByKey.values())[0];
+
+  // 5. Подтягиваем стили фоновых SVG-подложек
   const tol = Math.max(4, Math.round(4 * ctx.scale));
   for (const [key, svgInfo] of ctx.absorbedSvgByContainerKey.entries()) {
     const entry = ctx.entries.find((e) => e.key === key);
@@ -469,43 +555,46 @@ export function buildWireframeBoxesFromAiPlan(
     const matchingGroup = nonEmptyGroupBoxes.find((gb) =>
       isSameBounds(entryRect, gb, tol),
     );
-    if (matchingGroup) {
-      if (svgInfo.css) {
-        matchingGroup.style = mergeInlineStyles(
-          matchingGroup.style,
-          svgInfo.css,
-        );
+    const targetBox = matchingGroup || fallbackAnchor;
+    if (targetBox) {
+      if (matchingGroup && svgInfo.css) {
+        targetBox.style = mergeInlineStyles(targetBox.style, svgInfo.css);
       }
-      matchingGroup.consumedDonorKeys = [
-        ...(matchingGroup.consumedDonorKeys || []),
-        ...svgInfo.consumedKeys,
-      ];
-    } else if (nonEmptyGroupBoxes.length > 0) {
-      nonEmptyGroupBoxes[0].consumedDonorKeys = [
-        ...(nonEmptyGroupBoxes[0].consumedDonorKeys || []),
+      targetBox.consumedDonorKeys = [
+        ...(targetBox.consumedDonorKeys || []),
         ...svgInfo.consumedKeys,
       ];
     }
   }
 
-  // Все исходные Figma-контейнеры тоже должны быть удалены из дерева при Commit
-  const allContainerKeys = ctx.containerEntries.map((c) => c.key);
-  if (allContainerKeys.length > 0) {
-    const anchorTarget =
-      nonEmptyGroupBoxes.find((b) => !b.parentId) ||
-      nonEmptyGroupBoxes[0] ||
-      Array.from(leafBoxByKey.values())[0];
+  // 6. Переносим визуальные стили (background/border) исходных Figma-контейнеров и помечаем их на удаление
+  for (const containerEntry of ctx.containerEntries) {
+    const entryRect = ctx.toScreenRect(containerEntry);
+    const matchingGroup = nonEmptyGroupBoxes.find((gb) =>
+      isSameBounds(entryRect, gb, tol),
+    );
+    const targetBox = matchingGroup || fallbackAnchor;
 
-    if (anchorTarget) {
-      anchorTarget.consumedDonorKeys = [
-        ...(anchorTarget.consumedDonorKeys || []),
-        ...allContainerKeys,
+    if (targetBox) {
+      if (matchingGroup) {
+        const visualCss = extractVisualContainerStyles(
+          containerEntry.node.style,
+        );
+        if (visualCss) {
+          matchingGroup.style = mergeInlineStyles(
+            visualCss,
+            matchingGroup.style,
+          );
+        }
+      }
+      targetBox.consumedDonorKeys = [
+        ...(targetBox.consumedDonorKeys || []),
+        containerEntry.key,
       ];
     }
   }
 
-  // Если у <ul> дочерние <li> лежат горизонтально в одну линию и у них выровненные центры,
-  // уточняем align-items / gap у <ul> и у <li> с 2+ детьми в строку
+  // 7. Для <li> с 2+ детьми в одну горизонтальную линию проставляем flex-row
   for (const gb of nonEmptyGroupBoxes) {
     if (gb.tag === "li") {
       const leafKids = Array.from(leafBoxByKey.values()).filter(

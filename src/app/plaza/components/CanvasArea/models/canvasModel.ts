@@ -19,30 +19,17 @@ export interface DonorItem {
   node: HtmlNode;
 }
 
-/**
- * Очищает тело CSS от некорректных точек с запятой перед закрывающими фигурными скобками ("};" -> "}")
- * и удаляет лишние пробелы по краям.
- */
 export function sanitizeCssBody(css: string): string {
   return css.replace(/\}\s*;/g, "}").trim();
 }
 
-/**
- * Возвращает уникальный идентификатор узла (_key или id).
- */
 export const getNodeKey = (node: HtmlNode | null | undefined): string =>
   node?._key || (node as any)?.id || "";
 
-/**
- * Проверяет, является ли узел маркером места вставки.
- */
 export function isMarkerNode(node: HtmlNode | null | undefined): boolean {
   return Boolean(node?.attributes?.[PLAZA_MARKER_ATTR] === "true");
 }
 
-/**
- * Ищет ключ активного маркера в дереве.
- */
 export function findMarkerKeyInTree(nodes: HtmlNode[]): string | null {
   if (!Array.isArray(nodes)) return null;
   for (const node of nodes) {
@@ -57,9 +44,6 @@ export function findMarkerKeyInTree(nodes: HtmlNode[]): string | null {
   return null;
 }
 
-/**
- * Создаёт новую ноду-маркер.
- */
 export function createMarkerNode(): HtmlNode {
   return {
     tag: "div",
@@ -72,9 +56,6 @@ export function createMarkerNode(): HtmlNode {
   };
 }
 
-/**
- * Заменяет узел-маркер на новые ноды (либо оставляет маркер сразу после них при keepMarker = true).
- */
 export function replaceMarkerWithNodes(
   nodes: HtmlNode[],
   markerKey: string,
@@ -108,9 +89,6 @@ export function replaceMarkerWithNodes(
   return { nextTree, replaced };
 }
 
-/**
- * Гарантирует наличие уникальных ключей (_key) для всех узлов в дереве.
- */
 export function ensureUniqueKeys(nodes: HtmlNode[]): HtmlNode[] {
   return nodes.map((node) => ({
     ...node,
@@ -123,9 +101,6 @@ export function ensureUniqueKeys(nodes: HtmlNode[]): HtmlNode[] {
   }));
 }
 
-/**
- * Рекурсивно собирает ключи всех узлов-контейнеров (узлов, имеющих дочерние элементы).
- */
 export function getAllCollapsibleKeys(
   nodes: HtmlNode[] | null | undefined,
 ): string[] {
@@ -145,10 +120,6 @@ export function getAllCollapsibleKeys(
   return keys;
 }
 
-/**
- * Переключает состояние сворачивания всех контейнеров:
- * если все контейнеры уже свёрнуты — разворачивает всё, иначе сворачивает всё.
- */
 export function computeToggledCollapsedKeys(
   tree: HtmlNode[],
   currentCollapsed: Set<string>,
@@ -159,9 +130,6 @@ export function computeToggledCollapsedKeys(
   return allCollapsed ? new Set() : new Set(allKeys);
 }
 
-/**
- * Иммутабельно переключает имя папки в Set открытых папок сайдбара.
- */
 export function toggleFolderInSet(
   prev: Set<string>,
   folderName: string,
@@ -172,18 +140,10 @@ export function toggleFolderInSet(
   return next;
 }
 
-/**
- * Проверяет, содержит ли дерево хотя бы один узел.
- */
 export function hasTreeNodes(nodes: unknown): boolean {
   return Array.isArray(nodes) && nodes.length > 0;
 }
 
-/**
- * Подготавливает ноды из JSON-шаблона к добавлению в дерево:
- * извлекает inline-стили и скрипты, проставляет уникальные ключи,
- * заменяет маркер (если он есть) и собирает ключи для правой панели при сплит-режиме.
- */
 export function prepareAppendedNodes(
   currentTree: HtmlNode[],
   rawData: HtmlNode | HtmlNode[],
@@ -246,9 +206,6 @@ export function prepareAppendedNodes(
   };
 }
 
-/**
- * Находит узел по набору критериев (ключ, класс, тег, текстовое содержимое).
- */
 export function findNodeByCriteria(
   nodes: HtmlNode[],
   criteria: {
@@ -300,9 +257,6 @@ export function findNodeByCriteria(
   return findFallback(nodes);
 }
 
-/**
- * Рекурсивно находит узел в дереве по его ключу.
- */
 export function findNodeInTree(
   nodes: HtmlNode[],
   key: string,
@@ -318,9 +272,6 @@ export function findNodeInTree(
   return null;
 }
 
-/**
- * Собирает ключ самого узла и ключи всех его дочерних элементов (потомков).
- */
 export function collectAllDescendantKeys(
   node: HtmlNode | null | undefined,
 ): string[] {
@@ -339,9 +290,6 @@ export function collectAllDescendantKeys(
   return keys;
 }
 
-/**
- * Удаляет из дерева узлы с указанными ключами.
- */
 export function removeNodesByKeys(
   nodes: HtmlNode[],
   keys: Set<string>,
@@ -360,9 +308,6 @@ export function removeNodesByKeys(
     });
 }
 
-/**
- * Извлекает (находит и возвращает в плоском массиве) узлы по их ключам.
- */
 export function extractNodesByKeys(
   nodes: HtmlNode[],
   keys: Set<string>,
@@ -382,10 +327,6 @@ export function extractNodesByKeys(
   return found;
 }
 
-/**
- * Извлекает плоский список контентных доноров (ноды с текстом, <img> или <svg>)
- * без пустых контейнеров-обёрток и без внутренностей SVG.
- */
 export function extractDonorNodes(nodes: HtmlNode[]): DonorItem[] {
   if (!Array.isArray(nodes)) return [];
   const items: DonorItem[] = [];
@@ -422,10 +363,6 @@ export function extractDonorNodes(nodes: HtmlNode[]): DonorItem[] {
   return items;
 }
 
-/**
- * Определяет, является ли контейнер строчным (горизонтальным flex-рядом или grid-контейнером),
- * анализируя встроенные стили и CSS-классы.
- */
 export function isRowContainer(node: HtmlNode): boolean {
   const rawClass = (node.class || "").toLowerCase();
   const rawStyle = (node.style || "").toLowerCase();
@@ -457,10 +394,6 @@ export function isRowContainer(node: HtmlNode): boolean {
   return rawClass.includes("flex") || rawStyle.includes("display: flex");
 }
 
-/**
- * Извлекает inline-стили и теги/свойства скриптов из дерева узлов,
- * формируя чистые SCSS-правила и массив JS-скриптов.
- */
 export function extractStylesAndScriptsFromNodes(nodes: HtmlNode[]): {
   cleanNodes: HtmlNode[];
   extractedScss: string;
@@ -1023,6 +956,90 @@ const SECTION_WRAPPER_NAMES = [
 
 const DIV_DEPTH_NAMES = ["inner", "box", "group", "sub"];
 
+const FLEX_GRID_LAYOUT_PROPS = new Set([
+  "flex-direction",
+  "flex-wrap",
+  "flex-flow",
+  "justify-content",
+  "align-items",
+  "align-content",
+  "place-items",
+  "place-content",
+  "gap",
+  "row-gap",
+  "column-gap",
+  "grid-template-columns",
+  "grid-template-rows",
+  "grid-template-areas",
+  "grid-auto-flow",
+  "grid-auto-columns",
+  "grid-auto-rows",
+]);
+
+function splitFlexGridLayoutStyles(style?: string): {
+  keptStyle: string;
+  layoutStyle: string;
+} {
+  if (!style || !style.trim() || style.includes("{")) {
+    return { keptStyle: style || "", layoutStyle: "" };
+  }
+
+  const kept: string[] = [];
+  const layout: string[] = [];
+
+  for (const rawDecl of style.split(";")) {
+    const trimmed = rawDecl.trim();
+    if (!trimmed) continue;
+    const colonIdx = trimmed.indexOf(":");
+    if (colonIdx === -1) continue;
+    const prop = trimmed.slice(0, colonIdx).trim().toLowerCase();
+    const val = trimmed.slice(colonIdx + 1).trim();
+    if (!prop || !val) continue;
+
+    const isFlexOrGridDisplay =
+      prop === "display" && /^(?:inline-)?(?:flex|grid)$/i.test(val);
+
+    if (isFlexOrGridDisplay || FLEX_GRID_LAYOUT_PROPS.has(prop)) {
+      layout.push(`${prop}: ${val}`);
+    } else {
+      kept.push(`${prop}: ${val}`);
+    }
+  }
+
+  return {
+    keptStyle: kept.length > 0 ? `${kept.join("; ")};` : "",
+    layoutStyle: layout.length > 0 ? `${layout.join("; ")};` : "",
+  };
+}
+
+function mergeStyleStrings(base?: string, extra?: string): string {
+  const map = new Map<string, string>();
+  for (const raw of [base, extra]) {
+    if (!raw || !raw.trim() || raw.includes("{")) continue;
+    for (const decl of raw.split(";")) {
+      const trimmed = decl.trim();
+      if (!trimmed) continue;
+      const idx = trimmed.indexOf(":");
+      if (idx === -1) continue;
+      const prop = trimmed.slice(0, idx).trim().toLowerCase();
+      const val = trimmed.slice(idx + 1).trim();
+      if (prop && val) map.set(prop, val);
+    }
+  }
+  if (map.size === 0) return base || extra || "";
+  return (
+    Array.from(map.entries())
+      .map(([p, v]) => `${p}: ${v}`)
+      .join("; ") + ";"
+  );
+}
+
+function isImageBlockWrapper(node: HtmlNode): boolean {
+  if ((node.tag || "div").toLowerCase() !== "div") return false;
+  if (!Array.isArray(node.children) || node.children.length === 0) return false;
+  return node.children.some((ch) => hasNodeClass(ch, "is"));
+}
+
 function getOrdinalWrapperSuffix(index: number): string {
   return SECTION_WRAPPER_NAMES[index] || `part-${index + 1}`;
 }
@@ -1126,9 +1143,214 @@ function countDivsByDepth(
   return counts;
 }
 
+function promoteBoldTextForBem(node: HtmlNode): HtmlNode {
+  const rawTag = (node.tag || "").trim().toLowerCase();
+  if (/^h[1-6]$/.test(rawTag)) return node;
+
+  const hasChildren = Array.isArray(node.children) && node.children.length > 0;
+  if (hasChildren) return node;
+  if (rawTag !== "" && rawTag !== "p" && rawTag !== "span") return node;
+
+  let weight = 400;
+  if (node.style) {
+    const wm = /font-weight\s*:\s*([^;]+)/i.exec(node.style);
+    if (wm) {
+      const v = wm[1].trim().toLowerCase();
+      if (v === "bold" || v === "bolder") weight = 700;
+      else if (v === "medium") weight = 500;
+      else {
+        const n = parseFloat(v);
+        if (!isNaN(n)) weight = n;
+      }
+    }
+  }
+  if (weight < 500 && node.class) {
+    for (const t of node.class.toLowerCase().split(/\s+/)) {
+      if (t === "font-black") weight = 900;
+      else if (t === "font-extrabold") weight = 800;
+      else if (t === "font-bold") weight = 700;
+      else if (t === "font-semibold") weight = 600;
+      else if (t === "font-medium") weight = 500;
+      else {
+        const m = /(?:^|-)([5-9]00)(?:-|$)/.exec(t);
+        if (m) weight = parseInt(m[1], 10);
+      }
+    }
+  }
+
+  if (weight < 500) return node;
+
+  let fontSize = 16;
+  if (node.style) {
+    const sm = /font-size\s*:\s*([\d.]+)\s*px/i.exec(node.style);
+    if (sm) {
+      const n = parseFloat(sm[1]);
+      if (!isNaN(n) && n > 0) fontSize = n;
+    }
+  } else if (node.class) {
+    for (const t of node.class.toLowerCase().split(/\s+/)) {
+      if (!t.startsWith("font-") && !t.startsWith("text-")) continue;
+      for (const p of t.split("-")) {
+        if (/^\d{2}$/.test(p)) {
+          const n = parseInt(p, 10);
+          if (n >= 10 && n <= 96) {
+            fontSize = n;
+          }
+        }
+      }
+    }
+  }
+
+  const nextTag =
+    fontSize >= 32
+      ? "h2"
+      : fontSize >= 24
+        ? "h3"
+        : fontSize >= 20
+          ? "h4"
+          : fontSize >= 17
+            ? "h5"
+            : "h6";
+
+  return { ...node, tag: nextTag };
+}
+
+/**
+ * Гарантирует структуру секции:
+ * <section> -> <div class="container"> -> <div class="${block}__wrap"> -> ...остальное
+ */
+function ensureSectionContainerAndWrap(
+  sectionNode: HtmlNode,
+  rootBlockName: string,
+): HtmlNode {
+  const wrapClass = `${rootBlockName}__wrap`;
+
+  const { keptStyle: sectionKeptStyle, layoutStyle: sectionLayoutStyle } =
+    splitFlexGridLayoutStyles(sectionNode.style);
+
+  const originalChildren = Array.isArray(sectionNode.children)
+    ? sectionNode.children
+    : [];
+
+  const bgIsNodes = originalChildren.filter((c) => hasNodeClass(c, "is"));
+  const contentNodes = originalChildren.filter((c) => !hasNodeClass(c, "is"));
+
+  const existingContainer = contentNodes.find(
+    (c) =>
+      (c.tag || "div").toLowerCase() === "div" && hasNodeClass(c, "container"),
+  );
+
+  let containerKeptStyle = "";
+  let containerLayoutStyle = "";
+  let innerContent: HtmlNode[];
+
+  if (existingContainer) {
+    const splitC = splitFlexGridLayoutStyles(existingContainer.style);
+    containerKeptStyle = splitC.keptStyle;
+    containerLayoutStyle = splitC.layoutStyle;
+
+    const straySiblings = contentNodes.filter((c) => c !== existingContainer);
+    innerContent = [
+      ...(Array.isArray(existingContainer.children)
+        ? existingContainer.children
+        : []),
+      ...straySiblings,
+    ];
+  } else {
+    innerContent = contentNodes;
+  }
+
+  const movedLayoutStyle = mergeStyleStrings(
+    sectionLayoutStyle,
+    containerLayoutStyle,
+  );
+
+  const isExplicitWrapNode = (n: HtmlNode) =>
+    (n.tag || "div").toLowerCase() === "div" &&
+    getNodeClasses(n).some(
+      (cls) => cls === wrapClass || cls.endsWith("__wrap"),
+    );
+
+  const isPromotablePlainDiv = (n: HtmlNode) => {
+    if ((n.tag || "div").toLowerCase() !== "div") return false;
+    if (
+      hasNodeClass(n, "container") ||
+      hasNodeClass(n, "is") ||
+      hasNodeClass(n, "svg-wrapper") ||
+      isImageBlockWrapper(n)
+    ) {
+      return false;
+    }
+    const classes = getNodeClasses(n);
+    return !classes.some((cls) => !isUtilityOrFontClass(cls));
+  };
+
+  const innerIsNodes = innerContent.filter((c) => hasNodeClass(c, "is"));
+  const nonIsInner = innerContent.filter((c) => !hasNodeClass(c, "is"));
+
+  let finalContainerChildren: HtmlNode[];
+
+  if (nonIsInner.length === 1 && isExplicitWrapNode(nonIsInner[0])) {
+    const existingWrap = nonIsInner[0];
+    const nextStyle = mergeStyleStrings(movedLayoutStyle, existingWrap.style);
+    finalContainerChildren = [
+      ...innerIsNodes,
+      {
+        ...existingWrap,
+        class: appendBemClass(getNodeClasses(existingWrap), wrapClass),
+        ...(nextStyle ? { style: nextStyle } : {}),
+      },
+    ];
+  } else if (nonIsInner.length === 1 && isPromotablePlainDiv(nonIsInner[0])) {
+    const plainDiv = nonIsInner[0];
+    const nextStyle = mergeStyleStrings(movedLayoutStyle, plainDiv.style);
+    finalContainerChildren = [
+      ...innerIsNodes,
+      {
+        ...plainDiv,
+        class: appendBemClass(getNodeClasses(plainDiv), wrapClass),
+        ...(nextStyle ? { style: nextStyle } : {}),
+      },
+    ];
+  } else {
+    const wrapNode: HtmlNode = {
+      tag: "div",
+      text: "",
+      class: wrapClass,
+      ...(movedLayoutStyle ? { style: movedLayoutStyle } : {}),
+      children: nonIsInner,
+      _key: generateNodeKey(),
+    };
+    finalContainerChildren = [...innerIsNodes, wrapNode];
+  }
+
+  const containerNode: HtmlNode = existingContainer
+    ? {
+        ...existingContainer,
+        ...(containerKeptStyle
+          ? { style: containerKeptStyle }
+          : { style: undefined }),
+        children: finalContainerChildren,
+      }
+    : {
+        tag: "div",
+        text: "",
+        class: "container",
+        children: finalContainerChildren,
+        _key: generateNodeKey(),
+      };
+
+  return {
+    ...sectionNode,
+    ...(sectionKeptStyle ? { style: sectionKeptStyle } : { style: undefined }),
+    children: [...bgIsNodes, containerNode],
+  };
+}
+
 export function applyBemClassesToSection(
   tree: HtmlNode[],
   targetKey?: string | null,
+  options?: { forceSectionStructure?: boolean },
 ): HtmlNode[] {
   if (!tree || tree.length === 0) return tree;
 
@@ -1158,14 +1380,21 @@ export function applyBemClassesToSection(
     const mod = modifier ? `-${modifier}` : "";
 
     function walkElement(
-      node: HtmlNode,
+      rawNode: HtmlNode,
       divDepth: number,
       scopePrefix: string,
       inlineContext: "" | "title" | "p" | "button" | "link",
     ): HtmlNode {
-      if (hasNodeClass(node, "is")) {
-        return node;
+      if (hasNodeClass(rawNode, "is")) {
+        return rawNode;
       }
+
+      const node =
+        inlineContext === "p" ||
+        inlineContext === "button" ||
+        inlineContext === "link"
+          ? rawNode
+          : promoteBoldTextForBem(rawNode);
 
       const tag = (node.tag || "div").toLowerCase();
       const existingClasses = getNodeClasses(node);
@@ -1185,6 +1414,10 @@ export function applyBemClassesToSection(
           inlineContext === "link"
             ? `${rootBlockName}__${joinBemParts(scopePrefix, "link-svg-wrapper")}${mod}`
             : `${rootBlockName}__${joinBemParts(scopePrefix, "svg")}${mod}`;
+      } else if (tag === "nav") {
+        generatedClass = `${rootBlockName}__${joinBemParts(scopePrefix, "nav")}${mod}`;
+        nextScopePrefix = joinBemParts(scopePrefix, "nav");
+        nextInlineContext = "";
       } else if (tag === "ul") {
         generatedClass = `${rootBlockName}__${joinBemParts(scopePrefix, "items")}${mod}`;
         nextInlineContext = "";
@@ -1294,12 +1527,41 @@ export function applyBemClassesToSection(
   }
 
   function processLayoutScope(children: HtmlNode[]): HtmlNode[] {
+    const wrapClass = `${rootBlockName}__wrap`;
+    const explicitWrap = children.find(
+      (c) =>
+        (c.tag || "div").toLowerCase() === "div" &&
+        getNodeClasses(c).some(
+          (cls) => cls === wrapClass || cls.endsWith("__wrap"),
+        ),
+    );
+
+    if (explicitWrap) {
+      const explicitWrapKey = getNodeKey(explicitWrap);
+      return children.map((child) => {
+        if (hasNodeClass(child, "is")) {
+          return child;
+        }
+        if (getNodeKey(child) === explicitWrapKey) {
+          const wrapChildren = child.children || [];
+          const hasInnerWrappers = wrapChildren.some(isWrapperDiv);
+          return {
+            ...child,
+            class: appendBemClass(getNodeClasses(child), wrapClass),
+            children: hasInnerWrappers
+              ? processBlocksLevel(wrapChildren)
+              : processScopeElements(wrapChildren, ""),
+          };
+        }
+        return processSingleNonWrapper(child, "");
+      });
+    }
+
     const topWrapperDivs = children.filter(isWrapperDiv);
 
     if (topWrapperDivs.length === 1) {
       const singleDiv = topWrapperDivs[0];
-      const innerChildren = Array.isArray(singleDiv.children) ? singleDiv.children : [];
-      const innerWrapperDivs = innerChildren.filter(isWrapperDiv);
+      const innerWrapperDivs = (singleDiv.children || []).filter(isWrapperDiv);
 
       if (innerWrapperDivs.length >= 2) {
         const singleDivKey = getNodeKey(singleDiv);
@@ -1315,7 +1577,7 @@ export function applyBemClassesToSection(
             return {
               ...child,
               class: appendBemClass(existingClasses, `${rootBlockName}__wrap`),
-              children: processBlocksLevel(Array.isArray(child.children) ? child.children : []),
+              children: processBlocksLevel(child.children || []),
             };
           }
           return processSingleNonWrapper(child, "");
@@ -1365,13 +1627,37 @@ export function applyBemClassesToSection(
         if (hasNodeClass(item, "is")) {
           return item;
         }
+
+        const rootTag = (item.tag || "").toLowerCase();
+        const isSectionLike =
+          Boolean(options?.forceSectionStructure) ||
+          rootTag === "section" ||
+          rootTag === "header" ||
+          rootTag === "footer";
+
+        const normalizedRoot =
+          !baseModifier && isSectionLike
+            ? ensureSectionContainerAndWrap(item, rootBlockName)
+            : item;
+
+        const rootExisting = getNodeClasses(normalizedRoot);
+        const isBareNav =
+          (normalizedRoot.tag || "").toLowerCase() === "nav" &&
+          !rootExisting.some(
+            (c) => !isUtilityOrFontClass(c) && !c.includes("__"),
+          );
+        const nextRootClass = isBareNav
+          ? appendBemClass(rootExisting, rootBlockName)
+          : normalizedRoot.class;
+
         return {
-          ...item,
-          children: Array.isArray(item.children)
+          ...normalizedRoot,
+          class: nextRootClass,
+          children: Array.isArray(normalizedRoot.children)
             ? baseModifier
-              ? processScopeElements(item.children, baseModifier)
-              : processSectionChildren(item.children)
-            : item.children,
+              ? processScopeElements(normalizedRoot.children, baseModifier)
+              : processSectionChildren(normalizedRoot.children)
+            : normalizedRoot.children,
         };
       }
       if (Array.isArray(item.children)) {
