@@ -31,6 +31,7 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
   );
   const hasActiveDrag = useCanvasStore((s) => s.draggedKeys.length > 0);
 
+  const isSplit = useCanvasStore((s) => s.isSplit);
   const isTemplateMode = useCanvasStore((s) => s.isTemplateMode);
   const isRightPaneNode = useCanvasStore((s) => s.rightKeys.has(key));
   const slotIdx = useCanvasStore((s) => s.templateSlotKeys.indexOf(key));
@@ -306,6 +307,7 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
     isRow,
     isDragged,
     isSelected,
+    isSplit,
     isDropDonor: isDrop && dropPos === "donor",
     isTemplateMode,
     isRightPaneNode,

@@ -31,6 +31,12 @@ export function CanvasArea() {
   const persist = useCanvasStore((s) => s.persist);
   const isCanvasFloating = useCanvasStore((s) => s.isCanvasFloating);
   const isArmingMarker = useCanvasStore((s) => s.isArmingMarker);
+  const isStyleTransplantMode = useCanvasStore((s) => s.isStyleTransplantMode);
+  const isBlendingStyles = useCanvasStore((s) => s.isBlendingStyles);
+  const blendStylesFromPanes = useCanvasStore((s) => s.blendStylesFromPanes);
+  const toggleStyleTransplantMode = useCanvasStore(
+    (s) => s.toggleStyleTransplantMode,
+  );
 
   const [isProjectsOpen, setIsProjectsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -177,11 +183,48 @@ export function CanvasArea() {
         </div>
       )}
 
+      {/* ПЛАШКА РЕЖИМА AI СТИЛИЗАЦИИ */}
+      {isStyleTransplantMode && (
+        <div className="bg-purple-950/90 border-b border-purple-500/60 px-3 py-1.5 flex items-center justify-between text-xs font-mono text-purple-200 shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm">⚡</span>
+            <span className="font-semibold text-purple-100">AI Styler:</span>
+            <span className="text-purple-300 text-[11px] hidden sm:inline">
+              Слева (Pane 1) — донор Figma &bull; Справа (Pane 2) — интерактивный пресет
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={isBlendingStyles}
+              onClick={() => void blendStylesFromPanes()}
+              className={`px-3 py-1 rounded font-bold text-[11px] border transition flex items-center gap-1.5 cursor-pointer ${
+                isBlendingStyles
+                  ? "bg-purple-850/50 border-purple-500/50 text-purple-300 cursor-wait animate-pulse"
+                  : "bg-purple-600 hover:bg-purple-500 text-white border-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.5)] active:scale-95"
+              }`}
+            >
+              <span>{isBlendingStyles ? "⏳" : "🪄"}</span>
+              <span>
+                {isBlendingStyles ? "Стилизация..." : "Перенести стили (AI)"}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={toggleStyleTransplantMode}
+              className="px-2 py-1 rounded bg-purple-900/60 hover:bg-purple-800 text-[11px] border border-purple-500/40 text-purple-300 cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* WORKSPACE PANELS */}
       <div
         ref={containerRef}
         onPointerDown={handleMarqueePointerDown}
-        className="flex-1 flex flex-col overflow-hidden"
+        className={`flex-1 flex ${isSplit ? "flex-row" : "flex-col"} overflow-hidden`}
       >
         {/* LEFT PANEL (PANE 1 - MAIN / DONORS) */}
         <div
@@ -191,7 +234,14 @@ export function CanvasArea() {
         >
           {isSplit && (
             <div className="px-3 py-1 bg-zinc-900/40 text-[11px] font-mono text-zinc-500 border-b border-zinc-800/40 flex justify-between">
-              <span>Pane 1 {isTemplateMode && "(Donors Source)"}</span>
+              <span>
+                Pane 1{" "}
+                {isStyleTransplantMode
+                  ? "(Figma Donor)"
+                  : isTemplateMode
+                    ? "(Donors Source)"
+                    : ""}
+              </span>
               <span>{leftNodes.length} items</span>
             </div>
           )}
@@ -214,7 +264,14 @@ export function CanvasArea() {
             className="flex-1 h-full overflow-hidden flex flex-col border-l border-zinc-800 bg-zinc-950"
           >
             <div className="px-3 py-1 bg-zinc-900/40 text-[11px] font-mono text-zinc-500 border-b border-zinc-800/40 flex justify-between items-center">
-              <span>Pane 2 {isTemplateMode && "(Template Blueprint)"}</span>
+              <span>
+                Pane 2{" "}
+                {isStyleTransplantMode
+                  ? "(Target Preset)"
+                  : isTemplateMode
+                    ? "(Template Blueprint)"
+                    : ""}
+              </span>
               <div className="flex items-center gap-2">
                 {isTemplateMode && (
                   <span className="text-[10px] text-amber-400 font-bold">

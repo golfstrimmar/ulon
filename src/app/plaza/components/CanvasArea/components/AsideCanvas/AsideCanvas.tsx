@@ -45,6 +45,10 @@ export default function AsideCanvas() {
 
   const isAsideFloating = useCanvasStore((s) => s.isAsideFloating);
   const toggleAsideFloating = useCanvasStore((s) => s.toggleAsideFloating);
+  const isStyleTransplantMode = useCanvasStore((s) => s.isStyleTransplantMode);
+  const toggleStyleTransplantMode = useCanvasStore(
+    (s) => s.toggleStyleTransplantMode,
+  );
 
   const [mounted, setMounted] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -293,6 +297,34 @@ export default function AsideCanvas() {
             📌
           </button>
         </div>
+
+        {/* ⚡ AI Styler Mode Toggle */}
+        <button
+          type="button"
+          onClick={toggleStyleTransplantMode}
+          title={
+            isStyleTransplantMode
+              ? "Выключить режим AI Стилизации (Styler)"
+              : "Включить режим AI Стилизации: левая панель - донор Figma, правая - пресет"
+          }
+          className={`w-full px-2 py-1.5 rounded text-[11px] font-mono font-bold border transition cursor-pointer flex items-center justify-between gap-1 ${
+            isStyleTransplantMode
+              ? "bg-purple-950/80 border-purple-400 text-purple-200 shadow-[0_0_12px_rgba(168,85,247,0.4)] animate-pulse"
+              : "bg-zinc-800 hover:bg-zinc-700 border-zinc-700 hover:border-purple-400/60 text-zinc-200"
+          }`}
+        >
+          <span className="flex items-center gap-1.5">
+            <span className="text-purple-400">⚡</span>
+            <span>AI Styler</span>
+          </span>
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${
+              isStyleTransplantMode
+                ? "bg-purple-400 animate-ping"
+                : "bg-zinc-600"
+            }`}
+          />
+        </button>
 
         <ButtonAddImg />
         <ButtonAddFlex />

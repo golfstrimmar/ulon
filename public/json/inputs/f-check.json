@@ -3,14 +3,14 @@
     "tag": "div",
     "text": "",
     "class": "input-check",
-    "style": "--check-border: var(--form-check-border, var(--slate-400, #94a3b8)); --check-active: var(--form-check-active, var(--accent, #2563eb)); --check-text: var(--form-check-text, var(--navy-900, #0f172a)); position: relative; display: inline-flex; align-items: center; min-height: 20px;",
+    "style": "--check-border: var(--form-check-border, var(--slate-400, #94a3b8)); --check-active: var(--form-check-active, var(--accent, #2563eb)); --check-text: var(--form-check-text, var(--navy-900, #0f172a)); position: relative; display: inline-flex; align-items: center; min-height: 24px;",
     "attributes": {},
     "children": [
       {
         "tag": "input",
         "text": "",
         "class": "input-check-native",
-        "style": "position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; &:checked + label::before { border-color: var(--check-active); } &:checked + label::after { opacity: 1; } &:focus-visible + label::before { outline: 2px solid var(--check-active); outline-offset: 2px; }",
+        "style": "position: absolute; opacity: 0; width: 1px; height: 1px; margin: -1px; pointer-events: none; &:checked + label::before, &:checked + .input-check-label::before { background-color: var(--check-active); border-color: var(--check-active); } &:checked + label::after, &:checked + .input-check-label::after { transform: translateY(-60%) rotate(45deg) scale(1); opacity: 1; } &:focus-visible + label::before, &:focus-visible + .input-check-label::before { outline: 2px solid var(--check-active); outline-offset: 2px; }",
         "attributes": {
           "id": "input-check",
           "name": "input-check",
@@ -22,12 +22,20 @@
         "tag": "label",
         "text": "Checkbox",
         "class": "input-check-label",
-        "style": "position: relative; display: inline-flex; align-items: center; padding-left: 24px; cursor: pointer; font-size: 14px; line-height: 20px; color: var(--check-text); user-select: none; transition: color 0.2s ease; &::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; border-radius: 4px; background-color: transparent; border: 2px solid var(--check-border); transition: all 0.2s ease; box-sizing: border-box; } &::after { content: ''; position: absolute; left: 4px; top: 50%; transform: translateY(-50%); width: 8px; height: 8px; border-radius: 2px; background-color: var(--check-active); transition: all 0.2s ease; opacity: 0; box-sizing: border-box; } &:hover::before { border-color: var(--check-active); }",
+        "style": "position: relative; display: inline-flex; align-items: center; padding-left: 26px; cursor: pointer; font-size: 14px; line-height: 20px; color: var(--check-text); user-select: none; transition: color 0.2s ease; &::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; border-radius: 4px; background-color: transparent; border: 2px solid var(--check-border); transition: all 0.2s ease; box-sizing: border-box; } &::after { content: ''; position: absolute; left: 6px; top: 50%; width: 5px; height: 9px; border: solid #ffffff; border-width: 0 2px 2px 0; transform: translateY(-60%) rotate(45deg) scale(0); opacity: 0; transition: transform 0.15s ease-in-out, opacity 0.15s ease-in-out; box-sizing: border-box; } &:hover::before { border-color: var(--check-active); }",
         "attributes": {
           "for": "input-check"
         },
         "children": []
       }
     ]
+  },
+  {
+    "tag": "script",
+    "text": "/* @component: input-check */\n(function () {\n  function initCheckboxes() {\n    document.querySelectorAll('.input-check').forEach(function (container) {\n      if (container.dataset.initialized === 'true') return;\n      container.dataset.initialized = 'true';\n      const input = container.querySelector('input[type=\"checkbox\"]');\n      const label = container.querySelector('label');\n      if (input && label) {\n        const uniqueId = 'check-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);\n        input.id = uniqueId;\n        label.htmlFor = uniqueId;\n      }\n    });\n  }\n  if (document.readyState === 'loading') {\n    document.addEventListener('DOMContentLoaded', initCheckboxes);\n  } else {\n    initCheckboxes();\n  }\n  setTimeout(initCheckboxes, 100);\n})();\n/* @end: input-check */",
+    "class": "",
+    "style": "",
+    "attributes": {},
+    "children": []
   }
 ]

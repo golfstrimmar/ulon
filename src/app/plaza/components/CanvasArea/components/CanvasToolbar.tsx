@@ -42,6 +42,10 @@ export function CanvasToolbar({
   const templateSlotKeys = useCanvasStore((s) => s.templateSlotKeys);
   const isDonorMode = useCanvasStore((s) => s.isDonorMode);
   const toggleDonorMode = useCanvasStore((s) => s.toggleDonorMode);
+  const isStyleTransplantMode = useCanvasStore((s) => s.isStyleTransplantMode);
+  const toggleStyleTransplantMode = useCanvasStore(
+    (s) => s.toggleStyleTransplantMode,
+  );
   const isSplit = useCanvasStore((s) => s.isSplit);
   const toggleSplitMode = useCanvasStore((s) => s.toggleSplitMode);
 
@@ -181,6 +185,30 @@ export function CanvasToolbar({
           <span
             className={`w-1.5 h-1.5 rounded-full ${
               isDonorMode ? "bg-amber-400 animate-pulse" : "bg-zinc-600"
+            }`}
+          />
+        </button>
+
+        {/* AI STYLER MODE BUTTON */}
+        <button
+          type="button"
+          onClick={toggleStyleTransplantMode}
+          title={
+            isStyleTransplantMode
+              ? "AI Styler: ON (Left = Figma Donor, Right = Target Preset)"
+              : "AI Styler: OFF"
+          }
+          className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono transition-all cursor-pointer border ${
+            isStyleTransplantMode
+              ? "bg-purple-900/40 text-purple-200 border-purple-400 shadow-[0_0_12px_rgba(168,85,247,0.35)]"
+              : "bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700 border-zinc-700/50"
+          }`}
+        >
+          <span className="text-[12px] text-purple-400">⚡</span>
+          <span>AI Styler</span>
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${
+              isStyleTransplantMode ? "bg-purple-400 animate-pulse" : "bg-zinc-600"
             }`}
           />
         </button>

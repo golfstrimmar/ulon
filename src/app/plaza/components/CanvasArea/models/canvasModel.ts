@@ -1329,7 +1329,7 @@ function ensureSectionContainerAndWrap(
       tag: "div",
       text: "",
       class: wrapClass,
-      ...(movedLayoutStyle ? { style: movedLayoutStyle } : {}),
+      style: movedLayoutStyle || "",
       children: nonIsInner,
       _key: generateNodeKey(),
     };
@@ -1339,22 +1339,21 @@ function ensureSectionContainerAndWrap(
   const containerNode: HtmlNode = existingContainer
     ? {
         ...existingContainer,
-        ...(containerKeptStyle
-          ? { style: containerKeptStyle }
-          : { style: undefined }),
+        style: containerKeptStyle || "",
         children: finalContainerChildren,
       }
     : {
         tag: "div",
         text: "",
         class: "container",
+        style: "",
         children: finalContainerChildren,
         _key: generateNodeKey(),
       };
 
   return {
     ...sectionNode,
-    ...(sectionKeptStyle ? { style: sectionKeptStyle } : { style: undefined }),
+    style: sectionKeptStyle || "",
     children: [...bgIsNodes, containerNode],
   };
 }
@@ -1555,7 +1554,9 @@ export function applyBemClassesToSection(
           return child;
         }
         if (getNodeKey(child) === explicitWrapKey) {
-          const wrapChildren = child.children || [];
+          const wrapChildren = Array.isArray(child.children)
+            ? child.children
+            : [];
           const hasInnerWrappers = wrapChildren.some(isWrapperDiv);
           return {
             ...child,
@@ -1573,7 +1574,9 @@ export function applyBemClassesToSection(
 
     if (topWrapperDivs.length === 1) {
       const singleDiv = topWrapperDivs[0];
-      const innerWrapperDivs = (singleDiv.children || []).filter(isWrapperDiv);
+      const innerWrapperDivs = (
+        Array.isArray(singleDiv.children) ? singleDiv.children : []
+      ).filter(isWrapperDiv);
 
       if (innerWrapperDivs.length >= 2) {
         const singleDivKey = getNodeKey(singleDiv);
@@ -1589,7 +1592,9 @@ export function applyBemClassesToSection(
             return {
               ...child,
               class: appendBemClass(existingClasses, `${rootBlockName}__wrap`),
-              children: processBlocksLevel(child.children || []),
+              children: processBlocksLevel(
+                Array.isArray(child.children) ? child.children : [],
+              ),
             };
           }
           return processSingleNonWrapper(child, "");

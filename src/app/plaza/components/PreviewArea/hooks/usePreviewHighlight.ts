@@ -168,7 +168,16 @@ export function usePreviewHighlight({
           return;
         }
 
-        e.preventDefault();
+        const isFormInteractive =
+          target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.tagName === "LABEL" ||
+          Boolean(target.closest("label"));
+
+        if (!isFormInteractive) {
+          e.preventDefault();
+        }
         e.stopPropagation();
 
         const nodeEl = target.closest<HTMLElement>("[data-node-key]") || target;

@@ -34,7 +34,10 @@ import {
   findMarkerKeyInTree,
   createMarkerNode,
   insertNodesAdjacent,
+  splitWorkspaceNodes,
+  ensureUniqueKeys,
 } from "@/app/plaza/components/CanvasArea/models/canvasModel";
+import { blendPresetStyleAction } from "@/actions/blendPresetStyleAction";
 
 export interface DropTarget {
   key: string;
@@ -69,6 +72,12 @@ export interface CanvasState {
   isTemplateMode: boolean;
   templateSlotKeys: string[];
   hudMessage: { text: string; type: "info" | "warning" | "success" } | null;
+
+  // ── AI Style Transplant Mode ─────────────────────────────────────────────
+  isStyleTransplantMode: boolean;
+  isBlendingStyles: boolean;
+  toggleStyleTransplantMode: () => void;
+  blendStylesFromPanes: () => Promise<boolean>;
 
   // ── Insertion Marker ─────────────────────────────────────────────────────
   isArmingMarker: boolean;
@@ -185,6 +194,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   isTemplateMode: false,
   templateSlotKeys: [],
   hudMessage: null,
+
+  isStyleTransplantMode: false,
+  isBlendingStyles: false,
 
   isArmingMarker: false,
   keepMarkerAfterInsert: false,
@@ -554,7 +566,83 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       rightKeys: !state.isSplit ? state.rightKeys : new Set(),
       isTemplateMode: !state.isSplit ? state.isTemplateMode : false,
       templateSlotKeys: !state.isSplit ? state.templateSlotKeys : [],
+      isStyleTransplantMode: !state.isSplit ? state.isStyleTransplantMode : false,
     })),
+
+  toggleStyleTransplantMode: () => {
+    const nextMode = !get().isStyleTransplantMode;
+    set((state) => ({
+      isStyleTransplantMode: nextMode,
+      isSplit: nextMode ? true : state.isSplit,
+    }));
+    if (nextMode) {
+      get().showHud(
+        "AI Styler: Слева — донор Figma, Справа — пресет. Нажмите 'Перенести стили'.",
+        "info",
+      );
+    } else {
+      get().showHud("AI Styler: выключен", "info");
+    }
+  },
+
+  blendStylesFromPanes: async () => {
+    const { currentJson, rightKeys, isSplit, isBlendingStyles } = get();
+    if (isBlendingStyles) return false;
+
+    const { leftNodes, rightNodes } = splitWorkspaceNodes(
+      currentJson,
+      rightKeys,
+      isSplit,
+    );
+
+    if (leftNodes.length === 0) {
+      get().showHud("В левой панели (донор) нет элементов!", "warning");
+      return false;
+    }
+
+    if (rightNodes.length === 0) {
+      get().showHud("В правой панели (пресет) нет элементов!", "warning");
+      return false;
+    }
+
+    set({ isBlendingStyles: true });
+    get().showHud("AI переносит стили с донора на пресет...", "info");
+
+    try {
+      const res = await blendPresetStyleAction({
+        donorNode: leftNodes,
+        presetNode: rightNodes,
+      });
+
+      if (!res.success || !res.styledPreset || res.styledPreset.length === 0) {
+        set({ isBlendingStyles: false });
+        get().showHud(res.error || "Ошибка переноса стилей", "warning");
+        return false;
+      }
+
+      const newRightNodes = ensureUniqueKeys(res.styledPreset);
+      const newRightKeys = collectAllTreeKeys(newRightNodes);
+
+      const nextTree = [...leftNodes, ...newRightNodes];
+
+      set({
+        rightKeys: newRightKeys,
+        isBlendingStyles: false,
+      });
+
+      await get().persist(nextTree, true);
+      get().showHud("Стили успешно перенесены в пресет!", "success");
+      return true;
+    } catch (err: any) {
+      console.error("[useCanvasStore] blendStylesFromPanes error:", err);
+      set({ isBlendingStyles: false });
+      get().showHud(
+        err?.message || "Ошибка при выполнении стилизации",
+        "warning",
+      );
+      return false;
+    }
+  },
 
   toggleDonorMode: () =>
     set((state) => ({
