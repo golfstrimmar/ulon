@@ -1,9 +1,13 @@
 [
   {
     "tag": "video",
-    "text": "video",
-    "class": "",
-    "style": "",
+    "text": "",
+    "class": "video-base",
+    "style": "width: 100%; height: auto; border-radius: 8px; display: block; box-sizing: border-box;",
+    "attributes": {
+      "controls": "",
+      "playsinline": ""
+    },
     "children": []
   }
 ]

@@ -2,20 +2,25 @@
   {
     "tag": "div",
     "text": "",
-    "class": "",
-    "style": "min-height: 300px;",
+    "class": "tab-hover-horisontal-wrapper",
+    "style": "--tab-bg: var(--color-white, #ffffff); --tab-text: var(--navy-900, #0f172a); --tab-accent: var(--teal-500, #14b8a6); min-height: 300px; position: relative;",
+    "attributes": {},
     "children": [
       {
         "tag": "section",
         "text": "",
         "class": "tab-hover-horisontal",
         "style": "display: inline-block; position: relative; &:hover { &>.btn-tab-hover { color: var(--teal-500); background: color-mix(in srgb, var(--teal-500) 25%, transparent); max-width: max-content; .svg-tab-hover { transform: rotate(180deg); } } &>.tab-hover-content-horisontal { visibility: visible; opacity: 1; transform: translate(0%, 0%); } }",
+        "attributes": {},
         "children": [
           {
             "tag": "button",
             "text": "Lorem",
             "class": "btn-tab-hover",
             "style": "display: flex; align-items: center; gap: 10px; background: transparent; transition: all 0.3s ease-in-out;",
+            "attributes": {
+              "type": "button"
+            },
             "children": [
               {
                 "tag": "i",
@@ -53,30 +58,27 @@
                   }
                 ]
               }
-            ],
-            "attributes": { "type": "button" }
+            ]
           },
           {
             "tag": "div",
             "text": "",
             "class": "tab-hover-content-horisontal",
             "style": "border: 1px solid color-mix(in srgb, var(--slate-400) 67%, transparent); border-radius: 4px; visibility: hidden; opacity: 0; transition: all 0.3s ease-in-out; display: inline-block; position: absolute; top: 0%; left: 100%; transform: translate(10%, 0%); width: max-content; padding: 2px 5px; background: var(--color-white);",
+            "attributes": {},
             "children": [
               {
                 "tag": "p",
                 "text": "Lorem ipsum dolor sit amet consectetur adipiscing elit sed do",
                 "class": "",
                 "style": "",
-                "children": [],
-                "attributes": {}
+                "attributes": {},
+                "children": []
               }
-            ],
-            "attributes": {}
+            ]
           }
-        ],
-        "attributes": {}
+        ]
       }
-    ],
-    "attributes": {}
+    ]
   }
 ]

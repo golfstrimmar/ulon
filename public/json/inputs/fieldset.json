@@ -2,8 +2,9 @@
   {
     "tag": "fieldset",
     "text": "",
-    "class": "",
-    "style": "",
+    "class": "fieldset-base",
+    "style": "margin: 0; padding: 0; border: none; box-sizing: border-box;",
+    "attributes": {},
     "children": []
   }
 ]

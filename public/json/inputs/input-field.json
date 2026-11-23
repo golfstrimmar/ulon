@@ -1,57 +1,59 @@
 [
   {
-    "tag": "script",
-    "class": "",
-    "attributes": {},
-    "text": "/* @component: .js-container-input */ (function () { function initInputs() { document.querySelectorAll('fieldset').forEach(function (fs) { if (fs.dataset.init === 'true') return; fs.dataset.init = 'true'; const label = fs.querySelector('label'); const legendSpan = fs.querySelector('legend span'); if (label && legendSpan) { legendSpan.innerHTML = label.innerHTML; } }); } if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', initInputs); } else { initInputs(); } })(); /* @end: .js-container-input */",
-    "children": [],
-    "style": ""
-  },
-  {
     "tag": "fieldset",
     "text": "",
     "class": "field-t js-container-input",
-    "style": "position: relative; width: 100%; text-align: left; display: block; flex: 0 0 auto; padding: 0 0 0 10px; border-radius: 4px; border: 1px solid rgba(0, 0, 0, 0.1); outline: none; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); height: 40px;  &:hover { border-color: #38bdf8; } &:has(input:focus), &:has(input:not(:placeholder-shown)) { border-color: #38bdf8; } &:has(input:focus)>legend, &:has(input:not(:placeholder-shown))>legend { visibility: visible; max-width: 100%; &:has(svg){ span{ padding: 0 30px 0 0; } } } &:has(input:focus)>label, &:has(input:not(:placeholder-shown))>label { top: 0; padding: 0px 10px 0 10px; left: 5px;  color: #38bdf8; transform: translateY(-50%); &:has(svg) { padding: 0px 40px 0 30px; .svg-wrapper { width: 15px; height: 15px; left: 10px; } } } &:has(svg) { label { padding: 0 0 0 25px; } .svg-wrapper { display: block; width: 20px; height: 20px; position: absolute; left: 0; top: 50%; transform: translateY(-50%); } }",
+    "style": "--field-border: var(--border-color, rgba(0, 0, 0, 0.1)); --field-accent: var(--accent, #38bdf8); --field-text: var(--navy-900, #0f172a); position: relative; width: 100%; text-align: left; display: block; flex: 0 0 auto; padding: 0 0 0 10px; border-radius: 4px; border: 1px solid var(--field-border); outline: none; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); height: 40px; box-sizing: border-box; &:hover { border-color: var(--field-accent); } &:has(input:focus), &:has(input:not(:placeholder-shown)) { border-color: var(--field-accent); } &:has(input:focus) > legend, &:has(input:not(:placeholder-shown)) > legend { visibility: visible; max-width: 100%; } &:has(input:focus) > label, &:has(input:not(:placeholder-shown)) > label { top: 0; padding: 0 10px; left: 5px; color: var(--field-accent); transform: translateY(-50%); font-size: 11px; }",
+    "attributes": {},
     "children": [
       {
         "tag": "legend",
         "text": "",
         "class": "field-t-legend",
         "style": " display: block; width: auto; float: none; padding: 0; font-size: 11px; visibility: hidden; max-width: 0%; height: 0; transition: max-width 200ms cubic-bezier(0.0, 0, 0.2, 1); font-family: 'Montserrat', sans-serif; white-space: nowrap;",
+        "attributes": {},
         "children": [
           {
             "tag": "span",
             "text": "",
             "class": "field-t-span",
             "style": "padding: 0 5px 0 5px; display: inline-block; max-height: 11px; line-height: 1; opacity: 0; transition: all 200ms cubic-bezier(0.0, 0, 0.2, 1); font-family: 'Montserrat', sans-serif;",
-            "children": [],
-            "attributes": {}
+            "attributes": {},
+            "children": []
           }
-        ],
-        "attributes": {}
+        ]
       },
       {
         "tag": "input",
         "text": "",
         "class": "field-t-input",
         "style": "display: block; width: 100%; height: 100%; padding: 0px 0px 0px 10px;  border: 0; appearance: none; outline: none; background-color: transparent; cursor: pointer; position: absolute; top: 50%; transform: translateY(-50%); left: 0; z-index: 10; min-height: 40px;  &::placeholder { opacity: 0; } ",
-        "children": [],
         "attributes": {
           "id": "input4",
           "name": "input4",
           "rows": "2",
           "placeholder": "Enter text"
-        }
+        },
+        "children": []
       },
       {
         "tag": "label",
         "text": "lorem",
         "class": "field-t-label",
         "style": "display: inline-block; position: absolute;   top: 50%; transform: translateY(-50%); left: 10px; z-index: 20;  padding: 0; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none;",
-        "children": [],
-        "attributes": { "for": "input4" }
+        "attributes": {
+          "for": "input4"
+        },
+        "children": []
       }
-    ],
-    "attributes": {}
+    ]
+  },
+  {
+    "tag": "script",
+    "text": "/* @component: input-field */\n(function () {\n  function initInputs() {\n    document.querySelectorAll('.js-container-input').forEach(function (fs) {\n      if (fs.dataset.initialized === 'true') return;\n      fs.dataset.initialized = 'true';\n      const label = fs.querySelector('label');\n      const legendSpan = fs.querySelector('legend span');\n      if (label && legendSpan) {\n        legendSpan.textContent = label.textContent;\n      }\n    });\n  }\n  if (document.readyState === 'loading') {\n    document.addEventListener('DOMContentLoaded', initInputs);\n  } else {\n    initInputs();\n  }\n  setTimeout(initInputs, 300);\n})();\n/* @end: input-field */",
+    "class": "",
+    "style": "",
+    "attributes": {},
+    "children": []
   }
 ]

@@ -2,11 +2,11 @@
   {
     "tag": "textarea",
     "text": "",
-    "class": "",
-    "style": "",
-    "children": [],
+    "class": "textarea-base",
+    "style": "--textarea-border: var(--border-color, rgba(0, 0, 0, 0.1)); --textarea-accent: var(--accent, #38bdf8); --textarea-text: var(--navy-900, #0f172a); width: 100%; min-height: 80px; padding: 10px 12px; border-radius: 4px; border: 1px solid var(--textarea-border); color: var(--textarea-text); font-size: 14px; font-family: inherit; box-sizing: border-box; transition: border-color 0.2s ease; resize: vertical; &:hover { border-color: var(--textarea-accent); } &:focus { outline: none; border-color: var(--textarea-accent); }",
     "attributes": {
       "placeholder": "Textarea text"
-    }
+    },
+    "children": []
   }
 ]

@@ -3,58 +3,60 @@
     "tag": "section",
     "text": "",
     "class": "nature-video",
-    "style": "width: 100%; height: 100%; background: var(--navy-900); --plyr-color-main: var(--accent); --plyr-video-control-background-hover: rgba(20, 184, 166, 0.2); --plyr-control-radius: 12px; --plyr-range-track-height: 5px; --plyr-video-control-color: var(--color-white); &:hover .plyr__poster { transform: scale(1.05); }",
+    "style": "--video-bg: var(--navy-900, #0f172a); --video-card-bg: var(--slate-900, #020617); --plyr-color-main: var(--accent, #14b8a6); --plyr-video-control-background-hover: rgba(20, 184, 166, 0.2); --plyr-control-radius: 12px; --plyr-range-track-height: 5px; --plyr-video-control-color: var(--color-white, #ffffff); width: 100%; position: relative; background-color: var(--video-bg); &:hover .plyr__poster { transform: scale(1.05); }",
+    "attributes": {},
     "children": [
       {
         "tag": "div",
         "text": "",
         "class": "container",
         "style": "",
+        "attributes": {},
         "children": [
           {
             "tag": "div",
             "text": "",
             "class": "video-card",
             "style": "position: relative; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.1); background: var(--slate-900);",
+            "attributes": {},
             "children": [
               {
                 "tag": "video",
                 "text": "",
                 "class": "video-player",
                 "style": "width: 100%; display: block; .plyr__control--overlaid { background: rgba(20, 184, 166, 0.7); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); padding: 30px; transition: all 0.3s ease; &:hover { background: var(--accent); transform: translate(-50%, -50%) scale(1.1); } svg { width: 40px; height: 40px; filter: drop-shadow(0 0 10px rgba(0,0,0,0.3)); } } .plyr__poster { background-size: cover; transition: transform 0.6s cubic-bezier(0.165, 0.84, 0.44, 1); }",
+                "attributes": {
+                  "id": "nature-player",
+                  "controls": "",
+                  "data-poster": "https://images.pexels.com/photos/3408744/pexels-photo-3408744.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+                  "playsinline": ""
+                },
                 "children": [
                   {
                     "tag": "source",
                     "text": "",
                     "class": "",
                     "style": "",
-                    "children": [],
                     "attributes": {
                       "src": "https://vjs.zencdn.net/v/oceans.mp4",
                       "type": "video/mp4"
-                    }
+                    },
+                    "children": []
                   }
-                ],
-                "attributes": {
-                  "id": "nature-player",
-                  "controls": "",
-                  "data-poster": "https://images.pexels.com/photos/3408744/pexels-photo-3408744.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
-                  "playsinline": ""
-                }
+                ]
               }
-            ],
-            "attributes": {}
+            ]
           }
-        ],
-        "attributes": {}
+        ]
       }
-    ],
-    "attributes": {}
+    ]
   },
   {
     "tag": "script",
-    "text": "/* @component: .nature-video */ (function () { const init = () => { const wrappers = document.querySelectorAll('.nature-video'); wrappers.forEach((wrap) => { const v = wrap.querySelector('video'); if (v && !v.classList.contains('plyr--setup') && !v.closest('.plyr')) { v.classList.add('plyr--setup'); new Plyr(v, { controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen'], ratio: '16:9' }); } }); }; if (typeof Plyr === 'undefined') { let script = document.querySelector('#plyr-lib'); if (!script) { const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = 'https://cdn.plyr.io/3.7.8/plyr.css'; document.head.appendChild(link); script = document.createElement('script'); script.id = 'plyr-lib'; script.src = 'https://cdn.plyr.io/3.7.8/plyr.js'; document.head.appendChild(script); } script.addEventListener('load', () => setTimeout(init, 100)); } else { init(); } })(); /* @end: .nature-video */",
-    "class": "script-nature-video",
+    "text": "/* @component: nature-video */\n(function () {\n  const plyrCss = 'https://cdn.plyr.io/3.7.8/plyr.css';\n  const plyrJs = 'https://cdn.plyr.io/3.7.8/plyr.js';\n  function loadScript(id, src, cb) {\n    if (typeof Plyr !== 'undefined') { cb(); return; }\n    let s = document.getElementById(id);\n    if (!s) {\n      s = document.createElement('script');\n      s.id = id;\n      s.src = src;\n      s.onload = cb;\n      document.head.appendChild(s);\n    } else {\n      s.addEventListener('load', cb);\n    }\n  }\n  function initPlayer() {\n    document.querySelectorAll('.nature-video .video-player').forEach(function (v) {\n      if (v.dataset.initialized === 'true' || v.plyr) return;\n      v.dataset.initialized = 'true';\n      new Plyr(v, {\n        controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],\n        ratio: '16:9',\n        autoplay: false\n      });\n    });\n  }\n  if (!document.getElementById('plyr-css')) {\n    const l = document.createElement('link');\n    l.id = 'plyr-css';\n    l.rel = 'stylesheet';\n    l.href = plyrCss;\n    document.head.appendChild(l);\n  }\n  loadScript('plyr-js', plyrJs, function () {\n    if (document.readyState === 'loading') {\n      document.addEventListener('DOMContentLoaded', initPlayer);\n    } else {\n      initPlayer();\n    }\n    setTimeout(initPlayer, 300);\n  });\n})();\n/* @end: nature-video */",
+    "class": "",
+    "style": "",
+    "attributes": {},
     "children": []
   }
 ]

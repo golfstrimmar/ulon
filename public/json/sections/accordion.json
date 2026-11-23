@@ -1,29 +1,24 @@
 [
   {
-    "tag": "script",
-    "text": "/* @component: accordion-container */ (function () { if (window.__accordionInit) return; window.__accordionInit = true; document.addEventListener('click', function(e) { const header = e.target.closest('.accordion-header'); if (!header) return; const t = header.parentElement; if (!t || !t.classList.contains('accordion')) return; const active = t.classList.contains('_is-active'); const parent = t.parentElement; if (!parent) return; function cl(el) { if (!el) return; el.querySelectorAll('.accordion._is-active').forEach(nt => { nt.classList.remove('_is-active'); cl(nt.querySelector('.accordion-content')); }); } document.querySelectorAll('.accordion-container').forEach(container => { if (!container.contains(t) && !t.contains(container)) { container.querySelectorAll('.accordion._is-active').forEach(nt => { nt.classList.remove('_is-active'); }); } }); [...parent.children].forEach(s => { if (s !== t && s.classList.contains('accordion')) { s.classList.remove('_is-active'); cl(s.querySelector('.accordion-content')); } }); if (active) { t.classList.remove('_is-active'); cl(t.querySelector('.accordion-content')); } else { t.classList.add('_is-active'); } }); })(); /* @end: accordion-container */",
-    "class": "",
-    "style": "",
-    "children": [],
-    "attributes": {}
-  },
-  {
     "tag": "div",
     "text": "",
     "class": "accordion-container",
-    "style": "display: flex;flex-direction: column;width: 100%;",
+    "style": "--accordion-border: var(--border-color, var(--slate-200, #e2e8f0)); --accordion-header-color: var(--navy-900, #0f172a); --accordion-accent: var(--accent, #2563eb); --accordion-bg: var(--color-white, #ffffff); width: 100%; position: relative; box-sizing: border-box;",
+    "attributes": {},
     "children": [
       {
         "tag": "div",
         "text": "",
         "class": "accordion",
         "style": "position: relative;&._is-active { &>.accordion-header {.svg-wrapper{   transform: rotate(180deg);   } }  &>.accordion-content {   grid-template-rows: 1fr !important; }}",
+        "attributes": {},
         "children": [
           {
             "tag": "div",
             "text": "Item 1",
             "class": "accordion-header",
             "style": "cursor: pointer;display: flex;justify-content: space-between;align-items: center;transition: all 0.2s;&:hover { color: var(--accent-hover);}",
+            "attributes": {},
             "children": [
               {
                 "tag": "i",
@@ -68,18 +63,22 @@
             "text": "",
             "class": "accordion-content",
             "style": " overflow: hidden; display: grid; grid-template-rows: 0fr; transition: all 0.2s ease;",
+            "attributes": {},
             "children": [
               {
                 "tag": "div",
                 "text": "",
                 "class": "accordion-wrap",
                 "style": "min-height: 0;",
+                "attributes": {},
                 "children": [
                   {
                     "tag": "p",
                     "text": "Content for Item 1",
                     "class": "",
-                    "style": ""
+                    "style": "",
+                    "attributes": {},
+                    "children": []
                   }
                 ]
               }
@@ -87,7 +86,14 @@
           }
         ]
       }
-    ],
-    "attributes": {}
+    ]
+  },
+  {
+    "tag": "script",
+    "text": "/* @component: accordion-container */\n(function () {\n  if (window.__accordionInit) return;\n  window.__accordionInit = true;\n  document.addEventListener('click', function (e) {\n    const header = e.target.closest('.accordion-header');\n    if (!header) return;\n    const item = header.parentElement;\n    if (!item || !item.classList.contains('accordion')) return;\n    const isActive = item.classList.contains('_is-active');\n    const parent = item.parentElement;\n    if (!parent) return;\n    function closeNested(el) {\n      if (!el) return;\n      el.querySelectorAll('.accordion._is-active').forEach(function (nested) {\n        nested.classList.remove('_is-active');\n        closeNested(nested.querySelector('.accordion-content'));\n      });\n    }\n    document.querySelectorAll('.accordion-container').forEach(function (container) {\n      if (!container.contains(item) && !item.contains(container)) {\n        container.querySelectorAll('.accordion._is-active').forEach(function (nested) {\n          nested.classList.remove('_is-active');\n        });\n      }\n    });\n    Array.from(parent.children).forEach(function (sibling) {\n      if (sibling !== item && sibling.classList.contains('accordion')) {\n        sibling.classList.remove('_is-active');\n        closeNested(sibling.querySelector('.accordion-content'));\n      }\n    });\n    if (isActive) {\n      item.classList.remove('_is-active');\n      closeNested(item.querySelector('.accordion-content'));\n    } else {\n      item.classList.add('_is-active');\n    }\n  });\n})();\n/* @end: accordion-container */",
+    "class": "",
+    "style": "",
+    "attributes": {},
+    "children": []
   }
 ]

@@ -1,39 +1,40 @@
 [
   {
-    "tag": "script",
-    "text": "/* @component: .custom-select */ (function () { function initSelects() { const Selects = [...document.querySelectorAll('.custom-select')]; Selects.forEach((select) => { if (select.dataset.init === 'true') return; select.dataset.init = 'true'; select.addEventListener('click', (e) => clickelect(select, e)); }); function clickelect(select, e) { e.stopPropagation(); const target = e.target; const btn = select.querySelector('.dropdown-button'); if (!btn) return; const span = btn.querySelector('span'); const list = select.querySelector('.dropdown-list'); const items = [...select.querySelectorAll('.dropdown-list__item')]; const svg = btn.querySelector('.svg-select'); const hidden = select.querySelector('input[type=hidden]'); const isItem = target.closest('.dropdown-list__item'); if (select.classList.contains('_is-active')) { for (const item of items) { if (isItem && target === item) { select.classList.remove('_is-active'); const v = item.dataset.value; if (hidden) hidden.value = v; if (span) span.innerHTML = v; break; } select.classList.remove('_is-active'); } } else { select.classList.add('_is-active'); } } } if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', initSelects); } else { initSelects(); } })(); /* @end: .custom-select */",
-    "class": "",
-    "style": "",
-    "children": [],
-    "attributes": {}
-  },
-  {
     "tag": "div",
     "text": "",
     "class": "custom-select",
-    "style": "position: relative; width: max-content; min-width: 300px; &._is-active { .svg-select { transform: rotate(180deg); } &>.dropdown-list { max-height: 1260px !important; opacity: 1 !important; transform: translateY(0) !important; pointer-events: auto !important; } } &._is-filled { &>.dropdown-button { border-color: var(--accent) !important; } }",
+    "style": "--select-bg: var(--color-white, #ffffff); --select-border: var(--border-color, var(--slate-300, #cbd5e1)); --select-accent: var(--accent, #2563eb); --select-text: var(--navy-900, #0f172a); --select-hover: var(--slate-100, #f1f5f9); position: relative; width: 100%; box-sizing: border-box;",
+    "attributes": {
+      "id": "custom-select"
+    },
     "children": [
       {
         "tag": "button",
         "text": "",
         "class": "dropdown-button",
         "style": "width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; background: transparent; cursor: pointer; transition: all .2s ease; &:hover { color: var(--teal-600); }",
+        "attributes": {
+          "type": "button"
+        },
         "children": [
           {
             "tag": "span",
             "text": "custom select",
             "class": "",
             "style": "flex: 1; text-align: left; font-size: 14px;",
-            "children": [],
-            "attributes": {}
+            "attributes": {},
+            "children": []
           },
           {
             "tag": "input",
             "text": "",
             "class": "",
             "style": "",
-            "children": [],
-            "attributes": { "name": "place", "type": "hidden" }
+            "attributes": {
+              "name": "place",
+              "type": "hidden"
+            },
+            "children": []
           },
           {
             "tag": "i",
@@ -71,43 +72,55 @@
               }
             ]
           }
-        ],
-        "attributes": { "type": "button" }
+        ]
       },
       {
         "tag": "ul",
         "text": "",
         "class": "dropdown-list",
         "style": "position: absolute; left: 0; top: calc(100%); margin: 0; padding: 6px 0; list-style: none; border: 1px solid var(--navy-900); overflow: hidden; max-height: 0; opacity: 0; pointer-events: none; transition: all .2s ease; z-index: 100000; background: transparent; width: 100%;",
+        "attributes": {},
         "children": [
           {
             "tag": "li",
             "text": "Notes",
             "class": "dropdown-list__item",
             "style": "padding: 0 4px; cursor: pointer; transition: all .2s ease; &:hover { color: var(--teal-500); }",
-            "children": [],
-            "attributes": { "data-value": "Notes" }
+            "attributes": {
+              "data-value": "Notes"
+            },
+            "children": []
           },
           {
             "tag": "li",
             "text": "Photo",
             "class": "dropdown-list__item",
             "style": "",
-            "children": [],
-            "attributes": { "data-value": "Photo" }
+            "attributes": {
+              "data-value": "Photo"
+            },
+            "children": []
           },
           {
             "tag": "li",
             "text": "Dictionary",
             "class": "dropdown-list__item",
             "style": "",
-            "children": [],
-            "attributes": { "data-value": "Dictionary" }
+            "attributes": {
+              "data-value": "Dictionary"
+            },
+            "children": []
           }
-        ],
-        "attributes": {}
+        ]
       }
-    ],
-    "attributes": { "id": "custom-select" }
+    ]
+  },
+  {
+    "tag": "script",
+    "text": "/* @component: custom-select */\n(function () {\n  function initSelects() {\n    document.querySelectorAll('.custom-select').forEach(function (select) {\n      if (select.dataset.initialized === 'true') return;\n      select.dataset.initialized = 'true';\n      const btn = select.querySelector('.dropdown-button');\n      const span = select.querySelector('.dropdown-button span');\n      const hidden = select.querySelector('input[type=\"hidden\"]');\n      const items = select.querySelectorAll('.dropdown-list__item');\n      if (!btn) return;\n      btn.addEventListener('click', function (e) {\n        e.stopPropagation();\n        const wasActive = select.classList.contains('_is-active');\n        document.querySelectorAll('.custom-select._is-active').forEach(function (s) {\n          s.classList.remove('_is-active');\n        });\n        if (!wasActive) select.classList.add('_is-active');\n      });\n      items.forEach(function (item) {\n        item.addEventListener('click', function (e) {\n          e.stopPropagation();\n          const val = item.getAttribute('data-value') || item.textContent.trim();\n          if (hidden) hidden.value = val;\n          if (span) span.textContent = val;\n          select.classList.remove('_is-active');\n        });\n      });\n    });\n    document.addEventListener('click', function () {\n      document.querySelectorAll('.custom-select._is-active').forEach(function (s) {\n        s.classList.remove('_is-active');\n      });\n    });\n  }\n  if (document.readyState === 'loading') {\n    document.addEventListener('DOMContentLoaded', initSelects);\n  } else {\n    initSelects();\n  }\n  setTimeout(initSelects, 300);\n})();\n/* @end: custom-select */",
+    "class": "",
+    "style": "",
+    "attributes": {},
+    "children": []
   }
 ]

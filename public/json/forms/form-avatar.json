@@ -3,20 +3,22 @@
     "tag": "div",
     "text": "",
     "class": "form-avatar",
-    "style": "width: 100%;\r\nmax-width: 520px;\r\ndisplay: flex;\r\nflex-direction: column;\r\ngap: 2rem;\r\nfont-size: 0.875rem;\r\nline-height: 1.5rem;\r\nfont-weight: 600;\r\ncolor: var(--navy-900);",
+    "style": "--avatar-text: var(--form-avatar-text, var(--navy-900, #0f172a)); --avatar-label: var(--form-avatar-label, var(--navy-900, #0f172a)); --avatar-icon: var(--navy-200, #cbd5e1); --avatar-accent: var(--sky-500, #0ea5e9); --avatar-accent-hover: var(--sky-300, #7dd3fc); --avatar-dropzone-bg: var(--form-avatar-dropzone-bg, rgba(248, 250, 252, 0.6)); --avatar-dropzone-border: var(--form-avatar-dropzone-border, rgba(30, 41, 59, 0.2)); --avatar-dropzone-padding: var(--form-avatar-dropzone-padding, 3rem 1.5rem); --avatar-file-margin: var(--form-avatar-file-margin, 1.25rem); --avatar-file-padding: var(--form-avatar-file-padding, 0.875rem 1rem); width: 100%; max-width: 520px; display: flex; flex-direction: column; gap: 2rem; font-size: 0.875rem; line-height: 1.5rem; font-weight: 600; color: var(--avatar-text);",
     "attributes": {},
     "children": [
       {
         "tag": "div",
         "text": "",
         "class": "form-section",
-        "style": "",
+        "style": "display: flex; flex-direction: column;",
+        "attributes": {},
         "children": [
           {
             "tag": "label",
             "text": "Photo",
             "class": "section-label",
-            "style": "\r\n\r\nmargin-bottom: 0.75rem;",
+            "style": "display: inline-block; margin-bottom: 0.75rem; color: var(--avatar-label);",
+            "attributes": {},
             "children": []
           },
           {
@@ -24,20 +26,21 @@
             "text": "",
             "class": "photo-content",
             "style": "display: flex; align-items: center; gap: 1rem;",
+            "attributes": {},
             "children": [
               {
                 "tag": "div",
                 "text": "",
                 "class": "avatar-display",
-                "style": "",
+                "style": "display: flex; align-items: center; justify-content: center;",
+                "attributes": {},
                 "children": [
                   {
                     "tag": "svg",
                     "text": "",
                     "class": "avatar-icon",
-                    "style": "display: block; width: 3rem; height: 3rem; color: var(--navy-200);",
+                    "style": "display: block; width: 3rem; height: 3rem; color: var(--avatar-icon);",
                     "attributes": {
-                      "id": "avatar-icon",
                       "fill": "currentColor",
                       "viewBox": "0 0 24 24",
                       "aria-hidden": "true"
@@ -63,7 +66,6 @@
                     "class": "avatar-preview",
                     "style": "display: none; width: 3rem; height: 3rem; border-radius: 50%; object-fit: cover;",
                     "attributes": {
-                      "id": "avatar-preview",
                       "alt": "Avatar preview"
                     },
                     "children": []
@@ -73,10 +75,12 @@
               {
                 "tag": "button",
                 "text": "Change",
-                "class": "change-btn btn-primary",
-                "style": "color: var(--blue-200);\r\ndisplay: inline-flex;\r\nalign-items: center;\r\njustify-content: center;\r\ncursor: pointer;\r\npadding: 0 10px ;\r\nborder-radius: 4px;\r\ntransition: all 200ms ease-in-out;\r\nbox-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);\r\nbackground-color: var(--navy-600);\r\nborder: 1px solid var(--navy-600);\r\nposition: relative;\r\nheight: 30px;\r\n\r\n&:hover {\r\n  border: 1px solid var(--purple-200);\r\n  background-color: var(--slate-500);\r\n}\r\n\r\n&:active {\r\n  transform: translateY(1px);\r\n  background-color: var(--accent);\r\n}",
+                "class": "change-btn form-avatar__change-btn",
+                "style": "color: var(--blue-200, #bfdbfe); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0 12px; border-radius: 4px; transition: all 200ms ease-in-out; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08); background-color: var(--navy-600, #334155); border: 1px solid var(--navy-600, #334155); position: relative; height: 30px; &:hover { border-color: var(--purple-200, #e9d5ff); background-color: var(--slate-500, #64748b); } &:active { transform: translateY(1px); background-color: var(--accent, #3b82f6); }",
                 "children": [],
-                "attributes": { "type": "button" }
+                "attributes": {
+                  "type": "button"
+                }
               }
             ]
           }
@@ -86,33 +90,36 @@
         "tag": "div",
         "text": "",
         "class": "form-section",
-        "style": "",
+        "style": "display: flex; flex-direction: column;",
+        "attributes": {},
         "children": [
           {
             "tag": "label",
             "text": "Cover photo",
             "class": "section-label",
-            "style": "display: block;\r\n\r\nmargin-bottom: 0.75rem;",
+            "style": "display: inline-block; margin-bottom: 0.75rem; color: var(--avatar-label);",
+            "attributes": {},
             "children": []
           },
           {
             "tag": "div",
             "text": "",
             "class": "upload-dropzone",
-            "style": "position: relative; display: flex; justify-content: center; border-radius: 0.75rem; border: 2px dashed rgba(30, 41, 59, 0.2); padding: 3rem 1.5rem; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; background-color: rgba(248, 250, 252, 0.6);",
-            "attributes": { "id": "drop-zone" },
+            "style": "position: relative; display: flex; justify-content: center; border-radius: 0.75rem; border: 2px dashed var(--avatar-dropzone-border); padding: var(--avatar-dropzone-padding); transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; background-color: var(--avatar-dropzone-bg); &:hover, &.drag-over { border-color: var(--avatar-accent); }",
+            "attributes": {},
             "children": [
               {
                 "tag": "div",
                 "text": "",
                 "class": "upload-content",
                 "style": "text-align: center;",
+                "attributes": {},
                 "children": [
                   {
                     "tag": "svg",
                     "text": "",
                     "class": "upload-icon",
-                    "style": "width: 3.25rem; height: 3.25rem; margin: 0 auto; color: var(--navy-200); transition: color 0.3s ease;",
+                    "style": "display: block; width: 3.25rem; height: 3.25rem; margin: 0 auto; color: var(--avatar-icon); transition: color 0.3s ease;",
                     "attributes": {
                       "fill": "currentColor",
                       "viewBox": "0 0 24 24",
@@ -138,27 +145,29 @@
                     "text": "",
                     "class": "upload-text-wrapper",
                     "style": "margin-top: 1.25rem; display: flex; flex-direction: column; align-items: center;",
+                    "attributes": {},
                     "children": [
                       {
                         "tag": "div",
                         "text": "",
                         "class": "upload-text",
-                        "style": "display: flex; align-items: center; font-size: 0.9rem; line-height: 1.5rem; color: var(--navy-400);",
+                        "style": "display: flex; align-items: center; font-size: 0.9rem; line-height: 1.5rem; color: var(--slate-400, #94a3b8);",
+                        "attributes": {},
                         "children": [
                           {
                             "tag": "span",
                             "text": "Upload a file",
                             "class": "upload-trigger",
-                            "style": "position: relative;\r\nfont-weight: 600;\r\ncolor: var(--sky-500);\r\nborder-radius: 0.375rem;\r\ncursor: pointer;\r\nbackground: transparent;\r\ntransition: all 0.2s ease;\r\npadding: 0 2px;\r\n\r\n&:hover {\r\n  color: var(--sky-300);\r\n}",
+                            "style": "position: relative; font-weight: 600; color: var(--avatar-accent); border-radius: 0.375rem; cursor: pointer; background: transparent; transition: all 0.2s ease; padding: 0 2px; &:hover { color: var(--avatar-accent-hover); }",
+                            "attributes": {},
                             "children": []
                           },
                           {
                             "tag": "input",
                             "text": "",
-                            "class": "sr-only",
+                            "class": "upload-input sr-only",
                             "style": "position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0;",
                             "attributes": {
-                              "id": "file-upload",
                               "name": "file-upload",
                               "type": "file",
                               "accept": "image/*"
@@ -170,6 +179,7 @@
                             "text": "or drag and drop",
                             "class": "upload-drag-text",
                             "style": "padding-left: 0.35rem;",
+                            "attributes": {},
                             "children": []
                           }
                         ]
@@ -178,7 +188,8 @@
                         "tag": "p",
                         "text": "PNG, JPG, GIF up to 10MB",
                         "class": "upload-hint",
-                        "style": "font-size: 0.75rem; margin-top: 2px; color: var(--slate-300); letter-spacing: 0.01em;",
+                        "style": "font-size: 0.75rem; margin: 2px 0 0; color: var(--slate-300, #cbd5e1); letter-spacing: 0.01em;",
+                        "attributes": {},
                         "children": []
                       }
                     ]
@@ -191,14 +202,15 @@
             "tag": "div",
             "text": "",
             "class": "file-info",
-            "style": "display: none; margin-top: 1.25rem; padding: 0.875rem 1rem; background: var(--color-white); border: 1px solid rgba(226, 232, 240, 1); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); border-radius: 0.5rem; align-items: center; justify-content: space-between; width: 100%; transition: all 0.3s ease-out;",
-            "attributes": { "id": "file-info" },
+            "style": "display: none; margin-top: var(--avatar-file-margin); padding: var(--avatar-file-padding); background: var(--color-white, #ffffff); border: 1px solid rgba(226, 232, 240, 1); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); border-radius: 0.5rem; align-items: center; justify-content: space-between; width: 100%; box-sizing: border-box; transition: all 0.3s ease-out;",
+            "attributes": {},
             "children": [
               {
                 "tag": "div",
                 "text": "",
                 "class": "file-info-left",
                 "style": "display: flex; align-items: center; gap: 0.75rem; overflow: hidden;",
+                "attributes": {},
                 "children": [
                   {
                     "tag": "img",
@@ -206,7 +218,6 @@
                     "class": "file-info-thumb",
                     "style": "width: 32px; height: 32px; border-radius: 0.25rem; object-fit: cover; flex-shrink: 0; border: 1px solid rgba(226, 232, 240, 1);",
                     "attributes": {
-                      "id": "file-info-thumb",
                       "alt": "Thumbnail"
                     },
                     "children": []
@@ -215,7 +226,8 @@
                     "tag": "span",
                     "text": "",
                     "class": "file-name",
-                    "style": "font-size: 0.875rem; font-weight: 500; color: var(--slate-600); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px;",
+                    "style": "font-size: 0.875rem; font-weight: 500; color: var(--slate-600, #475569); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px;",
+                    "attributes": {},
                     "children": []
                   }
                 ]
@@ -224,8 +236,11 @@
                 "tag": "button",
                 "text": "×",
                 "class": "remove-file",
-                "style": "background: none;\r\nborder: none;\r\ncolor: var(--color-red);\r\nwidth: 32px;\r\nheight: 32px;\r\ncursor: pointer;\r\nline-height: 1;\r\npadding: 0.25rem;\r\nborder-radius: 50%;\r\ntransition: all 0.2s;\r\n\r\n&:hover {\r\n  background: rgba(244, 63, 94, 0.1);\r\n  color: var(--color-red);\r\n}",
-                "attributes": { "type": "button", "title": "Remove image" },
+                "style": "background: none; border: none; color: var(--color-red, #ef4444); width: 32px; height: 32px; cursor: pointer; line-height: 1; padding: 0.25rem; border-radius: 50%; transition: all 0.2s; &:hover { background: rgba(244, 63, 94, 0.1); }",
+                "attributes": {
+                  "type": "button",
+                  "title": "Remove image"
+                },
                 "children": []
               }
             ]
@@ -238,7 +253,8 @@
     "tag": "script",
     "class": "",
     "attributes": {},
-    "text": "/* @component: form-avatar */ (function () { function initUpload() { document.querySelectorAll('.form-avatar').forEach(function (container) { if (container.dataset.initialized === 'true') return; container.dataset.initialized = 'true'; const dropZone = container.querySelector('.upload-dropzone'); const fileInput = container.querySelector('input[type=file]'); const fileInfo = container.querySelector('.file-info'); const fileNameDisplay = container.querySelector('.file-name'); const removeBtn = container.querySelector('.remove-file'); const avatarIcon = container.querySelector('.avatar-icon'); const avatarPreview = container.querySelector('.avatar-preview'); const changeBtn = container.querySelector('.change-btn'); const fileInfoThumb = container.querySelector('.file-info-thumb'); if (!dropZone || !fileInput) return; function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); } ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(function (eventName) { dropZone.addEventListener(eventName, preventDefaults, false); }); ['dragenter', 'dragover'].forEach(function (eventName) { dropZone.addEventListener(eventName, function () { dropZone.classList.add('drag-over'); }, false); }); ['dragleave', 'drop'].forEach(function (eventName) { dropZone.addEventListener(eventName, function () { dropZone.classList.remove('drag-over'); }, false); }); function handleFiles(files, callback) { if (files.length > 0) { const file = files[0]; if (file.type.indexOf('image/') === 0) { callback(file); } else { alert('Please upload an image file (PNG, JPG, GIF).'); } } } function processCoverPhoto(file) { const reader = new FileReader(); reader.onload = function (e) { if (fileInfoThumb) fileInfoThumb.src = e.target.result; if (fileNameDisplay) fileNameDisplay.textContent = file.name; if (fileInfo) fileInfo.style.display = 'flex'; }; reader.readAsDataURL(file); } function resetCoverUpload() { fileInput.value = ''; if (fileInfo) fileInfo.style.display = 'none'; if (fileNameDisplay) fileNameDisplay.textContent = ''; if (fileInfoThumb) fileInfoThumb.src = ''; } function processAvatarPhoto(file) { const reader = new FileReader(); reader.onload = function (e) { if (avatarPreview) { avatarPreview.src = e.target.result; avatarPreview.style.display = 'block'; } if (avatarIcon) avatarIcon.style.display = 'none'; }; reader.readAsDataURL(file); } dropZone.addEventListener('drop', function (e) { handleFiles(e.dataTransfer.files, processCoverPhoto); }, false); fileInput.addEventListener('change', function (e) { handleFiles(e.target.files, processCoverPhoto); }); dropZone.addEventListener('click', function (e) { if (e.target !== fileInput) fileInput.click(); }); if (removeBtn) { removeBtn.addEventListener('click', function (e) { e.stopPropagation(); resetCoverUpload(); }); } if (changeBtn) { changeBtn.addEventListener('click', function () { if (fileInput.files && fileInput.files.length > 0) { const file = fileInput.files[0]; if (file.type.indexOf('image/') === 0) { processAvatarPhoto(file); resetCoverUpload(); } else { alert('Please select an image file in the Cover Photo area.'); } } else { alert('Please upload an image to the Cover photo area below first.'); } }); } }); } if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', initUpload); } else { initUpload(); } setTimeout(initUpload, 300); })(); /* @end: form-avatar */",
-    "children": []
+    "style": "",
+    "children": [],
+    "text": "/* @component: form-avatar */\n(function () {\n  function initUpload() {\n    document.querySelectorAll('.form-avatar').forEach(function (container) {\n      if (container.dataset.initialized === 'true') return;\n      container.dataset.initialized = 'true';\n      const dropZone = container.querySelector('.upload-dropzone');\n      const fileInput = container.querySelector('input[type=\"file\"]');\n      const fileInfo = container.querySelector('.file-info');\n      const fileNameDisplay = container.querySelector('.file-name');\n      const removeBtn = container.querySelector('.remove-file');\n      const avatarIcon = container.querySelector('.avatar-icon');\n      const avatarPreview = container.querySelector('.avatar-preview');\n      const changeBtn = container.querySelector('.change-btn');\n      const fileInfoThumb = container.querySelector('.file-info-thumb');\n      if (!dropZone || !fileInput) return;\n      function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }\n      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(function (ev) {\n        dropZone.addEventListener(ev, preventDefaults, false);\n      });\n      ['dragenter', 'dragover'].forEach(function (ev) {\n        dropZone.addEventListener(ev, function () { dropZone.classList.add('drag-over'); }, false);\n      });\n      ['dragleave', 'drop'].forEach(function (ev) {\n        dropZone.addEventListener(ev, function () { dropZone.classList.remove('drag-over'); }, false);\n      });\n      function processCoverPhoto(file) {\n        const reader = new FileReader();\n        reader.onload = function (e) {\n          if (fileInfoThumb) fileInfoThumb.src = e.target.result;\n          if (fileNameDisplay) fileNameDisplay.textContent = file.name;\n          if (fileInfo) fileInfo.style.display = 'flex';\n        };\n        reader.readAsDataURL(file);\n      }\n      function resetCoverUpload() {\n        fileInput.value = '';\n        if (fileInfo) fileInfo.style.display = 'none';\n        if (fileNameDisplay) fileNameDisplay.textContent = '';\n        if (fileInfoThumb) fileInfoThumb.src = '';\n      }\n      function processAvatarPhoto(file) {\n        const reader = new FileReader();\n        reader.onload = function (e) {\n          if (avatarPreview) { avatarPreview.src = e.target.result; avatarPreview.style.display = 'block'; }\n          if (avatarIcon) avatarIcon.style.display = 'none';\n        };\n        reader.readAsDataURL(file);\n      }\n      function handleFiles(files, cb) {\n        if (files && files.length > 0) {\n          const file = files[0];\n          if (file.type && file.type.indexOf('image/') === 0) cb(file);\n        }\n      }\n      dropZone.addEventListener('drop', function (e) { handleFiles(e.dataTransfer.files, processCoverPhoto); }, false);\n      fileInput.addEventListener('change', function (e) { handleFiles(e.target.files, processCoverPhoto); });\n      dropZone.addEventListener('click', function (e) { if (e.target !== fileInput) fileInput.click(); });\n      if (removeBtn) removeBtn.addEventListener('click', function (e) { e.stopPropagation(); resetCoverUpload(); });\n      if (changeBtn) changeBtn.addEventListener('click', function () {\n        if (fileInput.files && fileInput.files.length > 0 && fileInput.files[0].type.indexOf('image/') === 0) {\n          processAvatarPhoto(fileInput.files[0]);\n          resetCoverUpload();\n        }\n      });\n    });\n  }\n  if (document.readyState === 'loading') {\n    document.addEventListener('DOMContentLoaded', initUpload);\n  } else {\n    initUpload();\n  }\n  setTimeout(initUpload, 300);\n})();\n/* @end: form-avatar */"
   }
 ]

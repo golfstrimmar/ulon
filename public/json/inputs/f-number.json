@@ -3,22 +3,25 @@
     "tag": "div",
     "text": "",
     "class": "f-number",
-    "style": "position: relative; display: inline-flex; align-items: center; gap: 4px;padding: 2px 0px;",
+    "style": "--num-text: var(--text-main, #334155); --num-accent: var(--accent, #2563eb); --num-border: var(--border-color, var(--slate-300, #cbd5e1)); position: relative; display: inline-flex; align-items: center; gap: 4px; padding: 2px 0;",
+    "attributes": {},
     "children": [
       {
         "tag": "button",
         "text": "−",
         "class": "num-btn num-btn--dec",
-        "style": "width: 28px; height: 28px; border-radius: 100%; border: none; outline: 1px solid var(--text-main); background: transparent; font-size: 16px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease-in-out; &:hover { outline: 1px solid var(--bg-surface); }",
+        "style": "width: 28px; height: 28px; border-radius: 50%; border: none; outline: 1px solid var(--num-border); background: transparent; color: var(--num-text); font-size: 16px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease-in-out; &:hover { outline-color: var(--num-accent); color: var(--num-accent); }",
         "attributes": {
-          "type": "button"
-        }
+          "type": "button",
+          "aria-label": "Decrease value"
+        },
+        "children": []
       },
       {
         "tag": "input",
         "text": "",
-        "class": "",
-        "style": "width: min-content; height: 100%; max-width: 50px; cursor: pointer; position: relative; background: transparent; z-index: 5; outline: 1px solid var(--text-main); border: none; padding: 5px; transition: all 0.2s ease-in-out; border-radius: 8px; font-size: 14px; text-align: center; color: var(--bg-surface); -moz-appearance: textfield; &::placeholder{opacity: 0;} &::-webkit-inner-spin-button, &::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; } &:hover, &:focus { outline: 1px solid var(--bg-surface); }",
+        "class": "num-input",
+        "style": "width: min-content; height: 100%; max-width: 50px; cursor: pointer; position: relative; background: transparent; z-index: 5; outline: 1px solid var(--num-border); border: none; padding: 5px; transition: all 0.2s ease-in-out; border-radius: 8px; font-size: 14px; text-align: center; color: var(--num-text); -moz-appearance: textfield; &::placeholder { opacity: 0; } &::-webkit-inner-spin-button, &::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; } &:hover, &:focus { outline-color: var(--num-accent); }",
         "attributes": {
           "id": "f-number-input",
           "max": "10",
@@ -28,25 +31,28 @@
           "type": "number",
           "value": "0",
           "placeholder": ""
-        }
+        },
+        "children": []
       },
       {
         "tag": "button",
         "text": "+",
         "class": "num-btn num-btn--inc",
-        "style": "width: 28px; height: 28px; border-radius: 100%; border: none; outline: 1px solid var(--text-main); background: transparent; font-size: 16px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease-in-out; &:hover { outline: 1px solid var(--bg-surface); }",
+        "style": "width: 28px; height: 28px; border-radius: 50%; border: none; outline: 1px solid var(--num-border); background: transparent; color: var(--num-text); font-size: 16px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease-in-out; &:hover { outline-color: var(--num-accent); color: var(--num-accent); }",
         "attributes": {
-          "type": "button"
-        }
+          "type": "button",
+          "aria-label": "Increase value"
+        },
+        "children": []
       }
-    ],
-    "attributes": {}
+    ]
   },
   {
     "tag": "script",
-    "text": "/* @component: .f-number */ (function () { if (window.__fNumberInit) return; window.__fNumberInit = true; document.addEventListener('click', function (e) { const btnDec = e.target.closest('.num-btn--dec'); if (btnDec) { const parent = btnDec.closest('.f-number') || btnDec.parentElement; const input = parent ? parent.querySelector('input') : null; if (input && input.stepDown) { input.stepDown(); input.dispatchEvent(new Event('input', { bubbles: true })); input.dispatchEvent(new Event('change', { bubbles: true })); } return; } const btnInc = e.target.closest('.num-btn--inc'); if (btnInc) { const parent = btnInc.closest('.f-number') || btnInc.parentElement; const input = parent ? parent.querySelector('input') : null; if (input && input.stepUp) { input.stepUp(); input.dispatchEvent(new Event('input', { bubbles: true })); input.dispatchEvent(new Event('change', { bubbles: true })); } return; } }); })(); /* @end: .f-number */",
+    "text": "/* @component: f-number */\n(function () {\n  function initNumberInputs() {\n    document.querySelectorAll('.f-number').forEach(function (container) {\n      if (container.dataset.initialized === 'true') return;\n      container.dataset.initialized = 'true';\n      const input = container.querySelector('input[type=\"number\"]');\n      const decBtn = container.querySelector('.num-btn--dec');\n      const incBtn = container.querySelector('.num-btn--inc');\n      if (!input) return;\n      function updateValue(delta) {\n        const min = input.hasAttribute('min') ? parseFloat(input.min) : -Infinity;\n        const max = input.hasAttribute('max') ? parseFloat(input.max) : Infinity;\n        const step = input.hasAttribute('step') ? parseFloat(input.step) || 1 : 1;\n        let val = (parseFloat(input.value) || 0) + delta * step;\n        if (val < min) val = min;\n        if (val > max) val = max;\n        input.value = val;\n        input.dispatchEvent(new Event('input', { bubbles: true }));\n        input.dispatchEvent(new Event('change', { bubbles: true }));\n      }\n      if (decBtn) decBtn.addEventListener('click', function () { updateValue(-1); });\n      if (incBtn) incBtn.addEventListener('click', function () { updateValue(1); });\n    });\n  }\n  if (document.readyState === 'loading') {\n    document.addEventListener('DOMContentLoaded', initNumberInputs);\n  } else {\n    initNumberInputs();\n  }\n  setTimeout(initNumberInputs, 300);\n})();\n/* @end: f-number */",
     "class": "",
     "style": "",
+    "attributes": {},
     "children": []
   }
 ]

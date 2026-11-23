@@ -161,4 +161,7 @@ D:\WEB\ulon\src\app\plaza\components\PreviewArea\components\ModalJsonHtml.tsx
 
 Тогда у тебя будет и скорость почти как у ИИ, и качество дорогой ручной вёрстки.
 ------------------
-D:\WEB\ulon\src\app\plaza\components\PreviewArea\components\TracingWireframeOverlay.tsx--- работать с ul
+npx repomix --include "src/pages/**,package.json,src/App.tsx"
+npx repomix --include "src/actions/**"
+npx repomix --include "src/app/plaza/components/CanvasArea/components/AsideCanvas/**"
+npx repomix --include "public/json/galleryes/**"

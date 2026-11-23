@@ -3,13 +3,13 @@
     "tag": "button",
     "text": "",
     "class": "button-svg-r",
-    "style": "width: 40px;height: 40px;display: flex;justify-content: center; align-items: center; cursor: pointer;border-radius: 50%;border: none;background: color-mix(in srgb, var(--accent) 13%, transparent);backdrop-filter: blur(8px);color: var(--slate-400);outline: 2px solid transparent;outline-offset: 2px;transition: all 0.2s ease;&::after {  font-size: 16px;  font-weight: bold;}&:hover {  background: var(--accent);  outline-color: var(--acent);  color: var(--teal-400);}&:active {  background: var(--teal-300);  outline-color: var(--acent);  color: var(--teal-200);}",
+    "style": "--btn-size: 40px; --btn-icon-size: 20px; --btn-bg: color-mix(in srgb, var(--accent, #3b82f6) 13%, transparent); --btn-color: var(--slate-400, #94a3b8); --btn-hover-bg: var(--accent, #3b82f6); --btn-hover-outline: var(--accent, #3b82f6); --btn-hover-color: var(--teal-400, #2dd4bf); --btn-active-bg: var(--teal-300, #5eead4); --btn-active-color: var(--teal-200, #99f6e4); width: var(--btn-size); height: var(--btn-size); display: flex; justify-content: center; align-items: center; cursor: pointer; border-radius: 50%; border: none; background: var(--btn-bg); backdrop-filter: blur(8px); color: var(--btn-color); outline: 2px solid transparent; outline-offset: 2px; transition: all 0.2s ease; &:hover { background: var(--btn-hover-bg); outline-color: var(--btn-hover-outline); color: var(--btn-hover-color); } &:active { background: var(--btn-active-bg); outline-color: var(--btn-hover-outline); color: var(--btn-active-color); }",
     "children": [
       {
         "tag": "svg",
         "text": "",
-        "class": "",
-        "style": "height: 20px;width: 20px;",
+        "class": "button-svg-r__icon",
+        "style": "width: var(--btn-icon-size); height: var(--btn-icon-size); display: block;",
         "children": [
           {
             "tag": "path",
@@ -19,8 +19,8 @@
             "children": [],
             "attributes": {
               "d": "M16.28 11.47a.75.75 0 0 1 0 1.06l-7.5 7.5a.75.75 0 0 1-1.06-1.06L14.69 12 7.72 5.03a.75.75 0 0 1 1.06-1.06l7.5 7.5Z",
-              "cliprule": "evenodd",
-              "fillrule": "evenodd"
+              "clip-rule": "evenodd",
+              "fill-rule": "evenodd"
             }
           }
         ],
@@ -31,6 +31,8 @@
         }
       }
     ],
-    "attributes": { "type": "button" }
+    "attributes": {
+      "type": "button"
+    }
   }
 ]

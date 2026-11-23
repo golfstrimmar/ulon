@@ -1,0 +1,4013 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: src/app/plaza/components/CanvasArea/lib/elementsManifest.ts, src/app/plaza/components/CanvasArea/store/useCanvasStore.ts, src/app/plaza/components/CanvasArea/models/canvasModel.ts, **/scssCompiler.ts, **/generateWireframeLayoutAction.ts
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+src/
+  actions/
+    generateWireframeLayoutAction.ts
+  app/
+    plaza/
+      components/
+        CanvasArea/
+          lib/
+            elementsManifest.ts
+          models/
+            canvasModel.ts
+          store/
+            useCanvasStore.ts
+  lib/
+    scssCompiler.ts
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="src/actions/generateWireframeLayoutAction.ts">
+"use server";
+
+export interface AiLayoutInputNode {
+  id: string;
+  tag: string;
+  role: "image" | "svg" | "action" | "text";
+  text?: string;
+  fontClass?: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface AiLayoutGroup {
+  id: string;
+  parentId: string;
+  tag: "section" | "div" | "ul" | "li" | "nav" | "header" | "footer";
+  direction: "row" | "column" | "wrap" | "none";
+  listPreset: "none" | "a" | "a-i" | "i-span" | "a-i-span";
+  childDonorIds: string[];
+}
+
+export interface GenerateWireframeLayoutParams {
+  nodes: AiLayoutInputNode[];
+  containerWidth?: number;
+  previewImage?: string;
+}
+
+function parseBase64Image(
+  dataUri: string,
+): { mimeType: string; data: string } | null {
+  const commaIdx = dataUri.indexOf(",");
+  if (dataUri.startsWith("data:") && commaIdx !== -1) {
+    const meta = dataUri.slice(5, commaIdx);
+    const mimeType = (meta.split(";")[0] || "image/jpeg").toLowerCase();
+    // Gemini inlineData не принимает image/svg+xml
+    if (mimeType === "image/svg+xml") return null;
+    const data = dataUri.slice(commaIdx + 1).trim();
+    return data ? { mimeType, data } : null;
+  }
+  if (/^[A-Za-z0-9+/=]+$/.test(dataUri.trim().slice(0, 100))) {
+    return { mimeType: "image/jpeg", data: dataUri.trim() };
+  }
+  return null;
+}
+
+export interface GenerateWireframeLayoutResult {
+  success: boolean;
+  groups?: AiLayoutGroup[];
+  error?: string;
+}
+
+const SYSTEM_PROMPT = `
+You are a Senior Frontend & UI Layout Architect.
+Your job is to group flat Figma elements (with 1x screen coordinates x, y, w, h, tag, role, text, fontClass) into a clean semantic HTML layout tree.
+When a visual preview screenshot of the section is provided in the input, examine the image to visually verify layout containers, rows, columns, grids, lists (<ul> / <li>), cards, and button placements, and use both the visual image and the geometric nodes list to group elements into an optimal semantic HTML layout tree.
+
+RULES:
+1. Output a FLAT array "groups" representing containers using "id" (e.g. "g1", "g2") and "parentId" ("" for root).
+2. Place EVERY input node ID into "childDonorIds" of EXACTLY ONE group. Never invent new donor IDs, never duplicate an ID across groups, and never omit any input node ID.
+3. Semantic Lists (<ul> / <li>):
+   - Identify groups of repeating or semantically related list items: navigation links, feature blocks, cards, pricing plans, steps, grid items, testimonials, FAQ items, icon+text rows.
+   - IMPORTANT: Cards/items inside the SAME <ul> MAY have slightly different inner content! For example, item #1 might have [image, title, text, badge], while item #2 has [image, title, text], or item #1 has an icon and item #2 has a photo. If they visually and semantically form a series/grid/list of items in the section, group them into ONE <ul> with separate <li> groups inside!
+   - NEVER put a section heading (e.g. h1/h2 above the list) or intro paragraph or standalone CTA button below the list inside <ul> — keep them outside <ul> as siblings inside the parent <section>/<div>.
+   - Choose "direction" for <ul>:
+     - "row": items arranged horizontally in one line.
+     - "column": items stacked vertically one under another (each <li> may internally be a horizontal row like icon+text, or vertical stack).
+     - "wrap": 2D grid of cards across multiple rows.
+   - Choose "listPreset" for <ul> ONLY when each <li> is a simple menu/nav/feature item (not rich multi-paragraph cards with images):
+     - "a": simple text links (ul > li > a)
+     - "a-i": clickable icon+text links without extra span
+     - "i-span": non-clickable icon + single text item (ul > li > i + span)
+     - "a-i-span": clickable link with icon + text (ul > li > a > i + span)
+     - "none": leave inner elements as-is (always use "none" for rich cards with headings + descriptions or images).
+4. Layout Containers (<div> / <section> / <header> / <footer> / <nav>):
+   - Create a root "section" (or "header"/"footer") group when appropriate.
+   - When distinct blocks sit side-by-side (e.g. left text column + right image, or 2 columns), create a parent "div" with direction "row" and child column "div" groups with direction "column".
+   - Do not create redundant empty wrapper groups that contain nothing and have no child groups.
+5. Keep ordering natural (top-to-bottom, left-to-right).
+`;
+
+export async function generateWireframeLayoutAction(
+  params: GenerateWireframeLayoutParams,
+): Promise<GenerateWireframeLayoutResult> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return {
+      success: false,
+      error: "GEMINI_API_KEY is not defined in environment variables (.env)",
+    };
+  }
+
+  if (!Array.isArray(params.nodes) || params.nodes.length === 0) {
+    return {
+      success: false,
+      error: "No Figma nodes provided for AI layout",
+    };
+  }
+
+  const parts: any[] = [];
+
+  if (params.previewImage) {
+    const imgInfo = parseBase64Image(params.previewImage);
+    if (imgInfo) {
+      parts.push({
+        inlineData: {
+          mimeType: imgInfo.mimeType,
+          data: imgInfo.data,
+        },
+      });
+    }
+  }
+
+  const userPrompt = `
+Viewport/container width: ${params.containerWidth || 1440}px.
+Total nodes: ${params.nodes.length}.${params.previewImage ? "\nA visual preview screenshot of the section is attached above. Use it to verify visual grouping, card boundaries, columns, headers, and list arrangements." : ""}
+
+Analyze these Figma nodes and group them into semantic layout containers (section, div, ul, li, nav, etc.):
+
+${JSON.stringify(params.nodes)}
+`;
+
+  parts.push({ text: userPrompt });
+
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+    const body = {
+      contents: [
+        {
+          role: "user",
+          parts,
+        },
+      ],
+      systemInstruction: {
+        parts: [{ text: SYSTEM_PROMPT }],
+      },
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            groups: {
+              type: "ARRAY",
+              description: "Flat list of semantic layout containers",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  id: {
+                    type: "STRING",
+                    description: "Unique group ID like g1, g2, g3",
+                  },
+                  parentId: {
+                    type: "STRING",
+                    description:
+                      "Parent group ID, or empty string '' for root group",
+                  },
+                  tag: {
+                    type: "STRING",
+                    enum: [
+                      "section",
+                      "div",
+                      "ul",
+                      "li",
+                      "nav",
+                      "header",
+                      "footer",
+                    ],
+                  },
+                  direction: {
+                    type: "STRING",
+                    enum: ["row", "column", "wrap", "none"],
+                  },
+                  listPreset: {
+                    type: "STRING",
+                    enum: ["none", "a", "a-i", "i-span", "a-i-span"],
+                  },
+                  childDonorIds: {
+                    type: "ARRAY",
+                    items: { type: "STRING" },
+                    description:
+                      "Exact IDs from input nodes placed directly in this group",
+                  },
+                },
+                required: [
+                  "id",
+                  "parentId",
+                  "tag",
+                  "direction",
+                  "listPreset",
+                  "childDonorIds",
+                ],
+              },
+            },
+          },
+          required: ["groups"],
+        },
+      },
+    };
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      return {
+        success: false,
+        error: `Gemini API error (${response.status}): ${errText.slice(0, 300)}`,
+      };
+    }
+
+    const data = await response.json();
+    const partsList = data?.candidates?.[0]?.content?.parts;
+    const rawJson = Array.isArray(partsList)
+      ? (partsList.find((p: any) => !p?.thought && typeof p?.text === "string")
+          ?.text ?? partsList[0]?.text)
+      : undefined;
+
+    if (!rawJson) {
+      return {
+        success: false,
+        error: "Gemini did not return any layout groups",
+      };
+    }
+
+    const parsed = JSON.parse(rawJson);
+    const groups = Array.isArray(parsed?.groups) ? parsed.groups : [];
+
+    return {
+      success: true,
+      groups,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err?.message || String(err),
+    };
+  }
+}
+</file>
+
+<file path="src/app/plaza/components/CanvasArea/lib/elementsManifest.ts">
+export interface ElementItem {
+  name: string;
+  path: string;
+}
+
+export interface ElementFolder {
+  name: string;
+  items: ElementItem[];
+}
+
+export const ROOT_TAGS: ElementItem[] = [
+  { name: "div", path: "/json/div.json" },
+  { name: "sec-con-wrap", path: "/json/section_container_wrap.json" },
+  { name: "container", path: "/json/container.json" },
+  { name: "header", path: "/json/header.json" },
+  { name: "p", path: "/json/p.json" },
+  { name: "span", path: "/json/span.json" },
+  { name: "a", path: "/json/a.json" },
+  { name: "button", path: "/json/button.json" },
+
+  { name: "is", path: "/json/is.json" },
+  { name: "img", path: "/json/img.json" },
+  { name: "svg", path: "/json/svg.json" },
+  { name: "i", path: "/json/i.json" },
+
+  { name: "ul", path: "/json/ul.json" },
+  { name: "li", path: "/json/li.json" },
+
+  { name: "h1", path: "/json/h1.json" },
+  { name: "h2", path: "/json/h2.json" },
+  { name: "h3", path: "/json/h3.json" },
+  { name: "h4", path: "/json/h4.json" },
+  { name: "h5", path: "/json/h5.json" },
+  { name: "h6", path: "/json/h6.json" },
+
+  { name: "flex-col", path: "/json/flex-col.json" },
+  { name: "flex-row", path: "/json/flex-row.json" },
+  { name: "grid-3", path: "/json/grid-3.json" },
+  { name: "grid-300-1fr", path: "/json/grid-300-1fr.json" },
+  { name: "grid-auto-col", path: "/json/grid-auto-col.json" },
+  { name: "grid-minmax", path: "/json/grid-minmax.json" },
+
+  { name: "footer", path: "/json/footer.json" },
+
+  { name: "main", path: "/json/main.json" },
+  { name: "section", path: "/json/section.json" },
+  { name: "nav", path: "/json/nav.json" },
+  { name: "article", path: "/json/article.json" },
+  { name: "aside", path: "/json/aside.json" },
+
+  { name: "ol", path: "/json/ol.json" },
+
+  { name: "label", path: "/json/label.json" },
+  { name: "table", path: "/json/table.json" },
+  { name: "tr", path: "/json/tr.json" },
+  { name: "td", path: "/json/td.json" },
+  { name: "th", path: "/json/th.json" },
+  { name: "audio", path: "/json/audio.json" },
+  { name: "br", path: "/json/br.json" },
+  { name: "hr", path: "/json/hr.json" },
+  { name: "em", path: "/json/em.json" },
+  { name: "strong", path: "/json/strong.json" },
+];
+
+export const ELEMENT_FOLDERS: ElementFolder[] = [
+  {
+    name: "buttons",
+    items: [
+      { name: "button-primary", path: "/json/buttons/button-primary.json" },
+      { name: "button-teal", path: "/json/buttons/button-teal.json" },
+      { name: "button-grey", path: "/json/buttons/button-grey.json" },
+      { name: "button-anker", path: "/json/buttons/button-anker.json" },
+      { name: "button-svg-l", path: "/json/buttons/button-svg-l.json" },
+      { name: "button-svg-r", path: "/json/buttons/button-svg-r.json" },
+      { name: "button", path: "/json/buttons/button.json" },
+    ],
+  },
+  {
+    name: "forms",
+    items: [
+      { name: "form", path: "/json/forms/form.json" },
+
+      { name: "form-avatar", path: "/json/forms/form-avatar.json" },
+      { name: "fieldset", path: "/json/forms/fieldset.json" },
+    ],
+  },
+  {
+    name: "inputs",
+    items: [
+      { name: "input", path: "/json/inputs/input.json" },
+      { name: "input-field", path: "/json/inputs/input-field.json" },
+      { name: "textarea", path: "/json/inputs/textarea.json" },
+      { name: "textarea-field", path: "/json/inputs/textarea-field.json" },
+      { name: "search-small", path: "/json/inputs/search-small.json" },
+      { name: "search-f", path: "/json/inputs/search-f.json" },
+      { name: "f-check", path: "/json/inputs/f-check.json" },
+      { name: "f-number", path: "/json/inputs/f-number.json" },
+      { name: "fieldset", path: "/json/inputs/fieldset.json" },
+      { name: "fieldset-radio", path: "/json/inputs/fieldset-radio.json" },
+      {
+        name: "fildset-input-data",
+        path: "/json/inputs/fildset-input-data.json",
+      },
+      { name: "fildset-rating", path: "/json/inputs/fildset-rating.json" },
+      { name: "range-wrap-js", path: "/json/inputs/range-wrap-js.json" },
+    ],
+  },
+  {
+    name: "sections",
+    items: [
+      { name: "header", path: "/json/sections/header.json" },
+      { name: "hero", path: "/json/sections/hero.json" },
+      { name: "card", path: "/json/sections/card.json" },
+      { name: "cards", path: "/json/sections/cards.json" },
+      { name: "cards-more", path: "/json/sections/cards-more.json" },
+      { name: "more-text", path: "/json/sections/more-text.json" },
+      { name: "accordion", path: "/json/sections/accordion.json" },
+      { name: "modal", path: "/json/sections/modal.json" },
+      { name: "tabs", path: "/json/sections/tabs.json" },
+      { name: "tabs-horisontal", path: "/json/sections/tabs-horisontal.json" },
+      { name: "tab-uno", path: "/json/sections/tab-uno.json" },
+      { name: "tab-hover", path: "/json/sections/tab-hover.json" },
+      {
+        name: "tab-hover-absolute",
+        path: "/json/sections/tab-hover-absolute.json",
+      },
+      {
+        name: "tab-hover-horisontal",
+        path: "/json/sections/tab-hover-horisontal.json",
+      },
+      { name: "custom-select", path: "/json/sections/custom-select.json" },
+      { name: "pagination", path: "/json/sections/pagination.json" },
+      { name: "soc", path: "/json/sections/soc.json" },
+      { name: "look", path: "/json/sections/look.json" },
+      { name: "video", path: "/json/sections/video.json" },
+    ],
+  },
+  {
+    name: "sliders",
+    items: [
+      { name: "slider", path: "/json/sliders/slider.json" },
+      { name: "double-slider", path: "/json/sliders/double-slider.json" },
+      { name: "fade-slider", path: "/json/sliders/fade-slider.json" },
+      {
+        name: "slider-last-flexible",
+        path: "/json/sliders/slider-last-flexible.json",
+      },
+      { name: "carousel", path: "/json/sliders/carousel.json" },
+      { name: "bunner-slider", path: "/json/sliders/bunner-slider.json" },
+      {
+        name: "swiper-center-scale",
+        path: "/json/sliders/swiper-center-scale.json",
+      },
+      {
+        name: "swiper-indicator-uno",
+        path: "/json/sliders/swiper-indicator-uno.json",
+      },
+      {
+        name: "swiper-indicator-numers",
+        path: "/json/sliders/swiper-indicator-numers.json",
+      },
+      {
+        name: "swiper-indicator-dinamic",
+        path: "/json/sliders/swiper-indicator-dinamic.json",
+      },
+      {
+        name: "swiper-indicator-multy",
+        path: "/json/sliders/swiper-indicator-multy.json",
+      },
+    ],
+  },
+  {
+    name: "galleryes",
+    items: [
+      { name: "gallery", path: "/json/galleryes/gallery.json" },
+      { name: "gallery-slider", path: "/json/galleryes/gallery-slider.json" },
+      { name: "gallery-popup", path: "/json/galleryes/gallery-popup.json" },
+      {
+        name: "gallery-slider-popup",
+        path: "/json/galleryes/gallery-slider-popup.json",
+      },
+      {
+        name: "video-gallery-slider",
+        path: "/json/galleryes/video-gallery-slider.json",
+      },
+    ],
+  },
+];
+</file>
+
+<file path="src/lib/scssCompiler.ts">
+/**
+ * @file scssCompiler.ts
+ * @description Компиляция SCSS в CSS и обновление конкретного класса на месте.
+ */
+
+import { compileScssAction } from "@/actions/scss.actions";
+
+export async function compileScssToCss(scss: string): Promise<string> {
+  const code = (scss || "").trim();
+  if (!code) return "";
+
+  try {
+    const res = await compileScssAction(code);
+    if (res.success && res.css !== undefined) {
+      return res.css;
+    }
+  } catch (e) {
+    console.warn("⚠️ [SCSS Action Network Error]:", (e as any)?.message);
+  }
+
+  return code;
+}
+
+function findMatchingBraceEnd(source: string, openBraceIdx: number): number {
+  let braceCount = 1;
+  let pos = openBraceIdx + 1;
+  const len = source.length;
+
+  while (pos < len && braceCount > 0) {
+    if (source[pos] === "{") braceCount++;
+    else if (source[pos] === "}") braceCount--;
+    pos++;
+  }
+
+  return pos;
+}
+
+/**
+ * Находит и возвращает блок класса из глобального SCSS
+ */
+export function extractClassSnippet(
+  globalScss: string,
+  className: string,
+): string {
+  const cls = className.trim().replace(/^\./, "");
+  if (!globalScss || !cls) return `.${cls} {\n  \n}`;
+
+  const escaped = escapeRegex(cls);
+  const exactRegex = new RegExp(`(^|\\n)([ \\t]*\\.${escaped}\\s*\\{)`);
+  let match = exactRegex.exec(globalScss);
+  if (!match) {
+    const fallbackRegex = new RegExp(
+      `(^|\\n)[ \\t]*\\.${escaped}(?![a-zA-Z0-9_.-])[^{]*\\{`,
+    );
+    match = fallbackRegex.exec(globalScss);
+  }
+  if (!match) {
+    return `.${cls} {\n  \n}`;
+  }
+
+  const startIdx = match.index + (match[1] ? match[1].length : 0);
+  const openBraceIdx = globalScss.indexOf("{", startIdx);
+  if (openBraceIdx === -1) return `.${cls} {\n  \n}`;
+
+  const endIdx = findMatchingBraceEnd(globalScss, openBraceIdx);
+  return globalScss.slice(startIdx, endIdx).trim();
+}
+
+/**
+ * Заменяет найденный блок .cls { ... } на новый и удаляет дубли того же точного класса ниже.
+ * Если класса нет — дописывает в конец.
+ */
+export function updateClassInGlobalScss(
+  globalScss: string,
+  className: string,
+  newSnippet: string,
+): string {
+  const cls = className.trim().replace(/^\./, "");
+  if (!cls) return globalScss;
+
+  const trimmedSnippet = newSnippet.trim();
+  const escaped = escapeRegex(cls);
+  const exactRegex = new RegExp(`(^|\\n)([ \\t]*\\.${escaped}\\s*\\{)`, "g");
+
+  const exactRanges: { start: number; end: number }[] = [];
+  let match: RegExpExecArray | null;
+
+  while ((match = exactRegex.exec(globalScss)) !== null) {
+    const start = match.index + (match[1] ? match[1].length : 0);
+    const braceStart = globalScss.indexOf("{", start);
+    if (braceStart === -1) break;
+    const end = findMatchingBraceEnd(globalScss, braceStart);
+    exactRanges.push({ start, end });
+    exactRegex.lastIndex = end;
+  }
+
+  if (exactRanges.length > 0) {
+    let result = "";
+    let cursor = 0;
+
+    exactRanges.forEach((range, idx) => {
+      result += globalScss.slice(cursor, range.start);
+      if (idx === 0 && trimmedSnippet) {
+        result += trimmedSnippet;
+      }
+      cursor = range.end;
+    });
+    result += globalScss.slice(cursor);
+
+    return result.replace(/\n{3,}/g, "\n\n").trim();
+  }
+
+  const fallbackRegex = new RegExp(
+    `(^|\\n)([ \\t]*\\.${escaped}(?![a-zA-Z0-9_.-])[^{]*\\{)`,
+  );
+  const fallbackMatch = fallbackRegex.exec(globalScss);
+
+  if (fallbackMatch) {
+    const fullMatchStart =
+      fallbackMatch.index + (fallbackMatch[1] ? fallbackMatch[1].length : 0);
+    const braceStart = globalScss.indexOf("{", fullMatchStart);
+
+    if (braceStart !== -1) {
+      const pos = findMatchingBraceEnd(globalScss, braceStart);
+      const before = globalScss.slice(0, fullMatchStart);
+      const after = globalScss.slice(pos);
+
+      if (!trimmedSnippet) {
+        return (before + after).replace(/\n{3,}/g, "\n\n").trim();
+      }
+
+      return (before + trimmedSnippet + after).trim();
+    }
+  }
+
+  if (!trimmedSnippet) return globalScss;
+  return globalScss.trim()
+    ? `${globalScss.trim()}\n\n${trimmedSnippet}`
+    : trimmedSnippet;
+}
+
+export function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export function hasClassInScss(globalScss: string, className: string): boolean {
+  const cls = className.trim().replace(/^\./, "");
+  if (!globalScss || !cls) return false;
+  const escaped = escapeRegex(cls);
+  const regex = new RegExp(
+    `(^|\\n)[ \\t]*\\.${escaped}(?![a-zA-Z0-9_.-])[^{]*\\{`,
+  );
+  return regex.test(globalScss);
+}
+
+/**
+ * Извлекает вложенный блок (например, &:before, &:hover) из текста класса .cls { ... }
+ */
+export function extractNestedSnippet(
+  classSnippet: string,
+  nestedSelector: string,
+): string | null {
+  if (!classSnippet || !nestedSelector) return null;
+  const escaped = escapeRegex(nestedSelector.trim());
+  const regex = new RegExp(
+    `(^|\\n)[ \\t]*(${escaped})(?:\\b|(?=[\\s{]))[^{]*\\{`,
+  );
+  const match = regex.exec(classSnippet);
+  if (!match) return null;
+
+  const fullMatchStart = match.index + (match[1] ? match[1].length : 0);
+  const openBrace = classSnippet.indexOf("{", fullMatchStart);
+  if (openBrace === -1) return null;
+
+  const pos = findMatchingBraceEnd(classSnippet, openBrace);
+  return classSnippet.slice(fullMatchStart, pos).trim();
+}
+
+function mergeNestedBody(existingBody: string, newBody: string): string {
+  const newProps = new Set<string>();
+  const regex = /([a-zA-Z0-9_-]+)\s*:/g;
+  let m: RegExpExecArray | null;
+  while ((m = regex.exec(newBody)) !== null) {
+    newProps.add(m[1].toLowerCase());
+  }
+
+  const keptLines = existingBody
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((line) => {
+      if (!line || line === "{" || line === "}") return false;
+      const colon = line.indexOf(":");
+      if (colon !== -1) {
+        const prop = line.slice(0, colon).trim().toLowerCase();
+        if (newProps.has(prop)) return false;
+      }
+      return true;
+    });
+
+  const newLines = newBody
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => Boolean(l) && l !== "{" && l !== "}");
+
+  return [...keptLines, ...newLines].map((l) => `    ${l}`).join("\n");
+}
+
+/**
+ * Обновляет или добавляет вложенный псевдо-блок (например, &:before { ... })
+ * внутри блока класса .cls { ... }
+ */
+export function updateNestedSnippetInClass(
+  classSnippet: string,
+  nestedSelector: string,
+  newNestedSnippet: string,
+): string {
+  const sel = nestedSelector.trim();
+  if (!sel) return classSnippet;
+
+  const trimmedSnippet = newNestedSnippet.trim();
+  const escaped = escapeRegex(sel);
+  const regex = new RegExp(
+    `(^|\\n)([ \\t]*${escaped}(?:\\b|(?=[\\s{]))[^{]*\\{)`,
+  );
+  const match = regex.exec(classSnippet);
+
+  if (match) {
+    const fullMatchStart = match.index + (match[1] ? match[1].length : 0);
+    const braceStart = classSnippet.indexOf("{", fullMatchStart);
+
+    if (braceStart !== -1) {
+      const pos = findMatchingBraceEnd(classSnippet, braceStart);
+
+      const before = classSnippet.slice(0, fullMatchStart);
+      const after = classSnippet.slice(pos);
+
+      if (!trimmedSnippet) {
+        return (before + after).trim();
+      }
+
+      const existingBody = classSnippet.slice(braceStart + 1, pos - 1);
+      const newOpenBrace = trimmedSnippet.indexOf("{");
+      const newCloseBrace = trimmedSnippet.lastIndexOf("}");
+      const newBody =
+        newOpenBrace !== -1 && newCloseBrace > newOpenBrace
+          ? trimmedSnippet.slice(newOpenBrace + 1, newCloseBrace)
+          : trimmedSnippet;
+
+      const mergedBody = mergeNestedBody(existingBody, newBody);
+      const formatted = `  ${sel} {\n${mergedBody}\n  }`;
+
+      return `${before.trimEnd()}\n${formatted}\n${after.trimStart()}`.trim();
+    }
+  }
+
+  if (!trimmedSnippet) return classSnippet;
+
+  const formatted = trimmedSnippet
+    .split("\n")
+    .map((l) => (l.trim() ? `  ${l}` : ""))
+    .join("\n");
+
+  const lastBrace = classSnippet.lastIndexOf("}");
+  if (lastBrace !== -1) {
+    const before = classSnippet.slice(0, lastBrace).trimEnd();
+    return `${before}\n\n${formatted}\n}`;
+  }
+
+  return `${classSnippet.trim()}\n\n${formatted}`;
+}
+
+export function compileClassesCss(): string {
+  return "";
+}
+</file>
+
+<file path="src/app/plaza/components/CanvasArea/store/useCanvasStore.ts">
+import { create } from "zustand";
+import type { HtmlNode } from "@/types/HtmlNode";
+import { DB_KEY } from "@/app/plaza/components/CanvasArea/constants/theme";
+import type { BreakpointId } from "@/app/plaza/components/PreviewArea/types/breakpoints";
+import { deleteNodeFromArray, isDescendant } from "@/lib/htmlTree";
+import {
+  saveHtmlJson,
+  deleteHtmlJson,
+  getGlobalScss,
+  saveGlobalScss,
+  getGlobalJs,
+  saveGlobalJs,
+} from "@/lib/htmlStorage";
+
+import {
+  findNodeInTree,
+  collectAllDescendantKeys,
+  collectAllTreeKeys,
+  normalizeSelectedKeys,
+  moveNodesGroup,
+  duplicateNodesGroup,
+  mergeDonorIntoTarget,
+  applyBemClassesToSection,
+  fillTemplateWithDonors,
+  fillSingleSlotInPlace,
+  fillMultipleSlotsInPlace,
+  applyDonorToSlot,
+  mutateNodeInTree,
+  removeNodesByKeys,
+  computeToggledCollapsedKeys,
+  prepareAppendedNodes,
+  mergeScssWithoutDuplicates,
+  mergeScriptsWithoutDuplicates,
+  findMarkerKeyInTree,
+  createMarkerNode,
+  insertNodesAdjacent,
+} from "@/app/plaza/components/CanvasArea/models/canvasModel";
+
+export interface DropTarget {
+  key: string;
+  position: "self" | "before" | "after" | "inside" | "donor";
+}
+
+export interface SelectionBox {
+  startX: number;
+  startY: number;
+  currentX: number;
+  currentY: number;
+}
+
+export interface PotentialDrag {
+  key: string;
+  startX: number;
+  startY: number;
+}
+
+export interface CanvasState {
+  currentJson: HtmlNode[];
+  collapsedKeys: Set<string>;
+
+  clickedKey: string | null;
+  hoveredKey: string | null;
+
+  isSplit: boolean;
+  rightKeys: Set<string>;
+  isDonorMode: boolean;
+
+  // ── Template Mode ────────────────────────────────────────────────────────
+  isTemplateMode: boolean;
+  templateSlotKeys: string[];
+  hudMessage: { text: string; type: "info" | "warning" | "success" } | null;
+
+  // ── Insertion Marker ─────────────────────────────────────────────────────
+  isArmingMarker: boolean;
+  toggleArmingMarker: () => void;
+  setArmingMarker: (val: boolean) => void;
+  placeMarkerAtNode: (targetKey: string) => Promise<void>;
+  keepMarkerAfterInsert: boolean;
+  toggleKeepMarkerAfterInsert: () => void;
+  insertMarkerNode: () => Promise<void>;
+  removeMarkerNode: () => Promise<void>;
+
+  // ── Breakpoints State (Zustand only) ─────────────────────────────────────
+  activeBreakpointId: BreakpointId;
+  customBreakpointWidth: number | null;
+  isBreakpointRotated: boolean;
+
+  selectionBox: SelectionBox | null;
+  selectedKeys: Set<string>;
+
+  potentialDrag: PotentialDrag | null;
+  draggedKeys: string[];
+  dropTarget: DropTarget | null;
+  dragMousePos: { x: number; y: number } | null;
+
+  historyStack: HtmlNode[][];
+  futureStack: HtmlNode[][];
+  canUndo: boolean;
+  canRedo: boolean;
+
+  setCurrentJson: (nodes: HtmlNode[]) => void;
+  persist: (next: HtmlNode[], recordHistory?: boolean) => Promise<void>;
+  applyBemClasses: () => Promise<void>;
+  deleteNode: (key: string) => Promise<void>;
+  deleteSelectedNodes: () => Promise<void>;
+  recordSnapshot: () => void;
+  undo: () => Promise<void>;
+  redo: () => Promise<void>;
+
+  setClickedKey: (key: string | null) => void;
+  setHoveredKey: (key: string | null) => void;
+  toggleCollapseKey: (key: string) => void;
+  setCollapsedKeys: (keys: Set<string>) => void;
+  collapseAll: (keys: string[]) => void;
+
+  toggleSplitMode: () => void;
+  toggleDonorMode: () => void;
+  setDonorMode: (val: boolean) => void;
+  setRightKeys: (
+    keys: Set<string> | ((prev: Set<string>) => Set<string>),
+  ) => void;
+  moveKeysToRightPane: (keys: string[]) => void;
+  moveKeysToLeftPane: (keys: string[]) => void;
+
+  // ── Template Mode Actions ─────────────────────────────────────────────────
+  toggleTemplateMode: () => void;
+  toggleTemplateSlot: (key: string) => void;
+  clearTemplateSlots: () => void;
+  showHud: (text: string, type?: "info" | "warning" | "success") => void;
+  fillTemplateFromDonors: (donorKeys: string[]) => Promise<boolean>;
+  fillNextTemplateSlot: (donorKey: string) => Promise<boolean>;
+  fillTemplateSlotsBatch: (donorKeys: string[]) => Promise<boolean>;
+
+  // ── Armed Donor (Preview & Tracing) ──────────────────────────────────────
+  armedDonorKey: string | null;
+  setArmedDonorKey: (key: string | null) => void;
+  applyArmedDonorToTarget: (targetKey: string) => Promise<boolean>;
+
+  // ──
+  toggleCollapseAll: () => void;
+  clearCanvasTree: () => Promise<void>;
+  appendNodesFromPath: (path: string) => Promise<boolean>;
+  appendRawNodes: (raw: HtmlNode | HtmlNode[]) => Promise<boolean>;
+
+  // ── Breakpoints Actions ───────────────────────────────────────────────────
+  selectBreakpoint: (id: BreakpointId) => void;
+  setCustomBreakpointWidth: (width: number) => void;
+  toggleBreakpointRotate: () => void;
+
+  setSelectionBox: (box: SelectionBox | null) => void;
+  setSelectedKeys: (
+    keys: Set<string> | ((prev: Set<string>) => Set<string>),
+  ) => void;
+  clearSelection: () => void;
+
+  isAsideFloating: boolean;
+  isCanvasFloating: boolean;
+  toggleCanvasFloating: () => void;
+  setCanvasFloating: (val: boolean) => void;
+  toggleAsideFloating: () => void;
+  setAsideFloating: (val: boolean) => void;
+
+  startDragNode: (key: string, clientX: number, clientY: number) => void;
+  setPotentialDrag: (drag: PotentialDrag | null) => void;
+  setDraggedKeys: (keys: string[]) => void;
+  setDropTarget: (target: DropTarget | null) => void;
+  setDragMousePos: (pos: { x: number; y: number } | null) => void;
+  commitDrop: () => Promise<void>;
+  cancelDrag: () => void;
+}
+
+let hudTimeout: ReturnType<typeof setTimeout> | null = null;
+
+export const useCanvasStore = create<CanvasState>((set, get) => ({
+  currentJson: [],
+  collapsedKeys: new Set<string>(),
+  isCanvasFloating: false,
+  clickedKey: null,
+  hoveredKey: null,
+
+  isSplit: false,
+  rightKeys: new Set<string>(),
+  isDonorMode: false,
+
+  isTemplateMode: false,
+  templateSlotKeys: [],
+  hudMessage: null,
+
+  isArmingMarker: false,
+  keepMarkerAfterInsert: false,
+
+  armedDonorKey: null,
+
+  activeBreakpointId: "full",
+  customBreakpointWidth: null,
+  isBreakpointRotated: false,
+
+  selectionBox: null,
+  selectedKeys: new Set<string>(),
+
+  isAsideFloating: false,
+
+  potentialDrag: null,
+  draggedKeys: [],
+  dropTarget: null,
+  dragMousePos: null,
+
+  historyStack: [],
+  futureStack: [],
+  canUndo: false,
+  canRedo: false,
+
+  toggleCanvasFloating: () =>
+    set((state) => ({ isCanvasFloating: !state.isCanvasFloating })),
+
+  setCanvasFloating: (val) => set({ isCanvasFloating: val }),
+  setCurrentJson: (nodes) => set({ currentJson: nodes }),
+
+  toggleKeepMarkerAfterInsert: () =>
+    set((state) => ({ keepMarkerAfterInsert: !state.keepMarkerAfterInsert })),
+
+  setArmingMarker: (val) =>
+    set({
+      isArmingMarker: val,
+      clickedKey: val ? null : get().clickedKey,
+    }),
+
+  toggleArmingMarker: () => {
+    const { currentJson, isArmingMarker } = get();
+    if (!currentJson || currentJson.length === 0) {
+      void get().insertMarkerNode();
+      return;
+    }
+    const next = !isArmingMarker;
+    set({
+      isArmingMarker: next,
+      clickedKey: next ? null : get().clickedKey,
+    });
+    if (next) {
+      get().showHud("📍 Кликните по ноде, чтобы поставить маркер", "info");
+    }
+  },
+
+  placeMarkerAtNode: async (targetKey: string) => {
+    const { currentJson, isSplit, rightKeys } = get();
+    let tree = currentJson;
+    const existingMarkerKey = findMarkerKeyInTree(tree);
+    if (existingMarkerKey) {
+      tree = deleteNodeFromArray(tree, existingMarkerKey);
+    }
+
+    const marker = createMarkerNode();
+    const markerKey = marker._key!;
+    let nextTree: HtmlNode[];
+    let putInRight = false;
+
+    if (targetKey && findNodeInTree(tree, targetKey)) {
+      nextTree = insertNodesAdjacent(
+        tree,
+        targetKey,
+        [marker],
+        "after",
+      );
+      putInRight = isSplit && rightKeys.has(targetKey);
+    } else {
+      nextTree = [...tree, marker];
+      putInRight = false;
+    }
+
+    set((state) => {
+      const nextRight = new Set(state.rightKeys);
+      if (existingMarkerKey) {
+        nextRight.delete(existingMarkerKey);
+      }
+      if (putInRight) {
+        nextRight.add(markerKey);
+      }
+      return {
+        rightKeys: nextRight,
+        isArmingMarker: false,
+        clickedKey: null,
+      };
+    });
+
+    get().showHud(
+      "Маркер установлен — жмите кнопку в Aside для вставки",
+      "success",
+    );
+    await get().persist(nextTree);
+  },
+
+  insertMarkerNode: async () => {
+    const { currentJson, clickedKey, isSplit, rightKeys } = get();
+    const existingMarkerKey = findMarkerKeyInTree(currentJson);
+
+    if (existingMarkerKey) {
+      set({ clickedKey: existingMarkerKey });
+      get().showHud(
+        "Маркер уже на канвасе — перетащи его в нужное место",
+        "info",
+      );
+      return;
+    }
+
+    const marker = createMarkerNode();
+    const markerKey = marker._key!;
+    let nextTree: HtmlNode[];
+    let putInRight = false;
+
+    if (clickedKey && findNodeInTree(currentJson, clickedKey)) {
+      nextTree = insertNodesAdjacent(
+        currentJson,
+        clickedKey,
+        [marker],
+        "after",
+      );
+      putInRight = isSplit && rightKeys.has(clickedKey);
+    } else {
+      nextTree = [...currentJson, marker];
+      putInRight = false;
+    }
+
+    if (putInRight) {
+      set((state) => {
+        const next = new Set(state.rightKeys);
+        next.add(markerKey);
+        return { rightKeys: next };
+      });
+    }
+
+    get().showHud(
+      "Маркер добавлен — перетащи куда нужно и жми кнопку в Aside",
+      "success",
+    );
+    await get().persist(nextTree);
+  },
+
+  removeMarkerNode: async () => {
+    const { currentJson } = get();
+    const markerKey = findMarkerKeyInTree(currentJson);
+    if (!markerKey) return;
+    await get().deleteNode(markerKey);
+  },
+
+  recordSnapshot: () => {
+    const current = get().currentJson;
+    const snapshot = JSON.parse(JSON.stringify(current));
+    set((state) => ({
+      historyStack: [...state.historyStack.slice(-49), snapshot],
+      futureStack: [],
+      canUndo: true,
+      canRedo: false,
+    }));
+  },
+
+  persist: async (next, recordHistory = true) => {
+    if (recordHistory) {
+      get().recordSnapshot();
+    }
+
+    set({ currentJson: next });
+
+    try {
+      if (next.length > 0) {
+        await saveHtmlJson(DB_KEY, next);
+      } else {
+        await deleteHtmlJson(DB_KEY);
+      }
+      window.dispatchEvent(
+        new CustomEvent("plaza-tree-updated", {
+          detail: { nodes: next, source: "canvas-area" },
+        }),
+      );
+    } catch (e) {
+      console.error("[useCanvasStore] Persist error:", e);
+    }
+  },
+
+  deleteNode: async (key: string) => {
+    const current = get().currentJson;
+    const targetNode = findNodeInTree(current, key);
+    const removedSet = new Set(
+      targetNode ? collectAllDescendantKeys(targetNode) : [key],
+    );
+
+    const next = deleteNodeFromArray(current, key);
+
+    set((state) => {
+      const nextSelected = new Set(state.selectedKeys);
+      const nextRight = new Set(state.rightKeys);
+      const nextCollapsed = new Set(state.collapsedKeys);
+      removedSet.forEach((k) => {
+        nextSelected.delete(k);
+        nextRight.delete(k);
+        nextCollapsed.delete(k);
+      });
+
+      return {
+        selectedKeys: nextSelected,
+        rightKeys: nextRight,
+        collapsedKeys: nextCollapsed,
+        templateSlotKeys: state.templateSlotKeys.filter(
+          (k) => !removedSet.has(k),
+        ),
+        clickedKey: removedSet.has(state.clickedKey || "")
+          ? null
+          : state.clickedKey,
+        hoveredKey: removedSet.has(state.hoveredKey || "")
+          ? null
+          : state.hoveredKey,
+        armedDonorKey: removedSet.has(state.armedDonorKey || "")
+          ? null
+          : state.armedDonorKey,
+      };
+    });
+
+    await get().persist(next);
+  },
+
+  deleteSelectedNodes: async () => {
+    const { currentJson, selectedKeys } = get();
+    if (selectedKeys.size === 0) return;
+
+    const orderedKeys = normalizeSelectedKeys(currentJson, selectedKeys);
+    if (orderedKeys.length === 0) return;
+
+    const removedAllKeys = new Set<string>();
+    for (const k of orderedKeys) {
+      const node = findNodeInTree(currentJson, k);
+      if (node) {
+        collectAllDescendantKeys(node).forEach((id) => removedAllKeys.add(id));
+      } else {
+        removedAllKeys.add(k);
+      }
+    }
+
+    const next = removeNodesByKeys(currentJson, new Set(orderedKeys));
+
+    set((state) => {
+      const nextRight = new Set(state.rightKeys);
+      const nextCollapsed = new Set(state.collapsedKeys);
+      removedAllKeys.forEach((k) => {
+        nextRight.delete(k);
+        nextCollapsed.delete(k);
+      });
+
+      return {
+        selectedKeys: new Set(),
+        rightKeys: nextRight,
+        collapsedKeys: nextCollapsed,
+        templateSlotKeys: state.templateSlotKeys.filter(
+          (k) => !removedAllKeys.has(k),
+        ),
+        clickedKey: removedAllKeys.has(state.clickedKey || "")
+          ? null
+          : state.clickedKey,
+        hoveredKey: removedAllKeys.has(state.hoveredKey || "")
+          ? null
+          : state.hoveredKey,
+        armedDonorKey: removedAllKeys.has(state.armedDonorKey || "")
+          ? null
+          : state.armedDonorKey,
+      };
+    });
+
+    await get().persist(next);
+  },
+
+  undo: async () => {
+    const { historyStack, futureStack, currentJson } = get();
+    if (historyStack.length === 0) return;
+
+    const previousState = historyStack[historyStack.length - 1];
+    const newHistory = historyStack.slice(0, -1);
+    const newFuture = [JSON.parse(JSON.stringify(currentJson)), ...futureStack];
+
+    set({
+      currentJson: previousState,
+      historyStack: newHistory,
+      futureStack: newFuture,
+      canUndo: newHistory.length > 0,
+      canRedo: true,
+    });
+
+    await saveHtmlJson(DB_KEY, previousState);
+    window.dispatchEvent(
+      new CustomEvent("plaza-tree-updated", {
+        detail: { nodes: previousState, source: "canvas-area" },
+      }),
+    );
+  },
+
+  redo: async () => {
+    const { historyStack, futureStack, currentJson } = get();
+    if (futureStack.length === 0) return;
+
+    const nextState = futureStack[0];
+    const newFuture = futureStack.slice(1);
+    const newHistory = [
+      ...historyStack,
+      JSON.parse(JSON.stringify(currentJson)),
+    ];
+
+    set({
+      currentJson: nextState,
+      historyStack: newHistory,
+      futureStack: newFuture,
+      canUndo: true,
+      canRedo: newFuture.length > 0,
+    });
+
+    await saveHtmlJson(DB_KEY, nextState);
+    window.dispatchEvent(
+      new CustomEvent("plaza-tree-updated", {
+        detail: { nodes: nextState, source: "canvas-area" },
+      }),
+    );
+  },
+
+  applyBemClasses: async () => {
+    const { currentJson, clickedKey, selectedKeys } = get();
+    const targetKeys =
+      selectedKeys.size > 0
+        ? Array.from(selectedKeys)
+        : clickedKey
+          ? [clickedKey]
+          : [null];
+
+    let updated = currentJson;
+    for (const key of targetKeys) {
+      updated = applyBemClassesToSection(updated, key);
+    }
+    await get().persist(updated);
+  },
+
+  setClickedKey: (key) => set({ clickedKey: key }),
+  setHoveredKey: (key) => set({ hoveredKey: key }),
+
+  toggleCollapseKey: (key) =>
+    set((state) => {
+      const next = new Set(state.collapsedKeys);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return { collapsedKeys: next };
+    }),
+
+  setCollapsedKeys: (keys) => set({ collapsedKeys: keys }),
+
+  collapseAll: (keys) => set({ collapsedKeys: new Set(keys) }),
+
+  toggleSplitMode: () =>
+    set((state) => ({
+      isSplit: !state.isSplit,
+      rightKeys: !state.isSplit ? state.rightKeys : new Set(),
+      isTemplateMode: !state.isSplit ? state.isTemplateMode : false,
+      templateSlotKeys: !state.isSplit ? state.templateSlotKeys : [],
+    })),
+
+  toggleDonorMode: () =>
+    set((state) => ({
+      isDonorMode: !state.isDonorMode,
+    })),
+
+  setDonorMode: (val) => set({ isDonorMode: val }),
+
+  setRightKeys: (keys) =>
+    set((state) => ({
+      rightKeys: typeof keys === "function" ? keys(state.rightKeys) : keys,
+    })),
+
+  moveKeysToRightPane: (keys) => {
+    const { currentJson } = get();
+    const allSubtreeKeys: string[] = [];
+    for (const k of keys) {
+      const subtree = findNodeInTree(currentJson, k);
+      if (subtree) {
+        allSubtreeKeys.push(...collectAllDescendantKeys(subtree));
+      } else {
+        allSubtreeKeys.push(k);
+      }
+    }
+    set((state) => {
+      const next = new Set(state.rightKeys);
+      for (const k of allSubtreeKeys) next.add(k);
+      return { rightKeys: next };
+    });
+  },
+
+  setArmedDonorKey: (key) => set({ armedDonorKey: key }),
+
+  applyArmedDonorToTarget: async (targetKey: string) => {
+    const { currentJson, armedDonorKey, rightKeys } = get();
+    if (!armedDonorKey || !targetKey || armedDonorKey === targetKey) {
+      return false;
+    }
+
+    const donorNode = findNodeInTree(currentJson, armedDonorKey);
+    const targetNode = findNodeInTree(currentJson, targetKey);
+    if (!donorNode || !targetNode) {
+      set({ armedDonorKey: null });
+      return false;
+    }
+
+    if (
+      isDescendant(donorNode, targetKey) ||
+      isDescendant(targetNode, armedDonorKey)
+    ) {
+      get().showHud("Cannot merge parent with its own descendant", "warning");
+      return false;
+    }
+
+    const nextTargetNode = applyDonorToSlot(targetNode, donorNode);
+
+    const addedRightKeys: string[] = [];
+    if (
+      rightKeys.has(targetKey) &&
+      (!targetNode.children || targetNode.children.length === 0) &&
+      Array.isArray(nextTargetNode.children) &&
+      nextTargetNode.children.length > 0
+    ) {
+      for (const child of nextTargetNode.children) {
+        addedRightKeys.push(...collectAllDescendantKeys(child));
+      }
+    }
+
+    const updatedTree = mutateNodeInTree(
+      currentJson,
+      targetKey,
+      () => nextTargetNode,
+    );
+    const nextTree = removeNodesByKeys(updatedTree, new Set([armedDonorKey]));
+
+    set((state) => {
+      const nextRight = new Set(state.rightKeys);
+      nextRight.delete(armedDonorKey);
+      for (const k of addedRightKeys) {
+        nextRight.add(k);
+      }
+      return {
+        rightKeys: nextRight,
+        armedDonorKey: null,
+        templateSlotKeys: state.templateSlotKeys.filter(
+          (k) => k !== armedDonorKey,
+        ),
+        clickedKey:
+          state.clickedKey === armedDonorKey ? null : state.clickedKey,
+        hoveredKey:
+          state.hoveredKey === armedDonorKey ? null : state.hoveredKey,
+      };
+    });
+
+    get().showHud("Donor applied!", "success");
+    await get().persist(nextTree);
+    return true;
+  },
+
+  moveKeysToLeftPane: (keys) => {
+    const { currentJson } = get();
+    const allSubtreeKeys: string[] = [];
+    for (const k of keys) {
+      const subtree = findNodeInTree(currentJson, k);
+      if (subtree) {
+        allSubtreeKeys.push(...collectAllDescendantKeys(subtree));
+      } else {
+        allSubtreeKeys.push(k);
+      }
+    }
+    set((state) => {
+      const next = new Set(state.rightKeys);
+      for (const k of allSubtreeKeys) next.delete(k);
+      return {
+        rightKeys: next,
+        templateSlotKeys: state.templateSlotKeys.filter(
+          (slotKey) => !allSubtreeKeys.includes(slotKey),
+        ),
+      };
+    });
+  },
+
+  toggleTemplateMode: () => {
+    const nextMode = !get().isTemplateMode;
+    set((state) => ({
+      isTemplateMode: nextMode,
+      isSplit: nextMode ? true : state.isSplit,
+      templateSlotKeys: nextMode ? state.templateSlotKeys : [],
+    }));
+    if (nextMode) {
+      get().showHud(
+        "Template mode: ON. Click nodes in Right Pane to assign slots [1], [2]...",
+        "info",
+      );
+    } else {
+      get().showHud("Template mode: OFF", "info");
+    }
+  },
+
+  toggleTemplateSlot: (key: string) => {
+    if (!key) return;
+    set((state) => {
+      const existingIdx = state.templateSlotKeys.indexOf(key);
+      const updated =
+        existingIdx !== -1
+          ? state.templateSlotKeys.filter((k) => k !== key)
+          : [...state.templateSlotKeys, key];
+
+      return { templateSlotKeys: updated };
+    });
+  },
+
+  clearTemplateSlots: () => set({ templateSlotKeys: [] }),
+
+  showHud: (text: string, type: "info" | "warning" | "success" = "info") => {
+    if (hudTimeout) clearTimeout(hudTimeout);
+    set({ hudMessage: { text, type } });
+    hudTimeout = setTimeout(() => {
+      set({ hudMessage: null });
+      hudTimeout = null;
+    }, 3200);
+  },
+
+  fillTemplateFromDonors: async (donorKeys: string[]) => {
+    const { currentJson, rightKeys, templateSlotKeys } = get();
+
+    if (templateSlotKeys.length === 0) {
+      get().showHud(
+        "No slots assigned in template! Click nodes in Right Pane first.",
+        "warning",
+      );
+      return false;
+    }
+
+    if (rightKeys.size === 0) {
+      get().showHud("Right pane template is empty!", "warning");
+      return false;
+    }
+
+    const result = fillTemplateWithDonors(
+      currentJson,
+      rightKeys,
+      templateSlotKeys,
+      donorKeys,
+    );
+
+    if (!result) return false;
+
+    if (result.warning) {
+      get().showHud(result.warning, "warning");
+    } else {
+      get().showHud(
+        `Template populated successfully (${result.usedCount} slots)!`,
+        "success",
+      );
+    }
+
+    await get().persist(result.nextTree);
+    return true;
+  },
+
+  fillNextTemplateSlot: async (donorKey: string) => {
+    const { currentJson, rightKeys, templateSlotKeys } = get();
+
+    if (templateSlotKeys.length === 0) {
+      get().showHud(
+        "No slots assigned! Click nodes in Right Pane first.",
+        "warning",
+      );
+      return false;
+    }
+
+    const targetSlotKey = templateSlotKeys[0];
+    const result = fillSingleSlotInPlace(
+      currentJson,
+      rightKeys,
+      targetSlotKey,
+      donorKey,
+    );
+
+    if (!result) return false;
+
+    const remainingSlots = templateSlotKeys.slice(1);
+
+    set((state) => {
+      const nextRight = new Set(state.rightKeys);
+      for (const k of result.addedRightKeys) {
+        nextRight.add(k);
+      }
+      return {
+        rightKeys: nextRight,
+        templateSlotKeys: remainingSlots,
+        clickedKey: state.clickedKey === donorKey ? null : state.clickedKey,
+        hoveredKey: state.hoveredKey === donorKey ? null : state.hoveredKey,
+      };
+    });
+
+    if (remainingSlots.length === 0) {
+      get().showHud("All template slots filled!", "success");
+    } else {
+      get().showHud(
+        `Filled slot! ${remainingSlots.length} slot(s) remaining`,
+        "info",
+      );
+    }
+
+    await get().persist(result.nextTree);
+    return true;
+  },
+
+  fillTemplateSlotsBatch: async (donorKeys: string[]) => {
+    const { currentJson, rightKeys, templateSlotKeys } = get();
+
+    if (templateSlotKeys.length === 0 || donorKeys.length === 0) {
+      return false;
+    }
+
+    const result = fillMultipleSlotsInPlace(
+      currentJson,
+      rightKeys,
+      templateSlotKeys,
+      donorKeys,
+    );
+
+    if (!result) return false;
+
+    const usedSet = new Set(result.usedDonorKeys);
+
+    set((state) => {
+      const nextRight = new Set(state.rightKeys);
+      for (const k of result.addedRightKeys) {
+        nextRight.add(k);
+      }
+      return {
+        rightKeys: nextRight,
+        templateSlotKeys: result.remainingSlotKeys,
+        clickedKey:
+          state.clickedKey && usedSet.has(state.clickedKey)
+            ? null
+            : state.clickedKey,
+        hoveredKey:
+          state.hoveredKey && usedSet.has(state.hoveredKey)
+            ? null
+            : state.hoveredKey,
+      };
+    });
+
+    if (result.excessCount > 0) {
+      get().showHud(
+        `Filled ${result.filledCount} slot(s). ${result.excessCount} excess donor(s) skipped.`,
+        "warning",
+      );
+    } else if (result.remainingSlotKeys.length === 0) {
+      get().showHud(
+        `Filled ${result.filledCount} slot(s). All template slots filled!`,
+        "success",
+      );
+    } else {
+      get().showHud(
+        `Filled ${result.filledCount} slot(s)! ${result.remainingSlotKeys.length} remaining`,
+        "info",
+      );
+    }
+
+    await get().persist(result.nextTree);
+    return true;
+  },
+
+  toggleCollapseAll: () => {
+    const { currentJson, collapsedKeys } = get();
+    set({
+      collapsedKeys: computeToggledCollapsedKeys(currentJson, collapsedKeys),
+    });
+  },
+
+  clearCanvasTree: async () => {
+    await deleteHtmlJson(DB_KEY);
+    set({
+      currentJson: [],
+      rightKeys: new Set(),
+      templateSlotKeys: [],
+      clickedKey: null,
+      hoveredKey: null,
+      armedDonorKey: null,
+      selectedKeys: new Set(),
+      collapsedKeys: new Set(),
+    });
+    window.dispatchEvent(
+      new CustomEvent("plaza-tree-updated", {
+        detail: { nodes: [], source: "aside-canvas" },
+      }),
+    );
+  },
+
+  appendRawNodes: async (raw: HtmlNode | HtmlNode[]) => {
+    try {
+      const { currentJson, isSplit, rightKeys, keepMarkerAfterInsert } = get();
+      const markerKey = findMarkerKeyInTree(currentJson);
+      const markerInRightPane = Boolean(markerKey && rightKeys.has(markerKey));
+
+      const {
+        nextTree,
+        extractedScss,
+        extractedScripts,
+        addedRightKeys,
+        replacedMarkerKey,
+      } = prepareAppendedNodes(currentJson, raw, isSplit, {
+        markerKey,
+        keepMarker: keepMarkerAfterInsert,
+        markerInRightPane,
+      });
+
+      if (extractedScss) {
+        const currentScss = (await getGlobalScss().catch(() => "")) || "";
+        const nextScss = mergeScssWithoutDuplicates(currentScss, extractedScss);
+        if (nextScss !== currentScss) {
+          await saveGlobalScss(nextScss);
+          window.dispatchEvent(
+            new CustomEvent("plaza-styles-updated", { detail: nextScss }),
+          );
+        }
+      }
+
+      if (extractedScripts.length > 0) {
+        const currentJs = (await getGlobalJs().catch(() => "")) || "";
+        const nextBundle = mergeScriptsWithoutDuplicates(
+          currentJs,
+          extractedScripts,
+        );
+        if (nextBundle !== currentJs) {
+          await saveGlobalJs(nextBundle);
+          window.dispatchEvent(
+            new CustomEvent("plaza-scripts-updated", { detail: nextBundle }),
+          );
+        }
+      }
+
+      if (
+        addedRightKeys.length > 0 ||
+        (replacedMarkerKey && !keepMarkerAfterInsert)
+      ) {
+        set((state) => {
+          const next = new Set(state.rightKeys);
+          if (replacedMarkerKey && !keepMarkerAfterInsert) {
+            next.delete(replacedMarkerKey);
+          }
+          addedRightKeys.forEach((k) => next.add(k));
+          return {
+            rightKeys: next,
+            clickedKey:
+              replacedMarkerKey &&
+              !keepMarkerAfterInsert &&
+              state.clickedKey === replacedMarkerKey
+                ? null
+                : state.clickedKey,
+          };
+        });
+      }
+
+      if (replacedMarkerKey) {
+        get().showHud(
+          keepMarkerAfterInsert
+            ? "Вставлено перед маркером!"
+            : "Маркер заменён новой нодой!",
+          "success",
+        );
+      }
+
+      await get().persist(nextTree);
+      return true;
+    } catch (e) {
+      console.error("[useCanvasStore] appendRawNodes error:", e);
+      return false;
+    }
+  },
+
+  appendNodesFromPath: async (path: string) => {
+    try {
+      const res = await fetch(path);
+      if (!res.ok) return false;
+      const raw = await res.json();
+      return await get().appendRawNodes(raw);
+    } catch (e) {
+      console.error(`Error adding from ${path}:`, e);
+      return false;
+    }
+  },
+
+  selectBreakpoint: (id: BreakpointId) => {
+    set((state) => ({
+      activeBreakpointId: id,
+      customBreakpointWidth:
+        id === "custom" ? state.customBreakpointWidth || 800 : null,
+      isBreakpointRotated: false,
+    }));
+  },
+
+  setCustomBreakpointWidth: (width: number) => {
+    const clamped = Math.max(280, Math.min(3840, Math.round(width)));
+    set({
+      activeBreakpointId: "custom",
+      customBreakpointWidth: clamped,
+      isBreakpointRotated: false,
+    });
+  },
+
+  toggleBreakpointRotate: () => {
+    set((state) => ({
+      isBreakpointRotated: !state.isBreakpointRotated,
+    }));
+  },
+
+  setSelectionBox: (box) => set({ selectionBox: box }),
+
+  setSelectedKeys: (keys) =>
+    set((state) => ({
+      selectedKeys:
+        typeof keys === "function" ? keys(state.selectedKeys) : keys,
+    })),
+
+  clearSelection: () => set({ selectedKeys: new Set() }),
+
+  toggleAsideFloating: () =>
+    set((state) => ({ isAsideFloating: !state.isAsideFloating })),
+
+  setAsideFloating: (val) => set({ isAsideFloating: val }),
+
+  startDragNode: (key, clientX, clientY) => {
+    set({
+      potentialDrag: { key, startX: clientX, startY: clientY },
+    });
+  },
+
+  setPotentialDrag: (drag) => set({ potentialDrag: drag }),
+  setDraggedKeys: (keys) => set({ draggedKeys: keys }),
+  setDropTarget: (target) => set({ dropTarget: target }),
+  setDragMousePos: (pos) => set({ dragMousePos: pos }),
+
+  commitDrop: async () => {
+    const { currentJson, draggedKeys, dropTarget, isSplit, rightKeys } = get();
+    if (draggedKeys.length > 0 && dropTarget && dropTarget.key) {
+      if (dropTarget.position === "donor") {
+        const updated = mergeDonorIntoTarget(
+          currentJson,
+          draggedKeys,
+          dropTarget.key,
+        );
+        set((state) => {
+          const nextRight = new Set(state.rightKeys);
+          for (const k of draggedKeys) nextRight.delete(k);
+          return { rightKeys: nextRight };
+        });
+        await get().persist(updated);
+      } else if (dropTarget.position === "self") {
+        const existingKeys = collectAllTreeKeys(currentJson);
+        const updated = duplicateNodesGroup(currentJson, draggedKeys);
+
+        const clonedAllKeys: string[] = [];
+        const collectNewNodes = (nodes: HtmlNode[]) => {
+          for (const n of nodes) {
+            const k = n._key || "";
+            if (k && !existingKeys.has(k)) {
+              clonedAllKeys.push(...collectAllDescendantKeys(n));
+              continue;
+            }
+            if (Array.isArray(n.children)) collectNewNodes(n.children);
+          }
+        };
+        collectNewNodes(updated);
+
+        const shouldPutClonesInRight =
+          isSplit && draggedKeys.every((k) => rightKeys.has(k));
+
+        set((state) => {
+          const nextCollapsed = new Set(state.collapsedKeys);
+          for (const k of clonedAllKeys) {
+            nextCollapsed.delete(k);
+          }
+
+          const nextRight = new Set(state.rightKeys);
+          if (shouldPutClonesInRight) {
+            for (const k of clonedAllKeys) {
+              nextRight.add(k);
+            }
+          }
+
+          return {
+            collapsedKeys: nextCollapsed,
+            rightKeys: nextRight,
+          };
+        });
+
+        await get().persist(updated);
+      } else {
+        const updated = moveNodesGroup(
+          currentJson,
+          draggedKeys,
+          dropTarget.key,
+          dropTarget.position,
+        );
+        await get().persist(updated);
+      }
+    }
+
+    set({
+      potentialDrag: null,
+      draggedKeys: [],
+      dropTarget: null,
+      dragMousePos: null,
+    });
+  },
+
+  cancelDrag: () => {
+    set({
+      potentialDrag: null,
+      draggedKeys: [],
+      dropTarget: null,
+      dragMousePos: null,
+    });
+  },
+}));
+</file>
+
+<file path="src/app/plaza/components/CanvasArea/models/canvasModel.ts">
+import type { HtmlNode } from "@/types/HtmlNode";
+import {
+  generateNodeKey,
+  findNodeByKey,
+  removeNodeFromTree,
+  isDescendant,
+  duplicateNodeInTree,
+} from "@/lib/htmlTree";
+
+export const PLAZA_MARKER_ATTR = "data-plaza-marker";
+
+export interface DonorItem {
+  key: string;
+  tag: string;
+  text: string;
+  className: string;
+  imgSrc: string | null;
+  isSvg: boolean;
+  node: HtmlNode;
+}
+
+export function sanitizeCssBody(css: string): string {
+  return css.replace(/\}\s*;/g, "}").trim();
+}
+
+export const getNodeKey = (node: HtmlNode | null | undefined): string =>
+  node?._key || (node as any)?.id || "";
+
+export function isMarkerNode(node: HtmlNode | null | undefined): boolean {
+  return Boolean(node?.attributes?.[PLAZA_MARKER_ATTR] === "true");
+}
+
+export function findMarkerKeyInTree(nodes: HtmlNode[]): string | null {
+  if (!Array.isArray(nodes)) return null;
+  for (const node of nodes) {
+    if (isMarkerNode(node)) {
+      return getNodeKey(node) || null;
+    }
+    if (Array.isArray(node.children)) {
+      const found = findMarkerKeyInTree(node.children);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+export function createMarkerNode(): HtmlNode {
+  return {
+    tag: "div",
+    text: "",
+    class: "",
+    style: "",
+    attributes: { [PLAZA_MARKER_ATTR]: "true" },
+    children: [],
+    _key: `marker_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+  };
+}
+
+export function replaceMarkerWithNodes(
+  nodes: HtmlNode[],
+  markerKey: string,
+  replacementNodes: HtmlNode[],
+  keepMarker = false,
+): { nextTree: HtmlNode[]; replaced: boolean } {
+  let replaced = false;
+
+  function walk(list: HtmlNode[]): HtmlNode[] {
+    const nextList: HtmlNode[] = [];
+    for (const node of list) {
+      if (!replaced && getNodeKey(node) === markerKey) {
+        replaced = true;
+        nextList.push(...replacementNodes);
+        if (keepMarker) {
+          nextList.push(node);
+        }
+      } else if (Array.isArray(node.children)) {
+        nextList.push({
+          ...node,
+          children: walk(node.children),
+        });
+      } else {
+        nextList.push(node);
+      }
+    }
+    return nextList;
+  }
+
+  const nextTree = walk(nodes);
+  return { nextTree, replaced };
+}
+
+export function ensureUniqueKeys(
+  nodes: HtmlNode[],
+  seen: Set<string> = new Set(),
+): HtmlNode[] {
+  return nodes.map((node) => {
+    let nextKey = node._key;
+    if (!nextKey || seen.has(nextKey)) {
+      nextKey = generateNodeKey();
+    }
+    seen.add(nextKey);
+
+    return {
+      ...node,
+      _key: nextKey,
+      children: Array.isArray(node.children)
+        ? ensureUniqueKeys(node.children, seen)
+        : node.children,
+    };
+  });
+}
+
+export function getAllCollapsibleKeys(
+  nodes: HtmlNode[] | null | undefined,
+): string[] {
+  if (!nodes || !Array.isArray(nodes)) return [];
+  const keys: string[] = [];
+
+  function traverse(list: HtmlNode[]) {
+    for (const node of list) {
+      if (Array.isArray(node.children) && node.children.length > 0) {
+        if (node._key) keys.push(node._key);
+        traverse(node.children);
+      }
+    }
+  }
+
+  traverse(nodes);
+  return keys;
+}
+
+export function computeToggledCollapsedKeys(
+  tree: HtmlNode[],
+  currentCollapsed: Set<string>,
+): Set<string> {
+  const allKeys = getAllCollapsibleKeys(tree);
+  if (allKeys.length === 0) return new Set();
+  const allCollapsed = allKeys.every((k) => currentCollapsed.has(k));
+  return allCollapsed ? new Set() : new Set(allKeys);
+}
+
+export function toggleFolderInSet(
+  prev: Set<string>,
+  folderName: string,
+): Set<string> {
+  const next = new Set(prev);
+  if (next.has(folderName)) next.delete(folderName);
+  else next.add(folderName);
+  return next;
+}
+
+export function hasTreeNodes(nodes: unknown): boolean {
+  return Array.isArray(nodes) && nodes.length > 0;
+}
+
+export function prepareAppendedNodes(
+  currentTree: HtmlNode[],
+  rawData: HtmlNode | HtmlNode[],
+  isSplit: boolean,
+  markerOptions?: {
+    markerKey?: string | null;
+    keepMarker?: boolean;
+    markerInRightPane?: boolean;
+  },
+): {
+  nextTree: HtmlNode[];
+  extractedScss: string;
+  extractedScripts: { name: string; code: string }[];
+  addedRightKeys: string[];
+  replacedMarkerKey: string | null;
+} {
+  const nodes: HtmlNode[] = Array.isArray(rawData) ? rawData : [rawData];
+  const { cleanNodes, extractedScss, extractedScripts } =
+    extractStylesAndScriptsFromNodes(nodes);
+
+  const nodesWithUniqueKeys = ensureUniqueKeys(cleanNodes);
+
+  let nextTree: HtmlNode[];
+  let replacedMarkerKey: string | null = null;
+
+  if (markerOptions?.markerKey) {
+    const res = replaceMarkerWithNodes(
+      currentTree,
+      markerOptions.markerKey,
+      nodesWithUniqueKeys,
+      Boolean(markerOptions.keepMarker),
+    );
+    if (res.replaced) {
+      nextTree = res.nextTree;
+      replacedMarkerKey = markerOptions.markerKey;
+    } else {
+      nextTree = [...currentTree, ...nodesWithUniqueKeys];
+    }
+  } else {
+    nextTree = [...currentTree, ...nodesWithUniqueKeys];
+  }
+
+  const shouldAddToRight = replacedMarkerKey
+    ? Boolean(markerOptions?.markerInRightPane)
+    : isSplit;
+
+  const addedRightKeys: string[] = [];
+  if (shouldAddToRight) {
+    for (const node of nodesWithUniqueKeys) {
+      addedRightKeys.push(...collectAllDescendantKeys(node));
+    }
+  }
+
+  return {
+    nextTree,
+    extractedScss,
+    extractedScripts,
+    addedRightKeys,
+    replacedMarkerKey,
+  };
+}
+
+export function findNodeByCriteria(
+  nodes: HtmlNode[],
+  criteria: {
+    key?: string | null;
+    className?: string;
+    tag?: string;
+    text?: string;
+  },
+): HtmlNode | null {
+  const { key, className, tag, text } = criteria;
+
+  if (key) {
+    for (const root of nodes) {
+      const found = findNodeByKey(root, key);
+      if (found) return found;
+    }
+  }
+
+  const findFallback = (list: HtmlNode[]): HtmlNode | null => {
+    for (const node of list) {
+      if (className && node.class) {
+        const classes = node.class.split(/\s+/).filter(Boolean);
+        const targetClasses = className.trim().split(/\s+/).filter(Boolean);
+        const specificClass = targetClasses[targetClasses.length - 1]?.replace(
+          /^\./,
+          "",
+        );
+        if (specificClass && classes.includes(specificClass)) {
+          return node;
+        }
+      }
+
+      if (
+        text &&
+        node.text?.trim() === text.trim() &&
+        (!tag || node.tag === tag)
+      ) {
+        return node;
+      }
+
+      if (Array.isArray(node.children) && node.children.length > 0) {
+        const found = findFallback(node.children);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  return findFallback(nodes);
+}
+
+export function findNodeInTree(
+  nodes: HtmlNode[],
+  key: string,
+): HtmlNode | null {
+  if (!Array.isArray(nodes)) return null;
+  for (const n of nodes) {
+    if (getNodeKey(n) === key) return n;
+    if (Array.isArray(n.children)) {
+      const f = findNodeInTree(n.children, key);
+      if (f) return f;
+    }
+  }
+  return null;
+}
+
+export function collectAllDescendantKeys(
+  node: HtmlNode | null | undefined,
+): string[] {
+  if (!node) return [];
+  const keys: string[] = [];
+  function walk(n: HtmlNode) {
+    const k = getNodeKey(n);
+    if (k) keys.push(k);
+    if (Array.isArray(n?.children)) {
+      for (const child of n.children) {
+        walk(child);
+      }
+    }
+  }
+  walk(node);
+  return keys;
+}
+
+export function removeNodesByKeys(
+  nodes: HtmlNode[],
+  keys: Set<string>,
+): HtmlNode[] {
+  if (!Array.isArray(nodes)) return [];
+  return nodes
+    .filter((n) => !keys.has(getNodeKey(n)))
+    .map((n) => {
+      if (Array.isArray(n.children)) {
+        return {
+          ...n,
+          children: removeNodesByKeys(n.children, keys),
+        };
+      }
+      return n;
+    });
+}
+
+export function extractNodesByKeys(
+  nodes: HtmlNode[],
+  keys: Set<string>,
+): HtmlNode[] {
+  if (!Array.isArray(nodes)) return [];
+  const found: HtmlNode[] = [];
+  function walk(list: HtmlNode[]) {
+    for (const item of list) {
+      if (keys.has(getNodeKey(item))) {
+        found.push(item);
+      } else if (Array.isArray(item.children)) {
+        walk(item.children);
+      }
+    }
+  }
+  walk(nodes);
+  return found;
+}
+
+export function extractDonorNodes(nodes: HtmlNode[]): DonorItem[] {
+  if (!Array.isArray(nodes)) return [];
+  const items: DonorItem[] = [];
+
+  function walk(list: HtmlNode[]) {
+    for (const node of list) {
+      const key = getNodeKey(node);
+      const tag = (node.tag || "").trim().toLowerCase();
+      const text = (node.text || "").trim();
+      const imgSrc = tag === "img" ? node.attributes?.src || null : null;
+      const isSvg = tag === "svg";
+
+      if (key && (text || imgSrc || isSvg)) {
+        items.push({
+          key,
+          tag: tag || "div",
+          text,
+          className: (node.class || "").trim(),
+          imgSrc,
+          isSvg,
+          node,
+        });
+      }
+
+      if (isSvg) continue;
+
+      if (Array.isArray(node.children) && node.children.length > 0) {
+        walk(node.children);
+      }
+    }
+  }
+
+  walk(nodes);
+  return items;
+}
+
+export function isRowContainer(node: HtmlNode): boolean {
+  const rawClass = (node.class || "").toLowerCase();
+  const rawStyle = (node.style || "").toLowerCase();
+
+  if (rawStyle.includes("flex-direction: row")) {
+    return true;
+  }
+  if (rawStyle.includes("flex-direction: column")) {
+    return false;
+  }
+
+  const cls = rawClass.replace(/[-_]/g, " ");
+  if (
+    rawClass.includes("flex-col") ||
+    rawClass.includes("flex-column") ||
+    cls.includes("flex col")
+  ) {
+    return false;
+  }
+
+  if (
+    rawClass.includes("flex-row") ||
+    cls.includes("flex row") ||
+    rawClass.includes("grid")
+  ) {
+    return true;
+  }
+
+  return rawClass.includes("flex") || rawStyle.includes("display: flex");
+}
+
+export function extractStylesAndScriptsFromNodes(nodes: HtmlNode[]): {
+  cleanNodes: HtmlNode[];
+  extractedScss: string;
+  extractedScripts: { name: string; code: string }[];
+} {
+  const extractedRules: string[] = [];
+  const extractedScripts: { name: string; code: string }[] = [];
+
+  function processNode(node: HtmlNode): HtmlNode | null {
+    const key = node._key || generateNodeKey();
+    const tag = (node.tag || "div").toLowerCase();
+    const classList = (node.class || "").split(/\s+/).filter(Boolean);
+
+    if (tag === "script") {
+      const code = (node.text || "").trim();
+      if (code) {
+        const componentMatch = /\/\*\s*@component:\s*\.?([a-zA-Z0-9_-]+)/.exec(
+          code,
+        );
+        const scriptName = componentMatch
+          ? componentMatch[1]
+          : classList[0] || `${tag}-script`;
+        extractedScripts.push({ name: scriptName, code });
+      }
+      return null;
+    }
+
+    const anyNode = node as any;
+    const directScript = anyNode.script || anyNode.js;
+    if (typeof directScript === "string" && directScript.trim()) {
+      const code = directScript.trim();
+      const componentMatch = /\/\*\s*@component:\s*\.?([a-zA-Z0-9_-]+)/.exec(
+        code,
+      );
+      const scriptName = componentMatch
+        ? componentMatch[1]
+        : classList[0] || `${tag}-script`;
+      extractedScripts.push({ name: scriptName, code });
+    }
+
+    if (node.style && node.style.trim()) {
+      const cleanBody = node.style.trim();
+
+      const targetClass = classList.find(
+        (c) =>
+          !c.includes(":") && !c.startsWith("flex") && !c.startsWith("grid"),
+      );
+
+      if (targetClass) {
+        if (cleanBody.startsWith(`.${targetClass}`)) {
+          extractedRules.push(cleanBody);
+        } else {
+          extractedRules.push(`.${targetClass} {\n  ${cleanBody}\n}`);
+        }
+      }
+    }
+
+    let processedChildren: HtmlNode[] = [];
+    if (Array.isArray(node.children)) {
+      processedChildren = node.children
+        .map(processNode)
+        .filter(Boolean) as HtmlNode[];
+    }
+
+    const cleaned: any = {
+      ...node,
+      _key: key,
+      class: classList.length > 0 ? classList.join(" ") : undefined,
+      children: processedChildren,
+    };
+    delete cleaned.style;
+    delete cleaned.script;
+    delete cleaned.js;
+
+    return cleaned;
+  }
+
+  const cleanNodes = nodes.map(processNode).filter(Boolean) as HtmlNode[];
+
+  return {
+    cleanNodes,
+    extractedScss: extractedRules.join("\n\n"),
+    extractedScripts,
+  };
+}
+
+export function splitTopLevelCssBlocks(scss: string): {
+  selector: string;
+  full: string;
+  classes: string[];
+}[] {
+  const blocks: { selector: string; full: string; classes: string[] }[] = [];
+  let depth = 0;
+  let selector = "";
+  let startIdx = 0;
+  const len = scss.length;
+
+  for (let i = 0; i < len; i++) {
+    const char = scss[i];
+
+    if (char === "{") {
+      if (depth === 0) {
+        selector = scss
+          .slice(startIdx, i)
+          .replace(/\/\*[\s\S]*?\*\//g, "")
+          .trim();
+      }
+      depth++;
+    } else if (char === "}") {
+      depth--;
+      if (depth === 0) {
+        const full = scss.slice(startIdx, i + 1).trim();
+        const classes: string[] = [];
+        const classRegex = /\.([a-zA-Z0-9_-]+)/g;
+        let m: RegExpExecArray | null;
+        while ((m = classRegex.exec(selector)) !== null) {
+          classes.push(m[1]);
+        }
+        blocks.push({ selector, full, classes });
+        startIdx = i + 1;
+        selector = "";
+      }
+    }
+  }
+
+  const remainder = scss.slice(startIdx).trim();
+  if (remainder) {
+    blocks.push({ selector: remainder, full: remainder, classes: [] });
+  }
+
+  return blocks;
+}
+
+export function mergeScssWithoutDuplicates(
+  currentScss: string,
+  incomingScss: string,
+): string {
+  if (!incomingScss.trim()) return currentScss;
+  if (!currentScss.trim()) return incomingScss.trim();
+
+  const currentBlocks = splitTopLevelCssBlocks(currentScss);
+  const existingSelectors = new Set<string>();
+  const existingClasses = new Set<string>();
+  const existingRules = new Set<string>();
+
+  for (const block of currentBlocks) {
+    existingRules.add(block.full);
+    const norm = block.selector.replace(/\s+/g, " ").trim();
+    if (norm) {
+      existingSelectors.add(norm);
+    }
+    for (const cls of block.classes) {
+      existingClasses.add(cls);
+    }
+  }
+
+  const incomingBlocks = splitTopLevelCssBlocks(incomingScss);
+  let result = currentScss.trim();
+
+  for (const block of incomingBlocks) {
+    if (existingRules.has(block.full)) {
+      continue;
+    }
+
+    const norm = block.selector.replace(/\s+/g, " ").trim();
+    if (norm && existingSelectors.has(norm)) {
+      continue;
+    }
+
+    if (block.classes.length > 0) {
+      result = `${result}\n\n${block.full}`;
+      if (norm) {
+        existingSelectors.add(norm);
+      }
+      for (const cls of block.classes) {
+        existingClasses.add(cls);
+      }
+      existingRules.add(block.full);
+    } else {
+      if (!result.includes(block.full)) {
+        result = `${result}\n\n${block.full}`;
+        if (norm) {
+          existingSelectors.add(norm);
+        }
+        existingRules.add(block.full);
+      }
+    }
+  }
+
+  return result.trim();
+}
+
+export function mergeScriptsWithoutDuplicates(
+  currentBundle: string,
+  incomingScripts: { name: string; code: string }[],
+): string {
+  if (!incomingScripts || incomingScripts.length === 0) return currentBundle;
+
+  let result = (currentBundle || "").trim();
+
+  for (const script of incomingScripts) {
+    const name = script.name.trim();
+    const cleanCode = script.code
+      .replace(/\/\*\s*@component:\s*.*?\*\//g, "")
+      .replace(/\/\*\s*@end:\s*.*?\*\//g, "")
+      .trim();
+
+    if (!cleanCode) continue;
+
+    const blockRegex = new RegExp(
+      `\\/\\*\\s*@component:\\s*${name}\\s*\\*\\/[\\s\\S]*?\\/\\*\\s*@end:\\s*${name}\\s*\\*\\/`,
+      "g",
+    );
+
+    const formattedBlock = `/* @component: ${name} */\n${cleanCode}\n/* @end: ${name} */`;
+
+    if (blockRegex.test(result)) {
+      const existingMatch = result.match(blockRegex);
+      if (existingMatch && existingMatch[0].trim() === formattedBlock.trim()) {
+        continue;
+      }
+      result = result.replace(blockRegex, formattedBlock);
+    } else {
+      result = result ? `${result}\n\n${formattedBlock}` : formattedBlock;
+    }
+  }
+
+  return result.trim();
+}
+
+export function normalizeSelectedKeys(
+  tree: HtmlNode[],
+  selectedKeys: Set<string>,
+): string[] {
+  if (!tree || selectedKeys.size === 0) return [];
+  const result: string[] = [];
+
+  function traverse(list: HtmlNode[]) {
+    for (const node of list) {
+      const key = getNodeKey(node);
+      if (key && selectedKeys.has(key)) {
+        result.push(key);
+      } else if (Array.isArray(node.children) && node.children.length > 0) {
+        traverse(node.children);
+      }
+    }
+  }
+
+  traverse(tree);
+  return result;
+}
+
+export function insertNodesAdjacent(
+  nodes: HtmlNode[],
+  targetKey: string,
+  nodesToInsert: HtmlNode[],
+  position: "before" | "after",
+): HtmlNode[] {
+  const result: HtmlNode[] = [];
+  for (const node of nodes) {
+    if (node._key === targetKey) {
+      if (position === "before") {
+        result.push(...nodesToInsert);
+        result.push(node);
+      } else {
+        result.push(node);
+        result.push(...nodesToInsert);
+      }
+    } else {
+      if (Array.isArray(node.children)) {
+        result.push({
+          ...node,
+          children: insertNodesAdjacent(
+            node.children,
+            targetKey,
+            nodesToInsert,
+            position,
+          ),
+        });
+      } else {
+        result.push(node);
+      }
+    }
+  }
+  return result;
+}
+
+export function insertNodesInside(
+  nodes: HtmlNode[],
+  targetKey: string,
+  nodesToInsert: HtmlNode[],
+): HtmlNode[] {
+  return nodes.map((node) => {
+    if (node._key === targetKey) {
+      return {
+        ...node,
+        children: [
+          ...(Array.isArray(node.children) ? node.children : []),
+          ...nodesToInsert,
+        ],
+      };
+    }
+    if (Array.isArray(node.children)) {
+      return {
+        ...node,
+        children: insertNodesInside(node.children, targetKey, nodesToInsert),
+      };
+    }
+    return node;
+  });
+}
+
+export function moveNodesGroup(
+  tree: HtmlNode[],
+  sourceKeys: string[],
+  targetKey: string,
+  position: "before" | "after" | "inside",
+): HtmlNode[] {
+  if (!tree || sourceKeys.length === 0 || !targetKey) return tree;
+  if (sourceKeys.includes(targetKey)) return tree;
+
+  for (const key of sourceKeys) {
+    const node = findNodeInTree(tree, key);
+    if (node && isDescendant(node, targetKey)) {
+      return tree;
+    }
+  }
+
+  let currentTree = tree;
+  const nodesToMove: HtmlNode[] = [];
+
+  for (const key of sourceKeys) {
+    const { updatedNodes, removedNode } = removeNodeFromTree(currentTree, key);
+    if (removedNode) {
+      nodesToMove.push(removedNode);
+      currentTree = updatedNodes;
+    }
+  }
+
+  if (nodesToMove.length === 0) return tree;
+
+  if (position === "inside") {
+    return insertNodesInside(currentTree, targetKey, nodesToMove);
+  } else {
+    return insertNodesAdjacent(currentTree, targetKey, nodesToMove, position);
+  }
+}
+
+export function duplicateNodesGroup(
+  tree: HtmlNode[],
+  sourceKeys: string[],
+): HtmlNode[] {
+  if (!tree || sourceKeys.length === 0) return tree;
+
+  const orderedKeys = sortKeysByTreeOrder(tree, sourceKeys);
+  if (orderedKeys.length === 0) return tree;
+
+  const keyMap = new Map<string, string>();
+  const clonedNodes: HtmlNode[] = [];
+
+  for (const key of orderedKeys) {
+    const orig = findNodeInTree(tree, key);
+    if (orig) {
+      clonedNodes.push(cloneTemplateWithKeyMapping(orig, keyMap));
+    }
+  }
+
+  if (clonedNodes.length === 0) return tree;
+
+  const anchorKey = orderedKeys[orderedKeys.length - 1];
+  return insertNodesAdjacent(tree, anchorKey, clonedNodes, "after");
+}
+
+export function collectAllTreeKeys(nodes: HtmlNode[]): Set<string> {
+  const keys = new Set<string>();
+  function walk(list: HtmlNode[]) {
+    for (const node of list) {
+      const k = getNodeKey(node);
+      if (k) keys.add(k);
+      if (Array.isArray(node.children)) {
+        walk(node.children);
+      }
+    }
+  }
+  walk(nodes);
+  return keys;
+}
+
+export function findNewCollapsibleRootKeys(
+  nodes: HtmlNode[],
+  existingKeys: Set<string>,
+): string[] {
+  const result: string[] = [];
+  function walk(list: HtmlNode[]) {
+    for (const node of list) {
+      const k = getNodeKey(node);
+      if (k && !existingKeys.has(k)) {
+        if (Array.isArray(node.children) && node.children.length > 0) {
+          result.push(k);
+        }
+        continue;
+      }
+      if (Array.isArray(node.children)) {
+        walk(node.children);
+      }
+    }
+  }
+  walk(nodes);
+  return result;
+}
+
+export function mergeDonorIntoTarget(
+  tree: HtmlNode[],
+  donorKeys: string[],
+  targetKey: string,
+): HtmlNode[] {
+  if (!tree || donorKeys.length === 0 || !targetKey) return tree;
+  if (donorKeys.includes(targetKey)) return tree;
+
+  const targetNode = findNodeInTree(tree, targetKey);
+  if (!targetNode) return tree;
+
+  const donorNodes: HtmlNode[] = [];
+  for (const dKey of donorKeys) {
+    const dNode = findNodeInTree(tree, dKey);
+    if (dNode) donorNodes.push(dNode);
+  }
+  if (donorNodes.length === 0) return tree;
+
+  let nextText = targetNode.text;
+  const currentClasses = new Set<string>(
+    (targetNode.class || "").trim().split(/\s+/).filter(Boolean),
+  );
+  const nextAttributes: Record<string, string> = {
+    ...(targetNode.attributes || {}),
+  };
+  const appendedChildren: HtmlNode[] = [];
+
+  for (const donor of donorNodes) {
+    if (typeof donor.text === "string" && donor.text.trim() !== "") {
+      nextText = donor.text;
+    }
+
+    if (donor.class) {
+      donor.class
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .forEach((cls) => currentClasses.add(cls));
+    }
+
+    if (donor.attributes && typeof donor.attributes === "object") {
+      Object.assign(nextAttributes, donor.attributes);
+    }
+
+    if (Array.isArray(donor.children) && donor.children.length > 0) {
+      appendedChildren.push(...donor.children);
+    }
+  }
+
+  const nextClass = Array.from(currentClasses).join(" ");
+  const donorSet = new Set(donorKeys);
+  const treeWithoutDonors = removeNodesByKeys(tree, donorSet);
+
+  function updateTargetInList(nodes: HtmlNode[]): HtmlNode[] {
+    return nodes.map((item) => {
+      if (getNodeKey(item) === targetKey) {
+        const existingChildren = Array.isArray(item.children)
+          ? item.children
+          : [];
+        return {
+          ...item,
+          text: nextText,
+          class: nextClass,
+          attributes:
+            Object.keys(nextAttributes).length > 0
+              ? nextAttributes
+              : item.attributes,
+          children: [...existingChildren, ...appendedChildren],
+        };
+      }
+      if (Array.isArray(item.children)) {
+        return {
+          ...item,
+          children: updateTargetInList(item.children),
+        };
+      }
+      return item;
+    });
+  }
+
+  return updateTargetInList(treeWithoutDonors);
+}
+
+const IGNORED_SVG_TAGS = new Set([
+  "i",
+  "svg",
+  "path",
+  "rect",
+  "circle",
+  "ellipse",
+  "line",
+  "polyline",
+  "polygon",
+  "g",
+  "defs",
+  "clippath",
+  "mask",
+  "pattern",
+  "lineargradient",
+  "radialgradient",
+  "stop",
+  "text",
+  "tspan",
+  "use",
+  "symbol",
+  "marker",
+  "animate",
+  "animatetransform",
+  "fegaussianblur",
+  "femerge",
+  "femergenode",
+  "fecolormatrix",
+  "fecomposite",
+  "feblend",
+  "feoffset",
+  "fedropshadow",
+]);
+
+function isUtilityOrFontClass(cls: string): boolean {
+  const lower = cls.toLowerCase();
+  return (
+    lower.startsWith("font-") ||
+    lower.startsWith("text-") ||
+    lower.startsWith("bg-") ||
+    lower.startsWith("border-") ||
+    lower.startsWith("p-") ||
+    lower.startsWith("m-") ||
+    lower.startsWith("w-") ||
+    lower.startsWith("h-") ||
+    lower.startsWith("flex") ||
+    lower.startsWith("grid") ||
+    lower.includes(":") ||
+    lower === "container" ||
+    lower === "is" ||
+    lower === "svg-wrapper" ||
+    lower.includes("__")
+  );
+}
+
+const SECTION_WRAPPER_NAMES = [
+  "prim",
+  "sec",
+  "tert",
+  "quat",
+  "quin",
+  "sext",
+  "sept",
+  "oct",
+  "non",
+  "dec",
+];
+
+const DIV_DEPTH_NAMES = ["inner", "box", "group", "sub"];
+
+const FLEX_GRID_LAYOUT_PROPS = new Set([
+  "flex-direction",
+  "flex-wrap",
+  "flex-flow",
+  "justify-content",
+  "align-items",
+  "align-content",
+  "place-items",
+  "place-content",
+  "gap",
+  "row-gap",
+  "column-gap",
+  "grid-template-columns",
+  "grid-template-rows",
+  "grid-template-areas",
+  "grid-auto-flow",
+  "grid-auto-columns",
+  "grid-auto-rows",
+]);
+
+function splitFlexGridLayoutStyles(style?: string): {
+  keptStyle: string;
+  layoutStyle: string;
+} {
+  if (!style || !style.trim() || style.includes("{")) {
+    return { keptStyle: style || "", layoutStyle: "" };
+  }
+
+  const kept: string[] = [];
+  const layout: string[] = [];
+
+  for (const rawDecl of style.split(";")) {
+    const trimmed = rawDecl.trim();
+    if (!trimmed) continue;
+    const colonIdx = trimmed.indexOf(":");
+    if (colonIdx === -1) continue;
+    const prop = trimmed.slice(0, colonIdx).trim().toLowerCase();
+    const val = trimmed.slice(colonIdx + 1).trim();
+    if (!prop || !val) continue;
+
+    const isFlexOrGridDisplay =
+      prop === "display" && /^(?:inline-)?(?:flex|grid)$/i.test(val);
+
+    if (isFlexOrGridDisplay || FLEX_GRID_LAYOUT_PROPS.has(prop)) {
+      layout.push(`${prop}: ${val}`);
+    } else {
+      kept.push(`${prop}: ${val}`);
+    }
+  }
+
+  return {
+    keptStyle: kept.length > 0 ? `${kept.join("; ")};` : "",
+    layoutStyle: layout.length > 0 ? `${layout.join("; ")};` : "",
+  };
+}
+
+function mergeStyleStrings(base?: string, extra?: string): string {
+  const map = new Map<string, string>();
+  for (const raw of [base, extra]) {
+    if (!raw || !raw.trim() || raw.includes("{")) continue;
+    for (const decl of raw.split(";")) {
+      const trimmed = decl.trim();
+      if (!trimmed) continue;
+      const idx = trimmed.indexOf(":");
+      if (idx === -1) continue;
+      const prop = trimmed.slice(0, idx).trim().toLowerCase();
+      const val = trimmed.slice(idx + 1).trim();
+      if (prop && val) map.set(prop, val);
+    }
+  }
+  if (map.size === 0) return base || extra || "";
+  return (
+    Array.from(map.entries())
+      .map(([p, v]) => `${p}: ${v}`)
+      .join("; ") + ";"
+  );
+}
+
+function isImageBlockWrapper(node: HtmlNode): boolean {
+  if ((node.tag || "div").toLowerCase() !== "div") return false;
+  if (!Array.isArray(node.children) || node.children.length === 0) return false;
+  return node.children.some((ch) => hasNodeClass(ch, "is"));
+}
+
+function getOrdinalWrapperSuffix(index: number): string {
+  return SECTION_WRAPPER_NAMES[index] || `part-${index + 1}`;
+}
+
+function getDivDepthName(depth: number): string {
+  return DIV_DEPTH_NAMES[depth] || `lvl-${depth + 1}`;
+}
+
+function getNodeClasses(node: HtmlNode): string[] {
+  return (node.class || "").trim().split(/\s+/).filter(Boolean);
+}
+
+function hasNodeClass(node: HtmlNode, targetClass: string): boolean {
+  return getNodeClasses(node).includes(targetClass);
+}
+
+function resolveBlockAndModifier(node: HtmlNode): {
+  blockName: string;
+  baseModifier: string;
+} {
+  const rawClasses = getNodeClasses(node);
+  const semanticClass = rawClasses.find((cls) => !isUtilityOrFontClass(cls));
+
+  if (semanticClass) {
+    return { blockName: semanticClass, baseModifier: "" };
+  }
+
+  const bemClass = rawClasses.find((cls) => cls.includes("__"));
+  if (bemClass) {
+    const [blockPart, elemPart = ""] = bemClass.split("__");
+    const modMatch = new RegExp(
+      `(?:^|-)(${SECTION_WRAPPER_NAMES.join("|")}|part-\\d+)$`,
+    ).exec(elemPart);
+    if (blockPart) {
+      return {
+        blockName: blockPart,
+        baseModifier: modMatch ? modMatch[1] : "",
+      };
+    }
+  }
+
+  const tag = (node.tag || "div").toLowerCase();
+  return {
+    blockName: tag !== "div" ? tag : "block",
+    baseModifier: "",
+  };
+}
+
+function isWrapperDiv(node: HtmlNode): boolean {
+  const tag = (node.tag || "div").toLowerCase();
+  if (tag !== "div") return false;
+  if (
+    hasNodeClass(node, "container") ||
+    hasNodeClass(node, "is") ||
+    hasNodeClass(node, "svg-wrapper")
+  ) {
+    return false;
+  }
+  return Array.isArray(node.children) && node.children.length > 0;
+}
+
+function appendBemClass(
+  existingClasses: string[],
+  generatedClass: string,
+): string {
+  if (!generatedClass) return existingClasses.join(" ");
+  const updated = new Set(existingClasses);
+  updated.add(generatedClass);
+  return Array.from(updated).join(" ");
+}
+
+function joinBemParts(...parts: (string | undefined | null)[]): string {
+  return parts.filter(Boolean).join("-");
+}
+
+function countDivsByDepth(
+  nodes: HtmlNode[],
+  depth = 0,
+  counts: Map<number, number> = new Map(),
+): Map<number, number> {
+  for (const node of nodes) {
+    if (hasNodeClass(node, "is")) continue;
+
+    const tag = (node.tag || "div").toLowerCase();
+    if (IGNORED_SVG_TAGS.has(tag)) continue;
+    if (tag === "li") continue;
+
+    let nextDepth = depth;
+    if (tag === "div") {
+      if (hasNodeClass(node, "svg-wrapper")) continue;
+      if (!hasNodeClass(node, "container")) {
+        counts.set(depth, (counts.get(depth) || 0) + 1);
+        nextDepth = depth + 1;
+      }
+    }
+
+    if (Array.isArray(node.children)) {
+      countDivsByDepth(node.children, nextDepth, counts);
+    }
+  }
+  return counts;
+}
+
+function promoteBoldTextForBem(node: HtmlNode): HtmlNode {
+  const rawTag = (node.tag || "").trim().toLowerCase();
+  if (/^h[1-6]$/.test(rawTag)) return node;
+
+  const hasChildren = Array.isArray(node.children) && node.children.length > 0;
+  if (hasChildren) return node;
+  if (rawTag !== "" && rawTag !== "p" && rawTag !== "span") return node;
+
+  let weight = 400;
+  if (node.style) {
+    const wm = /font-weight\s*:\s*([^;]+)/i.exec(node.style);
+    if (wm) {
+      const v = wm[1].trim().toLowerCase();
+      if (v === "bold" || v === "bolder") weight = 700;
+      else if (v === "medium") weight = 500;
+      else {
+        const n = parseFloat(v);
+        if (!isNaN(n)) weight = n;
+      }
+    }
+  }
+  if (weight < 500 && node.class) {
+    for (const t of node.class.toLowerCase().split(/\s+/)) {
+      if (t === "font-black") weight = 900;
+      else if (t === "font-extrabold") weight = 800;
+      else if (t === "font-bold") weight = 700;
+      else if (t === "font-semibold") weight = 600;
+      else if (t === "font-medium") weight = 500;
+      else {
+        const m = /(?:^|-)([5-9]00)(?:-|$)/.exec(t);
+        if (m) weight = parseInt(m[1], 10);
+      }
+    }
+  }
+
+  if (weight < 500) return node;
+
+  let fontSize = 16;
+  if (node.style) {
+    const sm = /font-size\s*:\s*([\d.]+)\s*px/i.exec(node.style);
+    if (sm) {
+      const n = parseFloat(sm[1]);
+      if (!isNaN(n) && n > 0) fontSize = n;
+    }
+  } else if (node.class) {
+    for (const t of node.class.toLowerCase().split(/\s+/)) {
+      if (!t.startsWith("font-") && !t.startsWith("text-")) continue;
+      for (const p of t.split("-")) {
+        if (/^\d{2}$/.test(p)) {
+          const n = parseInt(p, 10);
+          if (n >= 10 && n <= 96) {
+            fontSize = n;
+          }
+        }
+      }
+    }
+  }
+
+  const nextTag =
+    fontSize >= 32
+      ? "h2"
+      : fontSize >= 24
+        ? "h3"
+        : fontSize >= 20
+          ? "h4"
+          : fontSize >= 17
+            ? "h5"
+            : "h6";
+
+  return { ...node, tag: nextTag };
+}
+
+/**
+ * Гарантирует структуру секции:
+ * <section> -> <div class="container"> -> <div class="${block}__wrap"> -> ...остальное
+ */
+function ensureSectionContainerAndWrap(
+  sectionNode: HtmlNode,
+  rootBlockName: string,
+): HtmlNode {
+  const wrapClass = `${rootBlockName}__wrap`;
+
+  const { keptStyle: sectionKeptStyle, layoutStyle: sectionLayoutStyle } =
+    splitFlexGridLayoutStyles(sectionNode.style);
+
+  const originalChildren = Array.isArray(sectionNode.children)
+    ? sectionNode.children
+    : [];
+
+  const bgIsNodes = originalChildren.filter((c) => hasNodeClass(c, "is"));
+  const contentNodes = originalChildren.filter((c) => !hasNodeClass(c, "is"));
+
+  const existingContainer = contentNodes.find(
+    (c) =>
+      (c.tag || "div").toLowerCase() === "div" && hasNodeClass(c, "container"),
+  );
+
+  let containerKeptStyle = "";
+  let containerLayoutStyle = "";
+  let innerContent: HtmlNode[];
+
+  if (existingContainer) {
+    const splitC = splitFlexGridLayoutStyles(existingContainer.style);
+    containerKeptStyle = splitC.keptStyle;
+    containerLayoutStyle = splitC.layoutStyle;
+
+    const straySiblings = contentNodes.filter((c) => c !== existingContainer);
+    innerContent = [
+      ...(Array.isArray(existingContainer.children)
+        ? existingContainer.children
+        : []),
+      ...straySiblings,
+    ];
+  } else {
+    innerContent = contentNodes;
+  }
+
+  const movedLayoutStyle = mergeStyleStrings(
+    sectionLayoutStyle,
+    containerLayoutStyle,
+  );
+
+  const isExplicitWrapNode = (n: HtmlNode) =>
+    (n.tag || "div").toLowerCase() === "div" &&
+    getNodeClasses(n).some(
+      (cls) => cls === wrapClass || cls.endsWith("__wrap"),
+    );
+
+  const isPromotablePlainDiv = (n: HtmlNode) => {
+    if ((n.tag || "div").toLowerCase() !== "div") return false;
+    if (
+      hasNodeClass(n, "container") ||
+      hasNodeClass(n, "is") ||
+      hasNodeClass(n, "svg-wrapper") ||
+      isImageBlockWrapper(n)
+    ) {
+      return false;
+    }
+    const classes = getNodeClasses(n);
+    return !classes.some((cls) => !isUtilityOrFontClass(cls));
+  };
+
+  const innerIsNodes = innerContent.filter((c) => hasNodeClass(c, "is"));
+  const nonIsInner = innerContent.filter((c) => !hasNodeClass(c, "is"));
+
+  let finalContainerChildren: HtmlNode[];
+
+  if (nonIsInner.length === 1 && isExplicitWrapNode(nonIsInner[0])) {
+    const existingWrap = nonIsInner[0];
+    const nextStyle = mergeStyleStrings(movedLayoutStyle, existingWrap.style);
+    finalContainerChildren = [
+      ...innerIsNodes,
+      {
+        ...existingWrap,
+        class: appendBemClass(getNodeClasses(existingWrap), wrapClass),
+        ...(nextStyle ? { style: nextStyle } : {}),
+      },
+    ];
+  } else if (nonIsInner.length === 1 && isPromotablePlainDiv(nonIsInner[0])) {
+    const plainDiv = nonIsInner[0];
+    const nextStyle = mergeStyleStrings(movedLayoutStyle, plainDiv.style);
+    finalContainerChildren = [
+      ...innerIsNodes,
+      {
+        ...plainDiv,
+        class: appendBemClass(getNodeClasses(plainDiv), wrapClass),
+        ...(nextStyle ? { style: nextStyle } : {}),
+      },
+    ];
+  } else {
+    const wrapNode: HtmlNode = {
+      tag: "div",
+      text: "",
+      class: wrapClass,
+      ...(movedLayoutStyle ? { style: movedLayoutStyle } : {}),
+      children: nonIsInner,
+      _key: generateNodeKey(),
+    };
+    finalContainerChildren = [...innerIsNodes, wrapNode];
+  }
+
+  const containerNode: HtmlNode = existingContainer
+    ? {
+        ...existingContainer,
+        ...(containerKeptStyle
+          ? { style: containerKeptStyle }
+          : { style: undefined }),
+        children: finalContainerChildren,
+      }
+    : {
+        tag: "div",
+        text: "",
+        class: "container",
+        children: finalContainerChildren,
+        _key: generateNodeKey(),
+      };
+
+  return {
+    ...sectionNode,
+    ...(sectionKeptStyle ? { style: sectionKeptStyle } : { style: undefined }),
+    children: [...bgIsNodes, containerNode],
+  };
+}
+
+export function applyBemClassesToSection(
+  tree: HtmlNode[],
+  targetKey?: string | null,
+  options?: { forceSectionStructure?: boolean },
+): HtmlNode[] {
+  if (!tree || tree.length === 0) return tree;
+
+  let rootNode: HtmlNode | null = null;
+  if (targetKey) {
+    rootNode = findNodeInTree(tree, targetKey);
+  }
+
+  if (!rootNode) {
+    rootNode = tree[0];
+  }
+
+  if (!rootNode) return tree;
+
+  const rootKey = getNodeKey(rootNode);
+  const { blockName: rootBlockName, baseModifier } =
+    resolveBlockAndModifier(rootNode);
+
+  function processScopeElements(
+    nodes: HtmlNode[],
+    modifier: string,
+    initialScopePrefix = "",
+    inListItem = false,
+  ): HtmlNode[] {
+    const totalByDepth = countDivsByDepth(nodes, 0);
+    const seenByDepth = new Map<number, number>();
+    const mod = modifier ? `-${modifier}` : "";
+
+    function walkElement(
+      rawNode: HtmlNode,
+      divDepth: number,
+      scopePrefix: string,
+      inlineContext: "" | "title" | "p" | "button" | "link",
+    ): HtmlNode {
+      if (hasNodeClass(rawNode, "is")) {
+        return rawNode;
+      }
+
+      const node =
+        inlineContext === "p" ||
+        inlineContext === "button" ||
+        inlineContext === "link"
+          ? rawNode
+          : promoteBoldTextForBem(rawNode);
+
+      const tag = (node.tag || "div").toLowerCase();
+      const existingClasses = getNodeClasses(node);
+      const isSvgWrapper = existingClasses.includes("svg-wrapper");
+
+      if (!isSvgWrapper && IGNORED_SVG_TAGS.has(tag)) {
+        return node;
+      }
+
+      let generatedClass = "";
+      let nextDivDepth = divDepth;
+      let nextScopePrefix = scopePrefix;
+      let nextInlineContext = inlineContext;
+
+      if (isSvgWrapper) {
+        generatedClass =
+          inlineContext === "link"
+            ? `${rootBlockName}__${joinBemParts(scopePrefix, "link-svg-wrapper")}${mod}`
+            : `${rootBlockName}__${joinBemParts(scopePrefix, "svg")}${mod}`;
+      } else if (tag === "nav") {
+        generatedClass = `${rootBlockName}__${joinBemParts(scopePrefix, "nav")}${mod}`;
+        nextScopePrefix = joinBemParts(scopePrefix, "nav");
+        nextInlineContext = "";
+      } else if (tag === "ul") {
+        generatedClass = `${rootBlockName}__${joinBemParts(scopePrefix, "items")}${mod}`;
+        nextInlineContext = "";
+      } else if (tag === "li") {
+        generatedClass = `${rootBlockName}__${joinBemParts(scopePrefix, "item")}${mod}`;
+        return {
+          ...node,
+          class: appendBemClass(existingClasses, generatedClass),
+          children: Array.isArray(node.children)
+            ? processScopeElements(node.children, modifier, "item", true)
+            : node.children,
+        };
+      } else if (tag === "a") {
+        generatedClass = `${rootBlockName}__${joinBemParts(scopePrefix, "link")}${mod}`;
+        nextInlineContext = "link";
+      } else if (inlineContext && tag !== "div") {
+        generatedClass = `${rootBlockName}__${joinBemParts(scopePrefix, inlineContext, tag)}${mod}`;
+      } else if (tag === "p") {
+        generatedClass = `${rootBlockName}__${joinBemParts(scopePrefix, "p")}${mod}`;
+        nextInlineContext = "p";
+      } else if (tag === "span") {
+        generatedClass = `${rootBlockName}__${joinBemParts(scopePrefix, "span")}${mod}`;
+      } else if (/^h[1-6]$/.test(tag)) {
+        generatedClass = `${rootBlockName}__${joinBemParts(scopePrefix, `title_${tag}`)}${mod}`;
+        nextInlineContext = "title";
+      } else if (tag === "button") {
+        generatedClass = `${rootBlockName}__${joinBemParts(scopePrefix, "button")}${mod}`;
+        nextInlineContext = "button";
+      } else if (tag === "img") {
+        generatedClass = `${rootBlockName}__${joinBemParts(scopePrefix, "img")}${mod}`;
+      } else if (tag === "div") {
+        const isContainer = existingClasses.includes("container");
+        if (!isContainer) {
+          const currentIdx = (seenByDepth.get(divDepth) || 0) + 1;
+          seenByDepth.set(divDepth, currentIdx);
+          nextDivDepth = divDepth + 1;
+
+          const totalAtDepth = totalByDepth.get(divDepth) || 1;
+          const depthName = getDivDepthName(divDepth);
+          const indexPart = totalAtDepth > 1 ? `-${currentIdx}` : "";
+          const divName = `${depthName}${indexPart}`;
+
+          const divElementName = inListItem
+            ? joinBemParts("item", divName)
+            : divName;
+
+          nextScopePrefix = inListItem
+            ? divDepth === 0
+              ? "item"
+              : divElementName
+            : divName;
+
+          const alreadyHasBem = existingClasses.some(
+            (cls) =>
+              cls === `${rootBlockName}__` ||
+              cls.startsWith(`${rootBlockName}__`),
+          );
+
+          if (!alreadyHasBem) {
+            generatedClass = `${rootBlockName}__${divElementName}${mod}`;
+          }
+        }
+      }
+
+      return {
+        ...node,
+        class: appendBemClass(existingClasses, generatedClass),
+        children: Array.isArray(node.children)
+          ? node.children.map((c) =>
+              walkElement(c, nextDivDepth, nextScopePrefix, nextInlineContext),
+            )
+          : node.children,
+      };
+    }
+
+    return nodes.map((n) => walkElement(n, 0, initialScopePrefix, ""));
+  }
+
+  function processSingleNonWrapper(node: HtmlNode, modifier: string): HtmlNode {
+    return processScopeElements([node], modifier)[0];
+  }
+
+  function processBlocksLevel(children: HtmlNode[]): HtmlNode[] {
+    let blockIndex = 0;
+
+    return children.map((child) => {
+      if (hasNodeClass(child, "is")) {
+        return child;
+      }
+
+      if (isWrapperDiv(child)) {
+        const suffix = getOrdinalWrapperSuffix(blockIndex++);
+        const existingClasses = getNodeClasses(child);
+        const wrapperClass = `${rootBlockName}__${suffix}`;
+
+        return {
+          ...child,
+          class: appendBemClass(existingClasses, wrapperClass),
+          children: Array.isArray(child.children)
+            ? processScopeElements(child.children, suffix)
+            : child.children,
+        };
+      }
+
+      return processSingleNonWrapper(child, "");
+    });
+  }
+
+  function processLayoutScope(children: HtmlNode[]): HtmlNode[] {
+    const wrapClass = `${rootBlockName}__wrap`;
+    const explicitWrap = children.find(
+      (c) =>
+        (c.tag || "div").toLowerCase() === "div" &&
+        getNodeClasses(c).some(
+          (cls) => cls === wrapClass || cls.endsWith("__wrap"),
+        ),
+    );
+
+    if (explicitWrap) {
+      const explicitWrapKey = getNodeKey(explicitWrap);
+      return children.map((child) => {
+        if (hasNodeClass(child, "is")) {
+          return child;
+        }
+        if (getNodeKey(child) === explicitWrapKey) {
+          const wrapChildren = child.children || [];
+          const hasInnerWrappers = wrapChildren.some(isWrapperDiv);
+          return {
+            ...child,
+            class: appendBemClass(getNodeClasses(child), wrapClass),
+            children: hasInnerWrappers
+              ? processBlocksLevel(wrapChildren)
+              : processScopeElements(wrapChildren, ""),
+          };
+        }
+        return processSingleNonWrapper(child, "");
+      });
+    }
+
+    const topWrapperDivs = children.filter(isWrapperDiv);
+
+    if (topWrapperDivs.length === 1) {
+      const singleDiv = topWrapperDivs[0];
+      const innerWrapperDivs = (singleDiv.children || []).filter(isWrapperDiv);
+
+      if (innerWrapperDivs.length >= 2) {
+        const singleDivKey = getNodeKey(singleDiv);
+
+        return children.map((child) => {
+          if (hasNodeClass(child, "is")) {
+            return child;
+          }
+
+          if (getNodeKey(child) === singleDivKey) {
+            const existingClasses = getNodeClasses(child);
+
+            return {
+              ...child,
+              class: appendBemClass(existingClasses, `${rootBlockName}__wrap`),
+              children: processBlocksLevel(child.children || []),
+            };
+          }
+          return processSingleNonWrapper(child, "");
+        });
+      }
+    }
+
+    if (topWrapperDivs.length >= 1) {
+      return processBlocksLevel(children);
+    }
+
+    return processScopeElements(children, "");
+  }
+
+  function processSectionChildren(children: HtmlNode[]): HtmlNode[] {
+    const containerNode = children.find((child) => {
+      if (hasNodeClass(child, "is")) return false;
+      const tag = (child.tag || "div").toLowerCase();
+      if (tag !== "div") return false;
+      return hasNodeClass(child, "container");
+    });
+
+    if (containerNode) {
+      const containerKey = getNodeKey(containerNode);
+      return children.map((child) => {
+        if (hasNodeClass(child, "is")) {
+          return child;
+        }
+        if (getNodeKey(child) === containerKey) {
+          return {
+            ...child,
+            children: Array.isArray(child.children)
+              ? processLayoutScope(child.children)
+              : child.children,
+          };
+        }
+        return processSingleNonWrapper(child, "");
+      });
+    }
+
+    return processLayoutScope(children);
+  }
+
+  function updateTree(list: HtmlNode[]): HtmlNode[] {
+    return list.map((item) => {
+      if (getNodeKey(item) === rootKey) {
+        if (hasNodeClass(item, "is")) {
+          return item;
+        }
+
+        const rootTag = (item.tag || "").toLowerCase();
+        const isSectionLike =
+          Boolean(options?.forceSectionStructure) ||
+          rootTag === "section" ||
+          rootTag === "header" ||
+          rootTag === "footer";
+
+        const normalizedRoot =
+          !baseModifier && isSectionLike
+            ? ensureSectionContainerAndWrap(item, rootBlockName)
+            : item;
+
+        const rootExisting = getNodeClasses(normalizedRoot);
+        const isBareNav =
+          (normalizedRoot.tag || "").toLowerCase() === "nav" &&
+          !rootExisting.some(
+            (c) => !isUtilityOrFontClass(c) && !c.includes("__"),
+          );
+        const nextRootClass = isBareNav
+          ? appendBemClass(rootExisting, rootBlockName)
+          : normalizedRoot.class;
+
+        return {
+          ...normalizedRoot,
+          class: nextRootClass,
+          children: Array.isArray(normalizedRoot.children)
+            ? baseModifier
+              ? processScopeElements(normalizedRoot.children, baseModifier)
+              : processSectionChildren(normalizedRoot.children)
+            : normalizedRoot.children,
+        };
+      }
+      if (Array.isArray(item.children)) {
+        return {
+          ...item,
+          children: updateTree(item.children),
+        };
+      }
+      return item;
+    });
+  }
+
+  return updateTree(tree);
+}
+
+export function sortKeysByTreeOrder(
+  tree: HtmlNode[],
+  keys: Set<string> | string[],
+): string[] {
+  const keySet = keys instanceof Set ? keys : new Set(keys);
+  const ordered: string[] = [];
+
+  function traverse(nodes: HtmlNode[]) {
+    for (const node of nodes) {
+      const k = getNodeKey(node);
+      if (k && keySet.has(k)) {
+        ordered.push(k);
+      }
+      if (Array.isArray(node.children)) {
+        traverse(node.children);
+      }
+    }
+  }
+
+  traverse(tree);
+  return ordered;
+}
+
+export function cloneTemplateWithKeyMapping(
+  node: HtmlNode,
+  keyMap: Map<string, string>,
+): HtmlNode {
+  const oldKey = getNodeKey(node);
+  const newKey = generateNodeKey();
+  if (oldKey) {
+    keyMap.set(oldKey, newKey);
+  }
+
+  return {
+    ...node,
+    _key: newKey,
+    children: Array.isArray(node.children)
+      ? node.children.map((child) => cloneTemplateWithKeyMapping(child, keyMap))
+      : node.children,
+  };
+}
+
+export function mutateNodeInTree(
+  nodes: HtmlNode[],
+  targetKey: string,
+  updater: (node: HtmlNode) => HtmlNode,
+): HtmlNode[] {
+  return nodes.map((node) => {
+    if (getNodeKey(node) === targetKey) {
+      return updater(node);
+    }
+    if (Array.isArray(node.children)) {
+      return {
+        ...node,
+        children: mutateNodeInTree(node.children, targetKey, updater),
+      };
+    }
+    return node;
+  });
+}
+
+export function applyDonorToSlot(
+  slotNode: HtmlNode,
+  donorNode: HtmlNode,
+): HtmlNode {
+  const nextTag =
+    slotNode.tag && slotNode.tag.trim() ? slotNode.tag : donorNode.tag || "div";
+
+  let nextText = slotNode.text;
+  if (typeof donorNode.text === "string" && donorNode.text.trim() !== "") {
+    nextText = donorNode.text;
+  }
+
+  const classes = new Set<string>(
+    (slotNode.class || "").trim().split(/\s+/).filter(Boolean),
+  );
+  if (donorNode.class) {
+    donorNode.class
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .forEach((c) => classes.add(c));
+  }
+  const nextClass = Array.from(classes).join(" ");
+
+  const nextAttributes: Record<string, string> = {
+    ...(slotNode.attributes || {}),
+  };
+  if (donorNode.attributes && typeof donorNode.attributes === "object") {
+    Object.assign(nextAttributes, donorNode.attributes);
+  }
+
+  let nextChildren = slotNode.children;
+  if (
+    (!slotNode.children || slotNode.children.length === 0) &&
+    Array.isArray(donorNode.children) &&
+    donorNode.children.length > 0
+  ) {
+    const childMap = new Map<string, string>();
+    nextChildren = donorNode.children.map((c) =>
+      cloneTemplateWithKeyMapping(c, childMap),
+    );
+  }
+
+  return {
+    ...slotNode,
+    tag: nextTag,
+    text: nextText,
+    class: nextClass,
+    attributes:
+      Object.keys(nextAttributes).length > 0 ? nextAttributes : undefined,
+    style: donorNode.style || slotNode.style,
+    children: nextChildren,
+  };
+}
+
+export interface TemplateFillResult {
+  nextTree: HtmlNode[];
+  usedCount: number;
+  excessCount: number;
+  warning?: string;
+}
+
+export function fillTemplateWithDonors(
+  tree: HtmlNode[],
+  rightKeys: Set<string>,
+  slotKeys: string[],
+  rawDonorKeys: string[],
+): TemplateFillResult | null {
+  if (
+    !tree ||
+    tree.length === 0 ||
+    rightKeys.size === 0 ||
+    slotKeys.length === 0
+  ) {
+    return null;
+  }
+
+  const templateRoots = extractNodesByKeys(tree, rightKeys);
+  if (templateRoots.length === 0) return null;
+
+  const validDonorKeys = rawDonorKeys.filter((k) => !rightKeys.has(k));
+  if (validDonorKeys.length === 0) return null;
+
+  const orderedDonors = sortKeysByTreeOrder(tree, validDonorKeys);
+  if (orderedDonors.length === 0) return null;
+
+  const slotsCount = slotKeys.length;
+  const donorsToUse = orderedDonors.slice(0, slotsCount);
+  const excessCount = Math.max(0, orderedDonors.length - slotsCount);
+
+  const keyMap = new Map<string, string>();
+  let clonedRoots = templateRoots.map((root) =>
+    cloneTemplateWithKeyMapping(root, keyMap),
+  );
+
+  const usedDonorSet = new Set<string>();
+  donorsToUse.forEach((donorKey, idx) => {
+    usedDonorSet.add(donorKey);
+    const origSlotKey = slotKeys[idx];
+    const clonedSlotKey = keyMap.get(origSlotKey);
+    if (!clonedSlotKey) return;
+
+    const donorNode = findNodeInTree(tree, donorKey);
+    if (!donorNode) return;
+
+    clonedRoots = mutateNodeInTree(clonedRoots, clonedSlotKey, (target) =>
+      applyDonorToSlot(target, donorNode),
+    );
+  });
+
+  const treeWithoutUsedDonors = removeNodesByKeys(tree, usedDonorSet);
+  const nextTree = [...treeWithoutUsedDonors, ...clonedRoots];
+
+  return {
+    nextTree,
+    usedCount: donorsToUse.length,
+    excessCount,
+    warning:
+      excessCount > 0
+        ? `Filled ${donorsToUse.length} slots. ${excessCount} excess donor(s) skipped.`
+        : undefined,
+  };
+}
+
+export function fillSingleSlotInPlace(
+  tree: HtmlNode[],
+  rightKeys: Set<string>,
+  targetSlotKey: string,
+  donorKey: string,
+): {
+  nextTree: HtmlNode[];
+  addedRightKeys: string[];
+} | null {
+  if (!tree || tree.length === 0 || !targetSlotKey || !donorKey) {
+    return null;
+  }
+  if (rightKeys.has(donorKey)) {
+    return null;
+  }
+
+  const slotNode = findNodeInTree(tree, targetSlotKey);
+  const donorNode = findNodeInTree(tree, donorKey);
+  if (!slotNode || !donorNode) {
+    return null;
+  }
+
+  if (
+    isDescendant(donorNode, targetSlotKey) ||
+    isDescendant(slotNode, donorKey)
+  ) {
+    return null;
+  }
+
+  const addedRightKeys: string[] = [];
+  const nextSlotNode = applyDonorToSlot(slotNode, donorNode);
+
+  if (
+    (!slotNode.children || slotNode.children.length === 0) &&
+    Array.isArray(nextSlotNode.children) &&
+    nextSlotNode.children.length > 0
+  ) {
+    for (const child of nextSlotNode.children) {
+      addedRightKeys.push(...collectAllDescendantKeys(child));
+    }
+  }
+
+  const updatedTree = mutateNodeInTree(tree, targetSlotKey, () => nextSlotNode);
+  const nextTree = removeNodesByKeys(updatedTree, new Set([donorKey]));
+
+  return {
+    nextTree,
+    addedRightKeys,
+  };
+}
+
+export function fillMultipleSlotsInPlace(
+  tree: HtmlNode[],
+  rightKeys: Set<string>,
+  slotKeys: string[],
+  rawDonorKeys: string[],
+): {
+  nextTree: HtmlNode[];
+  filledCount: number;
+  remainingSlotKeys: string[];
+  addedRightKeys: string[];
+  usedDonorKeys: string[];
+  excessCount: number;
+} | null {
+  if (!tree || tree.length === 0 || slotKeys.length === 0) {
+    return null;
+  }
+
+  const validDonorKeys = rawDonorKeys.filter((k) => !rightKeys.has(k));
+  if (validDonorKeys.length === 0) return null;
+
+  const orderedDonors = sortKeysByTreeOrder(tree, validDonorKeys);
+  if (orderedDonors.length === 0) return null;
+
+  const count = Math.min(slotKeys.length, orderedDonors.length);
+  const excessCount = Math.max(0, orderedDonors.length - slotKeys.length);
+
+  let currentTree = tree;
+  const addedRightKeys: string[] = [];
+  const usedDonorKeys: string[] = [];
+  const filledSlotSet = new Set<string>();
+
+  for (let i = 0; i < count; i++) {
+    const targetSlotKey = slotKeys[i];
+    const donorKey = orderedDonors[i];
+
+    const slotNode = findNodeInTree(currentTree, targetSlotKey);
+    const donorNode = findNodeInTree(currentTree, donorKey);
+    if (!slotNode || !donorNode) continue;
+
+    if (
+      isDescendant(donorNode, targetSlotKey) ||
+      isDescendant(slotNode, donorKey)
+    ) {
+      continue;
+    }
+
+    const nextSlotNode = applyDonorToSlot(slotNode, donorNode);
+
+    if (
+      (!slotNode.children || slotNode.children.length === 0) &&
+      Array.isArray(nextSlotNode.children) &&
+      nextSlotNode.children.length > 0
+    ) {
+      for (const child of nextSlotNode.children) {
+        addedRightKeys.push(...collectAllDescendantKeys(child));
+      }
+    }
+
+    currentTree = mutateNodeInTree(
+      currentTree,
+      targetSlotKey,
+      () => nextSlotNode,
+    );
+    usedDonorKeys.push(donorKey);
+    filledSlotSet.add(targetSlotKey);
+  }
+
+  if (usedDonorKeys.length === 0) return null;
+
+  const nextTree = removeNodesByKeys(currentTree, new Set(usedDonorKeys));
+  const remainingSlotKeys = slotKeys.filter((k) => !filledSlotSet.has(k));
+
+  return {
+    nextTree,
+    filledCount: usedDonorKeys.length,
+    remainingSlotKeys,
+    addedRightKeys,
+    usedDonorKeys,
+    excessCount,
+  };
+}
+
+// ============================================================================
+// МОДЕЛЬ РАБОЧЕЙ ОБЛАСТИ (FLOATING-ОКНО, ЗУМ, СПЛИТ-ПАНЕЛИ)
+// ============================================================================
+
+export interface FloatingPos {
+  x: number;
+  y: number;
+}
+
+export interface FloatingSize {
+  w: number;
+  h: number;
+}
+
+export const MIN_GRAPH_ZOOM = 0.4;
+export const MAX_GRAPH_ZOOM = 1.4;
+export const MIN_FLOATING_WIDTH = 360;
+export const MIN_FLOATING_HEIGHT = 220;
+
+export function clampGraphZoom(zoom: number): number {
+  return Number(
+    Math.min(MAX_GRAPH_ZOOM, Math.max(MIN_GRAPH_ZOOM, zoom)).toFixed(2),
+  );
+}
+
+export function getHeaderOffset(): number {
+  if (typeof document === "undefined") return 56;
+  const header = document.querySelector("header");
+  if (!header) return 12;
+  const rect = header.getBoundingClientRect();
+  return Math.max(8, Math.round(rect.bottom + 8));
+}
+
+export function computeInitialFloatingBounds(
+  viewportW: number,
+  viewportH: number,
+  isAsideFloating: boolean,
+): { pos: FloatingPos; size: FloatingSize } {
+  const headerTop = getHeaderOffset();
+  const w = Math.min(760, Math.max(MIN_FLOATING_WIDTH, viewportW - 230));
+  const h = Math.min(460, Math.max(240, viewportH - headerTop - 24));
+  const x = isAsideFloating
+    ? Math.min(208, Math.max(8, viewportW - w - 8))
+    : Math.max(8, Math.round((viewportW - w) / 2));
+
+  return {
+    pos: { x, y: headerTop },
+    size: { w, h },
+  };
+}
+
+export function clampFloatingPosition(
+  x: number,
+  y: number,
+  minTop: number,
+  maxX: number,
+  maxY: number,
+): FloatingPos {
+  return {
+    x: Math.min(maxX, Math.max(8, x)),
+    y: Math.min(maxY, Math.max(minTop, y)),
+  };
+}
+
+export function clampFloatingSize(
+  w: number,
+  h: number,
+  maxW: number,
+  maxH: number,
+): FloatingSize {
+  return {
+    w: Math.min(maxW, Math.max(MIN_FLOATING_WIDTH, w)),
+    h: Math.min(maxH, Math.max(MIN_FLOATING_HEIGHT, h)),
+  };
+}
+
+export function isPointInsideElement(
+  el: HTMLElement | null,
+  clientX: number,
+  clientY: number,
+): boolean {
+  if (!el) return false;
+  const r = el.getBoundingClientRect();
+  return (
+    clientX >= r.left &&
+    clientX <= r.right &&
+    clientY >= r.top &&
+    clientY <= r.bottom
+  );
+}
+
+export function splitWorkspaceNodes(
+  currentJson: HtmlNode[],
+  rightKeys: Set<string>,
+  isSplit: boolean,
+): { leftNodes: HtmlNode[]; rightNodes: HtmlNode[] } {
+  if (!isSplit || rightKeys.size === 0) {
+    return { leftNodes: currentJson, rightNodes: [] };
+  }
+  return {
+    leftNodes: removeNodesByKeys(currentJson, rightKeys),
+    rightNodes: extractNodesByKeys(currentJson, rightKeys),
+  };
+}
+</file>
+
+</files>

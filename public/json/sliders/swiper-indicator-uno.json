@@ -3,7 +3,7 @@
     "tag": "div",
     "text": "",
     "class": "swiper custom-swiper-indicator-uno",
-    "style": "width: 100%;",
+    "style": "--slider-bg: var(--color-white, #ffffff); --slider-text: var(--navy-900, #0f172a); --slider-accent: var(--accent, #2563eb); width: 100%; position: relative; box-sizing: border-box;",
     "attributes": {},
     "children": [
       {
@@ -131,7 +131,9 @@
             "text": "",
             "class": "custom-prev-btn custom-btn",
             "style": "background: #334155; color: var(--color-white); border: 1px solid rgba(255, 255, 255, 0.1); padding: 6px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s ease; display: flex; align-items: center; gap: 4px; &.is-disabled { opacity: 0.3; cursor: not-allowed; } &:hover:not(.is-disabled) { background: #0d9488; color: #ffffff; }",
-            "attributes": { "type": "button" },
+            "attributes": {
+              "type": "button"
+            },
             "children": [
               {
                 "tag": "i",
@@ -192,7 +194,9 @@
             "text": "",
             "class": "custom-next-btn custom-btn",
             "style": "background: #334155; color: var(--color-white); border: 1px solid rgba(255, 255, 255, 0.1); padding: 6px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s ease; display: flex; align-items: center; gap: 4px; &.is-disabled { opacity: 0.3; cursor: not-allowed; } &:hover:not(.is-disabled) { background: #0d9488; color: #ffffff; }",
-            "attributes": { "type": "button" },
+            "attributes": {
+              "type": "button"
+            },
             "children": [
               {
                 "tag": "span",
@@ -246,10 +250,10 @@
   },
   {
     "tag": "script",
+    "text": "/* @component: .custom-swiper-indicator-uno */ (function () { function initIndicatorUnoSwiper() { document.querySelectorAll('.custom-swiper-indicator-uno').forEach(function (container) { if (container.dataset.init === 'true') return; container.dataset.init = 'true'; const q = String.fromCharCode(34); new Swiper(container, { slidesPerView: 1, spaceBetween: 20, loop: false, observer: true, observeParents: true, navigation: { nextEl: container.querySelector('.custom-next-btn'), prevEl: container.querySelector('.custom-prev-btn'), disabledClass: 'is-disabled' }, pagination: { el: container.querySelector('.custom-pagination'), type: 'fraction', renderFraction: function (currentClass, totalClass) { return '<span class=' + q + currentClass + q + '></span> / <span class=' + q + totalClass + q + '></span>'; } } }); }); } if (!document.getElementById('swiper-css')) { const link = document.createElement('link'); link.id = 'swiper-css'; link.rel = 'stylesheet'; link.href = 'https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css'; document.head.appendChild(link); } if (typeof Swiper !== 'undefined') { initIndicatorUnoSwiper(); } else { let script = document.getElementById('swiper-js'); if (!script) { script = document.createElement('script'); script.id = 'swiper-js'; script.src = 'https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js'; document.head.appendChild(script); } script.addEventListener('load', initIndicatorUnoSwiper); } })(); /* @end: .custom-swiper-indicator-uno */",
     "class": "",
     "style": "",
     "attributes": {},
-    "text": "/* @component: .custom-swiper-indicator-uno */ (function () { function initIndicatorUnoSwiper() { document.querySelectorAll('.custom-swiper-indicator-uno').forEach(function (container) { if (container.dataset.init === 'true') return; container.dataset.init = 'true'; const q = String.fromCharCode(34); new Swiper(container, { slidesPerView: 1, spaceBetween: 20, loop: false, observer: true, observeParents: true, navigation: { nextEl: container.querySelector('.custom-next-btn'), prevEl: container.querySelector('.custom-prev-btn'), disabledClass: 'is-disabled' }, pagination: { el: container.querySelector('.custom-pagination'), type: 'fraction', renderFraction: function (currentClass, totalClass) { return '<span class=' + q + currentClass + q + '></span> / <span class=' + q + totalClass + q + '></span>'; } } }); }); } if (!document.getElementById('swiper-css')) { const link = document.createElement('link'); link.id = 'swiper-css'; link.rel = 'stylesheet'; link.href = 'https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css'; document.head.appendChild(link); } if (typeof Swiper !== 'undefined') { initIndicatorUnoSwiper(); } else { let script = document.getElementById('swiper-js'); if (!script) { script = document.createElement('script'); script.id = 'swiper-js'; script.src = 'https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js'; document.head.appendChild(script); } script.addEventListener('load', initIndicatorUnoSwiper); } })(); /* @end: .custom-swiper-indicator-uno */",
     "children": []
   }
 ]

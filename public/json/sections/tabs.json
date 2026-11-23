@@ -3,52 +3,56 @@
     "tag": "section",
     "text": "",
     "class": "tabs",
-    "style": "",
+    "style": "--tab-accent: var(--accent, #2563eb); --tab-text: var(--navy-900, #0f172a); --tab-bg: var(--color-white, #ffffff); width: 100%; position: relative;",
+    "attributes": {},
     "children": [
       {
         "tag": "div",
         "text": "",
         "class": "tabs__nav",
         "style": "display: flex; @media screen and (max-width: 767px) { .tabs__nav { flex-direction: column;} };",
+        "attributes": {},
         "children": [
           {
             "tag": "button",
             "text": "Tab 1",
             "class": "tabs__btn _is-active",
             "style": "border: none; background: none; cursor: pointer;  transition: all 0.3s ease; display: flex; align-items: center; &:hover { color: var(--accent); } &._is-active {  & svg { transform: rotate(180deg); } }",
+            "attributes": {},
             "children": [
               {
                 "tag": "i",
                 "text": "",
                 "class": "svg-wrapper",
                 "style": "",
+                "attributes": {},
                 "children": [
                   {
                     "tag": "svg",
                     "text": "",
                     "class": "w-6 h-6",
                     "style": "",
-                    "children": [
-                      {
-                        "tag": "path",
-                        "text": "",
-                        "class": "",
-                        "style": "",
-                        "children": [],
-                        "attributes": {
-                          "d": "M12.53 16.28a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 0 1 1.06-1.06L12 14.69l6.97-6.97a.75.75 0 1 1 1.06 1.06l-7.5 7.5Z",
-                          "clip-rule": "evenodd",
-                          "fill-rule": "evenodd"
-                        }
-                      }
-                    ],
                     "attributes": {
                       "fill": "currentColor",
                       "xmlns": "http://www.w3.org/2000/svg",
                       "viewBox": "0 0 24 24",
                       "data-slot": "icon",
                       "aria-hidden": "true"
-                    }
+                    },
+                    "children": [
+                      {
+                        "tag": "path",
+                        "text": "",
+                        "class": "",
+                        "style": "",
+                        "attributes": {
+                          "d": "M12.53 16.28a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 0 1 1.06-1.06L12 14.69l6.97-6.97a.75.75 0 1 1 1.06 1.06l-7.5 7.5Z",
+                          "clip-rule": "evenodd",
+                          "fill-rule": "evenodd"
+                        },
+                        "children": []
+                      }
+                    ]
                   }
                 ]
               }
@@ -59,39 +63,41 @@
             "text": "Tab 2",
             "class": "tabs__btn",
             "style": "",
+            "attributes": {},
             "children": [
               {
                 "tag": "i",
                 "text": "",
                 "class": "svg-wrapper",
                 "style": "",
+                "attributes": {},
                 "children": [
                   {
                     "tag": "svg",
                     "text": "",
                     "class": "w-6 h-6",
                     "style": "",
-                    "children": [
-                      {
-                        "tag": "path",
-                        "text": "",
-                        "class": "",
-                        "style": "",
-                        "children": [],
-                        "attributes": {
-                          "d": "M12.53 16.28a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 0 1 1.06-1.06L12 14.69l6.97-6.97a.75.75 0 1 1 1.06 1.06l-7.5 7.5Z",
-                          "clip-rule": "evenodd",
-                          "fill-rule": "evenodd"
-                        }
-                      }
-                    ],
                     "attributes": {
                       "fill": "currentColor",
                       "xmlns": "http://www.w3.org/2000/svg",
                       "viewBox": "0 0 24 24",
                       "data-slot": "icon",
                       "aria-hidden": "true"
-                    }
+                    },
+                    "children": [
+                      {
+                        "tag": "path",
+                        "text": "",
+                        "class": "",
+                        "style": "",
+                        "attributes": {
+                          "d": "M12.53 16.28a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 0 1 1.06-1.06L12 14.69l6.97-6.97a.75.75 0 1 1 1.06 1.06l-7.5 7.5Z",
+                          "clip-rule": "evenodd",
+                          "fill-rule": "evenodd"
+                        },
+                        "children": []
+                      }
+                    ]
                   }
                 ]
               }
@@ -102,39 +108,41 @@
             "text": "Tab 3",
             "class": "tabs__btn",
             "style": "",
+            "attributes": {},
             "children": [
               {
                 "tag": "i",
                 "text": "",
                 "class": "svg-wrapper",
                 "style": "",
+                "attributes": {},
                 "children": [
                   {
                     "tag": "svg",
                     "text": "",
                     "class": "w-6 h-6",
                     "style": "",
-                    "children": [
-                      {
-                        "tag": "path",
-                        "text": "",
-                        "class": "",
-                        "style": "",
-                        "children": [],
-                        "attributes": {
-                          "d": "M12.53 16.28a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 0 1 1.06-1.06L12 14.69l6.97-6.97a.75.75 0 1 1 1.06 1.06l-7.5 7.5Z",
-                          "clip-rule": "evenodd",
-                          "fill-rule": "evenodd"
-                        }
-                      }
-                    ],
                     "attributes": {
                       "fill": "currentColor",
                       "xmlns": "http://www.w3.org/2000/svg",
                       "viewBox": "0 0 24 24",
                       "data-slot": "icon",
                       "aria-hidden": "true"
-                    }
+                    },
+                    "children": [
+                      {
+                        "tag": "path",
+                        "text": "",
+                        "class": "",
+                        "style": "",
+                        "attributes": {
+                          "d": "M12.53 16.28a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 0 1 1.06-1.06L12 14.69l6.97-6.97a.75.75 0 1 1 1.06 1.06l-7.5 7.5Z",
+                          "clip-rule": "evenodd",
+                          "fill-rule": "evenodd"
+                        },
+                        "children": []
+                      }
+                    ]
                   }
                 ]
               }
@@ -145,39 +153,41 @@
             "text": "Tab 4",
             "class": "tabs__btn",
             "style": "",
+            "attributes": {},
             "children": [
               {
                 "tag": "i",
                 "text": "",
                 "class": "svg-wrapper",
                 "style": "",
+                "attributes": {},
                 "children": [
                   {
                     "tag": "svg",
                     "text": "",
                     "class": "w-6 h-6",
                     "style": "",
-                    "children": [
-                      {
-                        "tag": "path",
-                        "text": "",
-                        "class": "",
-                        "style": "",
-                        "children": [],
-                        "attributes": {
-                          "d": "M12.53 16.28a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 0 1 1.06-1.06L12 14.69l6.97-6.97a.75.75 0 1 1 1.06 1.06l-7.5 7.5Z",
-                          "clip-rule": "evenodd",
-                          "fill-rule": "evenodd"
-                        }
-                      }
-                    ],
                     "attributes": {
                       "fill": "currentColor",
                       "xmlns": "http://www.w3.org/2000/svg",
                       "viewBox": "0 0 24 24",
                       "data-slot": "icon",
                       "aria-hidden": "true"
-                    }
+                    },
+                    "children": [
+                      {
+                        "tag": "path",
+                        "text": "",
+                        "class": "",
+                        "style": "",
+                        "attributes": {
+                          "d": "M12.53 16.28a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 0 1 1.06-1.06L12 14.69l6.97-6.97a.75.75 0 1 1 1.06 1.06l-7.5 7.5Z",
+                          "clip-rule": "evenodd",
+                          "fill-rule": "evenodd"
+                        },
+                        "children": []
+                      }
+                    ]
                   }
                 ]
               }
@@ -188,39 +198,41 @@
             "text": "Tab 5",
             "class": "tabs__btn",
             "style": "",
+            "attributes": {},
             "children": [
               {
                 "tag": "i",
                 "text": "",
                 "class": "svg-wrapper",
                 "style": "",
+                "attributes": {},
                 "children": [
                   {
                     "tag": "svg",
                     "text": "",
                     "class": "w-6 h-6",
                     "style": "",
-                    "children": [
-                      {
-                        "tag": "path",
-                        "text": "",
-                        "class": "",
-                        "style": "",
-                        "children": [],
-                        "attributes": {
-                          "d": "M12.53 16.28a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 0 1 1.06-1.06L12 14.69l6.97-6.97a.75.75 0 1 1 1.06 1.06l-7.5 7.5Z",
-                          "clip-rule": "evenodd",
-                          "fill-rule": "evenodd"
-                        }
-                      }
-                    ],
                     "attributes": {
                       "fill": "currentColor",
                       "xmlns": "http://www.w3.org/2000/svg",
                       "viewBox": "0 0 24 24",
                       "data-slot": "icon",
                       "aria-hidden": "true"
-                    }
+                    },
+                    "children": [
+                      {
+                        "tag": "path",
+                        "text": "",
+                        "class": "",
+                        "style": "",
+                        "attributes": {
+                          "d": "M12.53 16.28a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 0 1 1.06-1.06L12 14.69l6.97-6.97a.75.75 0 1 1 1.06 1.06l-7.5 7.5Z",
+                          "clip-rule": "evenodd",
+                          "fill-rule": "evenodd"
+                        },
+                        "children": []
+                      }
+                    ]
                   }
                 ]
               }
@@ -233,12 +245,14 @@
         "text": "",
         "class": "tabs__content",
         "style": "",
+        "attributes": {},
         "children": [
           {
             "tag": "div",
             "text": "1. You can place any text or other blocks here.",
             "class": "tabs__pane _is-active",
             "style": "visibility: hidden; opacity: 0; transition: opacity 0.2s ease-in-out; max-height: 0; &._is-active { visibility: visible; opacity: 1; max-height: 100vh; }",
+            "attributes": {},
             "children": []
           },
           {
@@ -246,6 +260,7 @@
             "text": "Lorem ipsum dolor sit, amet consectetur adipisicing elit. Autem eos laudantium laborum adipisci qui tempore soluta incidunt libero praesentium quasi cumque corporis, at iure obcaecati.Lorem ipsum dolor sit, amet consectetur adipisicing elit. Autem eos laudantium laborum adipisci qui tempore soluta incidunt libero praesentium quasi cumque corporis, at iure obcaecati.Lorem ipsum dolor sit, amet consectetur adipisicing elit. Autem eos laudantium laborum adipisci qui tempore soluta incidunt libero praesentium quasi cumque corporis, at iure obcaecati.Lorem ipsum dolor sit, amet consectetur adipisicing elit. Autem eos laudantium laborum adipisci qui tempore soluta incidunt libero praesentium quasi cumque corporis, at iure obcaecati.Lorem ipsum dolor sit, amet consectetur adipisicing elit. Autem eos laudantium laborum adipisci qui tempore soluta incidunt libero praesentium quasi cumque corporis, at iure obcaecati.Lorem ipsum dolor sit, amet consectetur adipisicing elit. Autem eos laudantium laborum adipisci qui tempore soluta incidunt libero praesentium quasi cumque corporis, at iure obcaecati.Lorem ipsum dolor sit, amet consectetur adipisicing elit. Autem eos laudantium laborum adipisci qui tempore soluta incidunt libero praesentium quasi cumque corporis, at iure obcaecati.",
             "class": "tabs__pane",
             "style": "",
+            "attributes": {},
             "children": []
           },
           {
@@ -253,6 +268,7 @@
             "text": "3. All three panels are controlled by a single lightweight script.",
             "class": "tabs__pane",
             "style": "visibility: hidden; opacity: 0; transition: opacity 0.2s ease-in-out; max-height: 0; &._is-active { visibility: visible; opacity: 1; max-height: 100vh; }",
+            "attributes": {},
             "children": []
           },
           {
@@ -260,6 +276,7 @@
             "text": "4. All three panels are controlled by a single lightweight script.",
             "class": "tabs__pane",
             "style": "visibility: hidden; opacity: 0; transition: opacity 0.2s ease-in-out; max-height: 0; &._is-active { visibility: visible; opacity: 1; max-height: 100vh; }",
+            "attributes": {},
             "children": []
           },
           {
@@ -267,18 +284,19 @@
             "text": "5. All three panels are controlled by a single lightweight script.",
             "class": "tabs__pane",
             "style": "visibility: hidden; opacity: 0; transition: opacity 0.2s ease-in-out; max-height: 0; &._is-active { visibility: visible; opacity: 1; max-height: 100vh; }",
+            "attributes": {},
             "children": []
           }
         ]
       }
-    ],
-    "attributes": {}
+    ]
   },
   {
     "tag": "script",
-    "text": "/* @component: .tabs */ (function () { if (window.__tabsInit) return; window.__tabsInit = true; document.addEventListener('click', function (e) { const target = e.target instanceof Element ? e.target : null; if (!target) return; const btn = target.closest('.tabs__btn'); if (!btn) return; if (btn.tagName === 'A') e.preventDefault(); const tabsContainer = btn.closest('.tabs'); if (!tabsContainer) return; const allBtns = Array.from(tabsContainer.querySelectorAll('.tabs__btn')).filter((el) => el.closest('.tabs') === tabsContainer); const allPanes = Array.from(tabsContainer.querySelectorAll('.tabs__pane')).filter((el) => el.closest('.tabs') === tabsContainer); const index = allBtns.indexOf(btn); if (index === -1) return; allBtns.forEach((b) => b.classList.remove('_is-active')); btn.classList.add('_is-active'); allPanes.forEach((p) => p.classList.remove('_is-active')); if (allPanes[index]) allPanes[index].classList.add('_is-active'); }); })(); /* @end: .tabs */",
+    "text": "/* @component: tabs */\n(function () {\n  function initTabs() {\n    document.querySelectorAll('.tabs:not(.tab-uno)').forEach(function (tabContainer) {\n      if (tabContainer.dataset.initialized === 'true') return;\n      tabContainer.dataset.initialized = 'true';\n      const btns = tabContainer.querySelectorAll('.tabs__btn');\n      const panes = tabContainer.querySelectorAll('.tabs__pane');\n      btns.forEach(function (btn, idx) {\n        btn.addEventListener('click', function (e) {\n          e.preventDefault();\n          btns.forEach(function (b) { b.classList.remove('_is-active'); });\n          panes.forEach(function (p) { p.classList.remove('_is-active'); });\n          btn.classList.add('_is-active');\n          if (panes[idx]) panes[idx].classList.add('_is-active');\n        });\n      });\n    });\n  }\n  if (document.readyState === 'loading') {\n    document.addEventListener('DOMContentLoaded', initTabs);\n  } else {\n    initTabs();\n  }\n  setTimeout(initTabs, 300);\n})();\n/* @end: tabs */",
     "class": "",
-    "children": [],
-    "attributes": {}
+    "style": "",
+    "attributes": {},
+    "children": []
   }
 ]

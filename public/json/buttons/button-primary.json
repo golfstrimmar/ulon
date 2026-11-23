@@ -3,13 +3,13 @@
     "tag": "button",
     "text": "",
     "class": "btn-primary",
-    "style": "color: var(--blue-200); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0 10px 0 30px; border-radius: 14px; transition: all 200ms ease-in-out; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08); background-color: var(--navy-600); border: 1px solid var(--navy-600); position: relative; height: 30px; &:hover { border: 1px solid var(--purple-200); background-color: var(--slate-500); .buttonBack-svg { width: calc(100% - 4px); z-index: 5; } } &:active { transform: translateY(1px); background-color: var(--accent); }",
+    "style": "--btn-height: 30px; --btn-radius: 14px; --btn-bg: var(--navy-600, #1e293b); --btn-border: var(--navy-600, #1e293b); --btn-color: var(--blue-200, #bfdbfe); --btn-hover-bg: var(--slate-500, #64748b); --btn-hover-border: var(--purple-200, #e9d5ff); --btn-active-bg: var(--accent, #3b82f6); --btn-icon-bg: var(--teal-500, #14b8a6); --btn-icon-color: var(--navy-600, #1e293b); display: inline-flex; align-items: center; justify-content: center; position: relative; height: var(--btn-height); padding: 0 10px 0 30px; border-radius: var(--btn-radius); border: 1px solid var(--btn-border); background-color: var(--btn-bg); color: var(--btn-color); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08); cursor: pointer; transition: all 200ms ease-in-out; &:hover { border-color: var(--btn-hover-border); background-color: var(--btn-hover-bg); .btn-primary__icon { width: calc(100% - 4px); z-index: 5; } } &:active { transform: translateY(1px); background-color: var(--btn-active-bg); }",
     "children": [
       {
         "tag": "svg",
         "text": "",
-        "class": "buttonBack-svg",
-        "style": "background: var(--teal-500); border-radius: 14px; width: 26px; height: 26px; display: flex; position: absolute; left: 2px; top: 50%; transform: translateY(-50%); color: var(--navy-600); transition: 0.2s all; padding: 0 0 0 0;",
+        "class": "btn-primary__icon",
+        "style": "background: var(--btn-icon-bg); border-radius: var(--btn-radius); width: 26px; height: 26px; display: flex; position: absolute; left: 2px; top: 50%; transform: translateY(-50%); color: var(--btn-icon-color); transition: all 0.2s ease; padding: 0;",
         "children": [
           {
             "tag": "path",
@@ -19,8 +19,8 @@
             "children": [],
             "attributes": {
               "d": "M7.72 12.53a.75.75 0 0 1 0-1.06l7.5-7.5a.75.75 0 1 1 1.06 1.06L9.31 12l6.97 6.97a.75.75 0 1 1-1.06 1.06l-7.5-7.5Z",
-              "cliprule": "evenodd",
-              "fillrule": "evenodd"
+              "clip-rule": "evenodd",
+              "fill-rule": "evenodd"
             }
           }
         ],

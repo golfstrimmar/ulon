@@ -79,7 +79,7 @@ export const ELEMENT_FOLDERS: ElementFolder[] = [
     name: "forms",
     items: [
       { name: "form", path: "/json/forms/form.json" },
-      { name: "form-common", path: "/json/forms/form-common.json" },
+
       { name: "form-avatar", path: "/json/forms/form-avatar.json" },
       { name: "fieldset", path: "/json/forms/fieldset.json" },
     ],

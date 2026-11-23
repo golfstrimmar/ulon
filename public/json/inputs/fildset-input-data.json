@@ -2,20 +2,23 @@
   {
     "tag": "fieldset",
     "text": "",
-    "class": "fieldset-data  js-container-input-data",
-    "style": "position: relative; display: block; flex: 0 0 auto; width: 100%; height: 40px; padding: 0 0 0 10px; border: 1px solid rgba(0, 0, 0, 0.1); border-radius: 4px; outline: none; text-align: left; font-family: 'Montserrat', sans-serif; box-sizing: border-box; transition:all 200ms cubic-bezier(0.4, 0, 0.2, 1); &:hover { border-color: #38bdf8; } &:focus-within, &.has-value { border-color: #38bdf8; } &:focus-within > .legend-data, &.has-value > .legend-data { visibility: visible; max-width: 100%; } &:focus-within > .label-data, &.has-value > .label-data { top: 0; left: 5px; padding: 0 10px; color: #38bdf8; font-size: 11px; transform: translateY(-50%); } &:has(svg) { .label-data { padding-left: 25px; } .svg-wrapper { position: absolute; top: 50%; left: 0; display: block; width: 20px; height: 20px; transform: translateY(-50%); } &:focus-within > .label-data, &.has-value > .label-data { padding-right: 40px; padding-left: 30px; .svg-wrapper { left: 10px; width: 15px; height: 15px; } } } &.has-value { .input-data { color: var(--color-black, #000); -webkit-text-fill-color: var(--color-black, #000); &[type='date']::-webkit-datetime-edit { color: var(--color-black, #000); -webkit-text-fill-color: var(--color-black, #000); } } } ",
+    "class": "fieldset-data js-container-input-data",
+    "style": "--field-border: var(--border-color, rgba(0, 0, 0, 0.1)); --field-accent: var(--accent, #38bdf8); --field-text: var(--color-black, #0f172a); position: relative; display: block; flex: 0 0 auto; width: 100%; height: 40px; padding: 0 0 0 10px; border: 1px solid var(--field-border); border-radius: 4px; outline: none; text-align: left; box-sizing: border-box; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); &:hover { border-color: var(--field-accent); } &:focus-within, &.has-value { border-color: var(--field-accent); } &:focus-within > .legend-data, &.has-value > .legend-data { visibility: visible; max-width: 100%; } &:focus-within > .label-data, &.has-value > .label-data { top: 0; left: 5px; padding: 0 10px; color: var(--field-accent); font-size: 11px; transform: translateY(-50%); } &:has(svg) { .label-data { padding-left: 25px; } .svg-wrapper { position: absolute; top: 50%; left: 0; display: block; width: 20px; height: 20px; transform: translateY(-50%); } &:focus-within > .label-data, &.has-value > .label-data { padding-right: 40px; padding-left: 30px; .svg-wrapper { left: 10px; width: 15px; height: 15px; } } } &.has-value { .input-data { color: var(--field-text); -webkit-text-fill-color: var(--field-text); } }",
+    "attributes": {},
     "children": [
       {
         "tag": "legend",
         "text": "",
         "class": "legend-data",
         "style": "display: block; width: auto; max-width: 0; height: 0; margin: 0; padding: 0; visibility: hidden; overflow: hidden; white-space: nowrap; font-family: 'Montserrat', sans-serif; font-size: 11px; box-sizing: border-box; transition:all 300ms cubic-bezier(0.25, 0.8, 0.25, 1);",
+        "attributes": {},
         "children": [
           {
             "tag": "span",
             "text": "",
             "class": "span-data",
             "style": "display: inline-block; max-height: 11px; padding: 0 5px; opacity: 0; line-height: 1; font-family: 'Montserrat', sans-serif; font-size: 11px; box-sizing: border-box;",
+            "attributes": {},
             "children": []
           }
         ]
@@ -38,16 +41,19 @@
         "text": "Data",
         "class": "label-data",
         "style": "position: absolute; z-index: 20; top: 50%; left: 10px; display: inline-block; padding: 0 5px; color: var(--text-muted, #777); pointer-events: none; font-family: 'Montserrat', sans-serif; font-size: 14px; line-height: 1; transform: translateY(-50%); transition: all 300ms cubic-bezier(0.25, 0.8, 0.25, 1); box-sizing: border-box;",
-        "attributes": { "for": "input4" },
+        "attributes": {
+          "for": "input4"
+        },
         "children": []
       }
     ]
   },
   {
     "tag": "script",
+    "text": "/* @component: fieldset-input-data */\n(function () {\n  function initDataInputs() {\n    document.querySelectorAll('.js-container-input-data').forEach(function (fs) {\n      if (fs.dataset.initialized === 'true') return;\n      fs.dataset.initialized = 'true';\n      const input = fs.querySelector('input');\n      const label = fs.querySelector('label');\n      const legendSpan = fs.querySelector('legend span');\n      if (label && legendSpan) {\n        legendSpan.textContent = label.textContent;\n      }\n      if (input) {\n        function checkVal() {\n          fs.classList.toggle('has-value', !!input.value);\n        }\n        input.addEventListener('input', checkVal);\n        input.addEventListener('change', checkVal);\n        checkVal();\n      }\n    });\n  }\n  if (document.readyState === 'loading') {\n    document.addEventListener('DOMContentLoaded', initDataInputs);\n  } else {\n    initDataInputs();\n  }\n  setTimeout(initDataInputs, 300);\n})();\n/* @end: fieldset-input-data */",
     "class": "",
+    "style": "",
     "attributes": {},
-    "text": "/* @component: .js-container-input-data */ (function () { function initInputData() { document.querySelectorAll('.js-container-input-data').forEach(function (fs) { if (fs.dataset.init === 'true') return; fs.dataset.init = 'true'; const input = fs.querySelector('input'); const label = fs.querySelector('label'); const legendSpan = fs.querySelector('legend span'); if (label && legendSpan) { legendSpan.innerHTML = label.innerHTML; } if (input) { function updateValueClass() { if (input.value) { fs.classList.add('has-value'); } else { fs.classList.remove('has-value'); } } updateValueClass(); input.addEventListener('input', updateValueClass); input.addEventListener('change', updateValueClass); input.addEventListener('blur', updateValueClass); fs.addEventListener('click', function (e) { if (e.target !== input) { input.focus(); } if (typeof input.showPicker === 'function') { try { input.showPicker(); } catch (err) {} } }); } }); } if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', initInputData); } else { initInputData(); } })(); /* @end: .js-container-input-data */",
     "children": []
   }
 ]

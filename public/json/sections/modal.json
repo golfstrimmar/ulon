@@ -1,80 +1,90 @@
 [
   {
-    "tag": "button",
-    "text": "Open modal",
-    "class": "btn-open",
-    "style": "font-size: 14px; color: var(--slate-100); font-weight: 400; line-height: 1; font-family: 'Montserrat', sans-serif; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; gap: 0.5rem; padding: 0.25rem 0.5rem; border-radius: 0.25rem; transition: all 200ms ease-in-out; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08); background-color: var(--navy-300); border: 1px solid var(--navy-300);",
-    "children": [],
-    "attributes": {
-      "data-target": "cssDialog"
-    }
-  },
-  {
-    "tag": "dialog",
+    "tag": "div",
     "text": "",
-    "class": "mod-popup",
-    "style": "position: relative;max-height: 90vh; max-width: 400px; width: 40vw; padding: 0; background: var(--color-white); color: var(--color-black); border: none; border-radius: 8px; overflow: hidden;",
+    "class": "modal-container",
+    "style": "--modal-btn-bg: var(--navy-300, #94a3b8); --modal-btn-hover: var(--navy-900, #0f172a); --modal-bg: var(--color-white, #ffffff); --modal-radius: 8px; --modal-backdrop: rgba(0, 0, 0, 0.95); display: inline-block; position: relative;",
+    "attributes": {},
     "children": [
       {
         "tag": "button",
-        "text": "",
-        "class": "mod__close",
-        "style": "position: absolute; top: 10px; right: 10px; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; margin: 0; padding: 0; cursor: pointer; background: transparent; border: none; color: var(--color-white); transition: color 0.3s ease; z-index: 5",
-        "children": [
-          {
-            "tag": "img",
-            "text": "",
-            "class": "svg-wrapper",
-            "style": "width: 100%; height: 100%; display: block;",
-            "children": [],
-            "attributes": {
-              "alt": "close",
-              "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZT0iY3VycmVudENvbG9yIiBhcmlhLWhpZGRlbj0idHJ1ZSIgZGF0YS1zbG90PSJpY29uIj4KICA8cGF0aCBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGQ9Ik02IDE4IDE4IDZNNiA2bDEyIDEyIi8+Cjwvc3ZnPgo="
-            }
-          }
-        ],
+        "text": "Open modal",
+        "class": "btn-open",
+        "style": "font-size: 14px; color: var(--slate-100); font-weight: 400; line-height: 1; font-family: 'Montserrat', sans-serif; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; gap: 0.5rem; padding: 0.25rem 0.5rem; border-radius: 0.25rem; transition: all 200ms ease-in-out; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08); background-color: var(--navy-300); border: 1px solid var(--navy-300);",
         "attributes": {
-          "type": "button",
-          "aria-label": "Close modal"
-        }
+          "data-target": "cssDialog"
+        },
+        "children": []
       },
       {
-        "tag": "div",
+        "tag": "dialog",
         "text": "",
-        "class": "mod__inner",
-        "style": " max-height: 90vh; padding: 20px; overflow-y: auto;",
+        "class": "mod-popup",
+        "style": "position: relative;max-height: 90vh; max-width: 400px; width: 40vw; padding: 0; background: var(--color-white); color: var(--color-black); border: none; border-radius: 8px; overflow: hidden;",
+        "attributes": {
+          "id": "cssDialog"
+        },
         "children": [
           {
-            "tag": "p",
-            "text": "Lorem, ipsum dolor sit amet consectetur adipisicing elit. Nostrum doloribus dignissimos, consectetur pariatur non itaque ullam atque cupiditate in at illum, cum nobis ea, exercitationem odit dolores rem nam. Esse.",
-            "class": "",
-            "style": "margin: 0;",
-            "children": [],
-            "attributes": {}
+            "tag": "button",
+            "text": "",
+            "class": "mod__close",
+            "style": "position: absolute; top: 10px; right: 10px; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; margin: 0; padding: 0; cursor: pointer; background: transparent; border: none; color: var(--color-white); transition: color 0.3s ease; z-index: 5",
+            "attributes": {
+              "type": "button",
+              "aria-label": "Close modal"
+            },
+            "children": [
+              {
+                "tag": "img",
+                "text": "",
+                "class": "svg-wrapper",
+                "style": "width: 100%; height: 100%; display: block;",
+                "attributes": {
+                  "alt": "close",
+                  "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZT0iY3VycmVudENvbG9yIiBhcmlhLWhpZGRlbj0idHJ1ZSIgZGF0YS1zbG90PSJpY29uIj4KICA8cGF0aCBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGQ9Ik02IDE4IDE4IDZNNiA2bDEyIDEyIi8+Cjwvc3ZnPgo="
+                },
+                "children": []
+              }
+            ]
           },
           {
-            "tag": "form",
+            "tag": "div",
             "text": "",
-            "class": "mod__form",
-            "style": "margin: 0;",
-            "children": [],
-            "attributes": {
-              "method": "dialog"
-            }
+            "class": "mod__inner",
+            "style": " max-height: 90vh; padding: 20px; overflow-y: auto;",
+            "attributes": {},
+            "children": [
+              {
+                "tag": "p",
+                "text": "Lorem, ipsum dolor sit amet consectetur adipisicing elit. Nostrum doloribus dignissimos, consectetur pariatur non itaque ullam atque cupiditate in at illum, cum nobis ea, exercitationem odit dolores rem nam. Esse.",
+                "class": "",
+                "style": "margin: 0;",
+                "attributes": {},
+                "children": []
+              },
+              {
+                "tag": "form",
+                "text": "",
+                "class": "mod__form",
+                "style": "margin: 0;",
+                "attributes": {
+                  "method": "dialog"
+                },
+                "children": []
+              }
+            ]
           }
-        ],
-        "attributes": {}
+        ]
       }
-    ],
-    "attributes": {
-      "id": "cssDialog"
-    }
+    ]
   },
   {
     "tag": "script",
-    "text": "/* @component: mod-popup */ (function () { if (!document.querySelector('#mod-popup-styles')) { const style = document.createElement('style'); style.id = 'mod-popup-styles'; style.textContent = '.btn-open:hover { border: 1px solid var(--navy-900); background-color: var(--navy-900); } .btn-open:active { transform: translateY(1px); } .mod-popup::backdrop { background-color: rgba(0, 0, 0, 0.95); backdrop-filter: blur(4px); } .mod__close:hover { color: var(--accent); }'; document.head.appendChild(style); } if (!window.__modPopupInit) { window.__modPopupInit = true; document.addEventListener('click', function (event) { const closeButton = event.target.closest('.mod__close'); if (closeButton) { const modal = closeButton.closest('dialog') || document.querySelector('.mod-popup'); if (modal && typeof modal.close === 'function') { modal.close(); } return; } const openButton = event.target.closest('.btn-open'); if (!openButton) return; const targetId = openButton.getAttribute('data-target'); const modal = targetId ? document.getElementById(targetId) : document.querySelector('.mod-popup'); if (modal && typeof modal.showModal === 'function') { modal.showModal(); } }); } document.querySelectorAll('.mod-popup').forEach(function (modal) { if (modal.dataset.init === 'true') return; modal.dataset.init = 'true'; modal.addEventListener('click', function (event) { if (event.target === modal && typeof modal.close === 'function') { modal.close(); } }); }); })(); /* @end: mod-popup */",
+    "text": "/* @component: modal-popup */\n(function () {\n  if (window.__modPopupInit) return;\n  window.__modPopupInit = true;\n  document.addEventListener('click', function (e) {\n    const closeBtn = e.target.closest('.mod__close');\n    if (closeBtn) {\n      const modal = closeBtn.closest('dialog') || document.querySelector('.mod-popup');\n      if (modal && typeof modal.close === 'function') modal.close();\n      return;\n    }\n    const openBtn = e.target.closest('.btn-open');\n    if (openBtn) {\n      const targetId = openBtn.getAttribute('data-target');\n      const modal = targetId ? document.getElementById(targetId) : document.querySelector('.mod-popup');\n      if (modal && typeof modal.showModal === 'function') modal.showModal();\n    }\n  });\n  document.querySelectorAll('.mod-popup').forEach(function (modal) {\n    if (modal.dataset.initialized === 'true') return;\n    modal.dataset.initialized = 'true';\n    modal.addEventListener('click', function (e) {\n      if (e.target === modal && typeof modal.close === 'function') modal.close();\n    });\n  });\n})();\n/* @end: modal-popup */",
     "class": "",
     "style": "",
+    "attributes": {},
     "children": []
   }
 ]

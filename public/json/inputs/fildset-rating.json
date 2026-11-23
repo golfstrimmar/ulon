@@ -3,7 +3,7 @@
     "tag": "fieldset",
     "text": "",
     "class": "field-rating",
-    "style": "position: relative;\r\nfont-size: 30px;\r\nmargin: 0;\r\npadding: 0;\r\nborder: none;\r\ndisplay: inline-flex;\r\nflex-direction: row-reverse;\r\noverflow: hidden;\r\ncolumn-gap: 5px;\r\n\r\nlabel {\r\n  cursor: pointer;\r\n  z-index: 4;\r\n  padding: 0;\r\n  width: 25px;\r\n  height: 35px;\r\n\r\n  &:hover svg,\r\n  &:hover ~ label svg {\r\n    fill: #fde68a !important;\r\n    stroke: #fde68a !important;\r\n  }\r\n\r\n  svg {\r\n    display: block;\r\n    transition: fill 0.2s ease, stroke 0.2s ease;\r\n    fill: #e2e8f0;\r\n    stroke: #e2e8f0;\r\n    height: 100%;\r\n    width: 100%;\r\n    pointer-events: none;\r\n  }\r\n}\r\n\r\ninput {\r\n  position: absolute !important;\r\n  top: 0;\r\n  left: 0 !important;\r\n  width: 1px !important;\r\n  height: 1px !important;\r\n  opacity: 0 !important;\r\n  pointer-events: none !important;\r\n\r\n  &:checked + label svg,\r\n  &:checked + label ~ label svg {\r\n    fill: #fbbf24 !important;\r\n    stroke: #fbbf24 !important;\r\n  }\r\n\r\n  &:checked + label:hover svg,\r\n  &:checked + label:hover ~ label svg,\r\n  &:checked ~ label:hover svg,\r\n  &:checked ~ label:hover ~ label svg {\r\n    fill: #fde68a !important;\r\n    stroke: #fde68a !important;\r\n  }\r\n}",
+    "style": "--rating-active: var(--amber-400, #fbbf24); --rating-hover: var(--amber-200, #fde68a); --rating-empty: var(--slate-200, #e2e8f0); position: relative; font-size: 30px; margin: 0; padding: 0; border: none; display: inline-flex; flex-direction: row-reverse; overflow: hidden; column-gap: 5px; label { cursor: pointer; z-index: 4; padding: 0; width: 25px; height: 35px; &:hover svg, &:hover ~ label svg { fill: var(--rating-hover) !important; stroke: var(--rating-hover) !important; } svg { display: block; transition: fill 0.2s ease, stroke 0.2s ease; fill: var(--rating-empty); stroke: var(--rating-empty); height: 100%; width: 100%; pointer-events: none; } } input { position: absolute !important; top: 0; left: 0 !important; width: 1px !important; height: 1px !important; opacity: 0 !important; pointer-events: none !important; &:checked + label svg, &:checked + label ~ label svg { fill: var(--rating-active) !important; stroke: var(--rating-active) !important; } &:checked + label:hover svg, &:checked + label:hover ~ label svg, &:checked ~ label:hover svg, &:checked ~ label:hover ~ label svg { fill: var(--rating-hover) !important; stroke: var(--rating-hover) !important; } }",
     "attributes": {},
     "children": [
       {
@@ -24,7 +24,9 @@
         "text": "",
         "class": "",
         "style": "",
-        "attributes": { "for": "rating5" },
+        "attributes": {
+          "for": "rating5"
+        },
         "children": [
           {
             "tag": "svg",
@@ -74,7 +76,9 @@
         "text": "",
         "class": "",
         "style": "",
-        "attributes": { "for": "rating4" },
+        "attributes": {
+          "for": "rating4"
+        },
         "children": [
           {
             "tag": "svg",
@@ -124,7 +128,9 @@
         "text": "",
         "class": "",
         "style": "",
-        "attributes": { "for": "rating3" },
+        "attributes": {
+          "for": "rating3"
+        },
         "children": [
           {
             "tag": "svg",
@@ -174,7 +180,9 @@
         "text": "",
         "class": "",
         "style": "",
-        "attributes": { "for": "rating2" },
+        "attributes": {
+          "for": "rating2"
+        },
         "children": [
           {
             "tag": "svg",
@@ -224,7 +232,9 @@
         "text": "",
         "class": "",
         "style": "",
-        "attributes": { "for": "rating1" },
+        "attributes": {
+          "for": "rating1"
+        },
         "children": [
           {
             "tag": "svg",

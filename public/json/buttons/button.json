@@ -3,7 +3,7 @@
     "tag": "button",
     "text": "",
     "class": "btn",
-    "style": "display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease-in-out; border: 1px solid transparent;&:hover { background-color: var(--accent-hover); color: var(--color-white); } &:active { transform: translateY(1px); }",
+    "style": "--btn-bg: transparent; --btn-color: inherit; --btn-border: transparent; --btn-hover-bg: var(--accent-hover, #2563eb); --btn-hover-color: var(--color-white, #ffffff); --btn-hover-border: transparent; --btn-radius: 6px; --btn-padding: 8px 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: var(--btn-padding); border-radius: var(--btn-radius); border: 1px solid var(--btn-border); background-color: var(--btn-bg); color: var(--btn-color); cursor: pointer; transition: all 0.2s ease-in-out; &:hover { background-color: var(--btn-hover-bg); color: var(--btn-hover-color); border-color: var(--btn-hover-border); } &:active { transform: translateY(1px); }",
     "children": [],
     "attributes": {
       "type": "button"

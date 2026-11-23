@@ -3,7 +3,7 @@
     "tag": "section",
     "text": "",
     "class": "bunner-slider",
-    "style": "padding: 0 !important; margin: 0 !important; background: var(--slate-900);",
+    "style": "--banner-bg: var(--slate-900, #0f172a); --banner-text: var(--color-white, #ffffff); --banner-accent: var(--accent, #2563eb); padding: 0 !important; margin: 0 !important; background-color: var(--banner-bg); width: 100%; position: relative; overflow: hidden;",
     "attributes": {},
     "children": [
       {
@@ -72,45 +72,49 @@
                         "text": "div",
                         "class": "slide__body",
                         "style": "margin: 0 618px 0 414px;\nposition: relative;\nz-index: 50;\n\n&::before {\n  content: \"\";\n  width: 124px;\n  height: 383px;\n  border: 4px solid var(--accent);\n  border-right: none;\n  left: 0;\n  position: absolute;\n  top: 0;\n}\n\npadding: 50px 0 0 28px;\n\ndisplay: flex;\nflex-direction: column;\nalign-items: flex-start;\ngap: 10px;\n",
+                        "attributes": {},
                         "children": [
                           {
                             "tag": "h1",
                             "text": "Welcome Home ",
                             "class": "",
                             "style": "text-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);\r\nfont-size: 96px;\r\nfont-weight: bold;\r\nline-height: 1.04;\r\nfont-family: var(--font-merriweather) !important;\r\nwidth: max-content;\r\nmax-width: 814px;\r\ntext-align: left;",
+                            "attributes": {},
                             "children": [
                               {
                                 "tag": "span",
                                 "text": "To",
                                 "class": "span-black",
                                 "style": "color: var(--accent);\nmargin: 0 20px 0 0;",
-                                "children": [],
-                                "attributes": {}
+                                "attributes": {},
+                                "children": []
                               },
                               {
                                 "tag": "span",
                                 "text": "Luxury",
                                 "class": "",
                                 "style": "",
-                                "children": [],
-                                "attributes": {}
+                                "attributes": {},
+                                "children": []
                               }
-                            ],
-                            "attributes": {}
+                            ]
                           },
                           {
                             "tag": "button",
                             "text": "",
                             "class": "button-bunner",
                             "style": "display: inline-flex;z-index: 5;\nalign-items: center;\njustify-content: center;\ncursor: pointer;\ngap: 0.5rem;\ntransition: all 200ms ease-in-out;\nbackground: transparent;\ncolor: var(--color-white);\n\n&:active {\n  transform: translateY(1px);\n}\n\n&:hover {\n  color: var(--accent-hover);\n}\n\nmargin: 40px 0 0 0;",
+                            "attributes": {
+                              "type": "button"
+                            },
                             "children": [
                               {
                                 "tag": "span",
                                 "text": "Book a consultation",
                                 "class": "",
                                 "style": "font-size: 20px;\n",
-                                "children": [],
-                                "attributes": {}
+                                "attributes": {},
+                                "children": []
                               },
                               {
                                 "tag": "i",
@@ -148,11 +152,9 @@
                                   }
                                 ]
                               }
-                            ],
-                            "attributes": { "type": "button" }
+                            ]
                           }
-                        ],
-                        "attributes": {}
+                        ]
                       }
                     ]
                   },
@@ -190,45 +192,49 @@
                         "text": "div",
                         "class": "slide__body",
                         "style": "margin: 0 618px 0 414px;\nposition: relative;\nz-index: 50;\n\n&::before {\n  content: \"\";\n  width: 124px;\n  height: 383px;\n  border: 4px solid var(--accent);\n  border-right: none;\n  left: 0;\n  position: absolute;\n  top: 0;\n}\n\npadding: 50px 0 0 28px;\n\ndisplay: flex;\nflex-direction: column;\nalign-items: flex-start;\ngap: 10px;\n",
+                        "attributes": {},
                         "children": [
                           {
                             "tag": "h1",
                             "text": "Come back Home ",
                             "class": "",
                             "style": "text-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);\r\nfont-size: 96px;\r\nfont-weight: bold;\r\nline-height: 1.04;\r\nfont-family: var(--font-merriweather) !important;\r\nwidth: max-content;\r\nmax-width: 814px;\r\ntext-align: left;",
+                            "attributes": {},
                             "children": [
                               {
                                 "tag": "span",
                                 "text": "To",
                                 "class": "span-black",
                                 "style": "color: var(--accent);\nmargin: 0 20px 0 0;",
-                                "children": [],
-                                "attributes": {}
+                                "attributes": {},
+                                "children": []
                               },
                               {
                                 "tag": "span",
                                 "text": "Luxury",
                                 "class": "",
                                 "style": "",
-                                "children": [],
-                                "attributes": {}
+                                "attributes": {},
+                                "children": []
                               }
-                            ],
-                            "attributes": {}
+                            ]
                           },
                           {
                             "tag": "button",
                             "text": "",
                             "class": "button-bunner",
                             "style": "display: inline-flex;z-index: 5;\nalign-items: center;\njustify-content: center;\ncursor: pointer;\ngap: 0.5rem;\ntransition: all 200ms ease-in-out;\nbackground: transparent;\ncolor: var(--color-white);\n\n&:active {\n  transform: translateY(1px);\n}\n\n&:hover {\n  color: var(--accent-hover);\n}\n\nmargin: 40px 0 0 0;",
+                            "attributes": {
+                              "type": "button"
+                            },
                             "children": [
                               {
                                 "tag": "span",
                                 "text": "Book a consultation",
                                 "class": "",
                                 "style": "font-size: 20px;\n",
-                                "children": [],
-                                "attributes": {}
+                                "attributes": {},
+                                "children": []
                               },
                               {
                                 "tag": "i",
@@ -266,11 +272,9 @@
                                   }
                                 ]
                               }
-                            ],
-                            "attributes": { "type": "button" }
+                            ]
                           }
-                        ],
-                        "attributes": {}
+                        ]
                       }
                     ]
                   }
@@ -620,9 +624,10 @@
   },
   {
     "tag": "script",
-    "class": "",
-    "attributes": {},
     "text": "/* @component: .bunner-swiper */ (function () { function initSwiper() { if (typeof Swiper !== 'undefined') { document.querySelectorAll('.bunner-swiper').forEach(function (el) { if (el.dataset.init === 'true') return; el.dataset.init = 'true'; const q = String.fromCharCode(34); const swiper = new Swiper(el, { slidesPerView: 1, loop: true, speed: 800, pagination: { el: el.querySelector('.swiper-pagination'), clickable: true, renderBullet: function (index, className) { const slides = el.querySelectorAll('.swiper-slide:not(.swiper-slide-duplicate)'); let slideTitle = 'Слайд'; if (slides[index]) { slideTitle = slides[index].getAttribute('data-title') || 'Слайд'; } return '<span class=' + q + className + q + '><span class=' + q + 'bullet-number' + q + '>' + (index + 1) + '</span><span class=' + q + 'bullet-text' + q + '>' + slideTitle + '</span></span>'; } }, navigation: { nextEl: el.querySelector('.swiper-button-next'), prevEl: el.querySelector('.swiper-button-prev') }, observer: true, observeParents: true }); setTimeout(function () { swiper.update(); }, 200); }); } else { setTimeout(initSwiper, 150); } } if (!document.getElementById('swiper-css')) { const link = document.createElement('link'); link.id = 'swiper-css'; link.rel = 'stylesheet'; link.href = 'https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css'; document.head.appendChild(link); } let script = document.getElementById('swiper-js'); if (!script) { script = document.createElement('script'); script.id = 'swiper-js'; script.src = 'https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js'; script.onload = initSwiper; document.head.appendChild(script); } else if (typeof Swiper === 'undefined') { script.addEventListener('load', initSwiper); } else { initSwiper(); } })(); /* @end: .bunner-swiper */",
+    "class": "",
+    "style": "",
+    "attributes": {},
     "children": []
   }
 ]

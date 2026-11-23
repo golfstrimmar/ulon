@@ -2,8 +2,8 @@
   {
     "tag": "footer",
     "text": "",
-    "class": "footer  style-footer",
-    "style": "color: var(--color-white);background: var(--navy-900); padding: 60px 0 30px;  border-top: 1px solid rgba(255, 255, 255, 0.1);.footer__body { display: grid; grid-template-columns: 1fr; gap: 40px; margin-bottom: 40px; } .footer__columns { display: grid; grid-template-columns: repeat(5, 1fr); gap: 30px; } .footer__main { display: flex; flex-direction: column; gap: 20px; } .footer__logo { display: flex; align-items: center; gap: 12px; text-decoration: none; } .footer__logo img { width: 32px; height: 32px; min-width: 32px; } .footer__logo p { color: var(--color-white); font-weight: 800; font-size: 20px; margin: 0; letter-spacing: 0.5px; } .footer__text { color: color-mix(in srgb, var(--color-white) 60%, transparent); line-height: 1.6; font-size: 14px; margin: 0; } .footer__title { color: var(--color-white); font-size: 14px; font-weight: 700; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1.2px; } .footer__list { display: grid; gap: 12px; list-style: none; padding: 0; margin: 0; } .footer__list a { color: color-mix(in srgb, var(--color-white) 60%, transparent); text-decoration: none; transition: 0.3s; font-size: 14px; &:hover { color: var(--accent); } } .footer__info { color: color-mix(in srgb, var(--color-white) 60%, transparent); font-size: 14px; line-height: 1.5; } .footer__info--hours { color: var(--sky-500); font-size: 14px; line-height: 1.5; font-weight: 500; } .footer__socs { display: flex; flex-direction: row; align-items: center; gap: 10px; } .footer__socs a { color: var(--color-white); text-decoration: none; transition: all 0.2s ease-in-out; font-size: 14px; height: 20px; width: 20px; display: inline-block; &:hover { color: var(--accent); } } .footer__socs .svg-node-wrapper { transition: all 0.2s ease-in-out; display: inline-block; line-height: 0; vertical-align: middle; width: 100%; height: 100%; } .footer__socs svg { width: 100%; height: 100%; display: block; } .footer__bottom { display: grid; padding-top: 30px; border-top: 1px solid rgba(255, 255, 255, 0.05); justify-content: center; } .footer__copy { color: color-mix(in srgb, var(--color-white) 60%, transparent); font-size: 13px; letter-spacing: 0.5px; }",
+    "class": "footer style-footer",
+    "style": "--footer-bg: var(--navy-900, #0f172a); --footer-text: var(--color-white, #ffffff); --footer-muted: color-mix(in srgb, var(--color-white, #ffffff) 60%, transparent); --footer-border: rgba(255, 255, 255, 0.1); --footer-accent: var(--accent, #38bdf8); color: var(--footer-text); background-color: var(--footer-bg); padding: 60px 0 30px; border-top: 1px solid var(--footer-border); width: 100%; box-sizing: border-box;",
     "attributes": {},
     "children": [
       {
@@ -20,24 +20,28 @@
             "text": "",
             "class": "footer__body",
             "style": "",
+            "attributes": {},
             "children": [
               {
                 "tag": "div",
                 "text": "",
                 "class": "footer__columns",
                 "style": "",
+                "attributes": {},
                 "children": [
                   {
                     "tag": "div",
                     "text": "",
                     "class": "footer__main",
                     "style": "",
+                    "attributes": {},
                     "children": [
                       {
                         "tag": "div",
                         "text": "",
                         "class": "footer__logo logo",
                         "style": "",
+                        "attributes": {},
                         "children": [
                           {
                             "tag": "a",
@@ -66,6 +70,7 @@
                             "text": "PLATFORM",
                             "class": "",
                             "style": "",
+                            "attributes": {},
                             "children": []
                           }
                         ]
@@ -75,6 +80,7 @@
                         "text": "Empowering developers with cutting-edge AI tools and a revolutionary layout\n            harmonization engine.",
                         "class": "footer__text",
                         "style": "",
+                        "attributes": {},
                         "children": []
                       }
                     ]
@@ -84,12 +90,14 @@
                     "text": "",
                     "class": "footer__col",
                     "style": "",
+                    "attributes": {},
                     "children": [
                       {
                         "tag": "h4",
                         "text": "Services",
                         "class": "footer__title",
                         "style": "",
+                        "attributes": {},
                         "children": []
                       },
                       {
@@ -97,12 +105,14 @@
                         "text": "",
                         "class": "footer__list",
                         "style": "",
+                        "attributes": {},
                         "children": [
                           {
                             "tag": "li",
                             "text": "",
                             "class": "",
                             "style": "",
+                            "attributes": {},
                             "children": [
                               {
                                 "tag": "a",
@@ -121,6 +131,7 @@
                             "text": "",
                             "class": "",
                             "style": "",
+                            "attributes": {},
                             "children": [
                               {
                                 "tag": "a",
@@ -139,6 +150,7 @@
                             "text": "",
                             "class": "",
                             "style": "",
+                            "attributes": {},
                             "children": [
                               {
                                 "tag": "a",
@@ -161,12 +173,14 @@
                     "text": "",
                     "class": "footer__col",
                     "style": "",
+                    "attributes": {},
                     "children": [
                       {
                         "tag": "h4",
                         "text": "Company",
                         "class": "footer__title",
                         "style": "",
+                        "attributes": {},
                         "children": []
                       },
                       {
@@ -174,12 +188,14 @@
                         "text": "",
                         "class": "footer__list",
                         "style": "",
+                        "attributes": {},
                         "children": [
                           {
                             "tag": "li",
                             "text": "",
                             "class": "",
                             "style": "",
+                            "attributes": {},
                             "children": [
                               {
                                 "tag": "a",
@@ -198,6 +214,7 @@
                             "text": "",
                             "class": "",
                             "style": "",
+                            "attributes": {},
                             "children": [
                               {
                                 "tag": "a",
@@ -216,6 +233,7 @@
                             "text": "",
                             "class": "",
                             "style": "",
+                            "attributes": {},
                             "children": [
                               {
                                 "tag": "a",
@@ -238,12 +256,14 @@
                     "text": "",
                     "class": "footer__col",
                     "style": "",
+                    "attributes": {},
                     "children": [
                       {
                         "tag": "h4",
                         "text": "Support",
                         "class": "footer__title",
                         "style": "",
+                        "attributes": {},
                         "children": []
                       },
                       {
@@ -251,12 +271,14 @@
                         "text": "",
                         "class": "footer__list",
                         "style": "",
+                        "attributes": {},
                         "children": [
                           {
                             "tag": "li",
                             "text": "",
                             "class": "",
                             "style": "",
+                            "attributes": {},
                             "children": [
                               {
                                 "tag": "a",
@@ -275,6 +297,7 @@
                             "text": "",
                             "class": "",
                             "style": "",
+                            "attributes": {},
                             "children": [
                               {
                                 "tag": "a",
@@ -293,6 +316,7 @@
                             "text": "",
                             "class": "",
                             "style": "",
+                            "attributes": {},
                             "children": [
                               {
                                 "tag": "a",
@@ -315,12 +339,14 @@
                     "text": "",
                     "class": "footer__col footer__col--contact",
                     "style": "",
+                    "attributes": {},
                     "children": [
                       {
                         "tag": "h4",
                         "text": "Contact Us",
                         "class": "footer__title",
                         "style": "",
+                        "attributes": {},
                         "children": []
                       },
                       {
@@ -328,12 +354,14 @@
                         "text": "",
                         "class": "footer__list",
                         "style": "",
+                        "attributes": {},
                         "children": [
                           {
                             "tag": "li",
                             "text": "",
                             "class": "",
                             "style": "",
+                            "attributes": {},
                             "children": [
                               {
                                 "tag": "a",
@@ -352,6 +380,7 @@
                             "text": "",
                             "class": "",
                             "style": "",
+                            "attributes": {},
                             "children": [
                               {
                                 "tag": "a",
@@ -370,6 +399,7 @@
                             "text": "123 Tech Avenue, Silicon Valley, CA",
                             "class": "footer__info",
                             "style": "",
+                            "attributes": {},
                             "children": []
                           },
                           {
@@ -377,6 +407,7 @@
                             "text": "Mon - Fri: 9:00 AM - 6:00 PM",
                             "class": "footer__info footer__info--hours",
                             "style": "",
+                            "attributes": {},
                             "children": []
                           },
                           {
@@ -384,6 +415,7 @@
                             "text": "",
                             "class": "footer__socs",
                             "style": "",
+                            "attributes": {},
                             "children": [
                               {
                                 "tag": "li",
@@ -408,6 +440,7 @@
                                         "text": "",
                                         "class": "svg-node-wrapper",
                                         "style": "",
+                                        "attributes": {},
                                         "children": [
                                           {
                                             "tag": "svg",
@@ -465,6 +498,7 @@
                                         "text": "",
                                         "class": "svg-node-wrapper",
                                         "style": "",
+                                        "attributes": {},
                                         "children": [
                                           {
                                             "tag": "svg",
@@ -522,6 +556,7 @@
                                         "text": "",
                                         "class": "svg-node-wrapper",
                                         "style": "",
+                                        "attributes": {},
                                         "children": [
                                           {
                                             "tag": "svg",
@@ -579,6 +614,7 @@
                                         "text": "",
                                         "class": "svg-node-wrapper",
                                         "style": "",
+                                        "attributes": {},
                                         "children": [
                                           {
                                             "tag": "svg",
@@ -639,12 +675,14 @@
                 "text": "",
                 "class": "footer__bottom",
                 "style": "",
+                "attributes": {},
                 "children": [
                   {
                     "tag": "p",
                     "text": "© 2026 PLATFORM. All rights reserved.",
                     "class": "footer__copy",
                     "style": "",
+                    "attributes": {},
                     "children": []
                   }
                 ]

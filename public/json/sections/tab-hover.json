@@ -3,16 +3,19 @@
     "tag": "div",
     "text": "",
     "class": "tab-hover",
-    "style": "position: relative; &:hover> .tab-hover__top .tab-hover__icon {transform: rotate(180deg); }",
+    "style": "--tab-bg: var(--color-white, #ffffff); --tab-text: var(--navy-900, #0f172a); --tab-accent: var(--accent, #2563eb); --tab-border: var(--border-color, var(--slate-200, #e2e8f0)); position: relative; &:hover > .tab-hover__top .tab-hover__icon { transform: rotate(180deg); }",
+    "attributes": {},
     "children": [
       {
         "tag": "div",
         "text": "tab hover",
         "class": "tab-hover__top",
         "style": " display: flex; justify-content: space-between; align-items: center;cursor: pointer; &:hover + .tab-hover__bottom { grid-template-rows: 1fr; opacity: 1; visibility: visible; } ",
+        "attributes": {},
         "children": [
           {
             "tag": "svg",
+            "text": "",
             "class": "tab-hover__icon",
             "style": "width: 20px; height: 20px; transition: transform 0.3s ease;",
             "attributes": {
@@ -25,6 +28,9 @@
             "children": [
               {
                 "tag": "path",
+                "text": "",
+                "class": "",
+                "style": "",
                 "attributes": {
                   "stroke-linecap": "round",
                   "stroke-linejoin": "round",
@@ -34,37 +40,41 @@
               }
             ]
           }
-        ],
-        "attributes": {}
+        ]
       },
       {
         "tag": "div",
         "text": "",
         "class": "tab-hover__bottom",
         "style": "position: relative; display: grid; grid-template-rows: 0fr; opacity: 0; visibility: hidden; transition: grid-template-rows 0.35s ease, opacity 0.25s ease, visibility 0.25s; &:hover { grid-template-rows: 1fr; opacity: 1; visibility: visible; }",
+        "attributes": {},
         "children": [
           {
             "tag": "div",
+            "text": "",
             "class": "tab-hover__inner",
             "style": "min-height: 0; overflow: hidden;",
+            "attributes": {},
             "children": [
               {
                 "tag": "p",
                 "text": "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Iusto consequatur minus quam, nisi perferendis, vel quaerat commodi deleniti molestias laboriosam saepe, eius quisquam dignissimos laborum vero repellat dolorem. Autem, ab!",
                 "class": "p-custom",
+                "style": "",
+                "attributes": {},
                 "children": []
               },
               {
                 "tag": "p",
                 "text": "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Iusto consequatur minus quam, nisi perferendis, vel quaerat commodi deleniti molestias laboriosam saepe, eius quisquam dignissimos laborum vero repellat dolorem. Autem, ab!",
                 "class": "p-custom",
+                "style": "",
+                "attributes": {},
                 "children": []
               }
-            ],
-            "attributes": {}
+            ]
           }
-        ],
-        "attributes": {}
+        ]
       }
     ]
   }

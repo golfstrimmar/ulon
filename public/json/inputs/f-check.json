@@ -3,30 +3,31 @@
     "tag": "div",
     "text": "",
     "class": "input-check",
-    "style": "position: relative; display: flex; align-items: center; gap: 20px; height: 20px;",
+    "style": "--check-border: var(--form-check-border, var(--slate-400, #94a3b8)); --check-active: var(--form-check-active, var(--accent, #2563eb)); --check-text: var(--form-check-text, var(--navy-900, #0f172a)); position: relative; display: inline-flex; align-items: center; min-height: 20px;",
+    "attributes": {},
     "children": [
       {
         "tag": "input",
         "text": "",
-        "class": "",
-        "style": "position: fixed !important; left: -9999px !important; height: 0; width: 0; &:checked+label::after { opacity: 1; }",
+        "class": "input-check-native",
+        "style": "position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; &:checked + label::before { border-color: var(--check-active); } &:checked + label::after { opacity: 1; } &:focus-visible + label::before { outline: 2px solid var(--check-active); outline-offset: 2px; }",
         "attributes": {
           "id": "input-check",
-          "name": "",
+          "name": "input-check",
           "type": "checkbox"
-        }
+        },
+        "children": []
       },
       {
         "tag": "label",
         "text": "Checkbox",
-        "class": "",
-        "style": "display: inline-block; margin: 0 0 0 20px; cursor: pointer; transition: all 0.2s; font-size: 14px; &::before { content: ''; position: absolute; left: 0; top: 50%; border-radius: 4px; width: 14px; height: 14px; transform: translateY(-50%); background-color: transparent; transition: all 0.3s; border: 2px solid var(--bg-base); } &::after { content: ''; position: absolute; width: 12px; height: 12px; top: 50%; left: 3px; border-radius: 2px; transform: translateY(-50%);  background-color: var(--bg-base); transition: all 0.3s; opacity: 0; }",
-        "children": [],
+        "class": "input-check-label",
+        "style": "position: relative; display: inline-flex; align-items: center; padding-left: 24px; cursor: pointer; font-size: 14px; line-height: 20px; color: var(--check-text); user-select: none; transition: color 0.2s ease; &::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; border-radius: 4px; background-color: transparent; border: 2px solid var(--check-border); transition: all 0.2s ease; box-sizing: border-box; } &::after { content: ''; position: absolute; left: 4px; top: 50%; transform: translateY(-50%); width: 8px; height: 8px; border-radius: 2px; background-color: var(--check-active); transition: all 0.2s ease; opacity: 0; box-sizing: border-box; } &:hover::before { border-color: var(--check-active); }",
         "attributes": {
           "for": "input-check"
-        }
+        },
+        "children": []
       }
-    ],
-    "attributes": {}
+    ]
   }
 ]

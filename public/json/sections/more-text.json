@@ -3,7 +3,7 @@
     "tag": "div",
     "text": "",
     "class": "more-text",
-    "style": "",
+    "style": "--more-text-color: var(--navy-900, #0f172a); --more-text-accent: var(--accent, #2563eb); position: relative; width: 100%; box-sizing: border-box;",
     "attributes": {},
     "children": [
       {
@@ -72,15 +72,15 @@
             ]
           }
         ]
-      },
-      {
-        "tag": "script",
-        "text": "/* @component: more-text */ (function () { function initRew() { const rewSlides = [...document.querySelectorAll('.more-text')]; rewSlides.forEach((container) => { const btn = container.querySelector('a.more-text-link, .more-text_link'); if (!btn) return; const span = btn.querySelector('.more-text-span, span'); const text = container.querySelector('.more-text-p'); const svg = btn.querySelector('.more-text-svg, .more-text_svg'); if (!span || !text) return; text.style.overflow = 'hidden'; let isAnimating = false; btn.addEventListener('click', (e) => { e.preventDefault(); if (isAnimating) return; isAnimating = true; const isActive = text.classList.toggle('_is-active'); if (svg) svg.style.transform = isActive ? 'rotate(180deg)' : 'rotate(0deg)'; const collapsedHeight = '4.5em'; const fullHeight = text.scrollHeight + 'px'; const heightAnim = text.animate([{ maxHeight: isActive ? collapsedHeight : fullHeight }, { maxHeight: isActive ? fullHeight : collapsedHeight }], { duration: 250, easing: 'ease', fill: 'forwards' }); const anim = span.animate([{ opacity: '1' }, { opacity: '0' }], { duration: 125, easing: 'ease', fill: 'forwards' }); anim.addEventListener('finish', () => { span.textContent = isActive ? 'Скрыть' : 'Читать далее'; span.animate([{ opacity: '0' }, { opacity: '1' }], { duration: 125, easing: 'ease', fill: 'forwards' }); }); heightAnim.addEventListener('finish', () => { isAnimating = false; }); }); }); } if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', initRew); } else { initRew(); } })(); /* @end: more-text */",
-        "class": "",
-        "style": "",
-        "attributes": {},
-        "children": []
       }
     ]
+  },
+  {
+    "tag": "script",
+    "text": "/* @component: more-text */\n(function () {\n  function initMoreText() {\n    document.querySelectorAll('.more-text').forEach(function (container) {\n      if (container.dataset.initialized === 'true') return;\n      container.dataset.initialized = 'true';\n      const btn = container.querySelector('.more-text-link');\n      const span = container.querySelector('.more-text-span');\n      const text = container.querySelector('.more-text-p');\n      const svg = container.querySelector('.more-text-svg');\n      if (!btn || !span || !text) return;\n      let isAnimating = false;\n      btn.addEventListener('click', function (e) {\n        e.preventDefault();\n        if (isAnimating) return;\n        isAnimating = true;\n        const isActive = text.classList.toggle('_is-active');\n        if (svg) svg.style.transform = isActive ? 'rotate(180deg)' : 'rotate(0deg)';\n        const collapsedHeight = '4.5em';\n        const fullHeight = text.scrollHeight + 'px';\n        const heightAnim = text.animate(\n          [{ maxHeight: isActive ? collapsedHeight : fullHeight }, { maxHeight: isActive ? fullHeight : collapsedHeight }],\n          { duration: 250, easing: 'ease', fill: 'forwards' }\n        );\n        span.textContent = isActive ? 'Скрыть' : 'Читать далее';\n        heightAnim.addEventListener('finish', function () { isAnimating = false; });\n      });\n    });\n  }\n  if (document.readyState === 'loading') {\n    document.addEventListener('DOMContentLoaded', initMoreText);\n  } else {\n    initMoreText();\n  }\n  setTimeout(initMoreText, 300);\n})();\n/* @end: more-text */",
+    "class": "",
+    "style": "",
+    "attributes": {},
+    "children": []
   }
 ]
