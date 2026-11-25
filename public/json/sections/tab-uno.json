@@ -69,92 +69,11 @@
         "children": [
           {
             "tag": "div",
-            "text": "",
+            "text": "lorem lorem lorem lorem lorem lorem lorem lorem lorem lorem lorem lorem ",
             "class": "tabs__pane",
-            "style": "visibility: hidden; opacity: 0; transition: opacity 0.2s ease-in-out; max-height: 0; &._is-active { visibility: visible; opacity: 1; max-height: 100vh; } ",
+            "style": "overflow: hidden; display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.3s ease; &._is-active { grid-template-rows: 1fr; } & > * { min-height: 0; overflow: hidden; }",
             "attributes": {},
-            "children": [
-              {
-                "tag": "section",
-                "text": "",
-                "class": "tabs",
-                "style": "",
-                "attributes": {},
-                "children": [
-                  {
-                    "tag": "div",
-                    "text": "",
-                    "class": "tabs__nav",
-                    "style": "",
-                    "attributes": {},
-                    "children": [
-                      {
-                        "tag": "button",
-                        "text": "Tab 1-1",
-                        "class": "tabs__btn",
-                        "style": "",
-                        "attributes": {},
-                        "children": [
-                          {
-                            "tag": "i",
-                            "text": "",
-                            "class": "svg-wrapper",
-                            "style": "",
-                            "attributes": {},
-                            "children": [
-                              {
-                                "tag": "svg",
-                                "text": "",
-                                "class": "w-6 h-6",
-                                "style": "",
-                                "attributes": {
-                                  "fill": "currentColor",
-                                  "xmlns": "http://www.w3.org/2000/svg",
-                                  "viewBox": "0 0 24 24",
-                                  "data-slot": "icon",
-                                  "aria-hidden": "true"
-                                },
-                                "children": [
-                                  {
-                                    "tag": "path",
-                                    "text": "",
-                                    "class": "",
-                                    "style": "",
-                                    "attributes": {
-                                      "d": "M12.53 16.28a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 0 1 1.06-1.06L12 14.69l6.97-6.97a.75.75 0 1 1 1.06 1.06l-7.5 7.5Z",
-                                      "clip-rule": "evenodd",
-                                      "fill-rule": "evenodd"
-                                    },
-                                    "children": []
-                                  }
-                                ]
-                              }
-                            ]
-                          }
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "div",
-                    "text": "",
-                    "class": "tabs__content",
-                    "style": "",
-                    "attributes": {},
-                    "children": [
-                      {
-                        "tag": "div",
-                        "text": "1. You can place any text or other blocks here.",
-                        "class": "tabs__pane",
-                        "style": "",
-                        "attributes": {},
-                        "children": []
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
+            "children": []
           }
         ]
       }
@@ -162,7 +81,7 @@
   },
   {
     "tag": "script",
-    "text": "/* @component: tab-uno */\n(function () {\n  function initTabUno() {\n    document.querySelectorAll('.tab-uno').forEach(function (tabContainer) {\n      if (tabContainer.dataset.initialized === 'true') return;\n      tabContainer.dataset.initialized = 'true';\n      const btns = tabContainer.querySelectorAll('.tabs__btn');\n      const panes = tabContainer.querySelectorAll('.tabs__pane');\n      btns.forEach(function (btn, idx) {\n        btn.addEventListener('click', function (e) {\n          e.preventDefault();\n          const isActive = btn.classList.contains('_is-active');\n          btns.forEach(function (b) { b.classList.remove('_is-active'); });\n          panes.forEach(function (p) { p.classList.remove('_is-active'); });\n          if (!isActive) {\n            btn.classList.add('_is-active');\n            if (panes[idx]) panes[idx].classList.add('_is-active');\n          }\n        });\n      });\n    });\n  }\n  if (document.readyState === 'loading') {\n    document.addEventListener('DOMContentLoaded', initTabUno);\n  } else {\n    initTabUno();\n  }\n  setTimeout(initTabUno, 300);\n})();\n/* @end: tab-uno */",
+    "text": "/* @component: tab-uno */ (function () { if (window.__tabUnoInit) return; window.__tabUnoInit = true; function prepPane(pane) { pane.style.display = 'block'; pane.style.overflow = 'hidden'; pane.style.transition = 'height 0.3s ease'; } function initPanes() { document.querySelectorAll('.tab-uno .tabs__pane').forEach(function (pane) { prepPane(pane); pane.style.height = pane.classList.contains('_is-active') ? 'auto' : '0px'; }); } function openPane(pane) { prepPane(pane); const start = pane.offsetHeight; pane.style.height = start + 'px'; pane.classList.add('_is-active'); pane.offsetHeight; const target = pane.scrollHeight; pane.style.height = start === target ? 'auto' : target + 'px'; } function closePane(pane) { prepPane(pane); const start = pane.offsetHeight; pane.style.height = start + 'px'; pane.classList.remove('_is-active'); pane.offsetHeight; pane.style.height = '0px'; } if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', initPanes); } else { initPanes(); } document.addEventListener('transitionend', function (e) { if (e.propertyName === 'height' && e.target.classList.contains('tabs__pane')) { if (e.target.classList.contains('_is-active')) { e.target.style.height = 'auto'; } } }); document.addEventListener('click', function (e) { document.querySelectorAll('.tab-uno').forEach(function (root) { if (!root.contains(e.target)) { root.querySelectorAll('.tabs__btn._is-active').forEach(function (b) { b.classList.remove('_is-active'); }); root.querySelectorAll('.tabs__pane._is-active').forEach(function (p) { closePane(p); }); } }); const btn = e.target.closest('.tabs__btn'); if (!btn || !btn.closest('.tab-uno')) return; const directTabs = btn.closest('.tabs'); if (!directTabs) return; e.preventDefault(); const btns = Array.from(directTabs.querySelectorAll('.tabs__btn')) .filter(function (b) { return b.closest('.tabs') === directTabs; }); const panes = Array.from(directTabs.querySelectorAll('.tabs__pane')) .filter(function (p) { return p.closest('.tabs') === directTabs; }); const idx = btns.indexOf(btn); const isActive = btn.classList.contains('_is-active'); btns.forEach(function (b, i) { b.classList.remove('_is-active'); if (panes[i] && panes[i].classList.contains('_is-active')) { closePane(panes[i]); } }); if (!isActive) { btn.classList.add('_is-active'); if (panes[idx]) openPane(panes[idx]); } }); })(); /* @end: tab-uno */",
     "class": "",
     "style": "",
     "attributes": {},

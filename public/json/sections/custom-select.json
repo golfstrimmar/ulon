@@ -3,7 +3,7 @@
     "tag": "div",
     "text": "",
     "class": "custom-select",
-    "style": "--select-bg: var(--color-white, #ffffff); --select-border: var(--border-color, var(--slate-300, #cbd5e1)); --select-accent: var(--accent, #2563eb); --select-text: var(--navy-900, #0f172a); --select-hover: var(--slate-100, #f1f5f9); position: relative; width: 100%; box-sizing: border-box;",
+    "style": "--select-bg: var(--color-white, #ffffff); --select-border: var(--border-color, var(--slate-300, #cbd5e1)); --select-accent: var(--accent, #2563eb); --select-text: var(--navy-900, #0f172a); --select-hover: var(--slate-100, #f1f5f9); position: relative; width: 100%; box-sizing: border-box; &._is-active .dropdown-button { border-color: var(--select-accent); } &._is-active .svg-select { transform: rotate(180deg); }",
     "attributes": {
       "id": "custom-select"
     },
@@ -12,7 +12,7 @@
         "tag": "button",
         "text": "",
         "class": "dropdown-button",
-        "style": "width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; background: transparent; cursor: pointer; transition: all .2s ease; &:hover { color: var(--teal-600); }",
+        "style": "width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 12px; border: 1px solid var(--select-border); border-radius: 6px; background: var(--select-bg); color: var(--select-text); cursor: pointer; font-family: inherit; font-size: 14px; transition: border-color .2s ease, box-shadow .2s ease; &:hover { border-color: var(--select-accent); }",
         "attributes": {
           "type": "button"
         },
@@ -21,7 +21,7 @@
             "tag": "span",
             "text": "custom select",
             "class": "",
-            "style": "flex: 1; text-align: left; font-size: 14px;",
+            "style": "flex: 1; text-align: left; font-size: 14px; color: inherit; user-select: none;",
             "attributes": {},
             "children": []
           },
@@ -40,7 +40,7 @@
             "tag": "i",
             "text": "",
             "class": "svg-wrapper svg-select",
-            "style": "flex-shrink: 0; transform-origin: center; transition: all .2s ease; display: inline-block; transform: rotate(0deg); line-height: 0; vertical-align: middle; width: 20px; height: 20px; svg { width: 100%; height: 100%; display: inline-block; }  ",
+            "style": "flex-shrink: 0; transform-origin: center; transition: transform .25s ease; display: inline-block; line-height: 0; vertical-align: middle; width: 18px; height: 18px; svg { width: 100%; height: 100%; display: block; }",
             "attributes": {},
             "children": [
               {
@@ -78,14 +78,14 @@
         "tag": "ul",
         "text": "",
         "class": "dropdown-list",
-        "style": "position: absolute; left: 0; top: calc(100%); margin: 0; padding: 6px 0; list-style: none; border: 1px solid var(--navy-900); overflow: hidden; max-height: 0; opacity: 0; pointer-events: none; transition: all .2s ease; z-index: 100000; background: transparent; width: 100%;",
+        "style": "position: absolute; left: 0; top: calc(100% + 4px); margin: 0; padding: 4px 0; list-style: none; border: 1px solid var(--select-border); border-radius: 6px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1); background: var(--select-bg); width: 100%; box-sizing: border-box; overflow: hidden; height: 0; opacity: 0; display: none; z-index: 1000;",
         "attributes": {},
         "children": [
           {
             "tag": "li",
             "text": "Notes",
             "class": "dropdown-list__item",
-            "style": "padding: 0 4px; cursor: pointer; transition: all .2s ease; &:hover { color: var(--teal-500); }",
+            "style": "padding: 6px 12px; cursor: pointer; font-size: 14px; color: var(--select-text); transition: background .15s ease, color .15s ease; user-select: none; &:hover, &._is-selected { background: var(--select-hover); color: var(--select-accent); }",
             "attributes": {
               "data-value": "Notes"
             },
@@ -95,7 +95,7 @@
             "tag": "li",
             "text": "Photo",
             "class": "dropdown-list__item",
-            "style": "",
+            "style": "padding: 6px 12px; cursor: pointer; font-size: 14px; color: var(--select-text); transition: background .15s ease, color .15s ease; user-select: none; &:hover, &._is-selected { background: var(--select-hover); color: var(--select-accent); }",
             "attributes": {
               "data-value": "Photo"
             },
@@ -105,7 +105,7 @@
             "tag": "li",
             "text": "Dictionary",
             "class": "dropdown-list__item",
-            "style": "",
+            "style": "padding: 6px 12px; cursor: pointer; font-size: 14px; color: var(--select-text); transition: background .15s ease, color .15s ease; user-select: none; &:hover, &._is-selected { background: var(--select-hover); color: var(--select-accent); }",
             "attributes": {
               "data-value": "Dictionary"
             },
@@ -117,7 +117,7 @@
   },
   {
     "tag": "script",
-    "text": "/* @component: custom-select */\n(function () {\n  function initSelects() {\n    document.querySelectorAll('.custom-select').forEach(function (select) {\n      if (select.dataset.initialized === 'true') return;\n      select.dataset.initialized = 'true';\n      const btn = select.querySelector('.dropdown-button');\n      const span = select.querySelector('.dropdown-button span');\n      const hidden = select.querySelector('input[type=\"hidden\"]');\n      const items = select.querySelectorAll('.dropdown-list__item');\n      if (!btn) return;\n      btn.addEventListener('click', function (e) {\n        e.stopPropagation();\n        const wasActive = select.classList.contains('_is-active');\n        document.querySelectorAll('.custom-select._is-active').forEach(function (s) {\n          s.classList.remove('_is-active');\n        });\n        if (!wasActive) select.classList.add('_is-active');\n      });\n      items.forEach(function (item) {\n        item.addEventListener('click', function (e) {\n          e.stopPropagation();\n          const val = item.getAttribute('data-value') || item.textContent.trim();\n          if (hidden) hidden.value = val;\n          if (span) span.textContent = val;\n          select.classList.remove('_is-active');\n        });\n      });\n    });\n    document.addEventListener('click', function () {\n      document.querySelectorAll('.custom-select._is-active').forEach(function (s) {\n        s.classList.remove('_is-active');\n      });\n    });\n  }\n  if (document.readyState === 'loading') {\n    document.addEventListener('DOMContentLoaded', initSelects);\n  } else {\n    initSelects();\n  }\n  setTimeout(initSelects, 300);\n})();\n/* @end: custom-select */",
+    "text": "/* @component: custom-select */\n(function () {\n  if (window.__customSelectInit) return;\n  window.__customSelectInit = true;\n\n  function openSelect(select, list) {\n    select.classList.add('_is-active');\n    list.style.display = 'block';\n    list.style.pointerEvents = 'auto';\n    list.style.overflow = 'hidden';\n\n    list.style.paddingTop = '';\n    list.style.paddingBottom = '';\n    list.style.borderTopWidth = '';\n    list.style.borderBottomWidth = '';\n\n    list.style.transition = 'none';\n    list.style.height = 'auto';\n    var target = list.scrollHeight;\n    list.style.height = '0px';\n    list.style.opacity = '0';\n\n    list.offsetHeight;\n\n    list.style.transition = 'height 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s ease, padding 0.28s ease, border-width 0.28s ease';\n    list.style.opacity = '1';\n    list.style.height = target + 'px';\n  }\n\n  function closeSelect(select, list) {\n    list.style.overflow = 'hidden';\n    list.style.pointerEvents = 'none';\n\n    var start = list.scrollHeight || list.offsetHeight;\n    list.style.transition = 'none';\n    list.style.height = start + 'px';\n    list.style.opacity = '1';\n\n    list.offsetHeight;\n\n    list.style.transition = 'height 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s ease, padding 0.28s ease, border-width 0.28s ease';\n    list.style.opacity = '0';\n    list.style.height = '0px';\n    list.style.paddingTop = '0px';\n    list.style.paddingBottom = '0px';\n    list.style.borderTopWidth = '0px';\n    list.style.borderBottomWidth = '0px';\n\n    select.classList.remove('_is-active');\n  }\n\n  document.addEventListener('transitionend', function (e) {\n    if (e.propertyName === 'height' && e.target.classList.contains('dropdown-list')) {\n      var list = e.target;\n      var select = list.closest('.custom-select');\n      if (select && select.classList.contains('_is-active')) {\n        list.style.height = 'auto';\n        list.style.overflow = 'visible';\n      } else {\n        list.style.display = 'none';\n        list.style.paddingTop = '';\n        list.style.paddingBottom = '';\n        list.style.borderTopWidth = '';\n        list.style.borderBottomWidth = '';\n      }\n    }\n  });\n\n  document.addEventListener('click', function (e) {\n    var clickedItem = e.target.closest('.dropdown-list__item');\n    if (clickedItem) {\n      var select = clickedItem.closest('.custom-select');\n      if (!select) return;\n      var list = select.querySelector('.dropdown-list');\n      var span = select.querySelector('.dropdown-button span');\n      var hidden = select.querySelector('input[type=\"hidden\"]');\n      var val = clickedItem.getAttribute('data-value') || clickedItem.textContent.trim();\n\n      if (span) span.textContent = val;\n      if (hidden) {\n        hidden.value = val;\n        hidden.dispatchEvent(new Event('input', { bubbles: true }));\n        hidden.dispatchEvent(new Event('change', { bubbles: true }));\n      }\n\n      select.querySelectorAll('.dropdown-list__item').forEach(function (it) {\n        it.classList.remove('_is-selected');\n      });\n      clickedItem.classList.add('_is-selected');\n\n      if (list) closeSelect(select, list);\n      return;\n    }\n\n    var btn = e.target.closest('.dropdown-button');\n    if (btn) {\n      e.preventDefault();\n      var select = btn.closest('.custom-select');\n      if (!select) return;\n      var list = select.querySelector('.dropdown-list');\n      if (!list) return;\n\n      var isActive = select.classList.contains('_is-active');\n\n      document.querySelectorAll('.custom-select._is-active').forEach(function (s) {\n        if (s !== select) {\n          var otherList = s.querySelector('.dropdown-list');\n          if (otherList) closeSelect(s, otherList);\n        }\n      });\n\n      if (isActive) {\n        closeSelect(select, list);\n      } else {\n        openSelect(select, list);\n      }\n      return;\n    }\n\n    document.querySelectorAll('.custom-select._is-active').forEach(function (s) {\n      if (!s.contains(e.target)) {\n        var list = s.querySelector('.dropdown-list');\n        if (list) closeSelect(s, list);\n      }\n    });\n  });\n})();\n/* @end: custom-select */",
     "class": "",
     "style": "",
     "attributes": {},

@@ -3,21 +3,21 @@
     "tag": "div",
     "text": "",
     "class": "tab-hover-horisontal-wrapper",
-    "style": "--tab-bg: var(--color-white, #ffffff); --tab-text: var(--navy-900, #0f172a); --tab-accent: var(--teal-500, #14b8a6); min-height: 300px; position: relative;",
+    "style": "--tab-bg: var(--color-white, #ffffff); --tab-text: var(--navy-900, #0f172a); --tab-accent: var(--teal-500, #14b8a6); min-height: 300px; position: relative; padding: 10px;",
     "attributes": {},
     "children": [
       {
         "tag": "section",
         "text": "",
         "class": "tab-hover-horisontal",
-        "style": "display: inline-block; position: relative; &:hover { &>.btn-tab-hover { color: var(--teal-500); background: color-mix(in srgb, var(--teal-500) 25%, transparent); max-width: max-content; .svg-tab-hover { transform: rotate(180deg); } } &>.tab-hover-content-horisontal { visibility: visible; opacity: 1; transform: translate(0%, 0%); } }",
+        "style": "display: inline-block; position: relative;",
         "attributes": {},
         "children": [
           {
             "tag": "button",
-            "text": "Lorem",
+            "text": "Tab 1",
             "class": "btn-tab-hover",
-            "style": "display: flex; align-items: center; gap: 10px; background: transparent; transition: all 0.3s ease-in-out;",
+            "style": "display: flex; align-items: center; gap: 8px; padding: 4px 10px; border: 1px solid color-mix(in srgb, var(--tab-accent) 30%, transparent); border-radius: 4px; background: transparent; cursor: pointer; font-size: 14px; color: var(--tab-text); transition: all 0.3s ease-in-out; &:hover, &._is-active { color: var(--tab-accent); background: color-mix(in srgb, var(--tab-accent) 15%, transparent); border-color: var(--tab-accent); } &._is-active .svg-tab-hover { transform: rotate(180deg); }",
             "attributes": {
               "type": "button"
             },
@@ -26,7 +26,7 @@
                 "tag": "i",
                 "text": "",
                 "class": "svg-tab-hover",
-                "style": "transition: all 0.2s ease-in-out; display: inline-block; line-height: 0; vertical-align: middle; width: 15px; height: 15px; svg { width: 100%; height: 100%; display: inline-block; } transform: rotate(0deg);",
+                "style": "transition: transform 0.25s ease-in-out; display: inline-block; line-height: 0; vertical-align: middle; width: 15px; height: 15px; transform: rotate(0deg); svg { width: 100%; height: 100%; display: inline-block; }",
                 "attributes": {},
                 "children": [
                   {
@@ -64,21 +64,136 @@
             "tag": "div",
             "text": "",
             "class": "tab-hover-content-horisontal",
-            "style": "border: 1px solid color-mix(in srgb, var(--slate-400) 67%, transparent); border-radius: 4px; visibility: hidden; opacity: 0; transition: all 0.3s ease-in-out; display: inline-block; position: absolute; top: 0%; left: 100%; transform: translate(10%, 0%); width: max-content; padding: 2px 5px; background: var(--color-white);",
+            "style": "position: absolute; top: 0; left: calc(100% + 6px); box-sizing: border-box; background: var(--tab-bg, #ffffff); border: 1px solid color-mix(in srgb, var(--slate-400, #94a3b8) 40%, transparent); border-radius: 6px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08); width: 0; overflow: hidden; opacity: 0; pointer-events: none; transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease; z-index: 20; &::before { content: ''; position: absolute; top: -10px; bottom: -10px; right: 100%; width: 10px; background: transparent; } &._is-active { opacity: 1; pointer-events: auto; }",
             "attributes": {},
             "children": [
               {
-                "tag": "p",
-                "text": "Lorem ipsum dolor sit amet consectetur adipiscing elit sed do",
-                "class": "",
-                "style": "",
+                "tag": "div",
+                "text": "",
+                "class": "tab-hover-content-inner",
+                "style": "padding: 8px 12px; display: flex; flex-direction: column; gap: 8px; width: max-content; min-width: 190px;",
                 "attributes": {},
-                "children": []
+                "children": [
+                  {
+                    "tag": "p",
+                    "text": "Parent Tab Content",
+                    "class": "",
+                    "style": "margin: 0; font-size: 13px; color: var(--tab-text); font-weight: 600;",
+                    "attributes": {},
+                    "children": []
+                  },
+                  {
+                    "tag": "p",
+                    "text": "Hover over nested tab below:",
+                    "class": "",
+                    "style": "margin: 0; font-size: 12px; color: var(--slate-500, #64748b);",
+                    "attributes": {},
+                    "children": []
+                  },
+                  {
+                    "tag": "section",
+                    "text": "",
+                    "class": "tab-hover-horisontal",
+                    "style": "display: inline-block; position: relative;",
+                    "attributes": {},
+                    "children": [
+                      {
+                        "tag": "button",
+                        "text": "Nested Tab 1",
+                        "class": "btn-tab-hover",
+                        "style": "display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 8px; border: 1px solid color-mix(in srgb, var(--tab-accent) 25%, transparent); border-radius: 4px; background: transparent; cursor: pointer; font-size: 13px; color: var(--tab-text); transition: all 0.3s ease; width: 100%; &:hover, &._is-active { color: var(--tab-accent); background: color-mix(in srgb, var(--tab-accent) 12%, transparent); border-color: var(--tab-accent); } &._is-active .svg-tab-hover { transform: rotate(180deg); }",
+                        "attributes": {
+                          "type": "button"
+                        },
+                        "children": [
+                          {
+                            "tag": "i",
+                            "text": "",
+                            "class": "svg-tab-hover",
+                            "style": "transition: transform 0.25s ease-in-out; display: inline-block; line-height: 0; vertical-align: middle; width: 14px; height: 14px; transform: rotate(0deg); svg { width: 100%; height: 100%; display: inline-block; }",
+                            "attributes": {},
+                            "children": [
+                              {
+                                "tag": "svg",
+                                "text": "",
+                                "class": "",
+                                "style": "",
+                                "attributes": {
+                                  "xmlns": "http://www.w3.org/2000/svg",
+                                  "fill": "none",
+                                  "viewBox": "0 0 24 24",
+                                  "stroke-width": "1.5",
+                                  "stroke": "currentColor"
+                                },
+                                "children": [
+                                  {
+                                    "tag": "path",
+                                    "text": "",
+                                    "class": "",
+                                    "style": "",
+                                    "attributes": {
+                                      "stroke-linecap": "round",
+                                      "stroke-linejoin": "round",
+                                      "d": "m8.25 4.5 7.5 7.5-7.5 7.5"
+                                    },
+                                    "children": []
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "tag": "div",
+                        "text": "",
+                        "class": "tab-hover-content-horisontal",
+                        "style": "position: absolute; top: 0; left: calc(100% + 6px); box-sizing: border-box; background: var(--tab-bg, #ffffff); border: 1px solid color-mix(in srgb, var(--slate-400, #94a3b8) 40%, transparent); border-radius: 6px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08); width: 0; overflow: hidden; opacity: 0; pointer-events: none; transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease; z-index: 25; &::before { content: ''; position: absolute; top: -10px; bottom: -10px; right: 100%; width: 10px; background: transparent; } &._is-active { opacity: 1; pointer-events: auto; }",
+                        "attributes": {},
+                        "children": [
+                          {
+                            "tag": "div",
+                            "text": "",
+                            "class": "tab-hover-content-inner",
+                            "style": "padding: 8px 12px; display: flex; flex-direction: column; gap: 4px; width: max-content; min-width: 170px;",
+                            "attributes": {},
+                            "children": [
+                              {
+                                "tag": "p",
+                                "text": "Autonomous Nested Content",
+                                "class": "",
+                                "style": "margin: 0; font-size: 13px; font-weight: 600; color: var(--tab-text);",
+                                "attributes": {},
+                                "children": []
+                              },
+                              {
+                                "tag": "p",
+                                "text": "Operates independently on hover.",
+                                "class": "",
+                                "style": "margin: 0; font-size: 12px; color: var(--slate-500, #64748b);",
+                                "attributes": {},
+                                "children": []
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
               }
             ]
           }
         ]
       }
     ]
+  },
+  {
+    "tag": "script",
+    "text": "/* @component: tab-hover-horisontal */\n(function () {\n  if (window.__tabHorizontalInit) return;\n  window.__tabHorizontalInit = true;\n\n  var closeTimers = new Map();\n\n  function scheduleClose(pane, btn, delay) {\n    if (closeTimers.has(pane)) clearTimeout(closeTimers.get(pane));\n    var timer = setTimeout(function () {\n      if (btn) btn.classList.remove('_is-active');\n      closePane(pane);\n      closeTimers.delete(pane);\n    }, delay || 200);\n    closeTimers.set(pane, timer);\n  }\n\n  function cancelClose(pane) {\n    if (closeTimers.has(pane)) {\n      clearTimeout(closeTimers.get(pane));\n      closeTimers.delete(pane);\n    }\n  }\n\n  function cancelCloseHierarchy(tab) {\n    var current = tab;\n    while (current) {\n      var pane = current.querySelector('.tab-hover-content-horisontal');\n      if (pane && pane.closest('.tab-hover-horisontal') === current) {\n        cancelClose(pane);\n      }\n      current = current.parentElement ? current.parentElement.closest('.tab-hover-horisontal') : null;\n    }\n  }\n\n  function prepPane(pane) {\n    pane.style.overflow = 'hidden';\n    pane.style.boxSizing = 'border-box';\n    pane.style.transition = 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease';\n  }\n\n  function getTargetWidth(pane) {\n    var inner = pane.querySelector('.tab-hover-content-inner');\n    if (inner && inner.closest('.tab-hover-content-horisontal') === pane) {\n      var cs = window.getComputedStyle(pane);\n      var borderW = (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.borderRightWidth) || 0);\n      return Math.ceil(inner.getBoundingClientRect().width + borderW);\n    }\n    var prevWidth = pane.style.width;\n    pane.style.width = 'max-content';\n    var target = Math.ceil(pane.getBoundingClientRect().width);\n    pane.style.width = prevWidth;\n    return target;\n  }\n\n  function initPanes() {\n    document.querySelectorAll('.tab-hover-horisontal .tab-hover-content-horisontal').forEach(function (pane) {\n      if (pane.dataset.tabHInit === 'true') return;\n      pane.dataset.tabHInit = 'true';\n      prepPane(pane);\n      if (pane.classList.contains('_is-active')) {\n        pane.style.width = 'max-content';\n        pane.style.opacity = '1';\n        pane.style.pointerEvents = 'auto';\n        pane.style.overflow = 'visible';\n      } else {\n        pane.style.width = '0px';\n        pane.style.opacity = '0';\n        pane.style.pointerEvents = 'none';\n        pane.style.overflow = 'hidden';\n      }\n    });\n  }\n\n  function openPane(pane) {\n    cancelClose(pane);\n    prepPane(pane);\n    var start = pane.offsetWidth;\n    pane.style.overflow = 'hidden';\n    pane.style.width = start + 'px';\n    pane.classList.add('_is-active');\n    pane.style.pointerEvents = 'auto';\n\n    var target = getTargetWidth(pane);\n    pane.style.opacity = start === 0 ? '0' : '1';\n\n    pane.offsetWidth;\n\n    pane.style.opacity = '1';\n    if (start === target && target > 0) {\n      pane.style.width = 'max-content';\n      pane.style.overflow = 'visible';\n    } else {\n      pane.style.width = target + 'px';\n    }\n  }\n\n  function closePane(pane) {\n    pane.querySelectorAll('.btn-tab-hover._is-active').forEach(function (b) {\n      b.classList.remove('_is-active');\n    });\n    pane.querySelectorAll('.tab-hover-content-horisontal._is-active').forEach(function (p) {\n      closePane(p);\n    });\n\n    pane.style.overflow = 'hidden';\n    pane.style.pointerEvents = 'none';\n\n    var start = pane.scrollWidth || pane.offsetWidth;\n    pane.style.transition = 'none';\n    pane.style.width = start + 'px';\n    pane.style.opacity = '1';\n\n    pane.offsetWidth;\n\n    pane.style.transition = 'width 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s ease';\n    pane.classList.remove('_is-active');\n    pane.style.opacity = '0';\n    pane.style.width = '0px';\n  }\n\n  if (document.readyState === 'loading') {\n    document.addEventListener('DOMContentLoaded', initPanes);\n  } else {\n    initPanes();\n  }\n  setTimeout(initPanes, 300);\n\n  document.addEventListener('transitionend', function (e) {\n    if (e.propertyName === 'width' && e.target.classList.contains('tab-hover-content-horisontal')) {\n      var pane = e.target;\n      if (pane.classList.contains('_is-active')) {\n        pane.style.width = 'max-content';\n        pane.style.overflow = 'visible';\n      }\n    }\n  });\n\n  document.addEventListener('mouseover', function (e) {\n    var tab = e.target.closest('.tab-hover-horisontal');\n    if (!tab) return;\n\n    cancelCloseHierarchy(tab);\n\n    var btn = tab.querySelector('.btn-tab-hover');\n    var pane = tab.querySelector('.tab-hover-content-horisontal');\n    if (btn && pane && btn.closest('.tab-hover-horisontal') === tab && pane.closest('.tab-hover-horisontal') === tab) {\n      btn.classList.add('_is-active');\n      openPane(pane);\n    }\n  });\n\n  document.addEventListener('mouseout', function (e) {\n    var tab = e.target.closest('.tab-hover-horisontal');\n    if (!tab) return;\n\n    if (!e.relatedTarget || !tab.contains(e.relatedTarget)) {\n      var btn = tab.querySelector('.btn-tab-hover');\n      var pane = tab.querySelector('.tab-hover-content-horisontal');\n      if (btn && pane && btn.closest('.tab-hover-horisontal') === tab && pane.closest('.tab-hover-horisontal') === tab) {\n        scheduleClose(pane, btn, 200);\n      }\n    }\n  });\n\n  document.addEventListener('click', function (e) {\n    var btn = e.target.closest('.btn-tab-hover');\n    if (!btn) return;\n    var tab = btn.closest('.tab-hover-horisontal');\n    if (!tab) return;\n    var pane = tab.querySelector('.tab-hover-content-horisontal');\n    if (!pane || pane.closest('.tab-hover-horisontal') !== tab) return;\n\n    cancelClose(pane);\n    if (btn.classList.contains('_is-active')) {\n      btn.classList.remove('_is-active');\n      closePane(pane);\n    } else {\n      btn.classList.add('_is-active');\n      openPane(pane);\n    }\n  });\n})();\n/* @end: tab-hover-horisontal */",
+    "class": "",
+    "style": "",
+    "attributes": {},
+    "children": []
   }
 ]

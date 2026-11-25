@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useCallback, useRef, useMemo } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
-import { PencilSquareIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import { PencilSquareIcon } from "@heroicons/react/24/outline";
 
 import { usePreviewArea } from "@/app/plaza/components/PreviewArea/hooks/usePreviewArea";
 import { usePixelPerfect } from "@/app/plaza/components/PreviewArea/hooks/usePixelPerfect";
@@ -14,7 +14,6 @@ import { useBoxModelHighlight } from "@/app/plaza/components/PreviewArea/hooks/u
 
 import BoxModelOverlay from "./components/BoxModelOverlay";
 import TracingWireframeOverlay from "./components/TracingWireframeOverlay";
-import DonorTrayPanel from "./components/DonorTrayPanel";
 import type { WireframeBox } from "./models/wireframeTreeCompiler";
 import { useCanvasStore } from "@/app/plaza/components/CanvasArea/store/useCanvasStore";
 
@@ -25,6 +24,7 @@ import ButtonFonts from "@/app/plaza/components/PreviewArea/components/ButtonFon
 import ButtonPixelPerfect from "@/app/plaza/components/PreviewArea/components/ButtonPixelPerfect";
 import ButtonJson from "@/app/plaza/components/PreviewArea/components/ButtonJson";
 import BreakpointControls from "@/app/plaza/components/PreviewArea/components/BreakpointControls";
+import Link from "next/link";
 
 const ModalFonts = dynamic(
   () => import("@/app/plaza/components/PreviewArea/components/ModalFonts"),
@@ -65,34 +65,13 @@ export function PreviewArea() {
     isRotated,
   } = useBreakpoint();
 
-  // Режим кальки поверх макета + слот доноров
+  // Режим кальки поверх макета
   const [isTracingActive, setIsTracingActive] = useState(false);
-  const [isDonorTrayOpen, setIsDonorTrayOpen] = useState(false);
   const [tracingBoxes, setTracingBoxes] = useState<WireframeBox[]>([]);
   const [selectedTracingBoxId, setSelectedTracingBoxId] = useState<
     string | null
   >(null);
   const [naturalImgWidth, setNaturalImgWidth] = useState<number>(0);
-
-  const assignedDonorKeys = useMemo(() => {
-    const keys = new Set<string>();
-    for (const box of tracingBoxes) {
-      if (box.donorKey) keys.add(box.donorKey);
-    }
-    return keys;
-  }, [tracingBoxes]);
-
-  const handleAssignDonorToSelectedBox = useCallback(
-    (donorKey: string) => {
-      if (!selectedTracingBoxId) return;
-      setTracingBoxes((prev) =>
-        prev.map((b) =>
-          b.id === selectedTracingBoxId ? { ...b, donorKey } : b,
-        ),
-      );
-    },
-    [selectedTracingBoxId],
-  );
 
   // Реф экрана превью для точного позиционирования BoxModelOverlay
   const screenContainerRef = useRef<HTMLDivElement>(null);
@@ -164,9 +143,7 @@ export function PreviewArea() {
               onClick={() => {
                 const next = !isTracingActive;
                 setIsTracingActive(next);
-                if (next) {
-                  setIsDonorTrayOpen(true);
-                } else {
+                if (!next) {
                   useCanvasStore.getState().setArmedDonorKey(null);
                 }
               }}
@@ -183,21 +160,6 @@ export function PreviewArea() {
             >
               <PencilSquareIcon className="size-3.5 text-cyan-400" />
               <span>Trace</span>
-            </button>
-
-            {/* Кнопка слота доноров */}
-            <button
-              type="button"
-              onClick={() => setIsDonorTrayOpen((v) => !v)}
-              title="Open floating Donors slot for Preview & Tracing"
-              className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono font-bold transition cursor-pointer border ${
-                isDonorTrayOpen
-                  ? "bg-amber-500/20 text-amber-300 border-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.3)]"
-                  : "bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border-zinc-700/60"
-              }`}
-            >
-              <SparklesIcon className="size-3.5 text-amber-400" />
-              <span>Donors</span>
             </button>
 
             {hasImage && isOverlayActive && (
@@ -294,6 +256,14 @@ export function PreviewArea() {
             <ButtonFonts />
             <BreakpointControls />
             <ButtonJson />
+            <Link
+              href="/plaza/export"
+              target="_blank"
+              title="Production Build — 3 clean files (HTML, CSS, JS)"
+              className="text-[10px] font-mono px-2 py-0.5 rounded border transition duration-200 cursor-pointer flex items-center gap-1.5 bg-indigo-950/70 border-indigo-500/60 text-indigo-300 hover:bg-indigo-900/70"
+            >
+              🚀 Export
+            </Link>
           </div>
 
           <button
@@ -315,15 +285,6 @@ export function PreviewArea() {
 
       <ModalFonts />
       <ModalPixelPerfect />
-
-      <DonorTrayPanel
-        isOpen={isDonorTrayOpen}
-        onClose={() => setIsDonorTrayOpen(false)}
-        isTracingActive={isTracingActive}
-        selectedBoxId={selectedTracingBoxId}
-        assignedDonorKeys={assignedDonorKeys}
-        onAssignDonorToSelectedBox={handleAssignDonorToSelectedBox}
-      />
 
       <AnimatePresence>
         {!isCollapsed && (

@@ -10,21 +10,21 @@
         "tag": "div",
         "text": "",
         "class": "tabs__nav",
-        "style": "display: flex; @media screen and (max-width: 767px) { .tabs__nav { flex-direction: column;} };",
+        "style": "display: flex; @media screen and (max-width: 767px) { flex-direction: column; }",
         "attributes": {},
         "children": [
           {
             "tag": "button",
             "text": "Tab 1",
             "class": "tabs__btn _is-active",
-            "style": "border: none; background: none; cursor: pointer;  transition: all 0.3s ease; display: flex; align-items: center; &:hover { color: var(--accent); } &._is-active {  & svg { transform: rotate(180deg); } }",
+            "style": "display: flex; flex-direction: row; align-items: center; gap: 10px; padding: 2px; border: none; background: none; cursor: pointer; transition: all 0.3s ease; &:hover { color: var(--tab-accent); } &._is-active { color: var(--tab-accent); .svg-wrapper { transform: rotate(180deg); } }",
             "attributes": {},
             "children": [
               {
                 "tag": "i",
                 "text": "",
                 "class": "svg-wrapper",
-                "style": "",
+                "style": "transition: all 0.2s ease-in-out; display: inline-block; line-height: 0; vertical-align: middle; width: 20px; height: 20px; svg { width: 100%; height: 100%; display: inline-block; }",
                 "attributes": {},
                 "children": [
                   {
@@ -251,7 +251,7 @@
             "tag": "div",
             "text": "1. You can place any text or other blocks here.",
             "class": "tabs__pane _is-active",
-            "style": "visibility: hidden; opacity: 0; transition: opacity 0.2s ease-in-out; max-height: 0; &._is-active { visibility: visible; opacity: 1; max-height: 100vh; }",
+            "style": "overflow: hidden; height: 0; transition: height 0.3s ease; &._is-active { height: auto; }",
             "attributes": {},
             "children": []
           },
@@ -267,7 +267,7 @@
             "tag": "div",
             "text": "3. All three panels are controlled by a single lightweight script.",
             "class": "tabs__pane",
-            "style": "visibility: hidden; opacity: 0; transition: opacity 0.2s ease-in-out; max-height: 0; &._is-active { visibility: visible; opacity: 1; max-height: 100vh; }",
+            "style": "",
             "attributes": {},
             "children": []
           },
@@ -275,7 +275,7 @@
             "tag": "div",
             "text": "4. All three panels are controlled by a single lightweight script.",
             "class": "tabs__pane",
-            "style": "visibility: hidden; opacity: 0; transition: opacity 0.2s ease-in-out; max-height: 0; &._is-active { visibility: visible; opacity: 1; max-height: 100vh; }",
+            "style": "",
             "attributes": {},
             "children": []
           },
@@ -283,7 +283,7 @@
             "tag": "div",
             "text": "5. All three panels are controlled by a single lightweight script.",
             "class": "tabs__pane",
-            "style": "visibility: hidden; opacity: 0; transition: opacity 0.2s ease-in-out; max-height: 0; &._is-active { visibility: visible; opacity: 1; max-height: 100vh; }",
+            "style": "",
             "attributes": {},
             "children": []
           }
@@ -293,7 +293,7 @@
   },
   {
     "tag": "script",
-    "text": "/* @component: tabs */\n(function () {\n  function initTabs() {\n    document.querySelectorAll('.tabs:not(.tab-uno)').forEach(function (tabContainer) {\n      if (tabContainer.dataset.initialized === 'true') return;\n      tabContainer.dataset.initialized = 'true';\n      const btns = tabContainer.querySelectorAll('.tabs__btn');\n      const panes = tabContainer.querySelectorAll('.tabs__pane');\n      btns.forEach(function (btn, idx) {\n        btn.addEventListener('click', function (e) {\n          e.preventDefault();\n          btns.forEach(function (b) { b.classList.remove('_is-active'); });\n          panes.forEach(function (p) { p.classList.remove('_is-active'); });\n          btn.classList.add('_is-active');\n          if (panes[idx]) panes[idx].classList.add('_is-active');\n        });\n      });\n    });\n  }\n  if (document.readyState === 'loading') {\n    document.addEventListener('DOMContentLoaded', initTabs);\n  } else {\n    initTabs();\n  }\n  setTimeout(initTabs, 300);\n})();\n/* @end: tabs */",
+    "text": "/* @component: tabs */\n(function () {\n  if (window.__tabsMultiInit) return;\n  window.__tabsMultiInit = true;\n\n  function isOwnPane(pane) {\n    const owner = pane.closest('.tabs');\n    return owner && !owner.classList.contains('tab-uno');\n  }\n\n  function prepPane(pane) {\n    pane.style.display = 'block';\n    pane.style.overflow = 'hidden';\n    pane.style.transition = 'height 0.3s ease';\n  }\n\n  function initPanes() {\n    document.querySelectorAll('.tabs:not(.tab-uno) .tabs__pane').forEach(function (pane) {\n      if (!isOwnPane(pane) || pane.dataset.tabsInit === 'true') return;\n      pane.dataset.tabsInit = 'true';\n      prepPane(pane);\n      pane.style.height = pane.classList.contains('_is-active') ? 'auto' : '0px';\n    });\n  }\n\n  function openPane(pane) {\n    prepPane(pane);\n    const start = pane.offsetHeight;\n    pane.style.height = start + 'px';\n    pane.classList.add('_is-active');\n    pane.offsetHeight;\n    const target = pane.scrollHeight;\n    pane.style.height = start === target ? 'auto' : target + 'px';\n  }\n\n  function closePane(pane) {\n    prepPane(pane);\n    const start = pane.offsetHeight;\n    pane.style.height = start + 'px';\n    pane.classList.remove('_is-active');\n    pane.offsetHeight;\n    pane.style.height = '0px';\n  }\n\n  if (document.readyState === 'loading') {\n    document.addEventListener('DOMContentLoaded', initPanes);\n  } else {\n    initPanes();\n  }\n  setTimeout(initPanes, 300);\n\n  document.addEventListener('transitionend', function (e) {\n    if (e.propertyName === 'height' && e.target.classList.contains('tabs__pane') && isOwnPane(e.target)) {\n      if (e.target.classList.contains('_is-active')) {\n        e.target.style.height = 'auto';\n      }\n    }\n  });\n\n  document.addEventListener('click', function (e) {\n    document.querySelectorAll('.tabs:not(.tab-uno)').forEach(function (root) {\n      if (!root.contains(e.target)) {\n        root.querySelectorAll('.tabs__btn._is-active').forEach(function (b) {\n          if (b.closest('.tabs') === root) b.classList.remove('_is-active');\n        });\n        root.querySelectorAll('.tabs__pane._is-active').forEach(function (p) {\n          if (p.closest('.tabs') === root) closePane(p);});\n      }\n    });\n\n    const btn = e.target.closest('.tabs__btn');\n    if (!btn) return;\n    const directTabs = btn.closest('.tabs');\n    if (!directTabs || directTabs.classList.contains('tab-uno')) return;\n\n    e.preventDefault();\n\n    const btns = Array.from(directTabs.querySelectorAll('.tabs__btn'))\n      .filter(function (b) { return b.closest('.tabs') === directTabs; });\n    const panes = Array.from(directTabs.querySelectorAll('.tabs__pane'))\n      .filter(function (p) { return p.closest('.tabs') === directTabs; });\n\n    const idx = btns.indexOf(btn);\n    const isActive = btn.classList.contains('_is-active');\n\n    btns.forEach(function (b, i) {\n      b.classList.remove('_is-active');\n      if (panes[i] && panes[i].classList.contains('_is-active')) {\n        closePane(panes[i]);\n      }\n    });\n\n    if (!isActive) {\n      btn.classList.add('_is-active');\n      if (panes[idx]) openPane(panes[idx]);\n    }\n  });\n})();\n/* @end: tabs */",
     "class": "",
     "style": "",
     "attributes": {},

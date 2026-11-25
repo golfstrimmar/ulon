@@ -133,7 +133,6 @@ function NodeCardComponent({ node, depth, parentIsRow = true, showBeforeGap = fa
     isCollapsed,
     isDragged,
     isSelected,
-    isSplit,
     isDropDonor,
     isTemplateMode,
     isRightPaneNode,
@@ -355,29 +354,6 @@ function NodeCardComponent({ node, depth, parentIsRow = true, showBeforeGap = fa
                   }`}
                 >
                   {isCollapsed ? `+${children.length}` : "−"}
-                </button>
-              )}
-
-              {isSplit && (
-                <button
-                  type="button"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (isRightPaneNode) {
-                      useCanvasStore.getState().moveKeysToLeftPane([key]);
-                    } else {
-                      useCanvasStore.getState().moveKeysToRightPane([key]);
-                    }
-                  }}
-                  title={
-                    isRightPaneNode
-                      ? "Переместить узел в левую панель"
-                      : "Переместить узел в правую панель"
-                  }
-                  className="h-6 px-1.5 rounded text-[10px] font-mono font-bold text-zinc-400 hover:text-white bg-zinc-800/90 hover:bg-zinc-700 border border-zinc-700/80 flex items-center justify-center cursor-pointer transition leading-none shrink-0"
-                >
-                  {isRightPaneNode ? "←" : "→"}
                 </button>
               )}
             </div>
