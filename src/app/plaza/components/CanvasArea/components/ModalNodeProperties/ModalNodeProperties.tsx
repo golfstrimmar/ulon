@@ -16,7 +16,7 @@ export interface ModalNodePropertiesProps {
   onClose: () => void;
   controller?: ReturnType<typeof useModalNodeProperties>;
 }
-
+//  ─────🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹──────
 export default function ModalNodeProperties({
   clickedKey,
   currentJson = [],

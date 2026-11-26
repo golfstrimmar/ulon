@@ -15,7 +15,7 @@ const Editor = dynamic(() => import("@monaco-editor/react"), {
     </div>
   ),
 });
-
+//  ─────🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹──────
 export interface MonacoPropertiesEditorProps {
   nodeKey?: string;
   nodeTag?: string;
@@ -59,46 +59,6 @@ export function MonacoPropertiesEditor(props: MonacoPropertiesEditorProps) {
     <div className="w-full flex flex-col gap-2">
       {/* ══ Classes & Attributes Header Bar (Browser DevTools Styles Tab) ══ */}
       <div className="flex flex-wrap  items-center gap-1.5 p-2 rounded-lg bg-zinc-950/80 border border-zinc-800">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[10px] font-mono tracking-wider text-zinc-400 font-semibold mr-1 shrink-0">
-            Classes:
-          </span>
-
-          {nodeClasses.length > 0 ? (
-            nodeClasses.map((cls) => {
-              const hasSnippet = hasClassInScss(globalScss, cls);
-              const isModalActive =
-                isCustomStylesOpen && activeModalClass === cls;
-
-              return (
-                <button
-                  key={cls}
-                  type="button"
-                  onClick={() => handleClassButtonClick(cls)}
-                  title={`Open visual style editor for .${cls}`}
-                  className={`px-2 py-0.5 rounded text-[11px] font-mono border transition cursor-pointer flex items-center gap-1.5 ${
-                    isModalActive
-                      ? "bg-indigo-600 border-indigo-400 text-white font-bold shadow"
-                      : hasSnippet
-                        ? "bg-zinc-900 border-zinc-700 text-emerald-400 hover:bg-zinc-800 hover:border-indigo-500"
-                        : "bg-zinc-900 border-zinc-750 text-zinc-300 hover:bg-zinc-800 hover:border-indigo-500"
-                  }`}
-                >
-                  <span>.{cls}</span>
-                  <span className="text-[10px] opacity-75">🎨</span>
-                  {hasSnippet && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  )}
-                </button>
-              );
-            })
-          ) : (
-            <span className="text-[11px] font-mono text-zinc-500 italic">
-              No classes
-            </span>
-          )}
-        </div>
-
         <div className="flex items-center gap-1.5">
           {/* Кнопка переключения в редактор стилей (все классы) */}
           <button
@@ -134,6 +94,43 @@ export function MonacoPropertiesEditor(props: MonacoPropertiesEditorProps) {
           </button>
         </div>
       </div>
+      {mode === "styles" && (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {nodeClasses.length > 0 ? (
+            nodeClasses.map((cls) => {
+              const hasSnippet = hasClassInScss(globalScss, cls);
+              const isModalActive =
+                isCustomStylesOpen && activeModalClass === cls;
+
+              return (
+                <button
+                  key={cls}
+                  type="button"
+                  onClick={() => handleClassButtonClick(cls)}
+                  title={`Open visual style editor for .${cls}`}
+                  className={`px-2 py-0.5 rounded text-[11px] font-mono border transition cursor-pointer flex items-center gap-1.5 ${
+                    isModalActive
+                      ? "bg-indigo-600 border-indigo-400 text-white font-bold shadow"
+                      : hasSnippet
+                        ? "bg-zinc-900 border-zinc-700 text-emerald-400 hover:bg-zinc-800 hover:border-indigo-500"
+                        : "bg-zinc-900 border-zinc-750 text-zinc-300 hover:bg-zinc-800 hover:border-indigo-500"
+                  }`}
+                >
+                  <span>.{cls}</span>
+                  <span className="text-[10px] opacity-75">🎨</span>
+                  {hasSnippet && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  )}
+                </button>
+              );
+            })
+          ) : (
+            <span className="text-[11px] font-mono text-zinc-500 italic">
+              No classes
+            </span>
+          )}
+        </div>
+      )}
 
       {/* ══ Editor Body ══ */}
       <div className="w-full flex flex-col rounded-lg border border-indigo-500/60 bg-zinc-950 overflow-hidden shadow-xl">
@@ -145,21 +142,6 @@ export function MonacoPropertiesEditor(props: MonacoPropertiesEditorProps) {
                 <span className="text-zinc-500">|</span>
                 <ButtonUndoRedoScss />
                 <span className="text-zinc-500">|</span>
-                {activeModalClass ? (
-                  <span className="text-emerald-400 flex items-center gap-1.5 bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-800/60">
-                    <span>Active: .{activeModalClass}</span>
-                    <button
-                      type="button"
-                      onClick={handleCloseCustomStyles}
-                      className="text-zinc-400 hover:text-red-400 text-[10px] ml-0.5 cursor-pointer font-bold"
-                      title="Deselect active class"
-                    >
-                      ✕
-                    </button>
-                  </span>
-                ) : (
-                  <span className="text-zinc-400">All Classes</span>
-                )}
               </span>
 
               {/* Рендерим панель ModalCustomStyles ТОЛЬКО когда есть активный класс */}
@@ -190,17 +172,6 @@ export function MonacoPropertiesEditor(props: MonacoPropertiesEditorProps) {
             <span className="text-[11px] font-mono text-indigo-300 font-semibold">
               ⚙️ Attributes (JSON)
             </span>
-          )}
-
-          {mode === "styles" && activeModalClass && (
-            <button
-              type="button"
-              onClick={() => handleDeleteClassCss(activeModalClass)}
-              className="text-[10px] font-mono text-zinc-400 hover:text-red-400 px-2 py-0.5 rounded bg-red-900/70 hover:bg-zinc-800/70 border border-zinc-700 transition cursor-pointer whitespace-nowrap ml-2"
-              title={`Clear CSS for .${activeModalClass}`}
-            >
-              ✕ Clear .{activeModalClass}
-            </button>
           )}
         </div>
 

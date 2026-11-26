@@ -42,16 +42,14 @@ export function useMonacoPropertiesEditor({
   // Режим редактора: все стили ноды (styles) или атрибуты (attributes)
   const [mode, setMode] = useState<EditorMode>("styles");
 
-  // Активный класс для визуального редактирования в модалке ModalCustomStyles (открывается сразу на первом классе)
+  // Активный класс для визуального редактирования в модалке ModalCustomStyles
   const firstCls = nodeClasses[0]
     ? nodeClasses[0].trim().replace(/^\./, "")
     : null;
   const [activeModalClass, setActiveModalClass] = useState<string | null>(
     firstCls,
   );
-  const [isCustomStylesOpen, setIsCustomStylesOpen] = useState<boolean>(
-    Boolean(firstCls),
-  );
+  const [isCustomStylesOpen, setIsCustomStylesOpen] = useState<boolean>(false);
   const [activeScope, setActiveScope] = useState<string>("base");
   const userManuallyClosedRef = useRef<boolean>(false);
 
@@ -164,7 +162,7 @@ export function useMonacoPropertiesEditor({
         ? nodeClasses[0].trim().replace(/^\./, "")
         : null;
       setActiveModalClass(newFirstCls);
-      setIsCustomStylesOpen(Boolean(newFirstCls));
+      setIsCustomStylesOpen(false);
       setActiveScope("base");
 
       if (mode === "styles") {
@@ -229,7 +227,7 @@ export function useMonacoPropertiesEditor({
     activeModalClass,
   ]);
 
-  // Автоматически открываем первый класс, если классы появились, а модалка еще не была вручную закрыта
+  // Автоматически синхронизируем первый класс, но НЕ открываем модалку автоматически
   useEffect(() => {
     if (
       nodeClasses.length > 0 &&
@@ -239,7 +237,6 @@ export function useMonacoPropertiesEditor({
       const first = nodeClasses[0].trim().replace(/^\./, "");
       if (first) {
         setActiveModalClass(first);
-        setIsCustomStylesOpen(true);
       }
     }
   }, [nodeClasses, activeModalClass]);

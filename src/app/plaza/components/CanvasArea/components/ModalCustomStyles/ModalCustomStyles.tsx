@@ -1,14 +1,8 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { TypographyControl } from "./components/TypographyControl";
-import { PresetsList } from "./components/PresetsList";
-import { ColorControl } from "./components/ColorControl";
-import { DisplayControl } from "./components/DisplayControl";
-import { PositionControl } from "./components/PositionControl";
-import { TransformControl } from "./components/TransformControl";
-import { UnifiedBoxControl } from "./components/UnifiedBoxControl";
-import { extractNestedSnippet } from "@/lib/scssCompiler";
+import { createPortal } from "react-dom";
+import ModalActiveScopeStyles from "../ModalActiveScopeStyles";
 import {
   PSEUDO_LIBRARY,
   extractExistingPseudoSelectors,
@@ -34,7 +28,7 @@ interface ModalCustomStylesProps {
   onApplySnippet: (snippetCss: string) => void;
 }
 
-// Быстрый список основных псевдоэлементов для панельки
+// Quick list of main pseudo-elements for the panel
 const QUICK_PSEUDOS = [
   "&:before",
   "&:after",
@@ -45,7 +39,7 @@ const QUICK_PSEUDOS = [
   "&:last-child",
   "&:nth-child(2)",
 ];
-
+//  ─────🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹──────
 export default function ModalCustomStyles({
   currentClass,
   currentScssText = "",
@@ -72,42 +66,109 @@ export default function ModalCustomStyles({
 
   const [internalScope, setInternalScope] = useState<string>("base");
 
-  // Дропдауны
+  // Dropdowns
   const [isPseudoDropdownOpen, setIsPseudoDropdownOpen] = useState(false);
   const [isBpDropdownOpen, setIsBpDropdownOpen] = useState(false);
 
-  // Кастомные инпуты
+  // Координаты для Portal (выпадашки открываются вверх и рендерятся в document.body поверх всех модалок)
+  const [pseudoCoords, setPseudoCoords] = useState<{
+    left: number;
+    bottom: number;
+    maxHeight: number;
+  } | null>(null);
+  const [bpCoords, setBpCoords] = useState<{
+    left: number;
+    bottom: number;
+    maxHeight: number;
+  } | null>(null);
+
+  // Custom inputs
   const [customSelectorInput, setCustomSelectorInput] = useState("");
   const [customBpInput, setCustomBpInput] = useState("");
 
-  const pseudoDropdownRef = useRef<HTMLDivElement>(null);
-  const bpDropdownRef = useRef<HTMLDivElement>(null);
+  const pseudoButtonRef = useRef<HTMLButtonElement>(null);
+  const bpButtonRef = useRef<HTMLButtonElement>(null);
+  const pseudoDropdownContentRef = useRef<HTMLDivElement>(null);
+  const bpDropdownContentRef = useRef<HTMLDivElement>(null);
 
   const activeScope = externalScope ?? internalScope;
+
+  const updatePseudoCoords = useCallback(() => {
+    if (!pseudoButtonRef.current || typeof window === "undefined") return;
+    const rect = pseudoButtonRef.current.getBoundingClientRect();
+    const dropdownWidth = 260;
+    const left = Math.max(
+      8,
+      Math.min(rect.left, window.innerWidth - dropdownWidth - 8),
+    );
+    const bottom = window.innerHeight - rect.top + 4;
+    const maxHeight = Math.min(380, Math.max(160, rect.top - 16));
+    setPseudoCoords({ left, bottom, maxHeight });
+  }, []);
+
+  const updateBpCoords = useCallback(() => {
+    if (!bpButtonRef.current || typeof window === "undefined") return;
+    const rect = bpButtonRef.current.getBoundingClientRect();
+    const dropdownWidth = 290;
+    const left = Math.max(
+      8,
+      Math.min(rect.left, window.innerWidth - dropdownWidth - 8),
+    );
+    const bottom = window.innerHeight - rect.top + 4;
+    const maxHeight = Math.min(420, Math.max(160, rect.top - 16));
+    setBpCoords({ left, bottom, maxHeight });
+  }, []);
+
+  const togglePseudoDropdown = useCallback(() => {
+    if (!isPseudoDropdownOpen) {
+      updatePseudoCoords();
+      setIsBpDropdownOpen(false);
+      setIsPseudoDropdownOpen(true);
+    } else {
+      setIsPseudoDropdownOpen(false);
+    }
+  }, [isPseudoDropdownOpen, updatePseudoCoords]);
+
+  const toggleBpDropdown = useCallback(() => {
+    if (!isBpDropdownOpen) {
+      updateBpCoords();
+      setIsPseudoDropdownOpen(false);
+      setIsBpDropdownOpen(true);
+    } else {
+      setIsBpDropdownOpen(false);
+    }
+  }, [isBpDropdownOpen, updateBpCoords]);
 
   const handleSelectScope = (scope: string) => {
     setInternalScope(scope);
     if (onScopeChange) {
       onScopeChange(scope);
     }
-    // По клику на скоуп открываем модалку для него
+    // Clicking a scope opens the modal for it
     setIsOpen(true);
     setIsPseudoDropdownOpen(false);
     setIsBpDropdownOpen(false);
   };
 
-  // Закрытие выпадающих списков при клике вне их
+  // Close dropdowns when clicking outside of them
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
       if (
-        pseudoDropdownRef.current &&
-        !pseudoDropdownRef.current.contains(e.target as Node)
+        isPseudoDropdownOpen &&
+        pseudoDropdownContentRef.current &&
+        !pseudoDropdownContentRef.current.contains(target) &&
+        pseudoButtonRef.current &&
+        !pseudoButtonRef.current.contains(target)
       ) {
         setIsPseudoDropdownOpen(false);
       }
       if (
-        bpDropdownRef.current &&
-        !bpDropdownRef.current.contains(e.target as Node)
+        isBpDropdownOpen &&
+        bpDropdownContentRef.current &&
+        !bpDropdownContentRef.current.contains(target) &&
+        bpButtonRef.current &&
+        !bpButtonRef.current.contains(target)
       ) {
         setIsBpDropdownOpen(false);
       }
@@ -120,40 +181,31 @@ export default function ModalCustomStyles({
     };
   }, [isPseudoDropdownOpen, isBpDropdownOpen]);
 
+  // Пересчет позиции при скролле или ресайзе
+  useEffect(() => {
+    if (!isPseudoDropdownOpen && !isBpDropdownOpen) return;
+    const handleScrollOrResize = () => {
+      if (isPseudoDropdownOpen) updatePseudoCoords();
+      if (isBpDropdownOpen) updateBpCoords();
+    };
+    window.addEventListener("scroll", handleScrollOrResize, true);
+    window.addEventListener("resize", handleScrollOrResize);
+    return () => {
+      window.removeEventListener("scroll", handleScrollOrResize, true);
+      window.removeEventListener("resize", handleScrollOrResize);
+    };
+  }, [
+    isPseudoDropdownOpen,
+    isBpDropdownOpen,
+    updatePseudoCoords,
+    updateBpCoords,
+  ]);
+
   if (!currentClass) return null;
 
-  // Извлекаем уже существующие псевдоселекторы и медиа-запросы в коде класса
+  // Extract pseudo-selectors and media queries already present in the class code
   const presentPseudos = extractExistingPseudoSelectors(currentScssText);
   const presentMediaQueries = extractExistingMediaQueries(currentScssText);
-
-  // Оборачивает свойства в активный скоуп (псевдоэлемент или медиа-запрос)
-  const handleScopedApplySnippet = (snippet: string) => {
-    const trimmed = snippet.trim();
-    if (!trimmed) return;
-
-    if (
-      activeScope === "base" ||
-      trimmed.startsWith("&") ||
-      trimmed.startsWith("@media") ||
-      trimmed.startsWith(".")
-    ) {
-      onApplySnippet(trimmed);
-      return;
-    }
-
-    // Для &:before и &:after добавляем content: "" если его ещё нет
-    let body = trimmed;
-    if (
-      (activeScope === "&:before" || activeScope === "&:after") &&
-      !currentScssText.includes(activeScope) &&
-      !body.includes("content:")
-    ) {
-      body = `content: "";\n  ${body}`;
-    }
-
-    const wrapped = `${activeScope} {\n  ${body.split("\n").join("\n  ")}\n}`;
-    onApplySnippet(wrapped);
-  };
 
   const handleAddCustomPseudo = (e: React.FormEvent) => {
     e.preventDefault();
@@ -177,63 +229,37 @@ export default function ModalCustomStyles({
     }
   };
 
-  const effectiveScssText =
-    activeScope === "base"
-      ? currentScssText
-      : extractNestedSnippet(currentScssText, activeScope) || currentScssText;
-
   return (
     <div className="relative flex items-center gap-1.5 flex-wrap">
-      {/* ── Кнопка + Presets (Базовый класс) ── */}
-      <button
-        type="button"
-        onClick={() => {
-          if (isOpen && activeScope === "base") {
-            setIsOpen(false);
-          } else {
-            handleSelectScope("base");
-          }
-        }}
-        className={`px-2.5 py-0.5 rounded text-[10px] font-mono font-bold border transition cursor-pointer flex items-center gap-1 ${
-          isOpen && activeScope === "base"
-            ? "bg-indigo-600 border-indigo-400 text-white shadow"
-            : "bg-zinc-900 border-zinc-700 text-indigo-300 hover:bg-zinc-800 hover:border-indigo-500"
-        }`}
-        title={`Настроить базовый класс .${currentClass}`}
-      >
-        <span>🎨</span>
-        <span>+ Presets</span>
-      </button>
-
-      {/* ── БЫСТРЫЕ КНОПКИ ПСЕВДОЭЛЕМЕНТОВ НА ПАНЕЛЬКЕ ── */}
+      {/* ── QUICK PSEUDO-ELEMENT BUTTONS ON THE PANEL ── */}
       <div className="flex items-center gap-1 flex-wrap">
-        {QUICK_PSEUDOS.map((pseudo) => {
-          const isCurrentActive = isOpen && activeScope === pseudo;
-          const isPresent = presentPseudos.includes(pseudo);
+        {/*{QUICK_PSEUDOS.map((pseudo) => {
+            const isCurrentActive = isOpen && activeScope === pseudo;
+            const isPresent = presentPseudos.includes(pseudo);
 
-          return (
-            <button
-              key={pseudo}
-              type="button"
-              onClick={() => handleSelectScope(pseudo)}
-              className={`px-1.5 py-0.5 rounded text-[10px] font-mono border transition cursor-pointer flex items-center gap-1 ${
-                isCurrentActive
-                  ? "bg-amber-600 border-amber-400 text-white font-bold shadow"
-                  : isPresent
-                    ? "bg-zinc-900 border-amber-700/80 text-amber-300 hover:bg-zinc-800"
-                    : "bg-zinc-900 border-zinc-750 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
-              }`}
-              title={`Открыть кастомизацию для ${pseudo}`}
-            >
-              <span>{pseudo}</span>
-              {isPresent && (
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-              )}
-            </button>
-          );
-        })}
+            return (
+              <button
+                key={pseudo}
+                type="button"
+                onClick={() => handleSelectScope(pseudo)}
+                className={`px-1.5 py-0.5 rounded text-[10px] font-mono border transition cursor-pointer flex items-center gap-1 ${
+                  isCurrentActive
+                    ? "bg-amber-600 border-amber-400 text-white font-bold shadow"
+                    : isPresent
+                      ? "bg-zinc-900 border-amber-700/80 text-amber-300 hover:bg-zinc-800"
+                      : "bg-zinc-900 border-zinc-750 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+                }`}
+                title={`Open customization for ${pseudo}`}
+              >
+                <span>{pseudo}</span>
+                {isPresent && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                )}
+              </button>
+            );
+          })}*/}
 
-        {/* Дополнительные псевдоселекторы, которые уже есть в коде класса (но не в quick) */}
+        {/* Additional pseudo-selectors already present in the class code (but not in quick) */}
         {presentPseudos
           .filter((p) => !QUICK_PSEUDOS.includes(p))
           .map((pseudo) => {
@@ -255,125 +281,137 @@ export default function ModalCustomStyles({
             );
           })}
 
-        {/* Дропдаун «▾ Псевдо» для полного списка псевдоэлементов */}
-        <div ref={pseudoDropdownRef} className="relative inline-block">
+        {/* Dropdown "▾ Pseudo" for the full list of pseudo-elements */}
+        <div className="relative inline-block">
           <button
+            ref={pseudoButtonRef}
             type="button"
-            onClick={() => setIsPseudoDropdownOpen((prev) => !prev)}
-            className="px-1.5 py-0.5 rounded text-[10px] font-mono border border-zinc-700 bg-zinc-900 text-zinc-400 hover:text-amber-300 hover:bg-zinc-800 transition cursor-pointer flex items-center gap-1"
-            title="Выбрать другой псевдоэлемент или псевдокласс"
+            onClick={togglePseudoDropdown}
+            className={`px-1.5 py-0.5 rounded text-[10px] font-mono border transition cursor-pointer flex items-center gap-1 ${
+              isPseudoDropdownOpen
+                ? "bg-amber-600 border-amber-400 text-white font-bold"
+                : "border-zinc-700 bg-zinc-900 text-zinc-400 hover:text-amber-300 hover:bg-zinc-800"
+            }`}
+            title="Choose another pseudo-element or pseudo-class"
           >
             <span>▾ Pseudo</span>
           </button>
 
-          {isPseudoDropdownOpen && (
-            <div className="absolute left-0 top-full mb-1 z-50 w-64 max-h-30 overflow-y-auto bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl p-2 flex flex-col gap-1.5 custom-scrollbar backdrop-blur-md">
-              <span className="text-[10px] font-mono text-zinc-500 font-bold px-1">
-                Выберите псевдоселектор:
-              </span>
-
-              <div className="flex flex-col gap-0.5 max-h-48 overflow-y-auto custom-scrollbar">
-                {PSEUDO_LIBRARY.map((item) => {
-                  const isPresent = presentPseudos.includes(item.selector);
-                  const isCurrentActive =
-                    isOpen && activeScope === item.selector;
-                  return (
-                    <button
-                      key={item.selector}
-                      type="button"
-                      onClick={() => handleSelectScope(item.selector)}
-                      className={`px-2 py-1 rounded text-left text-[10px] font-mono transition cursor-pointer flex items-center justify-between ${
-                        isCurrentActive
-                          ? "bg-amber-600 text-white font-bold"
-                          : "text-zinc-300 hover:text-white hover:bg-amber-600/80"
-                      }`}
-                    >
-                      <span className="font-bold text-amber-300">
-                        {item.selector}
-                      </span>
-                      <span className="text-[9px] text-zinc-500 truncate max-w-[120px]">
-                        {item.label.replace(item.selector, "")}
-                      </span>
-                      {isPresent && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 ml-1" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Ввод своего кастомного селектора */}
-              <form
-                onSubmit={handleAddCustomPseudo}
-                className="pt-1.5 border-t border-zinc-800 flex items-center gap-1"
+          {isPseudoDropdownOpen &&
+            pseudoCoords &&
+            typeof document !== "undefined" &&
+            createPortal(
+              <div
+                ref={pseudoDropdownContentRef}
+                style={{
+                  left: pseudoCoords.left,
+                  bottom: 0,
+                }}
+                className="fixed z-[99999] w-64 bg-zinc-900/95 border border-zinc-700 rounded-lg shadow-2xl p-2 flex flex-col gap-1.5 backdrop-blur-md select-none animate-in fade-in zoom-in-95 duration-100"
               >
-                <input
-                  type="text"
-                  value={customSelectorInput}
-                  onChange={(e) => setCustomSelectorInput(e.target.value)}
-                  placeholder="&:nth-child(3)..."
-                  className="flex-1 px-1.5 py-0.5 rounded bg-zinc-950 border border-zinc-700 text-zinc-200 text-[10px] font-mono focus:outline-none focus:border-amber-500"
-                />
-                <button
-                  type="submit"
-                  disabled={!customSelectorInput.trim()}
-                  className="px-2 py-0.5 rounded bg-amber-600 hover:bg-amber-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white text-[10px] font-mono font-bold transition cursor-pointer"
+                <div className="flex flex-col gap-0.5 overflow-y-auto custom-scrollbar pr-0.5">
+                  {PSEUDO_LIBRARY.map((item) => {
+                    const isPresent = presentPseudos.includes(item.selector);
+                    const isCurrentActive =
+                      isOpen && activeScope === item.selector;
+                    return (
+                      <button
+                        key={item.selector}
+                        type="button"
+                        onClick={() => handleSelectScope(item.selector)}
+                        className={`px-2 py-1 rounded text-left text-[10px] font-mono transition cursor-pointer flex items-center justify-between ${
+                          isCurrentActive
+                            ? "bg-amber-600 text-white font-bold"
+                            : "text-zinc-300 hover:text-white hover:bg-amber-600/80"
+                        }`}
+                      >
+                        <span className="font-bold text-amber-300">
+                          {item.selector}
+                        </span>
+                        <span className="text-[9px] text-zinc-400 truncate max-w-[120px]">
+                          {item.label.replace(item.selector, "")}
+                        </span>
+                        {isPresent && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 ml-1" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Enter your own custom selector */}
+                <form
+                  onSubmit={handleAddCustomPseudo}
+                  className="pt-1.5 border-t border-zinc-800 flex items-center gap-1 shrink-0"
                 >
-                  OK
-                </button>
-              </form>
-            </div>
-          )}
+                  <input
+                    type="text"
+                    value={customSelectorInput}
+                    onChange={(e) => setCustomSelectorInput(e.target.value)}
+                    placeholder="&:nth-child(3)..."
+                    className="flex-1 px-1.5 py-0.5 rounded bg-zinc-950 border border-zinc-700 text-zinc-200 text-[10px] font-mono focus:outline-none focus:border-amber-500"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!customSelectorInput.trim()}
+                    className="px-2 py-0.5 rounded bg-amber-600 hover:bg-amber-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white text-[10px] font-mono font-bold transition cursor-pointer"
+                  >
+                    OK
+                  </button>
+                </form>
+              </div>,
+              document.body,
+            )}
         </div>
       </div>
 
-      {/* ── БРЕЙКПОИНТЫ / МЕДИА-ЗАПРОСЫ ПО КОРИДОРАМ ── */}
-      <div className="flex items-center gap-1 flex-wrap ml-[100px]">
-        {/* Быстрые кнопки отрезков экранов (2XL, XL, LG, MD, SM, XS, XXS) */}
-        {QUICK_BREAKPOINTS.map((bp) => {
-          const isCurrentActive =
-            isOpen &&
-            normalizeMediaQuery(activeScope) ===
-              normalizeMediaQuery(bp.mediaQuery);
-          const isPresent = presentMediaQueries.some(
-            (q) =>
-              normalizeMediaQuery(q) === normalizeMediaQuery(bp.mediaQuery),
-          );
+      {/* ── BREAKPOINTS / MEDIA QUERIES BY SEGMENTS ── */}
+      <div className="flex items-center gap-1 flex-wrap">
+        {/* Quick buttons for screen segments (2XL, XL, LG, MD, SM, XS, XXS) */}
+        {/*{QUICK_BREAKPOINTS.map((bp) => {
+            const isCurrentActive =
+              isOpen &&
+              normalizeMediaQuery(activeScope) ===
+                normalizeMediaQuery(bp.mediaQuery);
+            const isPresent = presentMediaQueries.some(
+              (q) =>
+                normalizeMediaQuery(q) === normalizeMediaQuery(bp.mediaQuery),
+            );
 
-          return (
-            <button
-              key={bp.id}
-              type="button"
-              onClick={() => handleSelectScope(bp.mediaQuery)}
-              className={`px-1.5 py-0.5 rounded text-[10px] font-mono border transition cursor-pointer flex items-center gap-1 ${
-                isCurrentActive
-                  ? "bg-sky-600 border-sky-400 text-white font-bold shadow"
-                  : isPresent
-                    ? "bg-zinc-900 border-sky-600/80 text-sky-300 hover:bg-zinc-800"
-                    : "bg-zinc-900 border-zinc-750 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
-              }`}
-              title={`${bp.title} — ${bp.mediaQuery}`}
-            >
-              <span className="font-bold">{bp.label}</span>
-              <span
-                className={`text-[9px] font-normal tracking-tight ${
+            return (
+              <button
+                key={bp.id}
+                type="button"
+                onClick={() => handleSelectScope(bp.mediaQuery)}
+                className={`px-1.5 py-0.5 rounded text-[10px] font-mono border transition cursor-pointer flex items-center gap-1 ${
                   isCurrentActive
-                    ? "text-sky-100"
+                    ? "bg-sky-600 border-sky-400 text-white font-bold shadow"
                     : isPresent
-                      ? "text-sky-400/90"
-                      : "text-zinc-400"
+                      ? "bg-zinc-900 border-sky-600/80 text-sky-300 hover:bg-zinc-800"
+                      : "bg-zinc-900 border-zinc-750 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
                 }`}
+                title={`${bp.title} — ${bp.mediaQuery}`}
               >
-                {bp.segment}
-              </span>
-              {isPresent && (
-                <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shrink-0 ml-0.5" />
-              )}
-            </button>
-          );
-        })}
+                <span className="font-bold">{bp.label}</span>
+                <span
+                  className={`text-[9px] font-normal tracking-tight ${
+                    isCurrentActive
+                      ? "text-sky-100"
+                      : isPresent
+                        ? "text-sky-400/90"
+                        : "text-zinc-400"
+                  }`}
+                >
+                  {bp.segment}
+                </span>
+                {isPresent && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shrink-0 ml-0.5" />
+                )}
+              </button>
+            );
+          })}*/}
 
-        {/* Дополнительные медиа-запросы, которые уже есть в SCSS (но не в QUICK) */}
+        {/* Additional media queries already present in the SCSS (but not in QUICK) */}
         {presentMediaQueries
           .filter(
             (q) =>
@@ -407,217 +445,138 @@ export default function ModalCustomStyles({
             );
           })}
 
-        {/* Дропдаун «▾ Media» */}
-        <div ref={bpDropdownRef} className="relative inline-block">
+        {/* Dropdown "▾ Media" */}
+        <div className="relative inline-block">
           <button
+            ref={bpButtonRef}
             type="button"
-            onClick={() => setIsBpDropdownOpen((prev) => !prev)}
-            className="px-1.5 py-0.5 rounded text-[10px] font-mono border border-zinc-700 bg-zinc-900 text-zinc-400 hover:text-sky-300 hover:bg-zinc-800 transition cursor-pointer flex items-center gap-1"
-            title="Выбрать медиа-запрос или настроить свой коридор"
+            onClick={toggleBpDropdown}
+            className={`px-1.5 py-0.5 rounded text-[10px] font-mono border transition cursor-pointer flex items-center gap-1 ${
+              isBpDropdownOpen
+                ? "bg-sky-600 border-sky-400 text-white font-bold"
+                : "border-zinc-700 bg-zinc-900 text-zinc-400 hover:text-sky-300 hover:bg-zinc-800"
+            }`}
+            title="Choose a media query or set up a custom segment"
           >
             <span>▾ Media</span>
           </button>
 
-          {isBpDropdownOpen && (
-            <div className="absolute left-0 top-full mb-1 z-50 w-72 max-h-30 overflow-y-auto bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl p-2 flex flex-col gap-1.5 custom-scrollbar backdrop-blur-md">
-              <span className="text-[10px] font-mono text-zinc-500 font-bold px-1">
-                Выберите медиа-запрос (брейкпоинт):
-              </span>
-
-              <div className="flex flex-col gap-2 max-h-56 overflow-y-auto custom-scrollbar pr-1">
-                {(
-                  [
-                    "corridors",
-                    "max_width",
-                    "min_width",
-                    "orientation",
-                  ] as const
-                ).map((cat) => {
-                  const items = BREAKPOINT_LIBRARY.filter(
-                    (it) => it.category === cat,
-                  );
-                  if (items.length === 0) return null;
-
-                  return (
-                    <div key={cat} className="flex flex-col gap-0.5">
-                      <span className="text-[9px] font-mono uppercase tracking-wider text-sky-400/80 font-bold px-1 pt-1 border-t border-zinc-800/80 first:border-0 first:pt-0">
-                        {BREAKPOINT_CATEGORY_LABELS[cat]}
-                      </span>
-
-                      {items.map((item) => {
-                        const isPresent = presentMediaQueries.some(
-                          (q) =>
-                            normalizeMediaQuery(q) ===
-                            normalizeMediaQuery(item.selector),
-                        );
-                        const isCurrentActive =
-                          isOpen &&
-                          normalizeMediaQuery(activeScope) ===
-                            normalizeMediaQuery(item.selector);
-
-                        return (
-                          <button
-                            key={item.selector}
-                            type="button"
-                            onClick={() => handleSelectScope(item.selector)}
-                            className={`px-2 py-1 rounded text-left text-[10px] font-mono transition cursor-pointer flex items-center justify-between ${
-                              isCurrentActive
-                                ? "bg-sky-600 text-white font-bold"
-                                : "text-zinc-300 hover:text-white hover:bg-sky-600/80"
-                            }`}
-                            title={`${item.selector} — ${item.description}`}
-                          >
-                            <span className="font-bold text-sky-300 flex items-center gap-1 truncate">
-                              {item.icon && <span>{item.icon}</span>}
-                              <span>{item.label}</span>
-                              <span className="text-[9px] font-normal text-sky-400/80">
-                                ({item.segment})
-                              </span>
-                            </span>
-                            <span className="text-[9px] text-zinc-500 truncate max-w-[110px] ml-1">
-                              {item.description}
-                            </span>
-                            {isPresent && (
-                              <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shrink-0 ml-1" />
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Ввод своего кастомного медиа-запроса */}
-              <form
-                onSubmit={handleAddCustomBreakpoint}
-                className="pt-1.5 border-t border-zinc-800 flex items-center gap-1"
+          {isBpDropdownOpen &&
+            bpCoords &&
+            typeof document !== "undefined" &&
+            createPortal(
+              <div
+                ref={bpDropdownContentRef}
+                style={{
+                  left: bpCoords.left,
+                  bottom: 0,
+                }}
+                className="fixed z-[99999] w-72 bg-zinc-900/95 border border-zinc-700 rounded-lg shadow-2xl p-2 flex flex-col gap-1.5 backdrop-blur-md select-none animate-in fade-in zoom-in-95 duration-100"
               >
-                <input
-                  type="text"
-                  value={customBpInput}
-                  onChange={(e) => setCustomBpInput(e.target.value)}
-                  placeholder="max-width: 900px..."
-                  className="flex-1 px-1.5 py-0.5 rounded bg-zinc-950 border border-zinc-700 text-zinc-200 text-[10px] font-mono focus:outline-none focus:border-sky-500"
-                />
-                <button
-                  type="submit"
-                  disabled={!customBpInput.trim()}
-                  className="px-2 py-0.5 rounded bg-sky-600 hover:bg-sky-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white text-[10px] font-mono font-bold transition cursor-pointer"
+                <span className="text-[10px] font-mono text-zinc-400 font-bold px-1">
+                  Select a media query (breakpoint):
+                </span>
+
+                <div className="flex flex-col gap-2 overflow-y-auto custom-scrollbar pr-1 ">
+                  {(
+                    [
+                      "corridors",
+                      "max_width",
+                      "min_width",
+                      "orientation",
+                    ] as const
+                  ).map((cat) => {
+                    const items = BREAKPOINT_LIBRARY.filter(
+                      (it) => it.category === cat,
+                    );
+                    if (items.length === 0) return null;
+
+                    return (
+                      <div key={cat} className="flex flex-col gap-0.5">
+                        <span className="text-[9px] font-mono uppercase tracking-wider text-sky-400/80 font-bold px-1 pt-1 border-t border-zinc-800/80 first:border-0 first:pt-0">
+                          {BREAKPOINT_CATEGORY_LABELS[cat]}
+                        </span>
+
+                        {items.map((item) => {
+                          const isPresent = presentMediaQueries.some(
+                            (q) =>
+                              normalizeMediaQuery(q) ===
+                              normalizeMediaQuery(item.selector),
+                          );
+                          const isCurrentActive =
+                            isOpen &&
+                            normalizeMediaQuery(activeScope) ===
+                              normalizeMediaQuery(item.selector);
+
+                          return (
+                            <button
+                              key={item.selector}
+                              type="button"
+                              onClick={() => handleSelectScope(item.selector)}
+                              className={`px-2 py-1 rounded text-left text-[10px] font-mono transition cursor-pointer flex items-center justify-between ${
+                                isCurrentActive
+                                  ? "bg-sky-600 text-white font-bold"
+                                  : "text-zinc-300 hover:text-white hover:bg-sky-600/80"
+                              }`}
+                              title={`${item.selector} — ${item.description}`}
+                            >
+                              <span className="font-bold text-sky-300 flex items-center gap-1 truncate">
+                                {item.icon && <span>{item.icon}</span>}
+                                <span>{item.label}</span>
+                                <span className="text-[9px] font-normal text-sky-400/80">
+                                  ({item.segment})
+                                </span>
+                              </span>
+                              <span className="text-[9px] text-zinc-400 truncate max-w-[110px] ml-1">
+                                {item.description}
+                              </span>
+                              {isPresent && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shrink-0 ml-1" />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Enter your own custom media query */}
+                <form
+                  onSubmit={handleAddCustomBreakpoint}
+                  className="pt-1.5 border-t border-zinc-800 flex items-center gap-1 shrink-0"
                 >
-                  OK
-                </button>
-              </form>
-            </div>
-          )}
+                  <input
+                    type="text"
+                    value={customBpInput}
+                    onChange={(e) => setCustomBpInput(e.target.value)}
+                    placeholder="max-width: 900px..."
+                    className="flex-1 px-1.5 py-0.5 rounded bg-zinc-950 border border-zinc-700 text-zinc-200 text-[10px] font-mono focus:outline-none focus:border-sky-500"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!customBpInput.trim()}
+                    className="px-2 py-0.5 rounded bg-sky-600 hover:bg-sky-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white text-[10px] font-mono font-bold transition cursor-pointer"
+                  >
+                    OK
+                  </button>
+                </form>
+              </div>,
+              document.body,
+            )}
         </div>
       </div>
 
-      {/* ── МОДАЛКА КАСТОМИЗАЦИИ СТИЛЕЙ (открывается для активного скоупа) ── */}
-      {isOpen && (
-        <div className="fixed right-0 bottom-0 mb-1 z-50 w-[420px] max-h-[85vh] bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl p-2.5 flex flex-col gap-2.5 backdrop-blur-md select-none">
-          {/* Шапка модалки */}
-          <div className="flex items-center justify-between pb-1 border-b border-zinc-800">
-            <div className="">
-              <div className="flex items-center gap-2">
-                <span className="text-[12px] font-mono text-zinc-400 tracking-wider font-semibold flex  gap-2">
-                  {activeScope === "base" ? (
-                    <code className="text-emerald-400 font-bold">
-                      .{currentClass}
-                    </code>
-                  ) : activeScope.startsWith("@media") ? (
-                    (() => {
-                      const seg = getSegmentDisplay(activeScope);
-                      return (
-                        <span className="font-mono text-sky-400 font-bold flex items-center gap-1.5 flex-wrap">
-                          <code>.{currentClass}</code>
-                          <span className="text-sky-300 bg-sky-950/80 border border-sky-600/70 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1">
-                            {seg.name && (
-                              <span className="font-bold text-sky-400">
-                                {seg.name}
-                              </span>
-                            )}
-                            <span className="font-semibold text-white">
-                              {seg.segment}
-                            </span>
-                            <span className="text-[9px] text-zinc-400 opacity-80 font-mono ml-1">
-                              {activeScope}
-                            </span>
-                          </span>
-                        </span>
-                      );
-                    })()
-                  ) : (
-                    <span className="font-mono text-amber-400 font-bold">
-                      .{currentClass}{" "}
-                      <span className="text-amber-300 bg-amber-950/80 border border-amber-600/70 px-1 py-0.5 rounded text-[10px]">
-                        {activeScope}
-                      </span>
-                    </span>
-                  )}
-                </span>
-              </div>
-              {activeScope !== "base" && (
-                <button
-                  type="button"
-                  onClick={() => handleSelectScope("base")}
-                  className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-zinc-700 cursor-pointer transition"
-                  title="Переключиться на редактирование базового класса"
-                >
-                  ← Base
-                </button>
-              )}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setIsOpen(false)}
-              className="text-zinc-500 hover:text-white text-xs cursor-pointer p-0.5"
-            >
-              ✕
-            </button>
-          </div>
-
-          {/* Контейнер с подкомпонентами стилей */}
-          <div className="overflow-y-auto custom-scrollbar flex flex-col gap-2.5 pr-0.5">
-            <DisplayControl
-              currentClass={currentClass}
-              currentScssText={effectiveScssText}
-              onApplySnippet={handleScopedApplySnippet}
-            />
-            <UnifiedBoxControl
-              currentClass={currentClass}
-              currentScssText={effectiveScssText}
-              onApplySnippet={handleScopedApplySnippet}
-            />
-            <ColorControl
-              currentClass={currentClass}
-              currentScssText={effectiveScssText}
-              onApplySnippet={handleScopedApplySnippet}
-            />
-
-            <TypographyControl
-              currentClass={currentClass}
-              currentScssText={effectiveScssText}
-              onApplySnippet={handleScopedApplySnippet}
-            />
-
-            <PositionControl
-              currentClass={currentClass}
-              currentScssText={effectiveScssText}
-              onApplySnippet={handleScopedApplySnippet}
-            />
-
-            <TransformControl
-              currentClass={currentClass}
-              currentScssText={effectiveScssText}
-              onApplySnippet={handleScopedApplySnippet}
-            />
-
-            <PresetsList onApplySnippet={handleScopedApplySnippet} />
-          </div>
-        </div>
-      )}
+      {/* ── STYLE CUSTOMIZATION MODAL (opens for the active scope) ── */}
+      <ModalActiveScopeStyles
+        isOpen={isOpen}
+        onClose={() => setIsOpen(false)}
+        currentClass={currentClass}
+        activeScope={activeScope}
+        currentScssText={currentScssText}
+        onApplySnippet={onApplySnippet}
+        onSelectScope={handleSelectScope}
+      />
     </div>
   );
 }

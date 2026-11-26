@@ -6,6 +6,49 @@ export interface PseudoItem {
 }
 
 export const PSEUDO_LIBRARY: PseudoItem[] = [
+  // ─── 2. ИНТЕРАКТИВНЫЕ СОСТОЯНИЯ (STATES) ────────────────────────────────────
+  {
+    selector: "&:hover",
+    label: "&:hover (при наведении)",
+    category: "states",
+    defaultSnippet: `&:hover {\n  \n}`,
+  },
+  {
+    selector: "&:active",
+    label: "&:active (при нажатии/клике)",
+    category: "states",
+    defaultSnippet: `&:active {\n  transform: scale(0.98);\n}`,
+  },
+  {
+    selector: "&:focus",
+    label: "&:focus (в фокусе)",
+    category: "states",
+    defaultSnippet: `&:focus {\n  outline: 2px solid #6366f1;\n  outline-offset: 2px;\n}`,
+  },
+  {
+    selector: "&:focus-visible",
+    label: "&:focus-visible (фокус с клавиатуры)",
+    category: "states",
+    defaultSnippet: `&:focus-visible {\n  outline: 2px solid #6366f1;\n}`,
+  },
+  {
+    selector: "&:focus-within",
+    label: "&:focus-within (фокус внутри контейнера)",
+    category: "states",
+    defaultSnippet: `&:focus-within {\n  border-color: #6366f1;\n}`,
+  },
+  {
+    selector: "&:visited",
+    label: "&:visited (посещенная ссылка)",
+    category: "states",
+    defaultSnippet: `&:visited {\n  color: #a855f7;\n}`,
+  },
+  {
+    selector: "&:target",
+    label: "&:target (цель якорной ссылки)",
+    category: "states",
+    defaultSnippet: `&:target {\n  animation: highlight 1s ease;\n}`,
+  },
   // ─── 1. ПСЕВДОЭЛЕМЕНТЫ ────────────────────────────────────────────────────────
   {
     selector: "&:before",
@@ -66,50 +109,6 @@ export const PSEUDO_LIBRARY: PseudoItem[] = [
     label: "&::-webkit-scrollbar-thumb (ползунок скролла)",
     category: "elements",
     defaultSnippet: `&::-webkit-scrollbar-thumb {\n  background-color: #3f3f46;\n  border-radius: 4px;\n}`,
-  },
-
-  // ─── 2. ИНТЕРАКТИВНЫЕ СОСТОЯНИЯ (STATES) ────────────────────────────────────
-  {
-    selector: "&:hover",
-    label: "&:hover (при наведении)",
-    category: "states",
-    defaultSnippet: `&:hover {\n  \n}`,
-  },
-  {
-    selector: "&:active",
-    label: "&:active (при нажатии/клике)",
-    category: "states",
-    defaultSnippet: `&:active {\n  transform: scale(0.98);\n}`,
-  },
-  {
-    selector: "&:focus",
-    label: "&:focus (в фокусе)",
-    category: "states",
-    defaultSnippet: `&:focus {\n  outline: 2px solid #6366f1;\n  outline-offset: 2px;\n}`,
-  },
-  {
-    selector: "&:focus-visible",
-    label: "&:focus-visible (фокус с клавиатуры)",
-    category: "states",
-    defaultSnippet: `&:focus-visible {\n  outline: 2px solid #6366f1;\n}`,
-  },
-  {
-    selector: "&:focus-within",
-    label: "&:focus-within (фокус внутри контейнера)",
-    category: "states",
-    defaultSnippet: `&:focus-within {\n  border-color: #6366f1;\n}`,
-  },
-  {
-    selector: "&:visited",
-    label: "&:visited (посещенная ссылка)",
-    category: "states",
-    defaultSnippet: `&:visited {\n  color: #a855f7;\n}`,
-  },
-  {
-    selector: "&:target",
-    label: "&:target (цель якорной ссылки)",
-    category: "states",
-    defaultSnippet: `&:target {\n  animation: highlight 1s ease;\n}`,
   },
 
   // ─── 3. СТРУКТУРНЫЕ ПСЕВДОКЛАССЫ (TREE) ────────────────────────────────────

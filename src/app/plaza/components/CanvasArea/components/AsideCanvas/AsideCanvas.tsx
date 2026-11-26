@@ -7,7 +7,6 @@ import {
   ELEMENT_FOLDERS,
 } from "@/app/plaza/components/CanvasArea/lib/elementsManifest";
 import ButtonAddImg from "@/app/plaza/components/CanvasArea/components/ButtonAddImg";
-import ButtonAddFlex from "@/app/plaza/components/CanvasArea/components/ButtonAddFlex";
 import ButtonAddContainer from "@/app/plaza/components/CanvasArea/components/ButtonAddContainer";
 import { useAsideCanvas } from "@/app/plaza/components/CanvasArea/components/AsideCanvas/hooks/useAsideCanvas";
 import { useCanvasStore } from "@/app/plaza/components/CanvasArea/store/useCanvasStore";
@@ -16,6 +15,7 @@ import {
   ArrowUpCircleIcon,
 } from "@heroicons/react/24/outline";
 import ButtonAddSwiper from "@/app/plaza/components/CanvasArea/components/ButtonAddSwiper";
+import ButtonAiSiteBuilder from "@/app/plaza/components/CanvasArea/components/ButtonAiSiteBuilder";
 
 function getHeaderOffset(): number {
   if (typeof document === "undefined") return 56;
@@ -326,8 +326,9 @@ export default function AsideCanvas() {
           />
         </button>
 
+        <ButtonAiSiteBuilder />
+
         <ButtonAddImg />
-        <ButtonAddFlex />
         <ButtonAddContainer />
         <ButtonAddSwiper />
         <div className="space-y-1">
