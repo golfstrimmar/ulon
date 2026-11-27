@@ -8,7 +8,7 @@ import {
   saveGlobalScss,
   saveGlobalJs,
   saveHtmlJson,
-} from "@/lib/htmlStorage";
+} from "@/store/htmlStorage";
 import {
   extractStylesAndScriptsFromNodes,
   mergeScssWithoutDuplicates,
@@ -20,6 +20,10 @@ import {
   splitWorkspaceNodes,
 } from "@/app/plaza/components/CanvasArea/models/canvasModel";
 import { DB_KEY } from "@/app/plaza/components/CanvasArea/constants/theme";
+import {
+  saveColorVariables,
+  extractColorVariablesFromScss,
+} from "@/store/figmaColorStorage";
 import { styleHistory } from "@/lib/styleHistory";
 import { scriptsHistory } from "@/lib/scriptsHistory";
 import { useCanvasStore } from "@/app/plaza/components/CanvasArea/store/useCanvasStore";
@@ -92,6 +96,17 @@ export function useCanvasArea() {
           saveGlobalScss(currentScss),
           saveGlobalJs(currentJs),
         ]);
+      }
+
+      // Синхронизируем цвета из SCSS проекта в локальную базу цветов
+      const scssColors = extractColorVariablesFromScss(currentScss);
+      if (scssColors.length > 0) {
+        await saveColorVariables(scssColors);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("figma_colors:saved", { detail: scssColors }),
+          );
+        }
       }
     } catch (err) {
       console.error("[useCanvasArea] Mount error:", err);

@@ -1,6 +1,6 @@
 import type { HtmlNode } from "@/types/HtmlNode";
 import { buildFigmaBoundsAttributes } from "./figmaImageNode.model";
-import { generateNodeKey } from "@/lib/htmlTree";
+import { generateNodeKey } from "@/store/htmlTree";
 export interface FigmaTextItem {
   id: string;
   tag: string;

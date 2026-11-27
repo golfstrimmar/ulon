@@ -1,5 +1,5 @@
 import type { HtmlNode } from "@/types/HtmlNode";
-import { generateNodeKey } from "@/lib/htmlTree";
+import { generateNodeKey } from "@/store/htmlTree";
 import {
   applyBemClassesToSection,
   applyDonorToSlot,

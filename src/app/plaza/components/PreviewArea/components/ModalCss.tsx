@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Editor from "@monaco-editor/react";
-import { getGlobalScss, saveGlobalScss } from "@/lib/htmlStorage";
+import { getGlobalScss, saveGlobalScss } from "@/store/htmlStorage";
 import { styleHistory } from "@/lib/styleHistory";
 import Spinner from "@/components/Spinner";
 import ButtonClose from "@/components/ButtonClose";

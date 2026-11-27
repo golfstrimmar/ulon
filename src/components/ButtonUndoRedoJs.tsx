@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { scriptsHistory } from "@/lib/scriptsHistory";
-import { saveGlobalJs } from "@/lib/htmlStorage";
+import { saveGlobalJs } from "@/store/htmlStorage";
 
 export default function ButtonUndoRedoJs() {
   const [canUndoJs, setCanUndoJs] = useState(false);

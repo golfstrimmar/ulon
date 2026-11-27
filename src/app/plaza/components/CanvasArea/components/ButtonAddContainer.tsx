@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { HtmlNode } from "@/types/HtmlNode";
 import { useCanvasStore } from "@/app/plaza/components/CanvasArea/store/useCanvasStore";
-import { getGlobalScss, saveGlobalScss } from "@/lib/htmlStorage";
+import { getGlobalScss, saveGlobalScss } from "@/store/htmlStorage";
 import { updateClassInGlobalScss } from "@/lib/scssCompiler";
 
 const WIDTH_PRESETS = [1140, 1200, 1300, 1440, 1600, 1790];

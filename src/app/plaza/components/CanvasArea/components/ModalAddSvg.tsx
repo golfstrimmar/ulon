@@ -8,7 +8,7 @@ import React, {
 } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ButtonClose from "@/components/ButtonClose";
-import { getHtmlJson, saveHtmlJson } from "@/lib/htmlStorage";
+import { getHtmlJson, saveHtmlJson } from "@/store/htmlStorage";
 import { DB_KEY } from "@/app/plaza/components/CanvasArea/constants/theme";
 import type { HtmlNode } from "@/types/HtmlNode";
 

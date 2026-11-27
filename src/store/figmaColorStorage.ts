@@ -151,3 +151,165 @@ export async function clearColorVariables(): Promise<void> {
     tx.oncomplete = () => db.close();
   });
 }
+
+/**
+ * Извлекает все строки переменных цветов (например, "$color-1: #162D5F;") из SCSS текста
+ */
+export function extractColorVariablesFromScss(scss: string): string[] {
+  if (!scss) return [];
+  const lines = scss.split("\n");
+  const result: string[] = [];
+  const colorVarRegex = /^\s*(\$[a-zA-Z0-9_-]+)\s*:\s*([^;]+);?/;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const match = trimmed.match(colorVarRegex);
+    if (match) {
+      const varName = match[1].trim();
+      let value = match[2].trim().replace(/;$/, "");
+      value = value
+        .replace(/\/\/.*$/, "")
+        .replace(/\/\*.*?\*\//g, "")
+        .trim();
+
+      if (
+        value.startsWith("#") ||
+        value.startsWith("rgb") ||
+        value.startsWith("hsl") ||
+        value === "transparent" ||
+        /^[a-zA-Z]+$/.test(value)
+      ) {
+        result.push(`${varName}: ${value};`);
+      }
+    }
+  }
+  return result;
+}
+
+/**
+ * Внедряет или обновляет блок переменных цветов в самом начале SCSS кода
+ */
+export function embedColorVariablesIntoScss(
+  scss: string,
+  colorVariables: string[],
+): string {
+  const cleanVars = colorVariables
+    .map((v) => v.trim())
+    .filter(Boolean)
+    .map((v) => (v.endsWith(";") ? v : `${v};`));
+
+  // Очищаем существующие верхние строки объявления $color-...
+  const lines = (scss || "").split("\n");
+  const filteredLines: string[] = [];
+  let inColorHeader = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (
+      trimmed.startsWith("/* === Project Colors ===") ||
+      trimmed.startsWith("// === Project Colors ===")
+    ) {
+      inColorHeader = true;
+      continue;
+    }
+    if (
+      inColorHeader &&
+      (trimmed.startsWith("/* ===") || trimmed.startsWith("// ==="))
+    ) {
+      inColorHeader = false;
+      continue;
+    }
+    if (inColorHeader) continue;
+
+    // Убираем одиночные строки вида $color-N: #...
+    if (
+      /^\$[a-zA-Z0-9_-]+\s*:\s*(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\))/i.test(
+        trimmed,
+      )
+    ) {
+      continue;
+    }
+
+    filteredLines.push(line);
+  }
+
+  const remainingScss = filteredLines.join("\n").trim();
+
+  if (cleanVars.length === 0) {
+    return remainingScss;
+  }
+
+  const headerBlock = `/* === Project Colors === */\n${cleanVars.join(
+    "\n",
+  )}\n/* ===================== */`;
+  return remainingScss ? `${headerBlock}\n\n${remainingScss}` : headerBlock;
+}
+
+/**
+ * Извлекает переменные цветов из CSS/SCSS (особенно из :root) и сохраняет их в базу
+ */
+export async function syncColorsFromScssToDb(scss: string): Promise<string[]> {
+  if (!scss) return [];
+
+  const colorVarRegex = /(--[\w-]+)\s*:\s*(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\))/gi;
+  const tokens: Array<{ hex: string; original?: string }> = [];
+  let m: RegExpExecArray | null;
+
+  while ((m = colorVarRegex.exec(scss)) !== null) {
+    const varName = m[1];
+    const val = m[2];
+    if (val.startsWith("#")) {
+      tokens.push({ hex: val, original: varName });
+    }
+  }
+
+  if (tokens.length > 0) {
+    const updated = await appendColorVariables(tokens);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("figma_colors:saved", { detail: updated }),
+      );
+    }
+    return updated;
+  }
+  return [];
+}
+
+/**
+ * Удаляет все объявления переменных цветов ($color-N, блок Project Colors и CSS-переменные цветов из :root) из SCSS текста
+ */
+export function removeColorVariablesFromScss(scss: string): string {
+  if (!scss) return "";
+
+  // 1. Удаляем блок /* === Project Colors === */ и одиночные $color-...
+  let cleaned = embedColorVariablesIntoScss(scss, []);
+
+  // 2. Очищаем блоки :root
+  cleaned = cleaned.replace(/:root\s*\{([^}]+)\}/gi, (match, inner) => {
+    const lines = inner.split("\n");
+    const keptLines = lines.filter((line: string) => {
+      const trimmed = line.trim();
+      if (!trimmed) return false;
+      // Если это CSS-переменная (--...) со значением цвета
+      if (
+        /^--[\w-]+\s*:\s*(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)|hsla?\([^)]+\)|transparent|\$[a-zA-Z0-9_-]+)/i.test(
+          trimmed,
+        )
+      ) {
+        return false;
+      }
+      return true;
+    });
+
+    const remainingInner = keptLines.join("\n").trim();
+    if (!remainingInner) {
+      return ""; // удаляем пустой блок :root полностью
+    }
+    return `:root {\n  ${remainingInner}\n}`;
+  });
+
+  // Убираем лишние пустые строки (более двух подряд)
+  cleaned = cleaned.replace(/\n{3,}/g, "\n\n").trim();
+
+  return cleaned;
+}

@@ -30,6 +30,7 @@ export function ColorControl({
     handleSelectColor,
     handleSelectTransparent,
     getColorPreviewValue,
+    handleClearDbColors,
   } = useColorControl({ currentClass, currentScssText, onApplySnippet });
 
   const colorTargets = useMemo(
@@ -59,13 +60,13 @@ export function ColorControl({
     const isTransSelected = areColorsEqual(currentActiveToken, "transparent");
 
     return (
-      <div className="max-h-[160px] overflow-y-auto custom-scrollbar flex flex-wrap gap-1.5 p-1 bg-zinc-900/60 rounded border border-zinc-850">
+      <div className="max-h-[200px] overflow-y-scroll overflow-x-hidden custom-scrollbar flex flex-wrap gap-1 p-0.5 bg-zinc-900/60 rounded border border-zinc-850">
         {/* 1. Transparent */}
         <button
           type="button"
           onClick={handleSelectTransparent}
           title="transparent (прозрачный)"
-          className={`w-5 h-5 rounded transition-all cursor-pointer relative shrink-0 border ${
+          className={`w-4.5 h-4.5 rounded transition-all cursor-pointer relative shrink-0 border ${
             isTransSelected
               ? "scale-115 border-white shadow-[0_0_8px_rgba(255,255,255,0.7)] z-10"
               : "border-zinc-700 hover:scale-110 hover:border-white/80"
@@ -96,7 +97,7 @@ export function ColorControl({
               type="button"
               onClick={() => handleSelectColor(token)}
               title={`[DB] ${token.varName}\n${token.value}`}
-              className={`w-5 h-5 rounded transition-all cursor-pointer relative shrink-0 border ring-1 ring-blue-500/40 ${
+              className={`w-4.5 h-4.5 rounded transition-all cursor-pointer relative shrink-0 border ring-1 ring-blue-500/40 ${
                 isSelected
                   ? "scale-115 border-white shadow-[0_0_8px_rgba(255,255,255,0.8)] z-10 ring-2 ring-white/60"
                   : "border-black/50 hover:scale-110 hover:border-white/80"
@@ -114,7 +115,7 @@ export function ColorControl({
 
         {/* Разделитель между базой и GitHub */}
         {dbTokens.length > 0 && githubTokens.length > 0 && (
-          <div className="w-[1px] h-5 bg-zinc-700/80 mx-0.5 shrink-0 self-center" />
+          <div className="w-full h-0.5 my-0.5  bg-zinc-700/80 mx-0.5 shrink-0 self-center" />
         )}
 
         {/* 3. Цвета из GitHub */}
@@ -131,7 +132,7 @@ export function ColorControl({
               type="button"
               onClick={() => handleSelectColor(token)}
               title={`${token.varName}\n${token.value}`}
-              className={`w-5 h-5 rounded transition-all cursor-pointer relative shrink-0 border ${
+              className={`w-4.5 h-4.5 rounded transition-all cursor-pointer relative shrink-0 border ${
                 isSelected
                   ? "scale-115 border-white shadow-[0_0_8px_rgba(255,255,255,0.8)] z-10 ring-2 ring-white/40"
                   : "border-black/40 hover:scale-110 hover:border-white/80"
@@ -196,7 +197,18 @@ export function ColorControl({
         </div>
 
         {target && (
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-1.5">
+            {dbTokens.length > 0 && (
+              <button
+                type="button"
+                onClick={handleClearDbColors}
+                title="Очистить локальные цвета базы от старых проектов"
+                className="px-1.5 py-0.5 rounded bg-zinc-800 hover:bg-rose-900/60 border border-zinc-700 hover:border-rose-700 text-zinc-400 hover:text-rose-200 text-[8px] font-mono transition-all cursor-pointer flex items-center gap-1"
+              >
+                <span>🗑️</span>
+                <span>Clear DB ({dbTokens.length})</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={handleClose}
@@ -225,8 +237,8 @@ export function ColorControl({
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.15, ease: "easeInOut" }}
-              className="pl-2 py-0.5 space-y-1 border-l-2 border-indigo-500/50 overflow-hidden"
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className=" py-0.5 space-y-1 "
             >
               {renderPalette()}
             </motion.div>

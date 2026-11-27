@@ -2,16 +2,14 @@
 
 import { useState, useEffect, useRef } from "react";
 import type { HtmlNode } from "@/types/HtmlNode";
-import { findNodeByKey, updateNodeByKey } from "@/lib/htmlTree";
+import { findNodeByKey, updateNodeByKey } from "@/store/htmlTree";
 import {
   getGlobalScss,
   saveGlobalScss,
   getGlobalJs,
   saveGlobalJs,
-} from "@/lib/htmlStorage";
-import {
-  mergeScriptsWithoutDuplicates,
-} from "@/app/plaza/components/CanvasArea/models/canvasModel";
+} from "@/store/htmlStorage";
+import { mergeScriptsWithoutDuplicates } from "@/app/plaza/components/CanvasArea/models/canvasModel";
 import { styleHistory } from "@/lib/styleHistory";
 import { scriptsHistory } from "@/lib/scriptsHistory";
 
@@ -50,9 +48,15 @@ export function useModalNodeProperties({
   }
 
   // ── Поля редактирования ───────────────────────────────────────────────────
-  const [editTag, setEditTag] = useState<string>(() => selectedNode?.tag || "div");
-  const [editClass, setEditClass] = useState<string>(() => selectedNode?.class || "");
-  const [editText, setEditText] = useState<string>(() => selectedNode?.text || "");
+  const [editTag, setEditTag] = useState<string>(
+    () => selectedNode?.tag || "div",
+  );
+  const [editClass, setEditClass] = useState<string>(
+    () => selectedNode?.class || "",
+  );
+  const [editText, setEditText] = useState<string>(
+    () => selectedNode?.text || "",
+  );
 
   // ── Мгновенная синхронизация при смене ноды (без задержки в 1 рендер) ─────
   const [prevKey, setPrevKey] = useState<string | null>(clickedKey);
@@ -99,8 +103,7 @@ export function useModalNodeProperties({
         typeof detail === "string"
           ? detail
           : detail && typeof detail === "object"
-            ? (detail as any).__bundle__ ??
-              Object.values(detail).join("\n\n")
+            ? ((detail as any).__bundle__ ?? Object.values(detail).join("\n\n"))
             : "";
       setGlobalJs(next);
       globalJsRef.current = next;
@@ -121,7 +124,13 @@ export function useModalNodeProperties({
       setEditClass(selectedNode.class || "");
       setEditText(selectedNode.text || "");
     }
-  }, [clickedKey, selectedNode?._key, selectedNode?.tag, selectedNode?.class, selectedNode?.text]);
+  }, [
+    clickedKey,
+    selectedNode?._key,
+    selectedNode?.tag,
+    selectedNode?.class,
+    selectedNode?.text,
+  ]);
 
   // ─── Обработчики ─────────────────────────────────────────────────────────
 
@@ -157,10 +166,11 @@ export function useModalNodeProperties({
     const clean = newCls.trim().replace(/^\./, "");
     if (!clean || !clickedKey || !selectedNode) return;
 
-    const source = editClass !== undefined && editClass !== null ? editClass : selectedNode.class || "";
-    const currentClasses = source
-      .split(/\s+/)
-      .filter(Boolean);
+    const source =
+      editClass !== undefined && editClass !== null
+        ? editClass
+        : selectedNode.class || "";
+    const currentClasses = source.split(/\s+/).filter(Boolean);
     if (!currentClasses.includes(clean)) {
       const updatedClassStr = [...currentClasses, clean].join(" ");
       setEditClass(updatedClassStr);

@@ -6,7 +6,11 @@ import {
   generateScss,
   type ColorToken,
 } from "@/app/design/utils/figmaColorParser";
-import { getColorVariables, saveColorVariables } from "@/lib/figmaColorStorage";
+import {
+  getColorVariables,
+  saveColorVariables,
+  clearColorVariables,
+} from "@/lib/figmaColorStorage";
 
 export function useFigmaColorsController(initialRawJson: string = "") {
   const [tokens, setTokens] = useState<ColorToken[]>([]);
@@ -106,6 +110,41 @@ export function useFigmaColorsController(initialRawJson: string = "") {
     }
   }, [tokens]);
 
+  /**
+   * Полная замена палитры в базе: очищает старые цвета и сохраняет чистые цвета этого макета
+   */
+  const handleReplaceDbPalette = useCallback(async () => {
+    if (tokens.length === 0) return;
+
+    try {
+      await clearColorVariables();
+      const uniqueHexSet = new Set<string>();
+      const cleanVars: string[] = [];
+      let index = 1;
+
+      for (const token of tokens) {
+        const hex = token.hex.trim().toLowerCase();
+        if (uniqueHexSet.has(hex)) continue;
+        uniqueHexSet.add(hex);
+        cleanVars.push(`$color-${index}: ${token.hex};`);
+        index++;
+      }
+
+      await saveColorVariables(cleanVars);
+
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("figma_colors:saved", { detail: cleanVars }),
+        );
+      }
+
+      setCopiedVar("replaced-db");
+      setTimeout(() => setCopiedVar(null), 1800);
+    } catch (err) {
+      console.error("Error replacing color variables:", err);
+    }
+  }, [tokens]);
+
   const scssOutput = useMemo(() => generateScss(tokens), [tokens]);
 
   return {
@@ -116,5 +155,6 @@ export function useFigmaColorsController(initialRawJson: string = "") {
     processJson,
     handleCopySingle,
     handleSaveToDb,
+    handleReplaceDbPalette,
   };
 }

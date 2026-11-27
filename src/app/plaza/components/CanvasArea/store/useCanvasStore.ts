@@ -2,7 +2,7 @@ import { create } from "zustand";
 import type { HtmlNode } from "@/types/HtmlNode";
 import { DB_KEY } from "@/app/plaza/components/CanvasArea/constants/theme";
 import type { BreakpointId } from "@/app/plaza/components/PreviewArea/types/breakpoints";
-import { deleteNodeFromArray, isDescendant } from "@/lib/htmlTree";
+import { deleteNodeFromArray, isDescendant } from "@/store/htmlTree";
 import {
   saveHtmlJson,
   deleteHtmlJson,
@@ -10,7 +10,8 @@ import {
   saveGlobalScss,
   getGlobalJs,
   saveGlobalJs,
-} from "@/lib/htmlStorage";
+} from "@/store/htmlStorage";
+import { syncColorsFromScssToDb } from "@/store/figmaColorStorage";
 
 import {
   findNodeInTree,
@@ -267,12 +268,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     let putInRight = false;
 
     if (targetKey && findNodeInTree(tree, targetKey)) {
-      nextTree = insertNodesAdjacent(
-        tree,
-        targetKey,
-        [marker],
-        "after",
-      );
+      nextTree = insertNodesAdjacent(tree, targetKey, [marker], "after");
       putInRight = isSplit && rightKeys.has(targetKey);
     } else {
       nextTree = [...tree, marker];
@@ -566,7 +562,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       rightKeys: !state.isSplit ? state.rightKeys : new Set(),
       isTemplateMode: !state.isSplit ? state.isTemplateMode : false,
       templateSlotKeys: !state.isSplit ? state.templateSlotKeys : [],
-      isStyleTransplantMode: !state.isSplit ? state.isStyleTransplantMode : false,
+      isStyleTransplantMode: !state.isSplit
+        ? state.isStyleTransplantMode
+        : false,
     })),
 
   toggleStyleTransplantMode: () => {
@@ -1004,6 +1002,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
             new CustomEvent("plaza-styles-updated", { detail: nextScss }),
           );
         }
+
+        // Автоматически извлекаем переменные цветов (из :root) и регистрируем в базу
+        void syncColorsFromScssToDb(extractedScss);
       }
 
       if (extractedScripts.length > 0) {

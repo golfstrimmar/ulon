@@ -34,7 +34,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         />
       </head>
 
-      <body className="min-h-full flex flex-col" suppressHydrationWarning>
+      <body
+        className="min-h-full flex flex-col custom-scrollbar"
+        suppressHydrationWarning
+      >
         <Suspense
           fallback={
             <header className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur px-6 py-4 flex items-center justify-between">
@@ -47,7 +50,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         >
           <Header />
         </Suspense>
-        <main className="flex-1 py-2 flex flex-col gap-3 w-full mx-auto">
+        <main className="flex-1 py-2 flex flex-col gap-3 w-full mx-auto ">
           {children}
         </main>
         <GlobalModal />

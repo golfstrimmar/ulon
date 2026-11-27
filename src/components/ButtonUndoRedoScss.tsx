@@ -7,7 +7,7 @@ import React, {
   useRef,
 } from "react";
 import { styleHistory } from "@/lib/styleHistory";
-import { saveGlobalScss } from "@/lib/htmlStorage";
+import { saveGlobalScss } from "@/store/htmlStorage";
 //  ─────🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹──────
 
 export default function ButtonUndoRedoScss() {

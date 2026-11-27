@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { usePreviewArea } from "@/app/plaza/components/PreviewArea/hooks/usePreviewArea";
-import { saveGlobalJs } from "@/lib/htmlStorage";
+import { saveGlobalJs } from "@/store/htmlStorage";
 import dynamic from "next/dynamic";
 
 const ModalJS = dynamic(

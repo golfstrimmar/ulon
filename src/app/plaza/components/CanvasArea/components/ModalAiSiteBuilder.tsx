@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import ButtonClose from "@/components/ButtonClose";
 import { generateAiSiteAction } from "@/actions/generateAiSiteAction";
 import { useCanvasStore } from "@/app/plaza/components/CanvasArea/store/useCanvasStore";
+import { clearColorVariables } from "@/store/figmaColorStorage";
 
 interface ModalAiSiteBuilderProps {
   isOpen: boolean;
@@ -12,20 +13,64 @@ interface ModalAiSiteBuilderProps {
 }
 
 const PRESET_CHIPS = [
-  { label: "💈 Барбершоп", prompt: "Стильный брутальный лендинг для барбершопа: классические стрижки, моделирование бороды, цены, мастера, отзывы клиентов и форма онлайн-записи." },
-  { label: "🏋️ Фитнес-клуб", prompt: "Современный лендинг фитнес-клуба премиум класса: направления тренировок, тарифные планы с табами, тренерский состав, частые вопросы и заявка на пробное занятие." },
-  { label: "☕ Кофейня", prompt: "Уютный сайт кофейни и обжарочной: авторские напитки, свежая выпечка, сорта зерна, атмосфера, отзывы гостей и заказ столика." },
-  { label: "💻 SaaS / IT", prompt: "Высококонверсионный лендинг для B2B SaaS платформы автоматизации: ключевые возможности, тарифы (Start, Pro, Enterprise), отзывы клиентов, FAQ и демо-доступ." },
-  { label: "🚗 Автосервис", prompt: "Надежный лендинг автосервиса и детейлинг-центра: перечень услуг, цены на ТО, гарантии, отзывы автовладельцев и запись на диагностику." },
+  {
+    label: "💈 Барбершоп",
+    prompt:
+      "Стильный брутальный лендинг для барбершопа: классические стрижки, моделирование бороды, цены, мастера, отзывы клиентов и форма онлайн-записи.",
+  },
+  {
+    label: "🏋️ Фитнес-клуб",
+    prompt:
+      "Современный лендинг фитнес-клуба премиум класса: направления тренировок, тарифные планы с табами, тренерский состав, частые вопросы и заявка на пробное занятие.",
+  },
+  {
+    label: "☕ Кофейня",
+    prompt:
+      "Уютный сайт кофейни и обжарочной: авторские напитки, свежая выпечка, сорта зерна, атмосфера, отзывы гостей и заказ столика.",
+  },
+  {
+    label: "💻 SaaS / IT",
+    prompt:
+      "Высококонверсионный лендинг для B2B SaaS платформы автоматизации: ключевые возможности, тарифы (Start, Pro, Enterprise), отзывы клиентов, FAQ и демо-доступ.",
+  },
+  {
+    label: "🚗 Автосервис",
+    prompt:
+      "Надежный лендинг автосервиса и детейлинг-центра: перечень услуг, цены на ТО, гарантии, отзывы автовладельцев и запись на диагностику.",
+  },
 ];
 
 const THEME_OPTIONS = [
-  { id: "emerald", name: "🌿 Изумрудный эко", desc: "Свежая палитра: мятный фон, изумрудный акцент #10b981 и темная хвоя" },
-  { id: "dark", name: "🌙 Тёмный премиум", desc: "Глубокий тёмный фон #090d16 с золотисто-янтарным акцентом #f59e0b" },
-  { id: "light-blue", name: "💎 Светлый деловой", desc: "Белоснежный чистый фон, графитовый текст и сапфировый акцент #2563eb" },
-  { id: "purple", name: "⚡ Неоновый фиолетовый", desc: "Тёмный стиль #09090b с фиолетовым неоном #8b5cf6" },
-  { id: "warm-orange", name: "🍂 Тёплый крафт", desc: "Тёплый фон, кофейные заголовки и терракотовый акцент #ea580c" },
-  { id: "auto", name: "✨ Авто (по смыслу)", desc: "AI автоматически подберёт цвета под тематику вашего бизнеса" },
+  {
+    id: "emerald",
+    name: "🌿 Изумрудный эко",
+    desc: "Свежая палитра: мятный фон, изумрудный акцент #10b981 и темная хвоя",
+  },
+  {
+    id: "dark",
+    name: "🌙 Тёмный премиум",
+    desc: "Глубокий тёмный фон #090d16 с золотисто-янтарным акцентом #f59e0b",
+  },
+  {
+    id: "light-blue",
+    name: "💎 Светлый деловой",
+    desc: "Белоснежный чистый фон, графитовый текст и сапфировый акцент #2563eb",
+  },
+  {
+    id: "purple",
+    name: "⚡ Неоновый фиолетовый",
+    desc: "Тёмный стиль #09090b с фиолетовым неоном #8b5cf6",
+  },
+  {
+    id: "warm-orange",
+    name: "🍂 Тёплый крафт",
+    desc: "Тёплый фон, кофейные заголовки и терракотовый акцент #ea580c",
+  },
+  {
+    id: "auto",
+    name: "✨ Авто (по смыслу)",
+    desc: "AI автоматически подберёт цвета под тематику вашего бизнеса",
+  },
 ];
 
 export default function ModalAiSiteBuilder({
@@ -55,7 +100,9 @@ export default function ModalAiSiteBuilder({
   const handleGenerate = async () => {
     const cleanPrompt = prompt.trim();
     if (!cleanPrompt) {
-      setError("Пожалуйста, опишите сайт или выберите один из готовых шаблонов выше.");
+      setError(
+        "Пожалуйста, опишите сайт или выберите один из готовых шаблонов выше.",
+      );
       return;
     }
 
@@ -81,7 +128,9 @@ export default function ModalAiSiteBuilder({
       clearTimeout(stepTimer2);
 
       if (!res.success || !res.nodes) {
-        setError(res.error || "Не удалось сгенерировать сайт. Попробуйте снова.");
+        setError(
+          res.error || "Не удалось сгенерировать сайт. Попробуйте снова.",
+        );
         setLoading(false);
         return;
       }
@@ -90,6 +139,12 @@ export default function ModalAiSiteBuilder({
 
       if (clearCanvasFirst) {
         await useCanvasStore.getState().clearCanvasTree();
+        await clearColorVariables();
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("figma_colors:saved", { detail: [] }),
+          );
+        }
       }
 
       await useCanvasStore.getState().appendRawNodes(res.nodes);
@@ -127,7 +182,8 @@ export default function ModalAiSiteBuilder({
                     </span>
                   </h2>
                   <p className="text-xs text-zinc-400">
-                    Опишите проект — выберите цветовую палитру и получите готовый интерактивный лендинг
+                    Опишите проект — выберите цветовую палитру и получите
+                    готовый интерактивный лендинг
                   </p>
                 </div>
               </div>
@@ -159,7 +215,9 @@ export default function ModalAiSiteBuilder({
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-zinc-300 flex justify-between">
                   <span>Описание сайта (промпт):</span>
-                  <span className="text-zinc-500 text-[11px]">Пишите подробно</span>
+                  <span className="text-zinc-500 text-[11px]">
+                    Пишите подробно
+                  </span>
                 </label>
                 <textarea
                   value={prompt}
@@ -191,7 +249,9 @@ export default function ModalAiSiteBuilder({
                       >
                         <div className="text-xs font-bold text-zinc-200 flex items-center justify-between">
                           <span>{theme.name}</span>
-                          {isSelected && <span className="text-indigo-400 text-xs">✓</span>}
+                          {isSelected && (
+                            <span className="text-indigo-400 text-xs">✓</span>
+                          )}
                         </div>
                         <div className="text-[11px] text-zinc-400 mt-0.5 leading-snug">
                           {theme.desc}

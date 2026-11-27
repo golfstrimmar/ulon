@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Editor from "@monaco-editor/react";
-import { getGlobalJs, saveGlobalJs } from "@/lib/htmlStorage";
+import { getGlobalJs, saveGlobalJs } from "@/store/htmlStorage";
 import { scriptsHistory } from "@/lib/scriptsHistory";
 import ButtonUndoRedoJs from "@/components/ButtonUndoRedoJs";
 

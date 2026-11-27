@@ -28,9 +28,9 @@ import {
   getGlobalScss,
   saveGlobalScss,
   getPixelPerfectSettings,
-} from "@/lib/htmlStorage";
+} from "@/store/htmlStorage";
 import { updateClassInGlobalScss } from "@/lib/scssCompiler";
-import { getColorVariables } from "@/lib/figmaColorStorage";
+import { getColorVariables } from "@/store/figmaColorStorage";
 import { buildColorMap } from "@/app/design/models/figmaTextNode.model";
 import {
   compileWireframeBoxesToTree,
@@ -723,7 +723,7 @@ export default function TracingWireframeOverlay({
       {/* Панель Tracing */}
       <div
         data-wireframe-ui="true"
-        className="absolute bottom-0 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 p-1.5 px-3 rounded-xl bg-zinc-950/90 border border-cyan-500/50 shadow-2xl backdrop-blur-md cursor-default text-xs font-mono"
+        className="absolute w-full bottom-0 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 p-1.5 px-3 rounded-xl bg-zinc-950/90 border border-cyan-500/50 shadow-2xl backdrop-blur-md cursor-default text-xs font-mono"
       >
         <span className="text-cyan-400 font-bold flex items-center gap-1.5">
           <ArrowsPointingOutIcon className="w-4 h-4" />

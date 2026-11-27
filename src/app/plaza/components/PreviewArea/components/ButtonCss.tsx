@@ -7,7 +7,7 @@ import React, {
   useRef,
 } from "react";
 import { usePreviewArea } from "@/app/plaza/components/PreviewArea/hooks/usePreviewArea";
-import { saveGlobalScss } from "@/lib/htmlStorage";
+import { saveGlobalScss } from "@/store/htmlStorage";
 import dynamic from "next/dynamic";
 const ModalCss = dynamic(
   () => import("@/app/plaza/components/PreviewArea/components/ModalCss"),

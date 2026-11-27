@@ -6,7 +6,7 @@ import {
   findNodeInTree,
   collectAllDescendantKeys,
 } from "@/app/plaza/components/CanvasArea/models/canvasModel";
-import { isDescendant } from "@/lib/htmlTree";
+import { isDescendant } from "@/store/htmlTree";
 import {
   useCanvasStore,
   type DropTarget,
@@ -42,7 +42,8 @@ export function useCanvasDnD() {
         .find(Boolean) as HTMLElement | undefined;
       if (gapEl) {
         const key = gapEl.getAttribute("data-gap-key")!;
-        const position = gapEl.getAttribute("data-gap-pos") as "before" | "after";
+        const position = gapEl.getAttribute("data-gap-pos") as
+          "before" | "after";
 
         if (activeKeys.includes(key)) {
           useCanvasStore.getState().setDropTarget(null);
@@ -154,7 +155,9 @@ export function useCanvasDnD() {
           for (const k of keysToDrag) {
             const node = findNodeInTree(currentJson, k);
             if (node) {
-              collectAllDescendantKeys(node).forEach((id) => invalidKeys.add(id));
+              collectAllDescendantKeys(node).forEach((id) =>
+                invalidKeys.add(id),
+              );
             }
           }
           invalidDropKeysRef.current = invalidKeys;

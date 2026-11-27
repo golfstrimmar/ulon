@@ -54,7 +54,7 @@ async function MainContent() {
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col ">
       <Suspense fallback={null}>
         <WelcomeToast />
       </Suspense>

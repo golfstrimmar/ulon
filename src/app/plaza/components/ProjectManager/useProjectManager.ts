@@ -9,7 +9,14 @@ import {
   getHtmlJson,
   getGlobalScss,
   getGlobalJs,
-} from "@/lib/htmlStorage";
+} from "@/store/htmlStorage";
+import {
+  getColorVariables,
+  saveColorVariables,
+  clearColorVariables,
+  extractColorVariablesFromScss,
+  embedColorVariablesIntoScss,
+} from "@/store/figmaColorStorage";
 import { DB_KEY } from "@/app/plaza/components/CanvasArea/constants/theme";
 import {
   ensureUniqueKeys,
@@ -148,16 +155,22 @@ export function useProjectManager() {
 
     try {
       const currentJson = useCanvasStore.getState().currentJson;
-      const [currentScss, currentJs] = await Promise.all([
+      const [currentScss, currentJs, colorVars] = await Promise.all([
         getGlobalScss().catch(() => ""),
         getGlobalJs().catch(() => ""),
+        getColorVariables().catch(() => []),
       ]);
+
+      const scssWithColors = embedColorVariablesIntoScss(
+        currentScss,
+        colorVars,
+      );
 
       const res = await saveProjectAction({
         name,
         folderId: targetFolderId,
         htmlJson: currentJson,
-        scss: currentScss,
+        scss: scssWithColors,
         js: currentJs,
       });
 
@@ -192,10 +205,11 @@ export function useProjectManager() {
 
     try {
       // 🎯 Читаем текущую версию напрямую из локальной базы IndexedDB
-      const [dbJson, currentScss, currentJs] = await Promise.all([
+      const [dbJson, currentScss, currentJs, colorVars] = await Promise.all([
         getHtmlJson(DB_KEY).catch(() => null),
         getGlobalScss().catch(() => ""),
         getGlobalJs().catch(() => ""),
+        getColorVariables().catch(() => []),
       ]);
 
       const currentJson =
@@ -205,10 +219,15 @@ export function useProjectManager() {
             ? [dbJson]
             : useCanvasStore.getState().currentJson;
 
+      const scssWithColors = embedColorVariablesIntoScss(
+        currentScss,
+        colorVars,
+      );
+
       const res = await updateProjectAction(projectId, {
         name: customName,
         htmlJson: currentJson,
-        scss: currentScss,
+        scss: scssWithColors,
         js: currentJs,
       });
 
@@ -279,7 +298,19 @@ export function useProjectManager() {
         saveGlobalJs(nextJs),
       ]);
 
-      // 5. Запоминаем проект как активный в рабочей сессии
+      // 5. Синхронизируем цвета: сбрасываем чужие цвета и загружаем цвета открытого проекта
+      const incomingColors = extractColorVariablesFromScss(project.scss || "");
+      await clearColorVariables();
+      if (incomingColors.length > 0) {
+        await saveColorVariables(incomingColors);
+      }
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("figma_colors:saved", { detail: incomingColors }),
+        );
+      }
+
+      // 6. Запоминаем проект как активный в рабочей сессии
       setGlobalActive({
         id: project.id,
         name: project.name,

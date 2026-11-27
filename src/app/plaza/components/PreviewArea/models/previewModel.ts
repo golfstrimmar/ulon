@@ -1,9 +1,9 @@
 import type { HtmlNode } from "@/types/HtmlNode";
-import { treeToHtml } from "@/lib/htmlTree";
+import { treeToHtml } from "@/store/htmlTree";
 import { compileClassesCss } from "@/lib/cssCompiler";
 import { prepareScriptsForExecution } from "@/lib/jsCompiler";
-import { getFontsSettings, saveFontsSettings } from "@/lib/htmlStorage";
-import { getColorVariables } from "@/lib/figmaColorStorage";
+import { getFontsSettings, saveFontsSettings } from "@/store/htmlStorage";
+import { getColorVariables } from "@/store/figmaColorStorage";
 
 /* ==========================================================================
    1. СХЕМЫ ДАННЫХ

@@ -97,7 +97,7 @@ export default function ModalActiveScopeStyles({
       </div>
 
       {/* Контейнер с подкомпонентами стилей */}
-      <div className="overflow-y-auto custom-scrollbar flex flex-col gap-2.5 pr-0.5">
+      <div className="overflow-y-auto custom-scrollbar flex flex-col gap-2.5 ">
         <DisplayControl
           currentClass={currentClass}
           currentScssText={effectiveScssText}

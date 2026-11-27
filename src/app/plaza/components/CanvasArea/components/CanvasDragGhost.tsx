@@ -2,7 +2,7 @@
 
 import React, { memo, useMemo } from "react";
 import { useCanvasStore } from "@/app/plaza/components/CanvasArea/store/useCanvasStore";
-import { findNodeByKey } from "@/lib/htmlTree";
+import { findNodeByKey } from "@/store/htmlTree";
 import type { HtmlNode } from "@/types/HtmlNode";
 
 function CanvasDragGhostComponent() {

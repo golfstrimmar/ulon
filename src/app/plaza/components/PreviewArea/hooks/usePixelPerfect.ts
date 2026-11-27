@@ -5,7 +5,7 @@ import {
   getPixelPerfectSettings,
   savePixelPerfectSettings,
   clearPixelPerfectSettings,
-} from "@/lib/htmlStorage";
+} from "@/store/htmlStorage";
 
 export interface PixelPerfectState {
   image: string;
@@ -150,7 +150,9 @@ export function setPixelPerfectImage(
         imageWidth: img.naturalWidth,
         imageHeight: img.naturalHeight,
         previewOpacity:
-          currentState.previewOpacity === 100 ? 50 : currentState.previewOpacity,
+          currentState.previewOpacity === 100
+            ? 50
+            : currentState.previewOpacity,
         overlayOpacity: 100,
         align: "center",
         offsetX: 0,

@@ -5,7 +5,7 @@ import {
   removeNodeFromTree,
   isDescendant,
   duplicateNodeInTree,
-} from "@/lib/htmlTree";
+} from "@/store/htmlTree";
 
 export const PLAZA_MARKER_ATTR = "data-plaza-marker";
 
@@ -452,11 +452,18 @@ export function extractStylesAndScriptsFromNodes(nodes: HtmlNode[]): {
       );
 
       if (targetClass) {
-        if (cleanBody.startsWith(`.${targetClass}`)) {
+        if (
+          cleanBody.startsWith(`.${targetClass}`) ||
+          cleanBody.startsWith(":root") ||
+          cleanBody.includes(":root {") ||
+          cleanBody.includes(":root{")
+        ) {
           extractedRules.push(cleanBody);
         } else {
           extractedRules.push(`.${targetClass} {\n  ${cleanBody}\n}`);
         }
+      } else if (cleanBody.startsWith(":root") || cleanBody.includes(":root")) {
+        extractedRules.push(cleanBody);
       }
     }
 
@@ -568,6 +575,14 @@ export function mergeScssWithoutDuplicates(
     }
 
     const norm = block.selector.replace(/\s+/g, " ").trim();
+    if (norm === ":root") {
+      if (!existingRules.has(block.full) && !result.includes(block.full)) {
+        result = `${block.full}\n\n${result}`;
+        existingRules.add(block.full);
+      }
+      continue;
+    }
+
     if (norm && existingSelectors.has(norm)) {
       continue;
     }

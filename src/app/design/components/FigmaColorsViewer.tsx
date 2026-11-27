@@ -14,6 +14,7 @@ export function FigmaColorsViewer({ rawJson }: FigmaColorsViewerProps) {
     scssOutput,
     handleCopySingle,
     handleSaveToDb,
+    handleReplaceDbPalette,
   } = useFigmaColorsController(rawJson);
 
   return (
@@ -84,17 +85,33 @@ export function FigmaColorsViewer({ rawJson }: FigmaColorsViewerProps) {
               <h2 className="text-lg font-semibold text-zinc-100">
                 Generated SCSS
               </h2>
-              <button
-                type="button"
-                onClick={handleSaveToDb}
-                className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-1.5 rounded-lg border border-zinc-700 transition cursor-pointer"
-              >
-                {copiedVar === "all-scss"
-                  ? "Saved!"
-                  : copiedVar === "all-scss-duplicate"
-                    ? "Уже в базе!"
-                    : "Save to DB"}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleReplaceDbPalette}
+                  title="Очистить старые цвета в базе и сохранить чистую палитру этого макета"
+                  className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-3 py-1.5 rounded-lg border border-indigo-500 shadow-sm transition cursor-pointer flex items-center gap-1"
+                >
+                  <span>✨</span>
+                  <span>
+                    {copiedVar === "replaced-db"
+                      ? "Палитра заменена!"
+                      : "Заменить палитру в базе"}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveToDb}
+                  title="Добавить новые цвета к существующим в базе"
+                  className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-1.5 rounded-lg border border-zinc-700 transition cursor-pointer"
+                >
+                  {copiedVar === "all-scss"
+                    ? "Добавлено!"
+                    : copiedVar === "all-scss-duplicate"
+                      ? "Уже в базе!"
+                      : "+ Дополнить базу"}
+                </button>
+              </div>
             </div>
 
             <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 overflow-x-auto">

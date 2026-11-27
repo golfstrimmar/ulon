@@ -7,8 +7,8 @@ import {
   getGlobalScss,
   getScriptsJs,
   getFontsSettings,
-} from "@/lib/htmlStorage";
-import { getColorVariables } from "@/lib/figmaColorStorage";
+} from "@/store/htmlStorage";
+import { getColorVariables } from "@/store/figmaColorStorage";
 import { compileScssToCss } from "@/lib/scssCompiler";
 import {
   DB_KEY,
@@ -18,7 +18,7 @@ import {
   addFont,
   removeFont,
   toggleDefaultFont,
-} from "@/app/plaza/components/PreviewArea/lib/previewModel";
+} from "@/app/plaza/components/PreviewArea/models/previewModel";
 import { useCanvasStore } from "@/app/plaza/components/CanvasArea/store/useCanvasStore";
 
 /**

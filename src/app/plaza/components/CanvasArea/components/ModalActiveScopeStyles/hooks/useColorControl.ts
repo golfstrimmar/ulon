@@ -1,7 +1,15 @@
 // hooks/useColorControl.ts
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useLiveStyle } from "./useLiveStyle";
-import { getColorVariables } from "@/lib/figmaColorStorage";
+import {
+  getColorVariables,
+  saveColorVariables,
+  clearColorVariables,
+  extractColorVariablesFromScss,
+  removeColorVariablesFromScss,
+} from "@/store/figmaColorStorage";
+import { getGlobalScss, saveGlobalScss } from "@/store/htmlStorage";
+import { styleHistory } from "@/lib/styleHistory";
 
 export interface ColorToken {
   name: string;
@@ -146,11 +154,12 @@ function parseDbVariablesToTokens(variables: string[]): ColorToken[] {
 
       const rawName = match[1].trim();
       const value = match[2].trim();
+      const isScssVar = rawName.startsWith("$");
       const cleanName = rawName.replace(/^(\$|--)/, "");
 
       return {
         name: cleanName,
-        varName: `--${cleanName}`,
+        varName: isScssVar ? `$${cleanName}` : `--${cleanName}`,
         value,
         isDb: true,
       };
@@ -244,11 +253,88 @@ export function useColorControl({
     });
   }, [currentClass, currentScssText, extractTokenFromScss]);
 
-  // Загрузка токенов из IndexedDB
+  // Загрузка токенов из IndexedDB + автоматическая подтяжка цветов из SCSS проекта
+  const loadDbTokens = useCallback(async () => {
+    try {
+      let vars = await getColorVariables().catch(() => []);
+
+      // Если в базе пусто или появились новые цвета в SCSS — подтягиваем прямо из globalScss холста
+      const currentGlobalScss = await getGlobalScss().catch(() => "");
+      const scssColors = extractColorVariablesFromScss(currentGlobalScss);
+
+      if (scssColors.length > 0) {
+        const dbVarNames = new Set(vars.map((v) => v.split(":")[0].trim()));
+        const hasMissingInDb = scssColors.some(
+          (sc) => !dbVarNames.has(sc.split(":")[0].trim()),
+        );
+
+        if (vars.length === 0 || hasMissingInDb) {
+          vars = scssColors;
+          await saveColorVariables(vars);
+        }
+      }
+
+      setDbTokens(parseDbVariablesToTokens(vars));
+    } catch (err) {
+      console.error("[useColorControl] DB load error:", err);
+    }
+  }, []);
+
   useEffect(() => {
-    getColorVariables()
-      .then((vars) => setDbTokens(parseDbVariablesToTokens(vars)))
-      .catch((err) => console.error("[useColorControl] DB error:", err));
+    loadDbTokens();
+
+    const handleSaved = (e: any) => {
+      if (Array.isArray(e.detail)) {
+        setDbTokens(parseDbVariablesToTokens(e.detail));
+      } else {
+        loadDbTokens();
+      }
+    };
+
+    const handleStylesUpdated = (e: any) => {
+      const scss = typeof e.detail === "string" ? e.detail : "";
+      if (scss && scss.includes("$color-")) {
+        loadDbTokens();
+      }
+    };
+
+    window.addEventListener("figma_colors:saved", handleSaved);
+    window.addEventListener("plaza-styles-updated", handleStylesUpdated);
+
+    return () => {
+      window.removeEventListener("figma_colors:saved", handleSaved);
+      window.removeEventListener("plaza-styles-updated", handleStylesUpdated);
+    };
+  }, [loadDbTokens]);
+
+  // Очистка локальной базы цветов проекта и глобального файла стилей
+  const handleClearDbColors = useCallback(async () => {
+    try {
+      await clearColorVariables();
+      setDbTokens([]);
+
+      const currentScss = await getGlobalScss().catch(() => "");
+      if (currentScss) {
+        const cleanedScss = removeColorVariablesFromScss(currentScss);
+        if (cleanedScss !== currentScss) {
+          await saveGlobalScss(cleanedScss);
+          styleHistory.record(cleanedScss);
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(
+              new CustomEvent("plaza-styles-updated", { detail: cleanedScss }),
+            );
+          }
+        }
+      }
+
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("figma_colors:saved", { detail: [] }),
+        );
+      }
+    } catch (err) {
+      console.error("[useColorControl] Failed to clear DB colors:", err);
+    }
   }, []);
 
   // Загрузка токенов из GitHub
@@ -314,18 +400,20 @@ export function useColorControl({
       [target]: token.name,
     }));
 
-    const cssVarSnippet = `var(${token.varName})`;
+    const snippetValue = token.varName.startsWith("$")
+      ? token.varName
+      : `var(${token.varName})`;
 
     if (target === "border") {
       applyLiveStyle(currentClass, "border", `1px solid ${token.value}` as any);
-      onApplySnippet(`border: 1px solid ${cssVarSnippet};`);
+      onApplySnippet(`border: 1px solid ${snippetValue};`);
     } else {
       applyLiveStyle(
         currentClass,
         target === "background" ? "background-color" : "color",
         token.value as any,
       );
-      onApplySnippet(`${target}: ${cssVarSnippet};`);
+      onApplySnippet(`${target}: ${snippetValue};`);
     }
   };
 
@@ -372,5 +460,6 @@ export function useColorControl({
     handleSelectColor,
     handleSelectTransparent,
     getColorPreviewValue,
+    handleClearDbColors,
   };
 }
