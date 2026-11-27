@@ -2,7 +2,11 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getGlobalScss, saveGlobalScss } from "@/store/htmlStorage";
-import { syncColorsFromScssToDb } from "@/store/figmaColorStorage";
+import {
+  syncColorsFromScssToDb,
+  clearColorVariables,
+  removeColorVariablesFromScss,
+} from "@/store/figmaColorStorage";
 import { styleHistory } from "@/lib/styleHistory";
 import {
   extractRootBlock,
@@ -104,29 +108,33 @@ export function useTokensManager(isOpen: boolean) {
   );
 
   // 3. Изменение текста :root напрямую в Monaco Editor
-  const handleMonacoRootChange = useCallback(
-    async (newRootText: string) => {
-      setRootText(newRootText);
-      const parsed = parseTokensFromRootText(newRootText);
-      setTokens(parsed);
+  const handleMonacoRootChange = useCallback(async (newRootText: string) => {
+    setRootText(newRootText);
+    const parsed = parseTokensFromRootText(newRootText);
+    setTokens(parsed);
 
-      const currentFullScss = scssRef.current;
-      const nextFullScss = replaceRootInScss(currentFullScss, newRootText);
-      setGlobalScss(nextFullScss);
+    const currentFullScss = scssRef.current;
+    const nextFullScss = replaceRootInScss(currentFullScss, newRootText);
+    setGlobalScss(nextFullScss);
 
-      try {
-        await saveGlobalScss(nextFullScss);
-        styleHistory.record(nextFullScss);
+    try {
+      await saveGlobalScss(nextFullScss);
+      styleHistory.record(nextFullScss);
+      window.dispatchEvent(
+        new CustomEvent("plaza-styles-updated", { detail: nextFullScss }),
+      );
+      if (parsed.length === 0) {
+        await clearColorVariables();
         window.dispatchEvent(
-          new CustomEvent("plaza-styles-updated", { detail: nextFullScss }),
+          new CustomEvent("figma_colors:saved", { detail: [] }),
         );
+      } else {
         void syncColorsFromScssToDb(nextFullScss);
-      } catch (err) {
-        console.error("[useTokensManager] Monaco sync error:", err);
       }
-    },
-    [],
-  );
+    } catch (err) {
+      console.error("[useTokensManager] Monaco sync error:", err);
+    }
+  }, []);
 
   // 4. Ручное сохранение
   const handleSave = async () => {
@@ -184,10 +192,33 @@ export function useTokensManager(isOpen: boolean) {
     }
   };
 
-  // 6. Очистить все токены :root
-  const handleClearAllTokens = async () => {
-    await handleMonacoRootChange(":root {\n}");
-  };
+  // 6. Очистить все токены :root и базу цветов figmaColorStorage
+  const handleClearAllTokens = useCallback(async () => {
+    try {
+      await clearColorVariables();
+
+      const currentFullScss =
+        scssRef.current || (await getGlobalScss().catch(() => "")) || "";
+      const withoutColorVars = removeColorVariablesFromScss(currentFullScss);
+      const nextFullScss = replaceRootInScss(withoutColorVars, "");
+
+      setGlobalScss(nextFullScss);
+      setRootText(":root {\n}");
+      setTokens([]);
+
+      await saveGlobalScss(nextFullScss);
+      styleHistory.record(nextFullScss);
+
+      window.dispatchEvent(
+        new CustomEvent("plaza-styles-updated", { detail: nextFullScss }),
+      );
+      window.dispatchEvent(
+        new CustomEvent("figma_colors:saved", { detail: [] }),
+      );
+    } catch (err) {
+      console.error("[useTokensManager] Failed to clear all tokens:", err);
+    }
+  }, []);
 
   const filteredTokens = tokens.filter((t) =>
     t.name.toLowerCase().includes(searchQuery.toLowerCase().trim()),

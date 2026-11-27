@@ -245,12 +245,11 @@ export function findFigmaPreviewImage(
   function walk(list: HtmlNode[]) {
     for (const node of list) {
       const key = getNodeKey(node);
-      if (
-        (!key || !excludeKeys?.has(key)) &&
-        node.attributes &&
-        node.attributes["data-figma-preview"]
-      ) {
-        found = node.attributes["data-figma-preview"];
+      const previewVal =
+        (node as any)._figma?.preview ||
+        node.attributes?.["data-figma-preview"];
+      if ((!key || !excludeKeys?.has(key)) && previewVal) {
+        found = previewVal;
         return;
       }
       if (Array.isArray(node.children)) {

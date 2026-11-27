@@ -370,23 +370,32 @@ export function createHtmlNodeFromStructureItem(
       )
     : [];
 
-  const boundsAttrs = buildFigmaBoundsAttributes({
-    x: item.x,
-    y: item.y,
-    width: item.width,
-    height: item.height,
-    pageX: item.pageX,
-    pageY: item.pageY,
-    sectionId: item.sectionId,
-    sectionWidth: item.sectionWidth,
-    sectionHeight: item.sectionHeight,
-  });
-
-  const attributes: Record<string, string> = {
-    ...(item.name ? { "data-name": item.name } : {}),
-    ...(item.preview ? { "data-figma-preview": item.preview } : {}),
-    ...boundsAttrs,
-  };
+  const figmaMeta: Record<string, unknown> = {};
+  if (item.name) figmaMeta.name = item.name;
+  if (item.preview) figmaMeta.preview = item.preview;
+  if (typeof item.x === "number" && Number.isFinite(item.x))
+    figmaMeta.x = item.x;
+  if (typeof item.y === "number" && Number.isFinite(item.y))
+    figmaMeta.y = item.y;
+  if (typeof item.width === "number" && Number.isFinite(item.width))
+    figmaMeta.width = item.width;
+  if (typeof item.height === "number" && Number.isFinite(item.height))
+    figmaMeta.height = item.height;
+  if (typeof item.pageX === "number" && Number.isFinite(item.pageX))
+    figmaMeta.pageX = item.pageX;
+  if (typeof item.pageY === "number" && Number.isFinite(item.pageY))
+    figmaMeta.pageY = item.pageY;
+  if (item.sectionId) figmaMeta.sectionId = item.sectionId;
+  if (
+    typeof item.sectionWidth === "number" &&
+    Number.isFinite(item.sectionWidth)
+  )
+    figmaMeta.sectionWidth = item.sectionWidth;
+  if (
+    typeof item.sectionHeight === "number" &&
+    Number.isFinite(item.sectionHeight)
+  )
+    figmaMeta.sectionHeight = item.sectionHeight;
 
   const resolvedTag = resolveSemanticTextTag({
     rawTag: item.tag,
@@ -401,10 +410,13 @@ export function createHtmlNodeFromStructureItem(
     text: item.text || "",
     class: item.className || "",
     style: inlineStyles,
-    attributes,
+    attributes: {},
     _key: generateNodeKey(),
     _isNew: true,
     children,
+    ...(Object.keys(figmaMeta).length > 0
+      ? ({ _figma: figmaMeta } as any)
+      : {}),
   };
 }
 

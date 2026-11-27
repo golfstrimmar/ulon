@@ -161,33 +161,57 @@ export function collectFigmaNodesFromTree(
     for (const node of list) {
       const key = getNodeKey(node);
       const attrs = node.attributes;
+      const figma = (node as any)._figma;
       const isImgWrap = isImageWrapperNode(node);
       const isSvgShape = isSvgDonorNode(node);
 
+      const rawX =
+        figma?.x ??
+        (attrs?.["data-figma-x"] !== undefined
+          ? parseFloat(attrs["data-figma-x"])
+          : undefined);
+      const rawY =
+        figma?.y ??
+        (attrs?.["data-figma-y"] !== undefined
+          ? parseFloat(attrs["data-figma-y"])
+          : undefined);
+      const rawW =
+        figma?.width ??
+        (attrs?.["data-figma-w"] !== undefined
+          ? parseFloat(attrs["data-figma-w"])
+          : undefined);
+      const rawH =
+        figma?.height ??
+        (attrs?.["data-figma-h"] !== undefined
+          ? parseFloat(attrs["data-figma-h"])
+          : undefined);
+
       if (
         key &&
-        attrs &&
-        attrs["data-figma-x"] !== undefined &&
-        attrs["data-figma-y"] !== undefined &&
-        attrs["data-figma-w"] !== undefined &&
-        attrs["data-figma-h"] !== undefined
+        rawX !== undefined &&
+        rawY !== undefined &&
+        rawW !== undefined &&
+        rawH !== undefined
       ) {
-        const x = parseFloat(attrs["data-figma-x"]);
-        const y = parseFloat(attrs["data-figma-y"]);
-        const width = parseFloat(attrs["data-figma-w"]);
-        const height = parseFloat(attrs["data-figma-h"]);
+        const x = Number(rawX);
+        const y = Number(rawY);
+        const width = Number(rawW);
+        const height = Number(rawH);
         const pageX =
-          attrs["data-figma-px"] !== undefined
+          figma?.pageX ??
+          (attrs?.["data-figma-px"] !== undefined
             ? parseFloat(attrs["data-figma-px"])
-            : x;
+            : x);
         const pageY =
-          attrs["data-figma-py"] !== undefined
+          figma?.pageY ??
+          (attrs?.["data-figma-py"] !== undefined
             ? parseFloat(attrs["data-figma-py"])
-            : y;
+            : y);
         const sectionWidth =
-          attrs["data-figma-sec-w"] !== undefined
+          figma?.sectionWidth ??
+          (attrs?.["data-figma-sec-w"] !== undefined
             ? parseFloat(attrs["data-figma-sec-w"])
-            : width;
+            : width);
 
         const tag = (node.tag || "").trim().toLowerCase();
         const hasChildren =
@@ -210,7 +234,7 @@ export function collectFigmaNodesFromTree(
             pageY: isNaN(pageY) ? y : pageY,
             width: Math.max(1, width),
             height: Math.max(1, height),
-            sectionId: attrs["data-figma-sec-id"] || "",
+            sectionId: figma?.sectionId || attrs?.["data-figma-sec-id"] || "",
             sectionWidth: isNaN(sectionWidth) ? width : sectionWidth,
           });
         }

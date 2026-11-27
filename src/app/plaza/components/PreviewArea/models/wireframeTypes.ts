@@ -206,13 +206,15 @@ export function stripFigmaAttributes(node: HtmlNode): HtmlNode {
     }
   }
 
-  return {
+  const cleanedNode: any = {
     ...node,
     attributes: nextAttrs,
     children: Array.isArray(node.children)
       ? node.children.map(stripFigmaAttributes)
       : node.children,
   };
+  delete cleanedNode._figma;
+  return cleanedNode as HtmlNode;
 }
 
 export function isContained(

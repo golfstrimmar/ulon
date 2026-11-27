@@ -731,12 +731,15 @@ export function compileWireframeBoxesToTree(
 
         if (isImageWrapperNode(donorNode)) {
           const scale = node.box.scale || 1;
-          const figmaW = parseFloat(
-            donorNode.attributes?.["data-figma-w"] || "",
-          );
-          const figmaH = parseFloat(
-            donorNode.attributes?.["data-figma-h"] || "",
-          );
+          const donorFigma = (donorNode as any)._figma;
+          const figmaW =
+            typeof donorFigma?.width === "number"
+              ? donorFigma.width
+              : parseFloat(donorNode.attributes?.["data-figma-w"] || "");
+          const figmaH =
+            typeof donorFigma?.height === "number"
+              ? donorFigma.height
+              : parseFloat(donorNode.attributes?.["data-figma-h"] || "");
           const w =
             !isNaN(figmaW) && figmaW > 0
               ? Math.round(figmaW)

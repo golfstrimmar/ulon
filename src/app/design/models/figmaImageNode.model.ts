@@ -153,9 +153,8 @@ export function createHtmlNodeFromImage(item: {
     text: "",
     class: "",
     style: `${sizeParts.join("; ")};`,
-    attributes: {
-      ...buildFigmaBoundsAttributes(item.figmaMeta),
-    },
+    attributes: {},
+    ...(item.figmaMeta ? ({ _figma: item.figmaMeta } as any) : {}),
     children: [
       {
         tag: "div",

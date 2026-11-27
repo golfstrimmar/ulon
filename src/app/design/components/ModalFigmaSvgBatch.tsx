@@ -164,9 +164,7 @@ export default function ModalFigmaSvgBatch({
           class: "svg-img",
           style: `width: ${targetWidth}px; height: ${targetHeight}px; display: inline-block; vertical-align: middle;`,
           attributes: {
-            src: dataUri,
-            alt: item.name.replace(/\.svg$/i, ""),
-            ...boundsAttrs,
+            ...(item.figmaMeta ? ({ _figma: item.figmaMeta } as any) : {}),
           },
           children: [],
           _key: key,
@@ -215,7 +213,7 @@ export default function ModalFigmaSvgBatch({
         class: wrapperClass.trim() || "svg-wrapper",
         style: `display: inline-block; line-height: 0; vertical-align: middle; width: ${targetWidth}px; height: ${targetHeight}px; svg { width: 100%; height: 100%; display: block; }`,
         attributes: {
-          ...boundsAttrs,
+          ...(item.figmaMeta ? ({ _figma: item.figmaMeta } as any) : {}),
         },
         children: [clonedNode],
         _key: key,

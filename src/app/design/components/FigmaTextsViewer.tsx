@@ -41,9 +41,9 @@ function NodeCard({
           >
             {node.tag}
           </span>
-          {node.attributes?.["data-name"] && (
+          {((node as any)._figma?.name || node.attributes?.["data-name"]) && (
             <span className="text-xs font-semibold text-zinc-300 bg-zinc-800 px-2 py-0.5 rounded">
-              {node.attributes["data-name"]}
+              {(node as any)._figma?.name || node.attributes?.["data-name"]}
             </span>
           )}
           {childrenList.length > 0 && (

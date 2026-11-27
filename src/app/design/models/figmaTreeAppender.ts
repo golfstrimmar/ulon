@@ -14,60 +14,116 @@ import type { HtmlNode } from "@/types/HtmlNode";
 
 const DEFAULT_TREE_ID = "plaza_tree";
 
+function formatStyleBody(styleStr: string): string {
+  const trimmedStyle = styleStr.trim();
+  if (!trimmedStyle) return "";
+  if (trimmedStyle.includes("{")) {
+    return `  ${trimmedStyle}`;
+  }
+  return trimmedStyle
+    .split(";")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((s) => `  ${s};`)
+    .join("\n");
+}
+
 /**
- * Рекурсивный сбор классов и связанных CSS-свойств со всех переданных нод
- * (с поддержкой вложенного SCSS внутри style, например у .is -> img { ... } или .svg-wrapper -> svg { ... })
+ * Выносит inline `style` в `classStylesMap` под классы (создавая `--2`, `--3` при разных стилях
+ * у одного и того же класса) и полностью удаляет `style` с самой HtmlNode.
  */
-function extractNodeClassesAndStyles(
+function extractAndStripNodeStyles(
   node: HtmlNode,
-  result: Map<string, string>,
-) {
-  if (node.class && node.style) {
-    const classNames = node.class
+  classStylesMap: Map<string, string>,
+  classOccurrenceCounter: Map<string, number>,
+): HtmlNode {
+  let nextClass = node.class || "";
+  let nextStyle = node.style || "";
+
+  if (nextStyle.trim()) {
+    const scssProps = formatStyleBody(nextStyle);
+    const classNames = nextClass
       .split(/\s+/)
       .map((c) => c.trim().replace(/^\./, ""))
       .filter(Boolean);
 
-    const trimmedStyle = node.style.trim();
-    const hasNestedScss = trimmedStyle.includes("{");
-
-    const scssProps = hasNestedScss
-      ? `  ${trimmedStyle}`
-      : trimmedStyle
-          .split(";")
-          .map((s) => s.trim())
-          .filter(Boolean)
-          .map((s) => `  ${s};`)
-          .join("\n");
-
     if (scssProps) {
-      for (const cls of classNames) {
-        if (!result.has(cls)) {
-          result.set(cls, scssProps);
+      if (classNames.length > 0) {
+        const primaryCls = classNames[0];
+        const existingBody = classStylesMap.get(primaryCls);
+
+        if (!existingBody) {
+          classStylesMap.set(primaryCls, scssProps);
+        } else if (existingBody !== scssProps && primaryCls !== "is") {
+          let matchedExistingMod: string | null = null;
+          for (const [k, v] of classStylesMap.entries()) {
+            if (k.startsWith(`${primaryCls}--`) && v === scssProps) {
+              matchedExistingMod = k;
+              break;
+            }
+          }
+
+          if (matchedExistingMod) {
+            if (!classNames.includes(matchedExistingMod)) {
+              nextClass = [...classNames, matchedExistingMod].join(" ");
+            }
+          } else {
+            const count = (classOccurrenceCounter.get(primaryCls) || 1) + 1;
+            classOccurrenceCounter.set(primaryCls, count);
+            const modClass = `${primaryCls}--${count}`;
+            classStylesMap.set(modClass, scssProps);
+            nextClass = [...classNames, modClass].join(" ");
+          }
         }
+        nextStyle = "";
+      } else {
+        const fallbackCls = `node-${(node._key || Math.random().toString(36).slice(2, 8)).replace(/[^a-zA-Z0-9_-]/g, "")}`;
+        classStylesMap.set(fallbackCls, scssProps);
+        nextClass = fallbackCls;
+        nextStyle = "";
       }
+    } else {
+      nextStyle = "";
     }
   }
 
-  if (Array.isArray(node.children)) {
-    for (const child of node.children) {
-      extractNodeClassesAndStyles(child, result);
-    }
+  const nextChildren = Array.isArray(node.children)
+    ? node.children.map((child) =>
+        extractAndStripNodeStyles(
+          child,
+          classStylesMap,
+          classOccurrenceCounter,
+        ),
+      )
+    : node.children;
+
+  const cleaned: any = {
+    ...node,
+    class: nextClass,
+    children: nextChildren,
+  };
+  if (nextStyle) {
+    cleaned.style = nextStyle;
+  } else {
+    delete cleaned.style;
   }
+
+  return cleaned as HtmlNode;
 }
 
-/**
- * Добавляет переданные ноды напрямую в конец активного дерева разметки
- * в базе, синхронизирует `:root` переменные и SCSS-стили классов в глобальный бандл,
- * после чего диспатчит события обновления.
- */
 export async function appendNodesToTree(
   newNodes: HtmlNode | HtmlNode[],
 ): Promise<HtmlNode[]> {
-  const nodesToAdd = Array.isArray(newNodes) ? newNodes : [newNodes];
-  if (nodesToAdd.length === 0) return [];
+  const rawNodesToAdd = Array.isArray(newNodes) ? newNodes : [newNodes];
+  if (rawNodesToAdd.length === 0) return [];
 
-  // 1. Ищем существующее дерево: сначала пробуем plaza_tree
+  const classStylesMap = new Map<string, string>();
+  const classOccurrenceCounter = new Map<string, number>();
+
+  const nodesToAdd = rawNodesToAdd.map((node) =>
+    extractAndStripNodeStyles(node, classStylesMap, classOccurrenceCounter),
+  );
+
   let currentTree = await getHtmlJson(DEFAULT_TREE_ID);
   let targetId = DEFAULT_TREE_ID;
 
@@ -81,7 +137,6 @@ export async function appendNodesToTree(
 
   let nextTree: HtmlNode[];
 
-  // 2. Встраиваем новые ноды напрямую в структуру
   if (!currentTree) {
     nextTree = nodesToAdd;
   } else if (Array.isArray(currentTree)) {
@@ -99,16 +154,9 @@ export async function appendNodesToTree(
     ];
   }
 
-  // 3. Сохраняем обновленное дерево в IndexedDB
   await saveHtmlJson(targetId, nextTree);
 
-  // 4. Синхронизируем :root переменные и стили классов из нод в глобальный SCSS
   try {
-    const classStylesMap = new Map<string, string>();
-    for (const node of nodesToAdd) {
-      extractNodeClassesAndStyles(node, classStylesMap);
-    }
-
     const [rawScss, colorVars] = await Promise.all([
       getGlobalScss().catch(() => ""),
       getColorVariables().catch(() => []),
@@ -140,7 +188,6 @@ export async function appendNodesToTree(
     console.error("Ошибка синхронизации SCSS стилей для нод:", scssErr);
   }
 
-  // 5. Оповещаем всю систему об обновлении дерева
   if (typeof window !== "undefined") {
     window.dispatchEvent(
       new CustomEvent("plaza-tree-updated", { detail: nextTree }),
