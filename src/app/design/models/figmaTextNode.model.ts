@@ -1,6 +1,7 @@
 import type { HtmlNode } from "@/types/HtmlNode";
 import { buildFigmaBoundsAttributes } from "./figmaImageNode.model";
 import { generateNodeKey } from "@/store/htmlTree";
+import { getFontBaseClassName } from "../utils/figmaCssUtils";
 
 export interface FigmaTextItem {
   id: string;
@@ -405,10 +406,20 @@ export function createHtmlNodeFromStructureItem(
     hasChildren: children.length > 0,
   });
 
+  const rawClass = (item.className || "").trim();
+  const resolvedClass = rawClass
+    ? rawClass
+    : item.fontSize !== undefined || item.fontWeight !== undefined
+      ? getFontBaseClassName({
+          fontSize: item.fontSize,
+          fontWeight: item.fontWeight,
+        })
+      : "";
+
   return {
     tag: resolvedTag,
     text: item.text || "",
-    class: item.className || "",
+    class: resolvedClass,
     style: inlineStyles,
     attributes: {},
     _key: generateNodeKey(),
