@@ -9,8 +9,8 @@ import {
   getGlobalScss,
   getGlobalJs,
   getFontsSettings,
-} from "@/lib/htmlStorage";
-import { getColorVariables } from "@/lib/figmaColorStorage";
+} from "@/store/htmlStorage";
+import { getColorVariables } from "@/store/figmaColorStorage";
 import { compileScssToCss } from "@/lib/scssCompiler";
 import { purgeUnusedCss, type PurgeResult } from "@/lib/cssPurger";
 import { deduplicateCss } from "@/lib/cssDeduper";
@@ -18,7 +18,7 @@ import {
   renderTree,
   extractFontFamilies,
   parseFontHeaderTag,
-} from "@/app/plaza/components/PreviewArea/lib/previewModel";
+} from "@/app/plaza/components/PreviewArea/models/previewModel";
 import type { HtmlNode } from "@/types/HtmlNode";
 
 const DB_KEY = "plaza_tree";
@@ -346,7 +346,9 @@ export function extractAndProcessSvgSprite(html: string): SvgSpriteResult {
 
     // Если viewBox не был указан в атрибутах, но был вычислен — добавляем его
     if (viewBox && !/\bviewBox=/i.test(cleanAttrs)) {
-      cleanAttrs = cleanAttrs ? `${cleanAttrs} viewBox="${viewBox}"` : `viewBox="${viewBox}"`;
+      cleanAttrs = cleanAttrs
+        ? `${cleanAttrs} viewBox="${viewBox}"`
+        : `viewBox="${viewBox}"`;
     }
 
     const attrsPrefix = cleanAttrs ? ` ${cleanAttrs}` : "";
@@ -655,7 +657,8 @@ export async function buildProductionBundle(
   let rawBodyHtml = "";
   if (rawTree) {
     const nodes: HtmlNode[] = Array.isArray(rawTree) ? rawTree : [rawTree];
-    if (nodes.length > 0) rawBodyHtml = stripEditorAttributes(renderTree(nodes));
+    if (nodes.length > 0)
+      rawBodyHtml = stripEditorAttributes(renderTree(nodes));
   }
 
   // 1. Извлекаем все <svg> в спрайт, заменяем на <use href="#id" xlink:href="#id"></use>
@@ -673,7 +676,9 @@ export async function buildProductionBundle(
   // 3. Формируем список файлов для папки assets/ (растровые изображения + sprite.svg)
   const allAssets: BundleAsset[] = [...imageAssets];
   if (symbolCount > 0 && standaloneSpriteSvg) {
-    const spriteBlob = new Blob([standaloneSpriteSvg], { type: "image/svg+xml" });
+    const spriteBlob = new Blob([standaloneSpriteSvg], {
+      type: "image/svg+xml",
+    });
     allAssets.push({
       name: "sprite.svg",
       path: "assets/sprite.svg",

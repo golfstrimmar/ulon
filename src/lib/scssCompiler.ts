@@ -46,11 +46,27 @@ export function extractClassSnippet(
   if (!globalScss || !cls) return `.${cls} {\n  \n}`;
 
   const escaped = escapeRegex(cls);
-  const exactRegex = new RegExp(`(^|\\n)([ \\t]*\\.${escaped}\\s*\\{)`);
-  let match = exactRegex.exec(globalScss);
+
+  // 1. Сначала ищем ТОП-ЛЕВЕЛ селектор на нулевой вложенности (без пробелов в начале строки)
+  const topLevelRegex = new RegExp(`(^|\\n)(\\.${escaped}\\s*\\{)`);
+  let match = topLevelRegex.exec(globalScss);
+
+  // 2. Если нет точного, ищем топ-левел с селекторами/псевдоклассами
+  if (!match) {
+    const topLevelLoose = new RegExp(
+      `(^|\\n)(\\.${escaped}(?![a-zA-Z0-9_.-])[^{]*\\{)`,
+    );
+    match = topLevelLoose.exec(globalScss);
+  }
+
+  // 3. И только если топ-левел блока нет, ищем вложенное правило
+  if (!match) {
+    const nestedRegex = new RegExp(`(^|\\n)([ \\t]+\\.${escaped}\\s*\\{)`);
+    match = nestedRegex.exec(globalScss);
+  }
   if (!match) {
     const fallbackRegex = new RegExp(
-      `(^|\\n)[ \\t]*\\.${escaped}(?![a-zA-Z0-9_.-])[^{]*\\{`,
+      `(^|\\n)[ \\t]+\\.${escaped}(?![a-zA-Z0-9_.-])[^{]*\\{`,
     );
     match = fallbackRegex.exec(globalScss);
   }
@@ -80,18 +96,32 @@ export function updateClassInGlobalScss(
 
   const trimmedSnippet = newSnippet.trim();
   const escaped = escapeRegex(cls);
-  const exactRegex = new RegExp(`(^|\\n)([ \\t]*\\.${escaped}\\s*\\{)`, "g");
 
-  const exactRanges: { start: number; end: number }[] = [];
+  // Сначала ищем топ-левел селекторы без отступов
+  const topLevelRegex = new RegExp(`(^|\\n)(\\.${escaped}\\s*\\{)`, "g");
+  let exactRanges: { start: number; end: number }[] = [];
   let match: RegExpExecArray | null;
 
-  while ((match = exactRegex.exec(globalScss)) !== null) {
+  while ((match = topLevelRegex.exec(globalScss)) !== null) {
     const start = match.index + (match[1] ? match[1].length : 0);
     const braceStart = globalScss.indexOf("{", start);
     if (braceStart === -1) break;
     const end = findMatchingBraceEnd(globalScss, braceStart);
     exactRanges.push({ start, end });
-    exactRegex.lastIndex = end;
+    topLevelRegex.lastIndex = end;
+  }
+
+  // Если топ-левела нет, ищем вложенные
+  if (exactRanges.length === 0) {
+    const exactRegex = new RegExp(`(^|\\n)([ \\t]*\\.${escaped}\\s*\\{)`, "g");
+    while ((match = exactRegex.exec(globalScss)) !== null) {
+      const start = match.index + (match[1] ? match[1].length : 0);
+      const braceStart = globalScss.indexOf("{", start);
+      if (braceStart === -1) break;
+      const end = findMatchingBraceEnd(globalScss, braceStart);
+      exactRanges.push({ start, end });
+      exactRegex.lastIndex = end;
+    }
   }
 
   if (exactRanges.length > 0) {

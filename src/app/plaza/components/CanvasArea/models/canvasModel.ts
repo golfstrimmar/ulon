@@ -6,6 +6,7 @@ import {
   isDescendant,
   duplicateNodeInTree,
 } from "@/store/htmlTree";
+import { updateClassInGlobalScss } from "@/lib/scssCompiler";
 
 export const PLAZA_MARKER_ATTR = "data-plaza-marker";
 
@@ -233,11 +234,18 @@ export function findNodeByCriteria(
     }
   }
 
+  const safeClassName =
+    typeof className === "string"
+      ? className
+      : typeof (className as any)?.baseVal === "string"
+        ? (className as any).baseVal
+        : "";
+
   const findFallback = (list: HtmlNode[]): HtmlNode | null => {
     for (const node of list) {
-      if (className && node.class) {
+      if (safeClassName && node.class) {
         const classes = node.class.split(/\s+/).filter(Boolean);
-        const targetClasses = className.trim().split(/\s+/).filter(Boolean);
+        const targetClasses = safeClassName.trim().split(/\s+/).filter(Boolean);
         const specificClass = targetClasses[targetClasses.length - 1]?.replace(
           /^\./,
           "",
@@ -443,27 +451,39 @@ export function extractStylesAndScriptsFromNodes(nodes: HtmlNode[]): {
       extractedScripts.push({ name: scriptName, code });
     }
 
+    let keepInlineStyle = false;
+    let remainingInlineStyle = "";
+
     if (node.style && node.style.trim()) {
-      const cleanBody = node.style.trim();
+      let cleanBody = node.style.trim();
 
-      const targetClass = classList.find(
-        (c) =>
-          !c.includes(":") && !c.startsWith("flex") && !c.startsWith("grid"),
-      );
+      // 1. Вытаскиваем :root отдельно наверх
+      const rootRegex = /:root\s*\{[\s\S]*?\}/gi;
+      let rootMatch: RegExpExecArray | null;
+      while ((rootMatch = rootRegex.exec(cleanBody)) !== null) {
+        extractedRules.push(rootMatch[0].trim());
+      }
+      cleanBody = cleanBody.replace(rootRegex, "").trim();
 
-      if (targetClass) {
-        if (
-          cleanBody.startsWith(`.${targetClass}`) ||
-          cleanBody.startsWith(":root") ||
-          cleanBody.includes(":root {") ||
-          cleanBody.includes(":root{")
-        ) {
+      // 2. Стили с классом уходят под класс; голые свойства без класса остаются инлайн на ноде
+      if (cleanBody) {
+        const targetClass = classList.find(
+          (c) =>
+            !c.includes(":") && !c.startsWith("flex") && !c.startsWith("grid"),
+        );
+
+        if (targetClass) {
+          if (cleanBody.startsWith(`.${targetClass}`)) {
+            extractedRules.push(cleanBody);
+          } else {
+            extractedRules.push(`.${targetClass} {\n  ${cleanBody}\n}`);
+          }
+        } else if (cleanBody.includes("{")) {
           extractedRules.push(cleanBody);
         } else {
-          extractedRules.push(`.${targetClass} {\n  ${cleanBody}\n}`);
+          keepInlineStyle = true;
+          remainingInlineStyle = cleanBody;
         }
-      } else if (cleanBody.startsWith(":root") || cleanBody.includes(":root")) {
-        extractedRules.push(cleanBody);
       }
     }
 
@@ -480,7 +500,11 @@ export function extractStylesAndScriptsFromNodes(nodes: HtmlNode[]): {
       class: classList.length > 0 ? classList.join(" ") : undefined,
       children: processedChildren,
     };
-    delete cleaned.style;
+    if (keepInlineStyle && remainingInlineStyle) {
+      cleaned.style = remainingInlineStyle;
+    } else {
+      delete cleaned.style;
+    }
     delete cleaned.script;
     delete cleaned.js;
 
@@ -543,6 +567,33 @@ export function splitTopLevelCssBlocks(scss: string): {
   return blocks;
 }
 
+function mergeTwoRootBlocks(
+  existingRoot: string,
+  incomingRoot: string,
+): string {
+  const innerMatch = incomingRoot.match(/:root\s*\{([\s\S]*?)\}/i);
+  if (!innerMatch) return existingRoot;
+
+  let merged = existingRoot;
+  const lines = innerMatch[1].split("\n");
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("/*") || line.startsWith("//")) continue;
+    const m = line.match(/^(--[a-zA-Z0-9_-]+)\s*:\s*([^;]+);?/);
+    if (!m) continue;
+    const name = m[1].trim();
+    const val = m[2].trim();
+    const escaped = name.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+    const propRegex = new RegExp(`(${escaped}\\s*:\\s*)([^;]+)(;)`, "i");
+    if (propRegex.test(merged)) {
+      merged = merged.replace(propRegex, `$1${val}$3`);
+    } else {
+      merged = merged.replace(/\}\s*$/, `  ${name}: ${val};\n}`);
+    }
+  }
+  return merged;
+}
+
 export function mergeScssWithoutDuplicates(
   currentScss: string,
   incomingScss: string,
@@ -576,14 +627,23 @@ export function mergeScssWithoutDuplicates(
 
     const norm = block.selector.replace(/\s+/g, " ").trim();
     if (norm === ":root") {
-      if (!existingRules.has(block.full) && !result.includes(block.full)) {
+      const existingRootMatch = result.match(/:root\s*\{[\s\S]*?\}/i);
+      if (existingRootMatch) {
+        const mergedRoot = mergeTwoRootBlocks(existingRootMatch[0], block.full);
+        result = result.replace(existingRootMatch[0], mergedRoot);
+      } else {
         result = `${block.full}\n\n${result}`;
-        existingRules.add(block.full);
       }
+      existingRules.add(block.full);
       continue;
     }
 
     if (norm && existingSelectors.has(norm)) {
+      if (!existingRules.has(block.full) && norm.startsWith(".")) {
+        const cls = norm.replace(/^\./, "");
+        result = updateClassInGlobalScss(result, cls, block.full);
+        existingRules.add(block.full);
+      }
       continue;
     }
 
@@ -1242,10 +1302,6 @@ function promoteBoldTextForBem(node: HtmlNode): HtmlNode {
   return { ...node, tag: nextTag };
 }
 
-/**
- * Гарантирует структуру секции:
- * <section> -> <div class="container"> -> <div class="${block}__wrap"> -> ...остальное
- */
 function ensureSectionContainerAndWrap(
   sectionNode: HtmlNode,
   rootBlockName: string,

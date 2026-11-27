@@ -5,6 +5,64 @@ import {
   updateClassInGlobalScss,
 } from "@/lib/scssCompiler";
 import { splitTopLevelCssBlocks } from "@/app/plaza/components/CanvasArea/models/canvasModel";
+import { replaceRootInScss } from "@/app/plaza/components/CanvasArea/components/ModalTokens/tokensModel";
+
+/**
+ * 🔹 Извлекает блок :root из SCSS, если он содержит переменные
+ */
+export function extractRelatedRootSnippet(
+  scss: string,
+  _classNames: string[],
+): string | null {
+  if (!scss) return null;
+  const rootMatch = scss.match(/:root\s*\{([\s\S]*?)\}/i);
+  if (!rootMatch) return null;
+
+  const lines = rootMatch[1].split("\n");
+  const relevantLines = lines.filter((l) => {
+    const trimmed = l.trim();
+    if (!trimmed || trimmed.startsWith("/*") || trimmed.startsWith("//"))
+      return false;
+    return true;
+  });
+
+  if (relevantLines.length === 0) return null;
+  return `:root {\n${relevantLines
+    .map((l) => (l.startsWith("  ") ? l : `  ${l.trim()}`))
+    .join("\n")}\n}`;
+}
+
+/**
+ * 🔹 Собирает базовый BEM-блок и все связанные элементы (.block__... и .block--...)
+ */
+export function collectRelatedBemClasses(
+  baseClasses: string[],
+  scss: string,
+): string[] {
+  const result = new Set<string>();
+  for (const raw of baseClasses) {
+    const cls = raw.trim().replace(/^\./, "");
+    if (!cls) continue;
+    result.add(cls);
+
+    const parts = cls.split("__");
+    const blockName = parts[0];
+    if (blockName) {
+      result.add(blockName);
+
+      const escaped = escapeRegex(blockName);
+      const relatedRegex = new RegExp(
+        `(^|\\n)\\.(${escaped}[a-zA-Z0-9_-]+)\\s*\\{`,
+        "g",
+      );
+      let m: RegExpExecArray | null;
+      while ((m = relatedRegex.exec(scss)) !== null) {
+        result.add(m[2]);
+      }
+    }
+  }
+  return Array.from(result);
+}
 
 /**
  * 🔹 Extracts snippet with fallback to inline style if SCSS block is empty
@@ -42,25 +100,30 @@ export function getSnippetWithFallback(
 }
 
 /**
- * 🔹 Combines snippets for all classes into a single multi-class SCSS text (Browser DevTools style)
+ * 🔹 Собирает SCSS-блоки только для классов, которые реально принадлежат кликнутой ноде
  */
 export function buildAllClassesSnippet(
   classes: string[],
   scss: string,
   fallbackStyle?: string,
 ): string {
-  const uniqueClasses = Array.from(
+  const ownClasses = Array.from(
     new Set(classes.map((c) => c.trim().replace(/^\./, "")).filter(Boolean)),
   );
-  if (uniqueClasses.length === 0) return "";
+  if (ownClasses.length === 0) return "";
 
-  return uniqueClasses
-    .map((cls, idx) => {
-      const fb = idx === 0 ? fallbackStyle : undefined;
-      return getSnippetWithFallback(cls, scss, fb);
-    })
-    .filter(Boolean)
-    .join("\n\n");
+  const snippets: string[] = [];
+
+  for (let i = 0; i < ownClasses.length; i++) {
+    const cls = ownClasses[i];
+    const fb = i === 0 ? fallbackStyle : undefined;
+    const s = getSnippetWithFallback(cls, scss, fb);
+    if (s && !snippets.includes(s)) {
+      snippets.push(s);
+    }
+  }
+
+  return snippets.join("\n\n");
 }
 
 /**
@@ -101,10 +164,12 @@ export function updateGlobalScssFromMultiClass(
     .filter(Boolean);
 
   for (const block of blocks) {
-    // Определяем целевой класс для этого блока:
-    // 1. Если среди классов селектора есть класс текущей ноды — выбираем его
-    // 2. Иначе берем первый класс селектора
-    // 3. Либо парсим селектор .className
+    const norm = block.selector.replace(/\s+/g, " ").trim();
+    if (norm === ":root" || norm.startsWith(":root")) {
+      nextScss = replaceRootInScss(nextScss, block.full);
+      continue;
+    }
+
     let targetClass: string | null = null;
     if (block.classes.length > 0) {
       targetClass =

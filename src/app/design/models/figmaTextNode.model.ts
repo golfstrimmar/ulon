@@ -1,6 +1,7 @@
 import type { HtmlNode } from "@/types/HtmlNode";
 import { buildFigmaBoundsAttributes } from "./figmaImageNode.model";
 import { generateNodeKey } from "@/store/htmlTree";
+
 export interface FigmaTextItem {
   id: string;
   tag: string;
@@ -54,7 +55,7 @@ export interface FigmaStructureItem {
   children?: FigmaStructureItem[];
 }
 
-export type ColorVariableMap = Map<string, string>; // hex (lowercase) -> "$color-1"
+export type ColorVariableMap = Map<string, string>; // hex (lowercase) -> "var(--color-1)"
 
 const PRESERVED_NON_HEADING_TAGS = new Set([
   "a",
@@ -122,14 +123,6 @@ function parseFontSizeValue(raw?: number | string): number | undefined {
   return match ? Number(match[1]) : undefined;
 }
 
-/**
- * Извлекает fontWeight и fontSize из имён классов вроде:
- * - font-font-500-18
- * - font-500-18
- * - font-24-500
- * - font-semibold-20
- * - font-bold
- */
 export function parseFontMetricsFromClassName(className?: string): {
   weight?: number;
   size?: number;
@@ -142,7 +135,6 @@ export function parseFontMetricsFromClassName(className?: string): {
   const classes = className.trim().split(/\s+/);
 
   for (const cls of classes) {
-    // 1. Паттерн "<...>-<weight:100..900>-<size>" (например, font-font-500-18)
     const weightFirstMatch = cls.match(
       /(?:^|[-_])([1-9]00)[-_](\d{1,3})(?:px)?(?:$|[-_])/i,
     );
@@ -155,7 +147,6 @@ export function parseFontMetricsFromClassName(className?: string): {
       continue;
     }
 
-    // 2. Паттерн "<...>-<size>-<weight:100..900>" (например, font-24-500)
     const sizeFirstMatch = cls.match(
       /(?:^|[-_])(\d{1,3})(?:px)?[-_]([1-9]00)(?:$|[-_])/i,
     );
@@ -168,7 +159,6 @@ export function parseFontMetricsFromClassName(className?: string): {
       continue;
     }
 
-    // 3. Поштучный разбор токенов класса
     const tokens = cls.toLowerCase().split(/[-_]+/).filter(Boolean);
     for (const token of tokens) {
       if (weight === undefined) {
@@ -224,10 +214,6 @@ export function resolveHeadingTagByFontSize(fontSize?: number): string {
 
 export const getHeadingTagByFontSize = resolveHeadingTagByFontSize;
 
-/**
- * Повышает текстовые ноды (p / span / empty) с font-weight >= 500 до h2–h6.
- * Существующие h1–h6, ссылки <a>, кнопки <button>, <label> и контейнеры с детьми сохраняются.
- */
 export function resolveSemanticTextTag(params: {
   rawTag?: string;
   fontWeight?: number | string;
@@ -270,24 +256,32 @@ export function resolveSemanticTextTag(params: {
 }
 
 /**
- * Парсит массив строк переменных из базы в мапу: hex -> varName
- * Пример входящей строки: "$color-1: #162D5F;"
+ * Парсит массив переменных из базы в мапу: hex -> "var(--color-1)" | "$color-1"
  */
 export function buildColorMap(variables: string[]): ColorVariableMap {
   const map = new Map<string, string>();
   variables.forEach((entry) => {
-    const match = entry.match(/^(\$[a-zA-Z0-9_-]+):\s*(#[a-zA-Z0-9]+);?$/);
+    const match = entry.match(
+      /^(\$[a-zA-Z0-9_-]+|--[a-zA-Z0-9_-]+)\s*:\s*(#[a-zA-Z0-9]+)\s*;?$/,
+    );
     if (match) {
-      const [, varName, hex] = match;
-      map.set(hex.trim().toLowerCase(), varName.trim());
+      const [, rawName, hex] = match;
+      const varName = rawName.trim();
+      const cssValue = varName.startsWith("--") ? `var(${varName})` : varName;
+      map.set(hex.trim().toLowerCase(), cssValue);
     }
   });
   return map;
 }
 
-/**
- * Сортировка элементов Figma по числовой части id ("40:1433" → 1433) — порядок создания = визуальный порядок сверху вниз
- */
+function resolveColorWithMap(
+  rawColor: string,
+  colorMap: ColorVariableMap,
+): string {
+  const hex = rawColor.trim().toLowerCase();
+  return colorMap.get(hex) ?? rawColor;
+}
+
 function sortByFigmaId(items: FigmaStructureItem[]): FigmaStructureItem[] {
   return [...items].sort((a, b) => {
     const idA = parseInt(a.id?.split(":")[1] ?? "0", 10);
@@ -303,15 +297,11 @@ function formatLineHeight(lh: number | string): string {
   return trimmed;
 }
 
-/**
- * Сборка inline CSS-стилей узла с подстановкой переменной для цвета
- */
 export function buildTextStyleString(
   item: FigmaTextItem,
   colorMap: ColorVariableMap,
 ): string {
-  const hex = item.color.trim().toLowerCase();
-  const colorVar = colorMap.get(hex) ?? item.color;
+  const colorVar = resolveColorWithMap(item.color, colorMap);
 
   const styles: string[] = [
     `font-family: '${item.fontFamily}', sans-serif`,
@@ -323,12 +313,15 @@ export function buildTextStyleString(
     `color: ${colorVar}`,
   ];
 
+  if (item.backgroundColor) {
+    styles.push(
+      `background-color: ${resolveColorWithMap(item.backgroundColor, colorMap)}`,
+    );
+  }
+
   return styles.join("; ") + ";";
 }
 
-/**
- * Создание HtmlNode из элемента texts Figma
- */
 export function createHtmlNodeFromText(
   item: FigmaTextItem,
   colorMap: ColorVariableMap,
@@ -336,9 +329,6 @@ export function createHtmlNodeFromText(
   return createHtmlNodeFromStructureItem(item, colorMap);
 }
 
-/**
- * Рекурсивное создание HtmlNode из узла структуры Figma (сохраняя вложенность, порядок и Figma-координаты)
- */
 export function createHtmlNodeFromStructureItem(
   item: FigmaStructureItem,
   colorMap: ColorVariableMap,
@@ -364,7 +354,12 @@ export function createHtmlNodeFromStructureItem(
     styles.push(`text-align: ${item.textAlign}`);
   }
   if (item.color) {
-    styles.push(`color: ${item.color}`);
+    styles.push(`color: ${resolveColorWithMap(item.color, colorMap)}`);
+  }
+  if (item.backgroundColor) {
+    styles.push(
+      `background-color: ${resolveColorWithMap(item.backgroundColor, colorMap)}`,
+    );
   }
 
   const inlineStyles = styles.length > 0 ? styles.join("; ") + ";" : "";
@@ -413,9 +408,6 @@ export function createHtmlNodeFromStructureItem(
   };
 }
 
-/**
- * Парсинг блока structure из сырого Figma JSON
- */
 export function extractStructureFromJson(
   rawJson: string,
 ): FigmaStructureItem[] {
@@ -437,9 +429,6 @@ export function extractStructureFromJson(
   }
 }
 
-/**
- * Извлекает превью секции из сырого Figma JSON (structure[0].preview)
- */
 export function extractPreviewFromJson(rawJson: string): string | undefined {
   try {
     const parsed = JSON.parse(rawJson);
@@ -463,9 +452,6 @@ export function extractPreviewFromJson(rawJson: string): string | undefined {
   }
 }
 
-/**
- * Рекурсивно собирает все текстовые элементы из дерева structure
- */
 export function flattenStructureTexts(
   items: FigmaStructureItem[],
 ): FigmaTextItem[] {
@@ -512,9 +498,6 @@ export function flattenStructureTexts(
   return result;
 }
 
-/**
- * Парсинг блока texts из сырого Figma JSON
- */
 export function extractTextsFromJson(rawJson: string): FigmaTextItem[] {
   const parsed = JSON.parse(rawJson);
   if (Array.isArray(parsed)) {
@@ -527,9 +510,6 @@ export function extractTextsFromJson(rawJson: string): FigmaTextItem[] {
   return [];
 }
 
-/**
- * Генерация SCSS-класса для сохранения в GlobalScss плазы
- */
 export function generateScssForTextItems(
   items: FigmaTextItem[],
   colorMap: ColorVariableMap,
@@ -542,10 +522,13 @@ export function generateScssForTextItems(
     if (!cls || seenClasses.has(cls)) continue;
     seenClasses.add(cls);
 
-    const hex = item.color.trim().toLowerCase();
-    const colorVar = colorMap.get(hex) || item.color;
+    const colorVar = resolveColorWithMap(item.color, colorMap);
+    const bgLine = item.backgroundColor
+      ? `\n  background-color: ${resolveColorWithMap(item.backgroundColor, colorMap)};`
+      : "";
+
     blocks.push(
-      `.${cls} {\n  font-family: '${item.fontFamily}', sans-serif;\n  font-size: ${item.fontSize}px;\n  font-weight: ${item.fontWeight};\n  line-height: ${formatLineHeight(item.lineHeight)};\n  letter-spacing: ${item.letterSpacing};\n  text-align: ${item.textAlign};\n  color: ${colorVar};\n}`,
+      `.${cls} {\n  font-family: '${item.fontFamily}', sans-serif;\n  font-size: ${item.fontSize}px;\n  font-weight: ${item.fontWeight};\n  line-height: ${formatLineHeight(item.lineHeight)};\n  letter-spacing: ${item.letterSpacing};\n  text-align: ${item.textAlign};\n  color: ${colorVar};${bgLine}\n}`,
     );
   }
 

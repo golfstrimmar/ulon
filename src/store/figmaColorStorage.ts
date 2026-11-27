@@ -31,7 +31,7 @@ export function openDatabase(): Promise<IDBDatabase> {
 }
 
 /**
- * Вспомогательная функция: извлекает HEX из строки вида "$color-1: #162D5F;"
+ * Вспомогательная функция: извлекает HEX из строки вида "--color-1: #162D5F;"
  */
 function extractHex(line: string): string | null {
   const match = line.match(/#[0-9a-fA-F]{3,8}/);
@@ -39,12 +39,12 @@ function extractHex(line: string): string | null {
 }
 
 /**
- * Вспомогательная функция: извлекает максимальный номер переменной $color-N
+ * Вспомогательная функция: извлекает максимальный номер переменной --color-N (или $color-N)
  */
 function getMaxColorIndex(variables: string[]): number {
   let max = 0;
   for (const line of variables) {
-    const match = line.match(/\$color-(\d+)/);
+    const match = line.match(/(?:\$|--)?color-(\d+)/);
     if (match) {
       const num = parseInt(match[1], 10);
       if (num > max) max = num;
@@ -54,7 +54,7 @@ function getMaxColorIndex(variables: string[]): number {
 }
 
 /**
- * Получить массив SCSS-переменных
+ * Получить массив переменных цветов
  */
 export async function getColorVariables(): Promise<string[]> {
   const db = await openDatabase();
@@ -68,13 +68,17 @@ export async function getColorVariables(): Promise<string[]> {
     };
 
     req.onerror = () =>
-      reject(req.error || new Error("Failed to get color variables"));
+      reject(requestError(req.error, "Failed to get color variables"));
     tx.oncomplete = () => db.close();
   });
 }
 
+function requestError(err: DOMException | null, fallback: string): Error {
+  return err || new Error(fallback);
+}
+
 /**
- * Сохранить массив SCSS-переменных (перезапись)
+ * Сохранить массив переменных цветов (перезапись)
  */
 export async function saveColorVariables(variables: string[]): Promise<void> {
   const db = await openDatabase();
@@ -91,43 +95,35 @@ export async function saveColorVariables(variables: string[]): Promise<void> {
 }
 
 /**
- * ДОПОЛНИТЬ переменные с проверкой на дубли по HEX и авто-нумерацией.
+ * ДОПОЛНИТЬ переменные с проверкой на дубли по HEX и авто-нумерацией (`--color-N: #HEX;`).
  * Возвращает итоговый объединённый массив переменных.
  */
 export async function appendColorVariables(
   newTokens: Array<{ hex: string; original?: string }>,
 ): Promise<string[]> {
-  // 1. Читаем уже сохранённые переменные
   const existingVars = await getColorVariables();
 
-  // 2. Собираем Set уже имеющихся HEX (в lowercase для точного сравнения)
   const existingHexes = new Set<string>();
   for (const line of existingVars) {
     const hex = extractHex(line);
     if (hex) existingHexes.add(hex);
   }
 
-  // 3. Вычисляем стартовый индекс для новых переменных
   let nextIndex = getMaxColorIndex(existingVars) + 1;
-
-  // 4. Фильтруем новые цвета: исключаем дубли из базы и дубли внутри новой пачки
   const uniqueIncomingLines: string[] = [];
 
   for (const token of newTokens) {
+    if (!token.hex) continue;
     const hexLower = token.hex.toLowerCase().trim();
     if (!existingHexes.has(hexLower)) {
-      existingHexes.add(hexLower); // Чтобы не дублировались и внутри новой пачки
-
-      const comment = token.original ? ` // ${token.original}` : "";
-      uniqueIncomingLines.push(`$color-${nextIndex}: ${token.hex};${comment}`);
+      existingHexes.add(hexLower);
+      uniqueIncomingLines.push(`--color-${nextIndex}: ${token.hex};`);
       nextIndex++;
     }
   }
 
-  // 5. Объединяем старые и новые записи
   const merged = [...existingVars, ...uniqueIncomingLines];
 
-  // 6. Сохраняем в базу только если появились новые уникальные цвета
   if (uniqueIncomingLines.length > 0) {
     await saveColorVariables(merged);
   }
@@ -152,56 +148,78 @@ export async function clearColorVariables(): Promise<void> {
   });
 }
 
+function isColorCssValue(value: string): boolean {
+  const v = value.trim().toLowerCase();
+  return (
+    v.startsWith("#") ||
+    v.startsWith("rgb") ||
+    v.startsWith("hsl") ||
+    v === "transparent" ||
+    /^[a-z]+$/.test(v)
+  );
+}
+
 /**
- * Извлекает все строки переменных цветов (например, "$color-1: #162D5F;") из SCSS текста
+ * Извлекает переменные цветов (`--btn-bg: #1e293b;`, `--color-1: #F9F9F9;` и др.) из `:root` в SCSS
  */
 export function extractColorVariablesFromScss(scss: string): string[] {
   if (!scss) return [];
-  const lines = scss.split("\n");
   const result: string[] = [];
-  const colorVarRegex = /^\s*(\$[a-zA-Z0-9_-]+)\s*:\s*([^;]+);?/;
+  const seenNames = new Set<string>();
 
-  for (const line of lines) {
-    const trimmed = line.trim();
-    const match = trimmed.match(colorVarRegex);
-    if (match) {
-      const varName = match[1].trim();
-      let value = match[2].trim().replace(/;$/, "");
-      value = value
+  // 1. Из всех блоков :root { ... }
+  const rootRegex = /:root\s*\{([\s\S]*?)\}/gi;
+  let rootMatch: RegExpExecArray | null;
+  while ((rootMatch = rootRegex.exec(scss)) !== null) {
+    const inner = rootMatch[1];
+    const propRegex = /(--[a-zA-Z0-9_-]+)\s*:\s*([^;}\n]+);?/g;
+    let propMatch: RegExpExecArray | null;
+    while ((propMatch = propRegex.exec(inner)) !== null) {
+      const varName = propMatch[1].trim();
+      const value = propMatch[2]
+        .replace(/\/\*[\s\S]*?\*\//g, "")
         .replace(/\/\/.*$/, "")
-        .replace(/\/\*.*?\*\//g, "")
         .trim();
 
-      if (
-        value.startsWith("#") ||
-        value.startsWith("rgb") ||
-        value.startsWith("hsl") ||
-        value === "transparent" ||
-        /^[a-zA-Z]+$/.test(value)
-      ) {
+      if (value && isColorCssValue(value) && !seenNames.has(varName)) {
+        seenNames.add(varName);
         result.push(`${varName}: ${value};`);
       }
     }
   }
+
+  // 2. Фоллбэк для старых $color-... строк верхнего уровня (переводим в --...)
+  const lines = scss.split("\n");
+  for (const line of lines) {
+    const match = line.trim().match(/^\$([a-zA-Z0-9_-]+)\s*:\s*([^;]+);?/);
+    if (match) {
+      const varName = `--${match[1].trim()}`;
+      const value = match[2]
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/\/\/.*$/, "")
+        .trim();
+      if (value && isColorCssValue(value) && !seenNames.has(varName)) {
+        seenNames.add(varName);
+        result.push(`${varName}: ${value};`);
+      }
+    }
+  }
+
   return result;
 }
 
 /**
- * Внедряет или обновляет блок переменных цветов в самом начале SCSS кода
+ * Внедряет или обновляет переменные цветов внутри единого блока `:root { ... }` в начале SCSS
  */
 export function embedColorVariablesIntoScss(
   scss: string,
   colorVariables: string[],
 ): string {
-  const cleanVars = colorVariables
-    .map((v) => v.trim())
-    .filter(Boolean)
-    .map((v) => (v.endsWith(";") ? v : `${v};`));
-
-  // Очищаем существующие верхние строки объявления $color-...
+  // Убираем старые верхние блоки Project Colors и голые $color- / --color- вне фигурных скобок
   const lines = (scss || "").split("\n");
   const filteredLines: string[] = [];
   let inColorHeader = false;
+  let braceDepth = 0;
 
   for (const line of lines) {
     const trimmed = line.trim();
@@ -221,58 +239,123 @@ export function embedColorVariablesIntoScss(
     }
     if (inColorHeader) continue;
 
-    // Убираем одиночные строки вида $color-N: #...
     if (
-      /^\$[a-zA-Z0-9_-]+\s*:\s*(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\))/i.test(
+      braceDepth === 0 &&
+      /^(\$|--)[a-zA-Z0-9_-]+\s*:\s*(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)|hsla?\([^)]+\))/i.test(
         trimmed,
       )
     ) {
       continue;
     }
 
+    for (const ch of line) {
+      if (ch === "{") braceDepth++;
+      else if (ch === "}" && braceDepth > 0) braceDepth--;
+    }
+
     filteredLines.push(line);
   }
 
-  const remainingScss = filteredLines.join("\n").trim();
+  let remainingScss = filteredLines.join("\n").trim();
 
-  if (cleanVars.length === 0) {
+  // Нормализуем входящие переменные в формат `--name: value;`
+  const normalizedEntries: Array<{ name: string; value: string }> = [];
+  for (const raw of colorVariables) {
+    if (!raw || typeof raw !== "string") continue;
+    const clean = raw
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/.*$/, "")
+      .trim()
+      .replace(/;$/, "");
+    const m = clean.match(/^(\$|--)?([a-zA-Z0-9_-]+)\s*:\s*(.+)$/);
+    if (m) {
+      normalizedEntries.push({
+        name: `--${m[2].trim()}`,
+        value: m[3].trim(),
+      });
+    }
+  }
+
+  if (normalizedEntries.length === 0) {
     return remainingScss;
   }
 
-  const headerBlock = `/* === Project Colors === */\n${cleanVars.join(
-    "\n",
-  )}\n/* ===================== */`;
-  return remainingScss ? `${headerBlock}\n\n${remainingScss}` : headerBlock;
+  const rootMatch = remainingScss.match(/:root\s*\{([\s\S]*?)\}/i);
+  if (rootMatch && rootMatch.index !== undefined) {
+    let updatedRoot = rootMatch[0];
+    for (const entry of normalizedEntries) {
+      const escaped = entry.name.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+      const propRegex = new RegExp(`(${escaped}\\s*:\\s*)([^;]+)(;)`, "i");
+      if (propRegex.test(updatedRoot)) {
+        updatedRoot = updatedRoot.replace(propRegex, `$1${entry.value}$3`);
+      } else {
+        updatedRoot = updatedRoot.replace(
+          /\}\s*$/,
+          `  ${entry.name}: ${entry.value};\n}`,
+        );
+      }
+    }
+    return `${remainingScss.slice(0, rootMatch.index)}${updatedRoot}${remainingScss.slice(rootMatch.index + rootMatch[0].length)}`.trim();
+  }
+
+  const rootBody = normalizedEntries
+    .map((e) => `  ${e.name}: ${e.value};`)
+    .join("\n");
+  const rootBlock = `:root {\n${rootBody}\n}`;
+
+  return remainingScss ? `${rootBlock}\n\n${remainingScss}` : rootBlock;
 }
 
 /**
- * Извлекает переменные цветов из CSS/SCSS (особенно из :root) и сохраняет их в базу
+ * Извлекает CSS-переменные цветов из `:root` в SCSS и синхронизирует их с базой
  */
 export async function syncColorsFromScssToDb(scss: string): Promise<string[]> {
   if (!scss) return [];
 
-  const colorVarRegex = /(--[\w-]+)\s*:\s*(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\))/gi;
-  const tokens: Array<{ hex: string; original?: string }> = [];
-  let m: RegExpExecArray | null;
+  const extracted = extractColorVariablesFromScss(scss);
+  if (extracted.length === 0) return [];
 
-  while ((m = colorVarRegex.exec(scss)) !== null) {
-    const varName = m[1];
-    const val = m[2];
-    if (val.startsWith("#")) {
-      tokens.push({ hex: val, original: varName });
+  const existingVars = await getColorVariables();
+  const varMap = new Map<string, string>();
+  const orderedNames: string[] = [];
+
+  for (const entry of existingVars) {
+    const m = entry.trim().match(/^(\$|--)?([a-zA-Z0-9_-]+)\s*:\s*([^;]+)/);
+    if (m) {
+      const name = `--${m[2].trim()}`;
+      if (!varMap.has(name)) orderedNames.push(name);
+      varMap.set(name, m[3].trim());
     }
   }
 
-  if (tokens.length > 0) {
-    const updated = await appendColorVariables(tokens);
+  let changed = false;
+  for (const entry of extracted) {
+    const m = entry.match(/^(--[a-zA-Z0-9_-]+)\s*:\s*([^;]+)/);
+    if (!m) continue;
+    const name = m[1].trim();
+    const val = m[2].trim();
+    if (!varMap.has(name)) {
+      orderedNames.push(name);
+      varMap.set(name, val);
+      changed = true;
+    } else if (varMap.get(name) !== val) {
+      varMap.set(name, val);
+      changed = true;
+    }
+  }
+
+  const nextVars = orderedNames.map((name) => `${name}: ${varMap.get(name)};`);
+
+  if (changed) {
+    await saveColorVariables(nextVars);
     if (typeof window !== "undefined") {
       window.dispatchEvent(
-        new CustomEvent("figma_colors:saved", { detail: updated }),
+        new CustomEvent("figma_colors:saved", { detail: nextVars }),
       );
     }
-    return updated;
   }
-  return [];
+
+  return nextVars;
 }
 
 /**
@@ -281,16 +364,13 @@ export async function syncColorsFromScssToDb(scss: string): Promise<string[]> {
 export function removeColorVariablesFromScss(scss: string): string {
   if (!scss) return "";
 
-  // 1. Удаляем блок /* === Project Colors === */ и одиночные $color-...
   let cleaned = embedColorVariablesIntoScss(scss, []);
 
-  // 2. Очищаем блоки :root
-  cleaned = cleaned.replace(/:root\s*\{([^}]+)\}/gi, (match, inner) => {
+  cleaned = cleaned.replace(/:root\s*\{([^}]*)\}/gi, (_match, inner) => {
     const lines = inner.split("\n");
     const keptLines = lines.filter((line: string) => {
       const trimmed = line.trim();
       if (!trimmed) return false;
-      // Если это CSS-переменная (--...) со значением цвета
       if (
         /^--[\w-]+\s*:\s*(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)|hsla?\([^)]+\)|transparent|\$[a-zA-Z0-9_-]+)/i.test(
           trimmed,
@@ -303,12 +383,11 @@ export function removeColorVariablesFromScss(scss: string): string {
 
     const remainingInner = keptLines.join("\n").trim();
     if (!remainingInner) {
-      return ""; // удаляем пустой блок :root полностью
+      return "";
     }
     return `:root {\n  ${remainingInner}\n}`;
   });
 
-  // Убираем лишние пустые строки (более двух подряд)
   cleaned = cleaned.replace(/\n{3,}/g, "\n\n").trim();
 
   return cleaned;

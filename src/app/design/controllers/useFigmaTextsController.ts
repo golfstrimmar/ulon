@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { HtmlNode } from "@/types/HtmlNode";
-import { getColorVariables } from "@/lib/figmaColorStorage";
-import { getGlobalScss, saveGlobalScss } from "@/lib/htmlStorage";
+import { getColorVariables } from "@/store/figmaColorStorage";
 import { setPixelPerfectImage } from "@/app/plaza/components/PreviewArea/hooks/usePixelPerfect";
 import {
   buildColorMap,
@@ -12,7 +11,6 @@ import {
   extractTextsFromJson,
   extractStructureFromJson,
   flattenStructureTexts,
-  generateScssForTextItems,
   type ColorVariableMap,
   type FigmaTextItem,
 } from "../models/figmaTextNode.model";
@@ -25,7 +23,6 @@ export function useFigmaTextsController() {
   const [isColorsLoaded, setIsColorsLoaded] = useState(false);
   const [savingKey, setSavingKey] = useState<string | null>(null);
 
-  // Хранилище исходных элементов текущего фрагмента для генерации SCSS
   const currentTextItemsRef = useRef<FigmaTextItem[]>([]);
 
   const loadColors = useCallback(async () => {
@@ -46,6 +43,7 @@ export function useFigmaTextsController() {
       const customEvent = event as CustomEvent<string[]>;
       if (customEvent.detail) {
         setColorMap(buildColorMap(customEvent.detail));
+        setIsColorsLoaded(true);
       } else {
         loadColors();
       }
@@ -72,14 +70,10 @@ export function useFigmaTextsController() {
         const textItems = extractTextsFromJson(rawJson);
 
         if (structureItems.length > 0) {
-          // Если есть иерархический блок structure — используем его:
-          // 1. Порядок узлов в точности как в дереве
-          // 2. Родительские блоки (div) группируют дочерние ноды
           const generatedNodes = structureItems.map((item) =>
             createHtmlNodeFromStructureItem(item, colorMap),
           );
 
-          // СРАЗУ загоняем превью в PixelPerfect на этапе выжимки структуры из JSON!
           const sectionPreview = structureItems.find((s) => s.preview)?.preview;
           if (sectionPreview) {
             setPixelPerfectImage(
@@ -88,22 +82,24 @@ export function useFigmaTextsController() {
             ).catch(() => {});
           }
 
-          // Для SCSS сохраняем тексты: из блока texts или рекурсивно из structure
           currentTextItemsRef.current =
-            textItems.length > 0 ? textItems : flattenStructureTexts(structureItems);
+            textItems.length > 0
+              ? textItems
+              : flattenStructureTexts(structureItems);
 
           setNodes(generatedNodes);
           return;
         }
 
         if (textItems.length === 0) {
-          setError("В переданном JSON не найден массив 'structure' или 'texts'");
+          setError(
+            "В переданном JSON не найден массив 'structure' или 'texts'",
+          );
           setNodes([]);
           currentTextItemsRef.current = [];
           return;
         }
 
-        // Фоллбэк: если пришел старый формат только с текстами
         currentTextItemsRef.current = textItems;
 
         const generatedNodes = textItems.map((item) =>
@@ -121,49 +117,13 @@ export function useFigmaTextsController() {
     [colorMap],
   );
 
-  // Вспомогательная функция: добавление SCSS в базу Plaza (GlobalScss)
-  const syncScssWithPlaza = async (items: FigmaTextItem[]) => {
-    const newClassesScss = generateScssForTextItems(items, colorMap);
-    if (!newClassesScss.trim()) return;
-
-    const [currentGlobalScss, colorVars] = await Promise.all([
-      getGlobalScss().catch(() => ""),
-      getColorVariables().catch(() => []),
-    ]);
-
-    let updatedScss = currentGlobalScss || "";
-
-    // Добавляем цвета в заголовок, если их еще нет в GlobalScss
-    if (colorVars.length > 0 && !updatedScss.includes("$color-")) {
-      const colorVarsHeader = colorVars.join("\n");
-      updatedScss = `${colorVarsHeader}\n\n${updatedScss}`;
-    }
-
-    // Дописываем новые классы
-    updatedScss = `${updatedScss.trim()}\n\n/* Figma Generated Classes */\n${newClassesScss}\n`;
-
-    await saveGlobalScss(updatedScss);
-  };
-
-  // Добавление одной ноды в дерево
+  // Добавление одной ноды в дерево (стили и :root переменные синхронизируются в appendNodesToTree)
   const appendSingleNode = async (node: HtmlNode) => {
     if (!node._key) return;
     setSavingKey(node._key);
 
     try {
-      // 1. Сохраняем ноду в дерево
       await appendNodesToTree(node);
-
-      // 2. Находим соответствующий элемент и дописываем его SCSS-класс в базу
-      const matchedItem = currentTextItemsRef.current.find(
-        (item) =>
-          (item.id || item.text) === node._key || item.className === node.class,
-      );
-      if (matchedItem) {
-        await syncScssWithPlaza([matchedItem]);
-      }
-
-      // 3. Убираем добавленную ноду из буфера экрана
       setNodes((prev) => prev.filter((n) => n._key !== node._key));
       setSavingKey(null);
     } catch (err) {
@@ -178,15 +138,8 @@ export function useFigmaTextsController() {
     setSavingKey("all");
 
     try {
-      // 1. Сохраняем массив нод в дерево HTML
       await appendNodesToTree(nodes);
 
-      // 2. Дописываем все SCSS-классы текущего фрагмента в GlobalScss плазы
-      if (currentTextItemsRef.current.length > 0) {
-        await syncScssWithPlaza(currentTextItemsRef.current);
-      }
-
-      // 3. Очищаем экран — фрагмент успешно ушел в дерево и стили сохранены
       setTimeout(() => {
         setNodes([]);
         currentTextItemsRef.current = [];

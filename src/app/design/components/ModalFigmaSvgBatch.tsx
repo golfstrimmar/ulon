@@ -173,12 +173,13 @@ export default function ModalFigmaSvgBatch({
         };
       }
 
-      // 2. Режим Inline <i class="..."><svg></i>
+      // 2. Режим Inline <i class="svg-wrapper"><svg></i>
+      // Стили <svg> вложены внутрь .svg-wrapper, чтобы голые свойства без селектора не попадали в globalScss
       const clonedNode: HtmlNode = JSON.parse(JSON.stringify(item.baseNode));
       clonedNode.attributes = clonedNode.attributes || {};
       clonedNode.attributes["width"] = "100%";
       clonedNode.attributes["height"] = "100%";
-      clonedNode.style = "width: 100%; height: 100%; display: block;";
+      clonedNode.style = "";
 
       if (colorMode === "currentcolor") {
         if (
@@ -212,7 +213,7 @@ export default function ModalFigmaSvgBatch({
         tag: "i",
         text: "",
         class: wrapperClass.trim() || "svg-wrapper",
-        style: `display: inline-block; line-height: 0; vertical-align: middle; width: ${targetWidth}px; height: ${targetHeight}px;`,
+        style: `display: inline-block; line-height: 0; vertical-align: middle; width: ${targetWidth}px; height: ${targetHeight}px; svg { width: 100%; height: 100%; display: block; }`,
         attributes: {
           ...boundsAttrs,
         },

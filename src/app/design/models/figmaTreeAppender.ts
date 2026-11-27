@@ -4,7 +4,11 @@ import {
   getAllHtmlJson,
   getGlobalScss,
   saveGlobalScss,
-} from "@/lib/htmlStorage";
+} from "@/store/htmlStorage";
+import {
+  getColorVariables,
+  embedColorVariablesIntoScss,
+} from "@/store/figmaColorStorage";
 import { updateClassInGlobalScss } from "@/lib/scssCompiler";
 import type { HtmlNode } from "@/types/HtmlNode";
 
@@ -12,7 +16,7 @@ const DEFAULT_TREE_ID = "plaza_tree";
 
 /**
  * Рекурсивный сбор классов и связанных CSS-свойств со всех переданных нод
- * (с поддержкой вложенного SCSS внутри style, например у .is -> img { ... })
+ * (с поддержкой вложенного SCSS внутри style, например у .is -> img { ... } или .svg-wrapper -> svg { ... })
  */
 function extractNodeClassesAndStyles(
   node: HtmlNode,
@@ -54,7 +58,7 @@ function extractNodeClassesAndStyles(
 
 /**
  * Добавляет переданные ноды напрямую в конец активного дерева разметки
- * в базе, синхронизирует SCSS-стили классов в глобальный бандл (classes_css),
+ * в базе, синхронизирует `:root` переменные и SCSS-стили классов в глобальный бандл,
  * после чего диспатчит события обновления.
  */
 export async function appendNodesToTree(
@@ -67,7 +71,6 @@ export async function appendNodesToTree(
   let currentTree = await getHtmlJson(DEFAULT_TREE_ID);
   let targetId = DEFAULT_TREE_ID;
 
-  // Если plaza_tree нет, смотрим первую попавшуюся запись в БД
   if (!currentTree) {
     const allTrees = await getAllHtmlJson();
     if (allTrees.length > 0) {
@@ -80,13 +83,10 @@ export async function appendNodesToTree(
 
   // 2. Встраиваем новые ноды напрямую в структуру
   if (!currentTree) {
-    // Дерево ещё пустое — новые ноды становятся корнем
     nextTree = nodesToAdd;
   } else if (Array.isArray(currentTree)) {
-    // Дерево — плоский массив: докидываем в конец списка
     nextTree = [...currentTree, ...nodesToAdd];
   } else {
-    // Дерево — один корневой объект: добавляем в его children
     const existingChildren = Array.isArray(currentTree.children)
       ? currentTree.children
       : [];
@@ -102,19 +102,32 @@ export async function appendNodesToTree(
   // 3. Сохраняем обновленное дерево в IndexedDB
   await saveHtmlJson(targetId, nextTree);
 
-  // 4. Синхронизируем стили классов из нод в глобальный SCSS (classes_css)
+  // 4. Синхронизируем :root переменные и стили классов из нод в глобальный SCSS
   try {
     const classStylesMap = new Map<string, string>();
     for (const node of nodesToAdd) {
       extractNodeClassesAndStyles(node, classStylesMap);
     }
 
+    const [rawScss, colorVars] = await Promise.all([
+      getGlobalScss().catch(() => ""),
+      getColorVariables().catch(() => []),
+    ]);
+
+    let currentScss = rawScss || "";
+
+    if (Array.isArray(colorVars) && colorVars.length > 0) {
+      currentScss = embedColorVariablesIntoScss(currentScss, colorVars);
+    }
+
     if (classStylesMap.size > 0) {
-      let currentScss = await getGlobalScss().catch(() => "");
       for (const [cls, scssProps] of classStylesMap.entries()) {
         const fullSnippet = `.${cls} {\n${scssProps}\n}`;
         currentScss = updateClassInGlobalScss(currentScss, cls, fullSnippet);
       }
+    }
+
+    if (currentScss !== (rawScss || "")) {
       await saveGlobalScss(currentScss);
 
       if (typeof window !== "undefined") {

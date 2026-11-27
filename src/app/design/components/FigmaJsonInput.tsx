@@ -16,7 +16,7 @@ import {
   saveFragment,
   deleteFragment,
   type FigmaJsonFragment,
-} from "@/lib/figmaJsonStorage";
+} from "@/store/figmaJsonStorage";
 import { useFigmaImagesController } from "@/app/design/controllers/useFigmaImagesController";
 import { useFigmaSvgController } from "@/app/design/controllers/useFigmaSvgController";
 import ModalFigmaImageCrop from "@/app/design/components/ModalFigmaImageCrop";

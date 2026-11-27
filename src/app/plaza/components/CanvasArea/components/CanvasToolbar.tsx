@@ -12,6 +12,7 @@ import {
   CloudArrowUpIcon,
 } from "@heroicons/react/24/outline";
 import { useCanvasStore } from "@/app/plaza/components/CanvasArea/store/useCanvasStore";
+import ButtonTokens from "@/app/plaza/components/CanvasArea/components/ButtonTokens";
 
 interface CanvasToolbarProps {
   graphZoom: number;
@@ -123,6 +124,8 @@ export function CanvasToolbar({
           <CloudArrowUpIcon className="size-3.5 text-blue-400" />
           <span>Projects</span>
         </button>
+
+        <ButtonTokens />
 
         <button
           type="button"

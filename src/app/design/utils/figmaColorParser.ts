@@ -27,7 +27,6 @@ export function parseFigmaColors(rawJson: string): ParseResult {
       return { tokens: [], error: "Root element must be an array: [...]" };
     }
 
-    // Ищем секцию colors внутри массива
     const colorSection = parsed.find((item) => Array.isArray(item?.colors));
     if (!colorSection || !colorSection.colors.length) {
       return {
@@ -38,7 +37,7 @@ export function parseFigmaColors(rawJson: string): ParseResult {
 
     const tokens: ColorToken[] = colorSection.colors.map(
       (c: any, index: number) => ({
-        varName: `$color-${index + 1}`,
+        varName: `--color-${index + 1}`,
         hex: c.hex,
         original: c.original,
       }),
@@ -51,13 +50,14 @@ export function parseFigmaColors(rawJson: string): ParseResult {
 }
 
 /**
- * Генерирует готовую строку SCSS файла с переменными
+ * Генерирует готовую строку :root с CSS-переменными
  */
 export function generateScss(tokens: ColorToken[]): string {
   if (!tokens.length) return "";
 
-  const header = `// -----------------------------------------\n// Colors from Figma Plugin\n// -----------------------------------------\n\n`;
-  const lines = tokens.map((t) => `${t.varName}: ${t.hex}; // ${t.original}`);
+  const lines = tokens.map(
+    (t) => `  ${t.varName}: ${t.hex}; /* ${t.original} */`,
+  );
 
-  return header + lines.join("\n");
+  return `:root {\n${lines.join("\n")}\n}`;
 }

@@ -30,7 +30,10 @@ import {
   getPixelPerfectSettings,
 } from "@/store/htmlStorage";
 import { updateClassInGlobalScss } from "@/lib/scssCompiler";
-import { getColorVariables } from "@/store/figmaColorStorage";
+import {
+  getColorVariables,
+  embedColorVariablesIntoScss,
+} from "@/store/figmaColorStorage";
 import { buildColorMap } from "@/app/design/models/figmaTextNode.model";
 import {
   compileWireframeBoxesToTree,
@@ -524,8 +527,8 @@ export default function TracingWireframeOverlay({
         if (classStylesMap.size > 0) {
           let currentScss = (await getGlobalScss().catch(() => "")) || "";
 
-          if (colorVars.length > 0 && !currentScss.includes("$color-")) {
-            currentScss = `${colorVars.join("\n")}\n\n${currentScss}`;
+          if (colorVars.length > 0) {
+            currentScss = embedColorVariablesIntoScss(currentScss, colorVars);
           }
 
           for (const [cls, scssProps] of classStylesMap.entries()) {

@@ -21,10 +21,6 @@ import {
 } from "@/app/plaza/components/PreviewArea/models/previewModel";
 import { useCanvasStore } from "@/app/plaza/components/CanvasArea/store/useCanvasStore";
 
-/**
- * Скрывает из превью только корневые ноды (верхний уровень иерархии),
- * если их ключ находится в collapsedKeys. Вложенные свёрнутые ноды остаются в разметке.
- */
 function filterVisibleRootNodes(
   nodes: HtmlNode[],
   collapsedKeys: Set<string>,
@@ -36,6 +32,31 @@ function filterVisibleRootNodes(
     const key = node._key || (node as any)?.id || "";
     return !key || !collapsedKeys.has(key);
   });
+}
+
+function getScssOnlyColorDefs(variables: string[]): string {
+  return variables
+    .filter((v) => typeof v === "string" && v.trim().startsWith("$"))
+    .join("\n");
+}
+
+function buildRootColorTokensText(variables: string[]): string {
+  const lines = variables
+    .map((item) => {
+      if (!item || typeof item !== "string") return null;
+      const trimmed = item.trim().replace(/;$/, "");
+      if (!trimmed) return null;
+      const match = trimmed.match(/^(\$[\w-]+|--[\w-]+)\s*:\s*([^;/]+)/);
+      if (match) {
+        const varName = match[1].replace(/^\$/, "--");
+        return `  ${varName}: ${match[2].trim()};`;
+      }
+      return `  ${trimmed};`;
+    })
+    .filter(Boolean);
+
+  if (lines.length === 0) return "";
+  return `:root {\n${lines.join("\n")}\n}`;
 }
 
 export function usePreviewArea() {
@@ -68,7 +89,6 @@ export function usePreviewArea() {
 
   const colorVariablesRef = useRef<string[]>([]);
 
-  // Полная пересборка srcDoc (только при старте, смене шрифтов/скриптов или выходе из пустого состояния)
   const rebuildEntireIframe = useCallback(
     (
       bodyHtml: string,
@@ -132,9 +152,6 @@ export function usePreviewArea() {
     [rebuildEntireIframe],
   );
 
-  /* ==========================================================================
-     1. ПЕРВОНАЧАЛЬНАЯ ЗАГРУЗКА ПРИ СТАРТЕ
-     ========================================================================== */
   async function initPreview() {
     try {
       const [rawTree, dbScss, dbScripts, dbFonts, dbColors] = await Promise.all(
@@ -168,7 +185,7 @@ export function usePreviewArea() {
       setScriptsJs(loadedScripts);
       scriptsJsRef.current = loadedScripts;
 
-      const colorDefs = loadedColors.join("\n");
+      const colorDefs = getScssOnlyColorDefs(loadedColors);
       const scssWithColors = colorDefs
         ? `${colorDefs}\n${dbScss || ""}`
         : dbScss || "";
@@ -215,9 +232,6 @@ export function usePreviewArea() {
     initPreview();
   }, []);
 
-  /* ==========================================================================
-     2. ОБНОВЛЕНИЕ ДЕРЕВА НОД БЕЗ МОРГАНИЯ И ПЕРЕСБОРКИ IFRAME
-     ========================================================================== */
   useEffect(() => {
     const handleTreeUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<any>;
@@ -238,9 +252,6 @@ export function usePreviewArea() {
       window.removeEventListener("plaza-tree-updated", handleTreeUpdate);
   }, [applyNodesToPreview]);
 
-  /* ==========================================================================
-     2.1. РЕАКЦИЯ НА СВОРАЧИВАНИЕ / РАЗВОРАЧИВАНИЕ КОРНЕВЫХ НОД
-     ========================================================================== */
   useEffect(() => {
     if (!isInitializedRef.current) return;
     const storeNodes = useCanvasStore.getState().currentJson;
@@ -249,9 +260,6 @@ export function usePreviewArea() {
     applyNodesToPreview(fullNodes, collapsedKeys);
   }, [collapsedKeys, applyNodesToPreview]);
 
-  /* ==========================================================================
-     3. ОБНОВЛЕНИЕ SCSS
-     ========================================================================== */
   useEffect(() => {
     const handleStylesUpdate = async (e: Event) => {
       const customEvent = e as CustomEvent<string | Record<string, string>>;
@@ -262,7 +270,7 @@ export function usePreviewArea() {
         rawScss = Object.values(customEvent.detail).join("\n\n");
       }
 
-      const colorDefs = colorVariablesRef.current.join("\n");
+      const colorDefs = getScssOnlyColorDefs(colorVariablesRef.current);
       const scssWithColors = colorDefs ? `${colorDefs}\n${rawScss}` : rawScss;
 
       const css = await compileScssToCss(scssWithColors);
@@ -297,9 +305,68 @@ export function usePreviewArea() {
       window.removeEventListener("plaza-styles-updated", handleStylesUpdate);
   }, [rebuildEntireIframe]);
 
-  /* ==========================================================================
-     4. ОБНОВЛЕНИЕ JS — горячая замена без перезагрузки iframe
-     ========================================================================== */
+  useEffect(() => {
+    const handleColorsUpdate = async (e: Event) => {
+      const customEvent = e as CustomEvent<any>;
+      const rawColors =
+        customEvent.detail !== undefined
+          ? customEvent.detail
+          : await getColorVariables().catch(() => []);
+
+      const normalizedColors: string[] = Array.isArray(rawColors)
+        ? rawColors
+        : rawColors &&
+            typeof rawColors === "object" &&
+            Array.isArray(rawColors.variables)
+          ? rawColors.variables
+          : [];
+
+      colorVariablesRef.current = normalizedColors;
+
+      const rawScss = await getGlobalScss().catch(() => "");
+      const colorDefs = getScssOnlyColorDefs(normalizedColors);
+      const scssWithColors = colorDefs
+        ? `${colorDefs}\n${rawScss || ""}`
+        : rawScss || "";
+
+      const css = await compileScssToCss(scssWithColors);
+      setCompiledCss(css);
+      compiledCssRef.current = css;
+
+      const iframeDoc = iframeRef.current?.contentDocument;
+      if (iframeDoc && iframeDoc.head) {
+        iframeDoc.getElementById("figma-color-tokens")?.remove();
+        const tokensCss = buildRootColorTokensText(normalizedColors);
+        if (tokensCss) {
+          const tokensTag = iframeDoc.createElement("style");
+          tokensTag.id = "figma-color-tokens";
+          tokensTag.textContent = tokensCss;
+          iframeDoc.head.appendChild(tokensTag);
+        }
+
+        iframeDoc.getElementById("compiled-classes-styles")?.remove();
+        const newStyleTag = iframeDoc.createElement("style");
+        newStyleTag.id = "compiled-classes-styles";
+        newStyleTag.textContent = css;
+        iframeDoc.head.appendChild(newStyleTag);
+        return;
+      }
+
+      rebuildEntireIframe(
+        currentBodyHtmlRef.current,
+        undefined,
+        undefined,
+        css,
+        undefined,
+        normalizedColors,
+      );
+    };
+
+    window.addEventListener("figma_colors:saved", handleColorsUpdate);
+    return () =>
+      window.removeEventListener("figma_colors:saved", handleColorsUpdate);
+  }, [rebuildEntireIframe]);
+
   useEffect(() => {
     const handleScriptsUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<string | Record<string, string>>;
@@ -348,7 +415,6 @@ export function usePreviewArea() {
       window.removeEventListener("plaza-scripts-updated", handleScriptsUpdate);
   }, [rebuildEntireIframe]);
 
-  // Обновление шрифтов
   useEffect(() => {
     const handleFontsSync = (e: Event) => {
       const customEvent = e as CustomEvent<{

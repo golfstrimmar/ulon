@@ -10,7 +10,11 @@ import {
   getColorVariables,
   saveColorVariables,
   clearColorVariables,
-} from "@/lib/figmaColorStorage";
+  appendColorVariables,
+  embedColorVariablesIntoScss,
+  removeColorVariablesFromScss,
+} from "@/store/figmaColorStorage";
+import { getGlobalScss, saveGlobalScss } from "@/store/htmlStorage";
 
 export function useFigmaColorsController(initialRawJson: string = "") {
   const [tokens, setTokens] = useState<ColorToken[]>([]);
@@ -34,76 +38,44 @@ export function useFigmaColorsController(initialRawJson: string = "") {
 
   const handleCopySingle = useCallback((text: string, id: string) => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
-      navigator.clipboard.writeText(text);
+      const copyVal = text.startsWith("--") ? `var(${text})` : text;
+      navigator.clipboard.writeText(copyVal);
       setCopiedVar(id);
       setTimeout(() => setCopiedVar(null), 1800);
     }
   }, []);
 
   /**
-   * Сохранение цветов в базу с проверкой на дубликаты.
-   * Если цвет (HEX) уже есть в базе — повторно не добавляем.
+   * По кнопке «+ Дополнить базу»:
+   * генерирует `--color-N: #HEX;` без дублей, сохраняет в IndexedDB и обновляет `:root` в `globalScss`.
    */
   const handleSaveToDb = useCallback(async () => {
     if (tokens.length === 0) return;
 
     try {
-      // 1. Читаем существующие цвета из базы IndexedDB
-      const existingVars = await getColorVariables();
+      const before = await getColorVariables();
+      const mergedVars = await appendColorVariables(tokens);
+      const addedCount = mergedVars.length - before.length;
 
-      // 2. Извлекаем существующие HEX (lowercase) и определяем максимальный индекс $color-N
-      const existingHexSet = new Set<string>();
-      let maxColorIndex = 0;
-
-      existingVars.forEach((entry) => {
-        const match = entry.match(/^(\$[a-zA-Z0-9_-]+):\s*(#[a-zA-Z0-9]+);?/);
-        if (match) {
-          const varName = match[1];
-          const hex = match[2].trim().toLowerCase();
-          existingHexSet.add(hex);
-
-          const numMatch = varName.match(/^\$color-(\d+)$/);
-          if (numMatch) {
-            const num = parseInt(numMatch[1], 10);
-            if (num > maxColorIndex) {
-              maxColorIndex = num;
-            }
-          }
+      // Синхронизируем :root { --color-... } в глобальный SCSS
+      const currentScss = await getGlobalScss().catch(() => "");
+      const nextScss = embedColorVariablesIntoScss(currentScss, mergedVars);
+      if (nextScss !== currentScss) {
+        await saveGlobalScss(nextScss);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("plaza-styles-updated", { detail: nextScss }),
+          );
         }
-      });
-
-      // 3. Отбираем новые уникальные токены, которых ещё нет в базе
-      const newEntriesToAdd: string[] = [];
-      let nextIndex = maxColorIndex + 1;
-
-      for (const token of tokens) {
-        const hex = token.hex.trim().toLowerCase();
-        if (existingHexSet.has(hex)) {
-          // Уже есть на базе — пропускаем дублирование
-          continue;
-        }
-
-        existingHexSet.add(hex);
-        const newVarName = `$color-${nextIndex}`;
-        nextIndex++;
-        newEntriesToAdd.push(`${newVarName}: ${token.hex};`);
       }
 
-      // 4. Объединяем и сохраняем только при наличии изменений
-      const mergedVars = [...existingVars, ...newEntriesToAdd];
-      if (newEntriesToAdd.length > 0 || existingVars.length === 0) {
-        await saveColorVariables(mergedVars);
-      }
-
-      // 5. Оповещаем подписчиков через событие
       if (typeof window !== "undefined") {
         window.dispatchEvent(
           new CustomEvent("figma_colors:saved", { detail: mergedVars }),
         );
       }
 
-      // Индикация статуса: если все цвета уже были — пишем "already-in-db"
-      setCopiedVar(newEntriesToAdd.length > 0 ? "all-scss" : "all-scss-duplicate");
+      setCopiedVar(addedCount > 0 ? "all-scss" : "all-scss-duplicate");
       setTimeout(() => setCopiedVar(null), 1800);
     } catch (err) {
       console.error("Error saving color variables:", err);
@@ -111,7 +83,8 @@ export function useFigmaColorsController(initialRawJson: string = "") {
   }, [tokens]);
 
   /**
-   * Полная замена палитры в базе: очищает старые цвета и сохраняет чистые цвета этого макета
+   * По кнопке «Заменить палитру в базе»:
+   * очищает старые цвета и сохраняет чистую палитру этого макета в `:root` и в базу.
    */
   const handleReplaceDbPalette = useCallback(async () => {
     if (tokens.length === 0) return;
@@ -123,14 +96,27 @@ export function useFigmaColorsController(initialRawJson: string = "") {
       let index = 1;
 
       for (const token of tokens) {
+        if (!token.hex) continue;
         const hex = token.hex.trim().toLowerCase();
         if (uniqueHexSet.has(hex)) continue;
         uniqueHexSet.add(hex);
-        cleanVars.push(`$color-${index}: ${token.hex};`);
+        cleanVars.push(`--color-${index}: ${token.hex};`);
         index++;
       }
 
       await saveColorVariables(cleanVars);
+
+      const currentScss = await getGlobalScss().catch(() => "");
+      const cleanedScss = removeColorVariablesFromScss(currentScss);
+      const nextScss = embedColorVariablesIntoScss(cleanedScss, cleanVars);
+      if (nextScss !== currentScss) {
+        await saveGlobalScss(nextScss);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("plaza-styles-updated", { detail: nextScss }),
+          );
+        }
+      }
 
       if (typeof window !== "undefined") {
         window.dispatchEvent(
