@@ -180,7 +180,8 @@ function NodeCardComponent({ node, depth, parentIsRow = true, showBeforeGap = fa
   } else if (isDropInside) {
     stateRing = "outline outline-2 outline-sky-300/75 outline-offset-1";
   } else if (isClicked) {
-    stateRing = "outline outline-2 outline-indigo-300/80 outline-offset-1";
+    stateRing =
+      "outline outline-2 outline-emerald-400 outline-offset-1 shadow-[0_0_16px_rgba(16,185,129,0.85)]";
   } else if (isSelected) {
     stateRing = "outline outline-2 outline-sky-300/70 outline-offset-1";
   } else if (isHovered) {
@@ -266,7 +267,9 @@ function NodeCardComponent({ node, depth, parentIsRow = true, showBeforeGap = fa
           <div
             className={`relative mt-1 px-1.5 py-1 rounded border ${
               hasChildren ? "border-l-[3px]" : ""
-            } transition-all flex flex-col items-center gap-0.5 min-w-[46px] ${stateRing}`}
+            } transition-all flex flex-col items-center gap-0.5 min-w-[46px] ${
+              isClicked ? "z-10 " : ""
+            }${stateRing}`}
             style={{
               backgroundColor: bgStyle,
               borderColor: borderStyle,

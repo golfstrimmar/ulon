@@ -102,9 +102,10 @@ export function useNodeCard({ node, depth }: UseNodeCardOptions) {
       bg = "rgba(56, 189, 248, 0.16)";
       shadow = "0 0 10px rgba(56, 189, 248, 0.4)";
     } else if (isClicked) {
-      border = "#818cf8";
-      bg = "rgba(99, 102, 241, 0.2)";
-      shadow = "0 0 10px rgba(129, 140, 248, 0.35)";
+      border = "#10b981";
+      bg = "rgba(16, 185, 129, 0.25)";
+      shadow =
+        "0 0 16px rgba(16, 185, 129, 0.65), inset 0 0 8px rgba(52, 211, 153, 0.35)";
     } else if (isSelected) {
       border = "#38bdf8";
       bg = "rgba(56, 189, 248, 0.18)";
