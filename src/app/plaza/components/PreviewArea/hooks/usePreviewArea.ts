@@ -65,6 +65,7 @@ export function usePreviewArea() {
   const latestFullNodesRef = useRef<HtmlNode[]>([]);
   const isInitializedRef = useRef<boolean>(false);
 
+  const currentJson = useCanvasStore((s) => s.currentJson);
   const collapsedKeys = useCanvasStore((s) => s.collapsedKeys);
 
   const [srcDoc, setSrcDoc] = useState<string>("");
@@ -118,7 +119,10 @@ export function usePreviewArea() {
   const applyNodesToPreview = useCallback(
     (fullNodes: HtmlNode[], collapsed: Set<string>) => {
       const visibleNodes = filterVisibleRootNodes(fullNodes, collapsed);
-      const nextHtml = visibleNodes.length > 0 ? renderTree(visibleNodes) : "";
+      const nodesToRender =
+        visibleNodes.length > 0 ? visibleNodes : fullNodes;
+      const nextHtml =
+        nodesToRender.length > 0 ? renderTree(nodesToRender) : "";
 
       if (nextHtml === currentBodyHtmlRef.current) {
         return;
@@ -195,15 +199,22 @@ export function usePreviewArea() {
       compiledCssRef.current = css;
 
       let initialHtml = "";
-      if (rawTree) {
-        const nodes: HtmlNode[] = Array.isArray(rawTree) ? rawTree : [rawTree];
+      const storeNodes = useCanvasStore.getState().currentJson;
+      const targetData =
+        storeNodes && storeNodes.length > 0 ? storeNodes : rawTree;
+      if (targetData) {
+        const nodes: HtmlNode[] = Array.isArray(targetData)
+          ? targetData
+          : [targetData];
         latestFullNodesRef.current = nodes;
         const visibleNodes = filterVisibleRootNodes(
           nodes,
           useCanvasStore.getState().collapsedKeys,
         );
-        if (visibleNodes.length > 0) {
-          initialHtml = renderTree(visibleNodes);
+        const nodesToRender =
+          visibleNodes.length > 0 ? visibleNodes : nodes;
+        if (nodesToRender.length > 0) {
+          initialHtml = renderTree(nodesToRender);
         }
       } else {
         latestFullNodesRef.current = [];
@@ -254,11 +265,10 @@ export function usePreviewArea() {
 
   useEffect(() => {
     if (!isInitializedRef.current) return;
-    const storeNodes = useCanvasStore.getState().currentJson;
     const fullNodes =
-      storeNodes.length > 0 ? storeNodes : latestFullNodesRef.current;
+      currentJson.length > 0 ? currentJson : latestFullNodesRef.current;
     applyNodesToPreview(fullNodes, collapsedKeys);
-  }, [collapsedKeys, applyNodesToPreview]);
+  }, [currentJson, collapsedKeys, applyNodesToPreview]);
 
   useEffect(() => {
     const handleStylesUpdate = async (e: Event) => {

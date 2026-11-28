@@ -172,7 +172,7 @@ export default function AsideCanvas() {
       className={
         isAsideFloating
           ? "fixed z-[45] w-48 shrink-0 bg-zinc-900 border border-indigo-500/40 rounded-md p-1 flex flex-col justify-between shadow-2xl select-none overflow-hidden will-change-transform"
-          : "w-48 shrink-0 bg-zinc-900 border border-zinc-800 rounded-sm p-1 flex flex-col justify-between shadow-xl select-none overflow-hidden"
+          : "w-48 h-full min-h-[460px] shrink-0 bg-zinc-900 border border-zinc-800 rounded-sm p-1 flex flex-col justify-between shadow-xl select-none overflow-hidden"
       }
     >
       {isAsideFloating && (
@@ -408,5 +408,5 @@ export default function AsideCanvas() {
     );
   }
 
-  return <div>{asideContent}</div>;
+  return <div className="h-full flex flex-col shrink-0">{asideContent}</div>;
 }

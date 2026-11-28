@@ -130,7 +130,7 @@ export function CanvasArea() {
                 ? "border-rose-500 shadow-[0_0_30px_rgba(244,63,94,0.3)]"
                 : "border-indigo-500/40 shadow-2xl"
             } rounded-xl overflow-hidden flex flex-col select-none will-change-transform transition-colors`
-          : `plaza-workspace flex-1 relative bg-zinc-950 border ${
+          : `plaza-workspace flex-1 min-h-[460px] relative bg-zinc-950 border ${
               isArmingMarker
                 ? "border-rose-500/80 shadow-[0_0_25px_rgba(244,63,94,0.25)]"
                 : "border-zinc-800 shadow-2xl"
@@ -312,7 +312,7 @@ export function CanvasArea() {
   );
 
   return (
-    <div className="w-full flex gap-1 select-none">
+    <div className="w-full flex-1 flex gap-1 select-none min-h-[460px]">
       <AsideCanvas />
 
       {isCanvasFloating && mounted

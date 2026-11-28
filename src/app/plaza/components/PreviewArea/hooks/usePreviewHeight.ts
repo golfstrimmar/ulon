@@ -7,6 +7,7 @@ interface UsePreviewHeightOptions {
   isEmpty: boolean;
   overlayImage?: string | null;
   hasImage?: boolean;
+  isOverlayActive?: boolean;
   overlayHeight?: number;
   offsetY?: number;
 }
@@ -16,6 +17,7 @@ export function usePreviewHeight({
   isEmpty,
   overlayImage,
   hasImage,
+  isOverlayActive = true,
   overlayHeight,
   offsetY = 0,
 }: UsePreviewHeightOptions) {
@@ -39,8 +41,9 @@ export function usePreviewHeight({
   const activeImageHeight = overlayHeight || naturalImgHeight;
 
   // Calculate prototype target height with 40px buffer
+  const isOverlayOn = hasImage && isOverlayActive;
   const prototypeHeight =
-    hasImage && activeImageHeight > 0
+    isOverlayOn && activeImageHeight > 0
       ? activeImageHeight + Math.max(0, offsetY) + 80
       : null;
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
 import { PencilSquareIcon } from "@heroicons/react/24/outline";
@@ -88,6 +88,7 @@ export function PreviewArea() {
       isEmpty,
       overlayImage,
       hasImage,
+      isOverlayActive,
       overlayHeight,
       offsetY,
     });
@@ -104,6 +105,29 @@ export function PreviewArea() {
     initHighlighting(doc);
     initHeightMeasurement(doc);
   }, [iframeRef, initHighlighting, initHeightMeasurement]);
+
+  // Гарантируем пересчёт высоты и подсветки при загрузке документа или смене srcDoc
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    const onLoad = () => {
+      handleLoad();
+    };
+
+    iframe.addEventListener("load", onLoad);
+    if (
+      iframe.contentDocument &&
+      iframe.contentDocument.readyState === "complete" &&
+      iframe.contentDocument.body
+    ) {
+      handleLoad();
+    }
+
+    return () => {
+      iframe.removeEventListener("load", onLoad);
+    };
+  }, [srcDoc, handleLoad, iframeRef]);
 
   const stepOffset = useCallback(
     (delta: number) => {
@@ -286,7 +310,7 @@ export function PreviewArea() {
       <ModalFonts />
       <ModalPixelPerfect />
 
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {!isCollapsed && (
           <motion.div
             initial={{ height: 0, opacity: 0, y: 0 }}
